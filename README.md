@@ -47,8 +47,9 @@ EXPO_PUBLIC_API_URL=http://192.168.x.x:3001 npx expo start
 - **Events** – create, edit, delete; six gradient/emoji cover themes with live title preview; date/time picker; optional guest cap
 - **Invite links** – native share sheet; the invite deep link opens the event directly, signed-out guests are routed through signup first. In Expo Go the Share button emits a working `exp://<host>:8081/--/e/<slug>` link; the `hausi://e/<slug>` scheme takes effect in a development/standalone build (`npx expo run:ios`)
 - **RSVPs** – Going / Maybe / Can't with plus-ones; capacity enforcement when the event is full
-- **Guest list** – emoji avatars grouped by status with live counters (X going, Y maybe)
-- **Party Wall** – per-event comment feed
+- **Guest list** – emoji avatars grouped by status with live counters (X going, Y maybe); hosts can remove guests
+- **Party Wall** – per-event feed with comments and activity entries ("Mia is going with +2 🎉")
+- **Home feed** – your events split into Upcoming and Past
 
 ## Try the main flow
 
@@ -70,6 +71,7 @@ EXPO_PUBLIC_API_URL=http://192.168.x.x:3001 npx expo start
 | GET | `/events/by-slug/:slug` | Resolve invite link |
 | PATCH / DELETE | `/events/:id` | Host only |
 | PUT | `/events/:id/rsvp` | Upsert RSVP (`GOING` \| `MAYBE` \| `CANT`, `plusOnes`) |
+| DELETE | `/events/:id/rsvp/:userId` | Host removes a guest |
 | GET / POST | `/events/:id/comments` | Party Wall |
 
 ## Out of scope (by design)
