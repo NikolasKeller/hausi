@@ -4,6 +4,17 @@ export type RsvpStatus = 'GOING' | 'MAYBE' | 'CANT';
 
 export const RSVP_STATUSES: RsvpStatus[] = ['GOING', 'MAYBE', 'CANT'];
 
+// Validation limits shared by the server (zod) and the app (input caps).
+export const LIMITS = {
+  name: 80,
+  title: 120,
+  location: 200,
+  description: 4000,
+  comment: 1000,
+  plusOnes: 20,
+  maxGuests: 10000,
+} as const;
+
 export const COVER_THEMES = [
   'sunset',
   'ocean',

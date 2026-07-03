@@ -4,7 +4,7 @@ import { db } from '../lib/db.js';
 import { requireAuth, type AuthVariables } from '../lib/auth.js';
 import { countRsvps, toEventDetail, toEventSummary } from '../lib/serialize.js';
 import { makeSlug } from '../lib/slug.js';
-import { COVER_THEMES, RSVP_STATUSES } from '../../../shared/types.js';
+import { COVER_THEMES, LIMITS, RSVP_STATUSES } from '../../../app/shared/types.js';
 
 const eventInclude = {
   host: true,
@@ -13,24 +13,24 @@ const eventInclude = {
 };
 
 const eventInputSchema = z.object({
-  title: z.string().trim().min(1).max(120),
-  description: z.string().trim().max(4000).optional(),
+  title: z.string().trim().min(1).max(LIMITS.title),
+  description: z.string().trim().max(LIMITS.description).optional(),
   coverTheme: z.enum(COVER_THEMES).optional(),
   date: z
     .string()
     .refine((s) => !Number.isNaN(Date.parse(s)), 'Invalid date')
     .transform((s) => new Date(s)),
-  location: z.string().trim().max(200).optional(),
-  maxGuests: z.number().int().min(1).max(10000).nullable().optional(),
+  location: z.string().trim().max(LIMITS.location).optional(),
+  maxGuests: z.number().int().min(1).max(LIMITS.maxGuests).nullable().optional(),
 });
 
 const rsvpSchema = z.object({
   status: z.enum(RSVP_STATUSES as [string, ...string[]]),
-  plusOnes: z.number().int().min(0).max(20).optional(),
+  plusOnes: z.number().int().min(0).max(LIMITS.plusOnes).optional(),
 });
 
 const commentSchema = z.object({
-  text: z.string().trim().min(1).max(1000),
+  text: z.string().trim().min(1).max(LIMITS.comment),
 });
 
 export const eventRoutes = new Hono<{ Variables: AuthVariables }>();
@@ -117,33 +117,51 @@ eventRoutes.delete('/:id', async (c) => {
   return c.json({ ok: true });
 });
 
+class RsvpError extends Error {
+  constructor(
+    message: string,
+    public code: 404 | 409
+  ) {
+    super(message);
+  }
+}
+
 eventRoutes.put('/:id/rsvp', async (c) => {
   const userId = c.get('userId');
   const eventId = c.req.param('id');
-  const event = await db.event.findUnique({
-    where: { id: eventId },
-    include: { rsvps: true },
-  });
-  if (!event) return c.json({ error: 'Event not found' }, 404);
 
   const parsed = rsvpSchema.safeParse(await c.req.json().catch(() => null));
   if (!parsed.success) return c.json({ error: 'Invalid RSVP' }, 400);
   const status = parsed.data.status;
   const plusOnes = status === 'GOING' ? (parsed.data.plusOnes ?? 0) : 0;
 
-  if (status === 'GOING' && event.maxGuests != null) {
-    const others = event.rsvps.filter((r) => r.userId !== userId);
-    const goingCount = countRsvps(others).going;
-    if (goingCount + 1 + plusOnes > event.maxGuests) {
-      return c.json({ error: 'This event is full' }, 409);
-    }
-  }
+  try {
+    // Interactive transaction so concurrent RSVPs can't race past the capacity check.
+    await db.$transaction(async (tx) => {
+      const event = await tx.event.findUnique({
+        where: { id: eventId },
+        include: { rsvps: true },
+      });
+      if (!event) throw new RsvpError('Event not found', 404);
 
-  await db.rsvp.upsert({
-    where: { eventId_userId: { eventId, userId } },
-    create: { eventId, userId, status, plusOnes },
-    update: { status, plusOnes },
-  });
+      if (status === 'GOING' && event.maxGuests != null) {
+        const others = event.rsvps.filter((r) => r.userId !== userId);
+        const goingCount = countRsvps(others).going;
+        if (goingCount + 1 + plusOnes > event.maxGuests) {
+          throw new RsvpError('This event is full', 409);
+        }
+      }
+
+      await tx.rsvp.upsert({
+        where: { eventId_userId: { eventId, userId } },
+        create: { eventId, userId, status, plusOnes },
+        update: { status, plusOnes },
+      });
+    });
+  } catch (e) {
+    if (e instanceof RsvpError) return c.json({ error: e.message }, e.code);
+    throw e;
+  }
 
   const updated = await db.event.findUniqueOrThrow({
     where: { id: eventId },

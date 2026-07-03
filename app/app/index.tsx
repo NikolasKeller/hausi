@@ -10,7 +10,7 @@ import {
 import { useFocusEffect, useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
-import type { EventSummary } from '../../shared/types';
+import type { EventSummary } from '../shared/types';
 import { api } from '../lib/api';
 import { useAuth } from '../lib/auth';
 import { colors, radius, spacing } from '../lib/theme';
@@ -22,6 +22,7 @@ export default function HomeScreen() {
   const router = useRouter();
   const [events, setEvents] = useState<EventSummary[]>([]);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const load = useCallback(async () => {
@@ -35,6 +36,15 @@ export default function HomeScreen() {
       setLoading(false);
     }
   }, []);
+
+  const refresh = useCallback(async () => {
+    setRefreshing(true);
+    try {
+      await load();
+    } finally {
+      setRefreshing(false);
+    }
+  }, [load]);
 
   useFocusEffect(
     useCallback(() => {
@@ -55,6 +65,12 @@ export default function HomeScreen() {
         </Pressable>
       </View>
 
+      {error && events.length > 0 ? (
+        <View style={styles.errorBanner}>
+          <Text style={styles.errorBannerText}>⚠️ {error}</Text>
+        </View>
+      ) : null}
+
       <FlatList
         data={events}
         keyExtractor={(e) => e.id}
@@ -62,7 +78,11 @@ export default function HomeScreen() {
         contentContainerStyle={styles.list}
         ItemSeparatorComponent={() => <View style={{ height: spacing.md }} />}
         refreshControl={
-          <RefreshControl refreshing={loading} onRefresh={load} tintColor={colors.accent} />
+          <RefreshControl
+            refreshing={refreshing || loading}
+            onRefresh={refresh}
+            tintColor={colors.accent}
+          />
         }
         ListEmptyComponent={
           loading ? null : (
@@ -129,6 +149,18 @@ const styles = StyleSheet.create({
     padding: spacing.md,
     paddingBottom: 120,
     flexGrow: 1,
+  },
+  errorBanner: {
+    marginHorizontal: spacing.md,
+    backgroundColor: '#3A1B2A',
+    borderWidth: 1,
+    borderColor: colors.danger,
+    borderRadius: radius.md,
+    padding: spacing.sm,
+  },
+  errorBannerText: {
+    color: colors.danger,
+    fontSize: 13,
   },
   empty: {
     flex: 1,

@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 import {
   KeyboardAvoidingView,
-  Platform,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -9,6 +8,7 @@ import {
   View,
 } from 'react-native';
 import { Link } from 'expo-router';
+import { LIMITS } from '../../shared/types';
 import { useAuth } from '../../lib/auth';
 import { colors, radius, spacing } from '../../lib/theme';
 import { Button, ErrorText, Field } from '../../components/ui';
@@ -44,10 +44,7 @@ export default function SignupScreen() {
   }
 
   return (
-    <KeyboardAvoidingView
-      style={styles.flex}
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-    >
+    <KeyboardAvoidingView style={styles.flex} behavior="padding">
       <ScrollView contentContainerStyle={styles.container} keyboardShouldPersistTaps="handled">
         <View style={styles.header}>
           <Text style={styles.title}>Join Hausi</Text>
@@ -69,7 +66,13 @@ export default function SignupScreen() {
               ))}
             </View>
           </View>
-          <Field label="Name" value={name} onChangeText={setName} placeholder="Your name" />
+          <Field
+            label="Name"
+            value={name}
+            onChangeText={setName}
+            placeholder="Your name"
+            maxLength={LIMITS.name}
+          />
           <Field
             label="Email"
             value={email}

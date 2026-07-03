@@ -1,7 +1,7 @@
 import React from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
-import type { EventSummary } from '../../shared/types';
+import type { EventSummary } from '../shared/types';
 import { colors, radius, spacing } from '../lib/theme';
 import { CoverGradient } from './CoverGradient';
 import { Avatar } from './Avatar';

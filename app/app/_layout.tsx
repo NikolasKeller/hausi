@@ -17,8 +17,10 @@ function RootNavigator() {
     if (initializing) return;
     const inAuthGroup = segments[0] === '(auth)';
     if (!user && !inAuthGroup) {
-      if (pathname && pathname !== '/') pendingPath.current = pathname;
-      router.replace('/login');
+      const arrivedViaLink = pathname && pathname !== '/';
+      if (arrivedViaLink) pendingPath.current = pathname;
+      // Invitees without an account go through signup first, per the invite flow.
+      router.replace(arrivedViaLink ? '/signup' : '/login');
     } else if (user && inAuthGroup) {
       const target = pendingPath.current ?? '/';
       pendingPath.current = null;

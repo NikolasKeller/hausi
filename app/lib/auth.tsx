@@ -1,7 +1,7 @@
 import React, { createContext, useContext, useEffect, useMemo, useState } from 'react';
 import * as SecureStore from 'expo-secure-store';
-import type { AuthResponse } from '../../shared/types';
-import { api, setAuthToken } from './api';
+import type { AuthResponse } from '../shared/types';
+import { api, setAuthToken, setOnUnauthorized } from './api';
 
 const TOKEN_KEY = 'hausi.token';
 const USER_KEY = 'hausi.user';
@@ -44,6 +44,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setInitializing(false);
       }
     })();
+  }, []);
+
+  useEffect(() => {
+    // A 401 on an authenticated call means the stored token is dead — sign out.
+    setOnUnauthorized(() => {
+      setAuthToken(null);
+      setUser(null);
+      SecureStore.deleteItemAsync(TOKEN_KEY).catch(() => {});
+      SecureStore.deleteItemAsync(USER_KEY).catch(() => {});
+    });
+    return () => setOnUnauthorized(null);
   }, []);
 
   const value = useMemo<AuthContextValue>(() => {

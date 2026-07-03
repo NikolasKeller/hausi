@@ -1,7 +1,7 @@
 import React, { useCallback, useState } from 'react';
 import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
 import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
-import type { EventDetail } from '../../../../shared/types';
+import type { EventDetail } from '../../../shared/types';
 import { api } from '../../../lib/api';
 import { colors, spacing } from '../../../lib/theme';
 import { EventForm } from '../../../components/EventForm';

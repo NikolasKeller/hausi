@@ -10,5 +10,5 @@
     "noEmit": true,
     "types": ["node"]
   },
-  "include": ["src/**/*.ts", "prisma/seed.ts", "../shared/**/*.ts"]
+  "include": ["src/**/*.ts", "prisma/seed.ts", "../app/shared/**/*.ts"]
 }

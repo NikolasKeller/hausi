@@ -9,7 +9,8 @@ import {
   View,
 } from 'react-native';
 import DateTimePicker from '@react-native-community/datetimepicker';
-import type { CoverTheme, EventInput } from '../../shared/types';
+import { useHeaderHeight } from 'expo-router/react-navigation';
+import { LIMITS, type CoverTheme, type EventInput } from '../shared/types';
 import { colors, radius, spacing } from '../lib/theme';
 import { COVER_LIST } from '../lib/covers';
 import { CoverGradient } from './CoverGradient';
@@ -39,6 +40,7 @@ function defaultDate(): Date {
 }
 
 export function EventForm({ initial, submitLabel, onSubmit }: Props) {
+  const headerHeight = useHeaderHeight();
   const [title, setTitle] = useState(initial?.title ?? '');
   const [description, setDescription] = useState(initial?.description ?? '');
   const [location, setLocation] = useState(initial?.location ?? '');
@@ -57,8 +59,8 @@ export function EventForm({ initial, submitLabel, onSubmit }: Props) {
       return;
     }
     const guests = maxGuests.trim() ? Number(maxGuests.trim()) : null;
-    if (guests != null && (!Number.isInteger(guests) || guests < 1)) {
-      setError('Max guests must be a whole number');
+    if (guests != null && (!Number.isInteger(guests) || guests < 1 || guests > LIMITS.maxGuests)) {
+      setError(`Max guests must be a whole number between 1 and ${LIMITS.maxGuests}`);
       return;
     }
     setError(null);
@@ -86,7 +88,8 @@ export function EventForm({ initial, submitLabel, onSubmit }: Props) {
   return (
     <KeyboardAvoidingView
       style={{ flex: 1 }}
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      behavior="padding"
+      keyboardVerticalOffset={headerHeight}
     >
       <ScrollView
         style={styles.container}
@@ -119,7 +122,13 @@ export function EventForm({ initial, submitLabel, onSubmit }: Props) {
           </View>
         </View>
 
-        <Field label="Title" value={title} onChangeText={setTitle} placeholder="Untitled Event" />
+        <Field
+          label="Title"
+          value={title}
+          onChangeText={setTitle}
+          placeholder="Untitled Event"
+          maxLength={LIMITS.title}
+        />
 
         <View style={{ gap: spacing.xs }}>
           <Text style={styles.label}>When</Text>
@@ -153,6 +162,7 @@ export function EventForm({ initial, submitLabel, onSubmit }: Props) {
           value={location}
           onChangeText={setLocation}
           placeholder="Location"
+          maxLength={LIMITS.location}
         />
         <Field
           label="Description"
@@ -161,6 +171,7 @@ export function EventForm({ initial, submitLabel, onSubmit }: Props) {
           placeholder="Add a description of your event"
           multiline
           numberOfLines={4}
+          maxLength={LIMITS.description}
           style={{ minHeight: 100, textAlignVertical: 'top' }}
         />
         <Field

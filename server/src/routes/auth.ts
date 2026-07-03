@@ -3,10 +3,10 @@ import bcrypt from 'bcryptjs';
 import { z } from 'zod';
 import { db } from '../lib/db.js';
 import { createToken } from '../lib/auth.js';
-import type { AuthResponse } from '../../../shared/types.js';
+import { LIMITS, type AuthResponse } from '../../../app/shared/types.js';
 
 const signupSchema = z.object({
-  name: z.string().trim().min(1).max(80),
+  name: z.string().trim().min(1).max(LIMITS.name),
   email: z.string().trim().toLowerCase().email(),
   password: z.string().min(6).max(200),
   avatarEmoji: z.string().trim().min(1).max(8).optional(),

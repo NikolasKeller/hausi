@@ -1,4 +1,4 @@
-import type { CoverTheme } from '../../shared/types';
+import type { CoverTheme } from '../shared/types';
 
 export interface CoverSpec {
   key: CoverTheme;

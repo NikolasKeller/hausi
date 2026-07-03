@@ -7,7 +7,7 @@ import type {
   RsvpCounts,
   RsvpEntry,
   RsvpStatus,
-} from '../../../shared/types.js';
+} from '../../../app/shared/types.js';
 
 type UserRow = { id: string; name: string; avatarEmoji: string };
 type RsvpRow = { status: string; plusOnes: number; userId: string; user: UserRow };

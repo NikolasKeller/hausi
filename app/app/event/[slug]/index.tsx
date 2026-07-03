@@ -3,7 +3,6 @@ import {
   ActivityIndicator,
   Alert,
   KeyboardAvoidingView,
-  Platform,
   Pressable,
   ScrollView,
   Share,
@@ -14,7 +13,7 @@ import {
 } from 'react-native';
 import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import * as Linking from 'expo-linking';
-import type { EventDetail, RsvpStatus } from '../../../../shared/types';
+import { LIMITS, type EventDetail, type RsvpStatus } from '../../../shared/types';
 import { api } from '../../../lib/api';
 import { useAuth } from '../../../lib/auth';
 import { colors, radius, spacing } from '../../../lib/theme';
@@ -139,10 +138,7 @@ export default function EventScreen() {
     event.maxGuests != null ? Math.max(0, event.maxGuests - event.counts.going) : null;
 
   return (
-    <KeyboardAvoidingView
-      style={{ flex: 1, backgroundColor: colors.bg }}
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-    >
+    <KeyboardAvoidingView style={{ flex: 1, backgroundColor: colors.bg }} behavior="padding">
       <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
         <CoverGradient theme={event.coverTheme} style={styles.hero}>
           <Text style={styles.heroTitle}>{event.title}</Text>
@@ -208,9 +204,14 @@ export default function EventScreen() {
                 </Pressable>
                 <Text style={styles.plusOnesValue}>+{myRsvp.plusOnes}</Text>
                 <Pressable
-                  onPress={() => setRsvp('GOING', (myRsvp.plusOnes ?? 0) + 1)}
-                  style={styles.stepButton}
-                  disabled={rsvpBusy}
+                  onPress={() =>
+                    setRsvp('GOING', Math.min(LIMITS.plusOnes, (myRsvp.plusOnes ?? 0) + 1))
+                  }
+                  style={[
+                    styles.stepButton,
+                    myRsvp.plusOnes >= LIMITS.plusOnes && { opacity: 0.4 },
+                  ]}
+                  disabled={rsvpBusy || myRsvp.plusOnes >= LIMITS.plusOnes}
                 >
                   <Text style={styles.stepText}>＋</Text>
                 </Pressable>
@@ -282,6 +283,7 @@ export default function EventScreen() {
               placeholderTextColor={colors.muted}
               style={styles.commentInput}
               multiline
+              maxLength={LIMITS.comment}
             />
             <Pressable
               onPress={sendComment}

@@ -4,7 +4,7 @@ A Partiful-style party app: create events, invite friends with a link, collect R
 
 - **`app/`** – Expo (React Native, TypeScript) with Expo Router. Dark, playful Partiful-style UI with gradient cover themes.
 - **`server/`** – Hono (Node, TypeScript) + Prisma + SQLite. REST API with JWT auth (bcrypt).
-- **`shared/`** – TypeScript types shared between app and server.
+- **`app/shared/`** – TypeScript types shared by both sides. They live inside the app package because Metro can't resolve files outside its project root; the server imports them from there.
 
 ## Getting started
 
@@ -45,7 +45,7 @@ EXPO_PUBLIC_API_URL=http://192.168.x.x:3001 npx expo start
 
 - **Auth** – signup/login with email + password (JWT in `expo-secure-store`), emoji avatars
 - **Events** – create, edit, delete; six gradient/emoji cover themes with live title preview; date/time picker; optional guest cap
-- **Invite links** – native share sheet; deep link `hausi://e/<slug>` opens the event, signed-out guests are routed through signup first
+- **Invite links** – native share sheet; the invite deep link opens the event directly, signed-out guests are routed through signup first. In Expo Go the Share button emits a working `exp://<host>:8081/--/e/<slug>` link; the `hausi://e/<slug>` scheme takes effect in a development/standalone build (`npx expo run:ios`)
 - **RSVPs** – Going / Maybe / Can't with plus-ones; capacity enforcement when the event is full
 - **Guest list** – emoji avatars grouped by status with live counters (X going, Y maybe)
 - **Party Wall** – per-event comment feed
@@ -54,7 +54,11 @@ EXPO_PUBLIC_API_URL=http://192.168.x.x:3001 npx expo start
 
 1. Start server + app, log in as `demo@hausi.app`.
 2. Create an event, pick a cover theme, save.
-3. Tap **Share link** and open the link (or `hausi://e/<slug>`) as another user to RSVP and comment.
+3. Tap **Share link** and open the shared link as another user to RSVP and comment. To simulate an invite in Expo Go on the iOS simulator:
+
+   ```bash
+   xcrun simctl openurl booted "exp://127.0.0.1:8081/--/e/<slug>"
+   ```
 
 ## API overview
 

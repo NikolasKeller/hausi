@@ -6,7 +6,7 @@ import type {
   EventInput,
   EventSummary,
   RsvpStatus,
-} from '../../shared/types';
+} from '../shared/types';
 
 export const API_URL =
   process.env.EXPO_PUBLIC_API_URL ??
@@ -25,9 +25,16 @@ export class ApiError extends Error {
 }
 
 let authToken: string | null = null;
+let onUnauthorized: (() => void) | null = null;
 
 export function setAuthToken(token: string | null) {
   authToken = token;
+}
+
+// Called when an authenticated request comes back 401 (expired/stale token),
+// so the auth provider can clear the session and the guard redirects to login.
+export function setOnUnauthorized(handler: (() => void) | null) {
+  onUnauthorized = handler;
 }
 
 async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
@@ -35,6 +42,7 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
     'Content-Type': 'application/json',
     ...(options.headers as Record<string, string> | undefined),
   };
+  const sentWithToken = authToken != null;
   if (authToken) headers.Authorization = `Bearer ${authToken}`;
 
   let res: Response;
@@ -46,6 +54,7 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
 
   const body = await res.json().catch(() => ({}));
   if (!res.ok) {
+    if (res.status === 401 && sentWithToken) onUnauthorized?.();
     throw new ApiError(res.status, (body as { error?: string }).error ?? `Request failed (${res.status})`);
   }
   return body as T;
