@@ -1,8 +1,8 @@
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useMemo, useState } from 'react';
 import {
-  FlatList,
   Pressable,
   RefreshControl,
+  SectionList,
   StyleSheet,
   Text,
   View,
@@ -52,6 +52,19 @@ export default function HomeScreen() {
     }, [user, load])
   );
 
+  const sections = useMemo(() => {
+    // An event stays "upcoming" until a few hours after it starts.
+    const cutoff = Date.now() - 6 * 60 * 60 * 1000;
+    const upcoming = events.filter((e) => new Date(e.date).getTime() >= cutoff);
+    const past = events
+      .filter((e) => new Date(e.date).getTime() < cutoff)
+      .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+    return [
+      ...(upcoming.length ? [{ title: 'Upcoming', data: upcoming }] : []),
+      ...(past.length ? [{ title: 'Past', data: past }] : []),
+    ];
+  }, [events]);
+
   return (
     <SafeAreaView style={styles.flex} edges={['top']}>
       <View style={styles.header}>
@@ -71,10 +84,14 @@ export default function HomeScreen() {
         </View>
       ) : null}
 
-      <FlatList
-        data={events}
+      <SectionList
+        sections={sections}
         keyExtractor={(e) => e.id}
         renderItem={({ item }) => <EventCard event={item} />}
+        renderSectionHeader={({ section }) => (
+          <Text style={styles.sectionHeader}>{section.title}</Text>
+        )}
+        stickySectionHeadersEnabled={false}
         contentContainerStyle={styles.list}
         ItemSeparatorComponent={() => <View style={{ height: spacing.md }} />}
         refreshControl={
@@ -149,6 +166,15 @@ const styles = StyleSheet.create({
     padding: spacing.md,
     paddingBottom: 120,
     flexGrow: 1,
+  },
+  sectionHeader: {
+    color: colors.muted,
+    fontSize: 13,
+    fontWeight: '700',
+    textTransform: 'uppercase',
+    letterSpacing: 1,
+    marginBottom: spacing.sm,
+    marginTop: spacing.sm,
   },
   errorBanner: {
     marginHorizontal: spacing.md,

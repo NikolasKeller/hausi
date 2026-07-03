@@ -47,8 +47,11 @@ async function main() {
       },
       comments: {
         create: [
+          { userId: mia.id, text: 'is going with +1 🎉', type: 'system' },
           { userId: mia.id, text: 'Bringing my famous sangria 🍹' },
+          { userId: leo.id, text: 'might come 🤔', type: 'system' },
           { userId: leo.id, text: 'Might be late, save me a spot on the couch!' },
+          { userId: zoe.id, text: 'is going 🎉', type: 'system' },
           { userId: demo.id, text: 'Doors open at 6 — sunset is at 7:30 sharp 🌅' },
         ],
       },
@@ -103,7 +106,33 @@ async function main() {
     },
   });
 
-  console.log('Seeded 4 users and 3 events.');
+  await db.event.create({
+    data: {
+      slug: makeSlug('Balcony Aperitivo'),
+      title: 'Balcony Aperitivo 🍊',
+      description: 'Spritz o’clock. Thanks for coming everyone!',
+      coverTheme: 'ocean',
+      date: daysFromNow(-9, 18),
+      location: 'Bei Zoe, Sonnenallee 21',
+      hostId: zoe.id,
+      rsvps: {
+        create: [
+          { userId: zoe.id, status: 'GOING' },
+          { userId: demo.id, status: 'GOING' },
+          { userId: mia.id, status: 'CANT' },
+        ],
+      },
+      comments: {
+        create: [
+          { userId: demo.id, text: 'is going 🎉', type: 'system' },
+          { userId: mia.id, text: "can't make it 😢", type: 'system' },
+          { userId: demo.id, text: 'That was such a good evening 🧡' },
+        ],
+      },
+    },
+  });
+
+  console.log('Seeded 4 users and 4 events (incl. one past).');
   console.log('Login: demo@hausi.app / hausi123');
   console.log(`Example invite slug: ${rooftop.slug}`);
 }

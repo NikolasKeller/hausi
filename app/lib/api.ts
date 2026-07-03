@@ -94,6 +94,12 @@ export const api = {
       body: JSON.stringify({ status, plusOnes }),
     });
   },
+  removeGuest(eventId: string, userId: string) {
+    return request<{ event: EventDetail }>(
+      `/events/${eventId}/rsvp/${encodeURIComponent(userId)}`,
+      { method: 'DELETE' }
+    );
+  },
   addComment(eventId: string, text: string) {
     return request<{ comment: CommentEntry }>(`/events/${eventId}/comments`, {
       method: 'POST',

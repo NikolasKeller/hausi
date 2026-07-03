@@ -11,7 +11,7 @@ import type {
 
 type UserRow = { id: string; name: string; avatarEmoji: string };
 type RsvpRow = { status: string; plusOnes: number; userId: string; user: UserRow };
-type CommentRow = { id: string; text: string; createdAt: Date; user: UserRow };
+type CommentRow = { id: string; text: string; type: string; createdAt: Date; user: UserRow };
 type EventRow = {
   id: string;
   slug: string;
@@ -76,6 +76,7 @@ export function toEventDetail(
         id: co.id,
         user: toPublicUser(co.user),
         text: co.text,
+        type: co.type === 'system' ? 'system' : 'comment',
         createdAt: co.createdAt.toISOString(),
       })
     ),

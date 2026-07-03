@@ -152,11 +152,27 @@ eventRoutes.put('/:id/rsvp', async (c) => {
         }
       }
 
+      const previous = event.rsvps.find((r) => r.userId === userId);
       await tx.rsvp.upsert({
         where: { eventId_userId: { eventId, userId } },
         create: { eventId, userId, status, plusOnes },
         update: { status, plusOnes },
       });
+
+      // Activity-feed entry on the Party Wall when the status actually changes.
+      if (!previous || previous.status !== status) {
+        const phrase =
+          status === 'GOING'
+            ? plusOnes > 0
+              ? `is going with +${plusOnes} 🎉`
+              : 'is going 🎉'
+            : status === 'MAYBE'
+              ? 'might come 🤔'
+              : "can't make it 😢";
+        await tx.comment.create({
+          data: { eventId, userId, text: phrase, type: 'system' },
+        });
+      }
     });
   } catch (e) {
     if (e instanceof RsvpError) return c.json({ error: e.message }, e.code);
@@ -168,6 +184,28 @@ eventRoutes.put('/:id/rsvp', async (c) => {
     include: eventInclude,
   });
   return c.json({ event: toEventDetail(updated, userId) });
+});
+
+// Host removes a guest from the list (Partiful-style silent removal).
+eventRoutes.delete('/:id/rsvp/:userId', async (c) => {
+  const me = c.get('userId');
+  const eventId = c.req.param('id');
+  const targetUserId = c.req.param('userId');
+
+  const event = await db.event.findUnique({ where: { id: eventId } });
+  if (!event) return c.json({ error: 'Event not found' }, 404);
+  if (event.hostId !== me) return c.json({ error: 'Only the host can remove guests' }, 403);
+  if (targetUserId === event.hostId) {
+    return c.json({ error: "The host can't be removed from their own event" }, 400);
+  }
+
+  await db.rsvp.deleteMany({ where: { eventId, userId: targetUserId } });
+
+  const updated = await db.event.findUniqueOrThrow({
+    where: { id: eventId },
+    include: eventInclude,
+  });
+  return c.json({ event: toEventDetail(updated, me) });
 });
 
 eventRoutes.get('/:id/comments', async (c) => {
@@ -185,6 +223,7 @@ eventRoutes.get('/:id/comments', async (c) => {
       id: co.id,
       user: { id: co.user.id, name: co.user.name, avatarEmoji: co.user.avatarEmoji },
       text: co.text,
+      type: co.type === 'system' ? 'system' : 'comment',
       createdAt: co.createdAt.toISOString(),
     })),
   });
@@ -213,6 +252,7 @@ eventRoutes.post('/:id/comments', async (c) => {
           avatarEmoji: comment.user.avatarEmoji,
         },
         text: comment.text,
+        type: 'comment' as const,
         createdAt: comment.createdAt.toISOString(),
       },
     },

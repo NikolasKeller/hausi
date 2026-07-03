@@ -50,6 +50,7 @@ model Rsvp {
   @@unique([eventId, userId])
 }
 
+// type: "comment" (user-written) | "system" (activity entries like "X is going")
 model Comment {
   id        String   @id @default(cuid())
   eventId   String
@@ -57,5 +58,6 @@ model Comment {
   userId    String
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   text      String
+  type      String   @default("comment")
   createdAt DateTime @default(now())
 }

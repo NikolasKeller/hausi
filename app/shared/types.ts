@@ -47,6 +47,7 @@ export interface CommentEntry {
   id: string;
   user: PublicUser;
   text: string;
+  type: 'comment' | 'system';
   createdAt: string;
 }
 

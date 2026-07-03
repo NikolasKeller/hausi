@@ -82,6 +82,25 @@ export default function EventScreen() {
     });
   }
 
+  function confirmRemoveGuest(guestId: string, guestName: string) {
+    Alert.alert('Remove guest?', `${guestName} will be removed from the guest list.`, [
+      { text: 'Cancel', style: 'cancel' },
+      {
+        text: 'Remove',
+        style: 'destructive',
+        onPress: async () => {
+          if (!event) return;
+          try {
+            const res = await api.removeGuest(event.id, guestId);
+            setEvent(res.event);
+          } catch (e) {
+            Alert.alert('Remove failed', e instanceof Error ? e.message : 'Try again');
+          }
+        },
+      },
+    ]);
+  }
+
   function confirmDelete() {
     if (!event) return;
     Alert.alert('Delete event?', 'This removes the event for all guests.', [
@@ -248,11 +267,20 @@ export default function EventScreen() {
                 {guests.map((r) => (
                   <View key={r.user.id} style={styles.guestRow}>
                     <Avatar emoji={r.user.avatarEmoji} size={32} />
-                    <Text style={styles.guestName}>
+                    <Text style={[styles.guestName, { flex: 1 }]}>
                       {r.user.name}
                       {r.plusOnes > 0 ? ` +${r.plusOnes}` : ''}
                       {r.user.id === event.host.id ? '  👑' : ''}
                     </Text>
+                    {event.isHost && r.user.id !== event.host.id ? (
+                      <Pressable
+                        onPress={() => confirmRemoveGuest(r.user.id, r.user.name)}
+                        style={styles.removeGuest}
+                        hitSlop={8}
+                      >
+                        <Text style={styles.removeGuestText}>✕</Text>
+                      </Pressable>
+                    ) : null}
                   </View>
                 ))}
               </View>
@@ -265,15 +293,21 @@ export default function EventScreen() {
           {event.comments.length === 0 ? (
             <Text style={styles.noComments}>No comments yet — break the ice!</Text>
           ) : (
-            event.comments.map((c) => (
-              <View key={c.id} style={styles.commentRow}>
-                <Avatar emoji={c.user.avatarEmoji} size={32} />
-                <View style={styles.commentBubble}>
-                  <Text style={styles.commentAuthor}>{c.user.name}</Text>
-                  <Text style={styles.commentText}>{c.text}</Text>
+            event.comments.map((c) =>
+              c.type === 'system' ? (
+                <Text key={c.id} style={styles.systemEntry}>
+                  {c.user.avatarEmoji} {c.user.name} {c.text}
+                </Text>
+              ) : (
+                <View key={c.id} style={styles.commentRow}>
+                  <Avatar emoji={c.user.avatarEmoji} size={32} />
+                  <View style={styles.commentBubble}>
+                    <Text style={styles.commentAuthor}>{c.user.name}</Text>
+                    <Text style={styles.commentText}>{c.text}</Text>
+                  </View>
                 </View>
-              </View>
-            ))
+              )
+            )
           )}
           <View style={styles.commentInputRow}>
             <TextInput
@@ -489,6 +523,27 @@ const styles = StyleSheet.create({
   noComments: {
     color: colors.muted,
     fontSize: 15,
+  },
+  systemEntry: {
+    color: colors.muted,
+    fontSize: 13,
+    textAlign: 'center',
+    fontStyle: 'italic',
+  },
+  removeGuest: {
+    width: 26,
+    height: 26,
+    borderRadius: 13,
+    backgroundColor: colors.inputBg,
+    borderWidth: 1,
+    borderColor: colors.cardBorder,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  removeGuestText: {
+    color: colors.muted,
+    fontSize: 12,
+    fontWeight: '700',
   },
   commentRow: {
     flexDirection: 'row',
