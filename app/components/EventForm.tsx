@@ -9,7 +9,7 @@ import {
   View,
 } from 'react-native';
 import DateTimePicker from '@react-native-community/datetimepicker';
-import { useHeaderHeight } from 'expo-router/react-navigation';
+import { useHeaderHeight } from '@react-navigation/elements';
 import {
   CATEGORIES,
   CATEGORY_META,
