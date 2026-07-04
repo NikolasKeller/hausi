@@ -14,10 +14,15 @@ interface AuthContextValue {
   // Phone OTP flow: request a code, then verify it. Returns isNew so the
   // app can run profile setup for first-timers.
   verifyPhone: (phone: string, code: string) => Promise<{ isNew: boolean }>;
+  // Dev-only shortcut past auth while the SMS flow is under construction.
+  // Works only while the server runs without a real SMS provider.
+  devSignIn: () => Promise<void>;
   logout: () => Promise<void>;
   // Refresh the cached session user after a profile edit.
   updateUser: (user: SessionUser) => void;
 }
+
+const DEV_PHONE = '+10000000001';
 
 const AuthContext = createContext<AuthContextValue | null>(null);
 
@@ -71,6 +76,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         const res = await api.verifyPhoneCode(phone, code);
         await persist(res);
         return { isNew: res.isNew };
+      },
+      devSignIn: async () => {
+        const req = await api.requestPhoneCode(DEV_PHONE);
+        if (!req.devCode) throw new Error('Dev sign-in is only available in local dev');
+        const res = await api.verifyPhoneCode(DEV_PHONE, req.devCode);
+        setAuthToken(res.token);
+        let sessionUser = res.user;
+        if (!sessionUser.name.trim()) {
+          const upd = await api.updateProfile({ name: 'Preview', avatarEmoji: '🛠️' });
+          sessionUser = { ...sessionUser, name: upd.user.name, avatarEmoji: upd.user.avatarEmoji };
+        }
+        await persist({ token: res.token, user: sessionUser });
       },
       logout: async () => {
         setAuthToken(null);

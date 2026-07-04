@@ -141,6 +141,11 @@ export default function WelcomeScreen() {
           <Text style={styles.ctaText}>Get started</Text>
         </Pressable>
         <Text style={styles.footnote}>Takes 30 seconds. No email needed ✨</Text>
+        {__DEV__ ? (
+          <Text style={styles.devLink} onPress={() => router.push('/dev-login')}>
+            🛠 Skip auth — continue as Preview (dev only)
+          </Text>
+        ) : null}
       </SafeAreaView>
     </AuroraBackground>
   );
@@ -240,5 +245,12 @@ const styles = StyleSheet.create({
     fontSize: 12,
     textAlign: 'center',
     marginTop: spacing.sm + 2,
+  },
+  devLink: {
+    color: 'rgba(247,245,255,0.45)',
+    fontSize: 12,
+    textAlign: 'center',
+    marginTop: spacing.md,
+    textDecorationLine: 'underline',
   },
 });

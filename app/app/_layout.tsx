@@ -29,7 +29,7 @@ function ModalClose() {
 }
 
 function RootNavigator() {
-  const { user, initializing } = useAuth();
+  const { user, initializing, devSignIn } = useAuth();
   // On font failure, proceed anyway — titles fall back to the system font.
   const [fontsLoaded, fontError] = useFonts(FONTS_TO_LOAD);
   const fontsReady = fontsLoaded || fontError != null;
@@ -38,6 +38,16 @@ function RootNavigator() {
   const router = useRouter();
   // Where a signed-out user was heading (e.g. an invite deep link) — restored after auth.
   const pendingPath = useRef<string | null>(null);
+
+  const devAutoTried = useRef(false);
+  useEffect(() => {
+    // Dev-only: boot straight into the app while the SMS flow is WIP.
+    if (initializing || user || devAutoTried.current) return;
+    if (__DEV__ && process.env.EXPO_PUBLIC_DEV_AUTOLOGIN === '1') {
+      devAutoTried.current = true;
+      devSignIn().catch(() => {});
+    }
+  }, [initializing, user, devSignIn]);
 
   useEffect(() => {
     if (initializing) return;
