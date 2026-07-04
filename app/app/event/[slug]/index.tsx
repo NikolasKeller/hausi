@@ -209,23 +209,6 @@ export default function EventScreen() {
     }
   }
 
-  async function confirmCancel() {
-    if (!event) return;
-    const ok = await confirmDialog(
-      'Cancel event?',
-      'All guests will be notified. The page stays visible.',
-      'Cancel event',
-      'Keep event'
-    );
-    if (!ok) return;
-    try {
-      const res = await api.cancelEvent(event.id);
-      setEvent(res.event);
-    } catch (e) {
-      notify('Cancel failed', e instanceof Error ? e.message : 'Try again');
-    }
-  }
-
   async function toggleRsvpsOpen() {
     if (!event) return;
     try {
@@ -757,18 +740,6 @@ export default function EventScreen() {
                   onPress={() => {
                     setMenuOpen(false);
                     toggleRsvpsOpen();
-                  }}
-                />
-              ) : null}
-              {event.isHost && !isCanceled ? (
-                <ActionRow
-                  icon="close-circle-outline"
-                  label="Cancel event"
-                  color={colors.danger}
-                  divider={ink.hairline}
-                  onPress={() => {
-                    setMenuOpen(false);
-                    confirmCancel();
                   }}
                 />
               ) : null}
