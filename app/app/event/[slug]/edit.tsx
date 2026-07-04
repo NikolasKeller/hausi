@@ -11,8 +11,9 @@ import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import type { EventDetail } from '../../../shared/types';
 import { api } from '../../../lib/api';
 import { confirmDialog, notify } from '../../../lib/dialogs';
-import { colors, light, radius, spacing } from '../../../lib/theme';
+import { colors, light, radius, shadow, spacing } from '../../../lib/theme';
 import { kicker, uiText } from '../../../lib/fonts';
+import { themeInk } from '../../../lib/covers';
 import { EventForm } from '../../../components/EventForm';
 import { PaperBackground } from '../../../components/partiful';
 import { Avatar } from '../../../components/Avatar';
@@ -90,6 +91,10 @@ export default function EditEventScreen() {
     );
   }
 
+  // The co-host footer renders on the full-screen theme gradient, so its
+  // floating text + CTA adapt to the theme's mood for guaranteed contrast.
+  const ink = themeInk(event.coverTheme);
+
   return (
     <EventForm
       submitLabel="Save changes"
@@ -116,11 +121,11 @@ export default function EditEventScreen() {
       }}
       footer={
         event.isHost ? (
-          <View style={styles.cohostSection}>
-            <Text style={styles.cohostKicker}>Share the load</Text>
-            <Text style={styles.cohostTitle}>Co-hosts 🤝</Text>
+          <View style={[styles.cohostSection, { borderColor: ink.hairline }]}>
+            <Text style={[styles.cohostKicker, { color: ink.faint }]}>Share the load</Text>
+            <Text style={[styles.cohostTitle, { color: ink.text }]}>Co-hosts 🤝</Text>
             {event.cohosts.length === 0 ? (
-              <Text style={styles.cohostEmpty}>
+              <Text style={[styles.cohostEmpty, { color: ink.faint }]}>
                 Co-hosts can edit the event and manage the guest list.
               </Text>
             ) : (
@@ -153,12 +158,16 @@ export default function EditEventScreen() {
               <Pressable
                 onPress={addCohost}
                 disabled={cohostBusy || !cohostEmail.trim()}
-                style={[styles.cohostAdd, !cohostEmail.trim() && { opacity: 0.4 }]}
+                style={[
+                  styles.cohostAdd,
+                  { backgroundColor: ink.dark ? '#fff' : colors.ink },
+                  !cohostEmail.trim() && { opacity: 0.4 },
+                ]}
               >
                 {cohostBusy ? (
-                  <ActivityIndicator color="#fff" size="small" />
+                  <ActivityIndicator color={ink.dark ? colors.ink : '#fff'} size="small" />
                 ) : (
-                  <Text style={styles.cohostAddText}>Add</Text>
+                  <Text style={[styles.cohostAddText, { color: ink.dark ? colors.ink : '#fff' }]}>Add</Text>
                 )}
               </Pressable>
             </View>
@@ -210,6 +219,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: colors.cardBorder,
     borderRadius: radius.md,
+    ...shadow.card,
   },
   cohostName: {
     color: light.text2,
@@ -241,6 +251,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: colors.cardBorder,
     borderRadius: radius.md,
+    ...shadow.card,
   },
   cohostInput: {
     flex: 1,

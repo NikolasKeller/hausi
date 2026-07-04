@@ -1,4 +1,4 @@
-import React, { useContext, useState } from 'react';
+import React, { useState } from 'react';
 import {
   KeyboardAvoidingView,
   Platform,
@@ -7,6 +7,7 @@ import {
   StyleSheet,
   Text,
   TextInput,
+  useWindowDimensions,
   View,
   type StyleProp,
   type TextInputProps,
@@ -26,12 +27,13 @@ import {
   type EventInput,
   type TitleFont,
 } from '../shared/types';
-import { colors, light, radius, spacing } from '../lib/theme';
+import { colors, light, radius, shadow, spacing } from '../lib/theme';
+import { themeInk } from '../lib/covers';
 import { TITLE_FONT_LABELS, titleFontStyle, display, kicker, uiText } from '../lib/fonts';
 import { CoverGradient } from './CoverGradient';
 import { EffectOverlay } from './EffectOverlay';
 import { Button, ErrorText } from './ui';
-import { ThemePicker, EffectPicker, ThemeBackground, themeInk } from './themes';
+import { ThemeBackground, ThemePicker, EffectPicker } from './themes';
 import { Burst } from './partiful';
 import { formatEventDate, formatEventTime } from './EventCard';
 import { pickCoverImage } from '../lib/imageUpload';
@@ -62,16 +64,13 @@ interface Props {
 }
 
 // ── Local "paper" primitives ──────────────────────────────────────────────────
-// The form is WYSIWYG: it sits on the *event's own theme* background, so what you
-// see while composing is what guests get. Every control is still a solid, opaque
-// paper surface (near-black ink on warm white) so it stays legible on any theme —
-// dark or light. Only the free-floating bits (section labels, header/submit
-// actions) follow the theme's mood via FormInkContext.
-const FormInkContext = React.createContext<string>(light.text3);
+// The theme gradient + effect fill the whole screen, so every control is a
+// solid, opaque paper surface (near-black ink on warm white) that lifts off the
+// gradient with a soft shadow. This keeps button labels legible on ANY theme —
+// bright or dark — while the vibrant surface stays full-screen behind them.
 
-function SectionLabel({ children }: { children: React.ReactNode }) {
-  const color = useContext(FormInkContext);
-  return <Text style={[styles.sectionLabel, { color }]}>{children}</Text>;
+function SectionLabel({ children, color }: { children: React.ReactNode; color?: string }) {
+  return <Text style={[styles.sectionLabel, color ? { color } : null]}>{children}</Text>;
 }
 
 // A tappable paper card — the base for every button/row on the form.
@@ -99,12 +98,13 @@ function PaperPressable({
 
 function PaperField({
   label,
+  labelColor,
   style,
   ...props
-}: TextInputProps & { label?: string; style?: TextInputProps['style'] }) {
+}: TextInputProps & { label?: string; labelColor?: string; style?: TextInputProps['style'] }) {
   return (
     <View style={{ gap: 6 }}>
-      {label ? <SectionLabel>{label}</SectionLabel> : null}
+      {label ? <SectionLabel color={labelColor}>{label}</SectionLabel> : null}
       <View style={styles.inputCard}>
         <TextInput placeholderTextColor={colors.muted} style={[styles.input, style]} {...props} />
       </View>
@@ -131,22 +131,28 @@ function toTimeInputValue(d: Date): string {
 }
 
 // @react-native-community/datetimepicker throws when rendered on web, so web
-// gets the browser's native pickers styled to match the paper form fields.
-const webPickerStyle = {
-  backgroundColor: '#FFFFFF',
-  color: colors.text,
-  colorScheme: 'light',
-  border: `1px solid ${colors.cardBorder}`,
-  borderRadius: '12px',
-  padding: '12px',
-  fontSize: '16px',
-  fontFamily: 'inherit',
+// gets the browser's native pickers. Rather than revealing a separate inline
+// input (which pushes the rest of the form down), an invisible native input is
+// laid directly over each date/time button — tapping it opens the browser's
+// floating calendar/clock popup, so the form layout never shifts.
+const webPickerOverlayStyle = {
+  position: 'absolute',
+  top: 0,
+  left: 0,
   width: '100%',
-  boxSizing: 'border-box',
+  height: '100%',
+  margin: 0,
+  padding: 0,
+  border: 'none',
+  background: 'transparent',
+  opacity: 0,
+  cursor: 'pointer',
+  colorScheme: 'light',
 } as const;
 
 export function EventForm({ initial, submitLabel, onSubmit, footer }: Props) {
   const router = useRouter();
+  const { height: winHeight } = useWindowDimensions();
   const [title, setTitle] = useState(initial?.title ?? '');
   const [description, setDescription] = useState(initial?.description ?? '');
   const [location, setLocation] = useState(initial?.location ?? '');
@@ -170,9 +176,8 @@ export function EventForm({ initial, submitLabel, onSubmit, footer }: Props) {
   const [effectPickerOpen, setEffectPickerOpen] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
-  // Content palette for the live theme — drives the free-floating labels and
-  // actions so they stay readable whether the cover is a dark Halloween or a
-  // light Blossom. Paper cards keep their own fixed ink.
+
+  // Mood-aware ink for the few labels/CTAs that sit directly on the gradient.
   const ink = themeInk(coverTheme);
 
   async function submit() {
@@ -216,6 +221,54 @@ export function EventForm({ initial, submitLabel, onSubmit, footer }: Props) {
     if (selected) setDate(selected);
   }
 
+  // Web: apply a value from the native <input type="date|time"> overlay.
+  function updateDate(kind: 'date' | 'time', value: string) {
+    if (!value) return;
+    const next = new Date(date);
+    if (kind === 'date') {
+      const [y, m, d] = value.split('-').map(Number);
+      next.setFullYear(y, m - 1, d);
+    } else {
+      const [h, min] = value.split(':').map(Number);
+      next.setHours(h, min);
+    }
+    setDate(next);
+  }
+
+  // One WHEN button. On web the button is a plain view with an invisible native
+  // picker overlaid on top (opens a floating popup — no layout shift). On native
+  // it's a Pressable that toggles the inline DateTimePicker below.
+  function renderPickerField(kind: 'date' | 'time') {
+    const labelText =
+      kind === 'date' ? formatEventDate(date.toISOString()) : formatEventTime(date.toISOString());
+    if (Platform.OS === 'web') {
+      return (
+        <View style={styles.dateButtonWrap}>
+          <View style={[styles.card, styles.dateButton]}>
+            <Text style={styles.dateText}>{labelText}</Text>
+          </View>
+          {React.createElement('input', {
+            type: kind,
+            value: kind === 'date' ? toDateInputValue(date) : toTimeInputValue(date),
+            onChange: (e: { target: { value: string } }) => updateDate(kind, e.target.value),
+            onClick: (e: { currentTarget: { showPicker?: () => void } }) =>
+              e.currentTarget.showPicker?.(),
+            'aria-label': kind === 'date' ? 'Event date' : 'Event time',
+            style: webPickerOverlayStyle,
+          })}
+        </View>
+      );
+    }
+    return (
+      <PaperPressable
+        style={styles.dateButton}
+        onPress={() => setPicker(picker === kind ? null : kind)}
+      >
+        <Text style={styles.dateText}>{labelText}</Text>
+      </PaperPressable>
+    );
+  }
+
   async function onPickPhoto() {
     if (uploadingCover) return;
     setUploadingCover(true);
@@ -225,8 +278,7 @@ export function EventForm({ initial, submitLabel, onSubmit, footer }: Props) {
   }
 
   return (
-    <ThemeBackground theme={coverTheme} effect={effect}>
-      <FormInkContext.Provider value={ink.subtext}>
+    <ThemeBackground theme={coverTheme}>
       <SafeAreaView edges={['top']} style={{ backgroundColor: 'transparent' }}>
         <View style={styles.formHeader}>
           <Pressable onPress={() => router.back()} hitSlop={10} style={styles.formClose}>
@@ -235,9 +287,12 @@ export function EventForm({ initial, submitLabel, onSubmit, footer }: Props) {
           <Pressable
             onPress={submit}
             disabled={saving}
-            style={[styles.formSave, ink.dark && styles.formSavePaper, { opacity: saving ? 0.5 : 1 }]}
+            style={[
+              styles.formSave,
+              { backgroundColor: ink.dark ? '#fff' : colors.ink, opacity: saving ? 0.5 : 1 },
+            ]}
           >
-            <Text style={[styles.formSaveText, ink.dark && styles.formSaveTextInk]}>
+            <Text style={[styles.formSaveText, { color: ink.dark ? colors.ink : '#fff' }]}>
               {saving ? 'Saving…' : 'Save'}
             </Text>
           </Pressable>
@@ -266,11 +321,15 @@ export function EventForm({ initial, submitLabel, onSubmit, footer }: Props) {
             editor order from the reference. */}
         <PaperField
           label="Event title"
+          labelColor={ink.faint}
           value={title}
           onChangeText={setTitle}
           placeholder="Untitled Event"
           maxLength={LIMITS.title}
-          style={titleFontStyle(titleFont)}
+          // Pin the line box so switching fonts only swaps the glyphs — the
+          // field keeps the same height instead of growing for tall faces
+          // (Pacifico/Bungee) and shrinking for compact ones.
+          style={[titleFontStyle(titleFont), styles.titleFieldInput]}
         />
 
         <View style={styles.fontBar}>
@@ -297,14 +356,13 @@ export function EventForm({ initial, submitLabel, onSubmit, footer }: Props) {
           })}
         </View>
 
-        {/* The one place vibrant color lives — the cover the guest will see. */}
+        {/* The cover the guest will see — framed against the full-screen theme. */}
         <CoverGradient theme={coverTheme} image={coverImage} style={styles.preview}>
           <Burst size={44} rays={8} color="rgba(255,255,255,0.9)" rotate={-12} style={styles.previewBurst} />
           <Text style={styles.previewKicker}>Live preview</Text>
           <Text style={[styles.previewTitle, titleFontStyle(titleFont)]} numberOfLines={3}>
             {title.trim() || 'Untitled Event'}
           </Text>
-          {effect !== 'none' ? <EffectOverlay effect={effect} height={230} count={10} /> : null}
         </CoverGradient>
 
         <View style={styles.photoRow}>
@@ -334,55 +392,25 @@ export function EventForm({ initial, submitLabel, onSubmit, footer }: Props) {
         </View>
 
         <View style={{ gap: spacing.xs }}>
-          <SectionLabel>When</SectionLabel>
+          <SectionLabel color={ink.faint}>When</SectionLabel>
           <View style={styles.dateRow}>
-            <PaperPressable
-              style={styles.dateButton}
-              onPress={() => setPicker(picker === 'date' ? null : 'date')}
-            >
-              <Text style={styles.dateText}>{formatEventDate(date.toISOString())}</Text>
-            </PaperPressable>
-            <PaperPressable
-              style={styles.dateButton}
-              onPress={() => setPicker(picker === 'time' ? null : 'time')}
-            >
-              <Text style={styles.dateText}>{formatEventTime(date.toISOString())}</Text>
-            </PaperPressable>
+            {renderPickerField('date')}
+            {renderPickerField('time')}
           </View>
-          {picker ? (
-            Platform.OS === 'web' ? (
-              React.createElement('input', {
-                type: picker,
-                value: picker === 'date' ? toDateInputValue(date) : toTimeInputValue(date),
-                onChange: (e: { target: { value: string } }) => {
-                  const value = e.target.value;
-                  if (!value) return;
-                  const next = new Date(date);
-                  if (picker === 'date') {
-                    const [y, m, d] = value.split('-').map(Number);
-                    next.setFullYear(y, m - 1, d);
-                  } else {
-                    const [h, min] = value.split(':').map(Number);
-                    next.setHours(h, min);
-                  }
-                  setDate(next);
-                },
-                style: webPickerStyle,
-              })
-            ) : (
-              <DateTimePicker
-                value={date}
-                mode={picker}
-                display={Platform.OS === 'ios' ? 'spinner' : 'default'}
-                onChange={onPickerChange}
-                themeVariant="light"
-              />
-            )
+          {Platform.OS !== 'web' && picker ? (
+            <DateTimePicker
+              value={date}
+              mode={picker}
+              display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+              onChange={onPickerChange}
+              themeVariant="light"
+            />
           ) : null}
         </View>
 
         <PaperField
           label="Where"
+          labelColor={ink.faint}
           value={location}
           onChangeText={setLocation}
           placeholder="Location"
@@ -390,6 +418,7 @@ export function EventForm({ initial, submitLabel, onSubmit, footer }: Props) {
         />
         <PaperField
           label="City"
+          labelColor={ink.faint}
           value={city}
           onChangeText={setCity}
           placeholder="e.g. San Francisco"
@@ -397,7 +426,7 @@ export function EventForm({ initial, submitLabel, onSubmit, footer }: Props) {
         />
 
         <View style={{ gap: spacing.xs }}>
-          <SectionLabel>Category</SectionLabel>
+          <SectionLabel color={ink.faint}>Category</SectionLabel>
           <View style={styles.themeRow}>
             {CATEGORIES.map((cat) => {
               const active = category === cat;
@@ -418,6 +447,7 @@ export function EventForm({ initial, submitLabel, onSubmit, footer }: Props) {
 
         <PaperField
           label="Cost per person (optional)"
+          labelColor={ink.faint}
           value={costPerPerson}
           onChangeText={setCostPerPerson}
           placeholder="Free"
@@ -425,6 +455,7 @@ export function EventForm({ initial, submitLabel, onSubmit, footer }: Props) {
         />
         <PaperField
           label="Dress code (optional)"
+          labelColor={ink.faint}
           value={dressCode}
           onChangeText={setDressCode}
           placeholder="Come as you are"
@@ -432,7 +463,7 @@ export function EventForm({ initial, submitLabel, onSubmit, footer }: Props) {
         />
 
         <View style={{ gap: 6 }}>
-          <SectionLabel>Description</SectionLabel>
+          <SectionLabel color={ink.faint}>Description</SectionLabel>
           <View style={styles.inputCard}>
             <TextInput
               value={description}
@@ -449,6 +480,7 @@ export function EventForm({ initial, submitLabel, onSubmit, footer }: Props) {
 
         <PaperField
           label="Max guests (optional)"
+          labelColor={ink.faint}
           value={maxGuests}
           onChangeText={setMaxGuests}
           placeholder="Unlimited spots"
@@ -487,6 +519,14 @@ export function EventForm({ initial, submitLabel, onSubmit, footer }: Props) {
         </ScrollView>
       </KeyboardAvoidingView>
 
+      {/* Full-screen effect: drifts over everything (pointerEvents none, so it
+          never blocks taps and never obscures the opaque controls). */}
+      {effect !== 'none' ? (
+        <View pointerEvents="none" style={StyleSheet.absoluteFill}>
+          <EffectOverlay effect={effect} height={winHeight} count={16} />
+        </View>
+      ) : null}
+
       {themePickerOpen ? (
         <ThemePicker
           value={coverTheme}
@@ -507,7 +547,6 @@ export function EventForm({ initial, submitLabel, onSubmit, footer }: Props) {
           onClose={() => setEffectPickerOpen(false)}
         />
       ) : null}
-      </FormInkContext.Provider>
     </ThemeBackground>
   );
 }
@@ -529,6 +568,7 @@ const styles = StyleSheet.create({
     backgroundColor: colors.card,
     borderWidth: 1,
     borderColor: colors.cardBorder,
+    ...shadow.card,
   },
   formCloseText: {
     fontSize: 16,
@@ -536,24 +576,15 @@ const styles = StyleSheet.create({
     color: colors.text,
   },
   formSave: {
-    backgroundColor: colors.ink,
     borderRadius: 999,
     paddingHorizontal: 22,
     paddingVertical: 10,
+    ...shadow.card,
   },
   formSaveText: {
-    color: '#fff',
     fontSize: 15,
     fontWeight: '700',
     letterSpacing: -0.3,
-  },
-  // On dark themes a black pill vanishes into the background — flip to a white
-  // paper pill with ink text so "Save" always reads.
-  formSavePaper: {
-    backgroundColor: '#fff',
-  },
-  formSaveTextInk: {
-    color: colors.ink,
   },
   container: {
     flex: 1,
@@ -565,12 +596,13 @@ const styles = StyleSheet.create({
     paddingBottom: spacing.section,
   },
 
-  // ── Shared paper surfaces ──
+  // ── Shared paper surfaces (opaque; lift off the gradient with a shadow) ──
   card: {
     backgroundColor: colors.card,
     borderWidth: 1,
     borderColor: colors.cardBorder,
     borderRadius: radius.md,
+    ...shadow.card,
   },
   cardPressed: {
     opacity: 0.7,
@@ -584,6 +616,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: colors.cardBorder,
     borderRadius: radius.md,
+    ...shadow.card,
   },
   input: {
     color: colors.text,
@@ -591,11 +624,15 @@ const styles = StyleSheet.create({
     paddingVertical: 14,
     fontSize: 16,
   },
+  // Fixed line box so the title field height stays constant across title fonts.
+  titleFieldInput: {
+    lineHeight: 24,
+  },
   sectionLabel: {
     ...kicker(light.text3),
   },
 
-  // ── Live preview (the only vibrant surface) ──
+  // ── Live preview ──
   preview: {
     borderRadius: radius.lg,
     minHeight: 230,
@@ -604,6 +641,7 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
     borderWidth: 2,
     borderColor: colors.ink,
+    ...shadow.float,
   },
   previewBurst: {
     position: 'absolute',
@@ -659,8 +697,11 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
   },
   photoRemoveText: {
-    color: colors.danger,
+    color: '#fff',
     ...uiText(14, '700'),
+    textShadowColor: 'rgba(0,0,0,0.35)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 3,
   },
   styleRow: {
     flexDirection: 'row',
@@ -682,6 +723,7 @@ const styles = StyleSheet.create({
     borderRadius: radius.pill,
     padding: 4,
     gap: 2,
+    ...shadow.card,
   },
   fontSeg: {
     flex: 1,
@@ -702,6 +744,12 @@ const styles = StyleSheet.create({
   dateRow: {
     flexDirection: 'row',
     gap: spacing.sm,
+  },
+  // Web wraps each date button so the invisible native <input> overlay can be
+  // absolutely positioned over it (opens the picker without shifting the form).
+  dateButtonWrap: {
+    flex: 1,
+    position: 'relative',
   },
   dateButton: {
     flex: 1,
@@ -726,6 +774,7 @@ const styles = StyleSheet.create({
     borderRadius: radius.pill,
     paddingHorizontal: spacing.md,
     paddingVertical: 8,
+    ...shadow.card,
   },
   optionPillActive: {
     backgroundColor: colors.ink,
@@ -752,6 +801,7 @@ const styles = StyleSheet.create({
     borderRadius: radius.md,
     padding: spacing.sm,
     paddingHorizontal: spacing.md,
+    ...shadow.card,
   },
   plusOneLabel: {
     color: light.text2,
