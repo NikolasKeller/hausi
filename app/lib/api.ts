@@ -1,4 +1,5 @@
 import { Platform } from 'react-native';
+import Constants from 'expo-constants';
 import type {
   AuthResponse,
   CommentEntry,
@@ -9,13 +10,20 @@ import type {
   RsvpStatus,
 } from '../shared/types';
 
+// In dev, the machine running Metro is also running the API — derive its
+// address from the dev-server URL so physical devices on the same network
+// work without configuration. hostUri looks like "192.168.1.23:8081".
+const devHost = Constants.expoConfig?.hostUri?.split(':')[0];
+
 export const API_URL =
   process.env.EXPO_PUBLIC_API_URL ??
-  Platform.select({
-    // Android emulators reach the host machine via 10.0.2.2.
-    android: 'http://10.0.2.2:3001',
-    default: 'http://localhost:3001',
-  });
+  (devHost && devHost !== 'localhost' && devHost !== '127.0.0.1'
+    ? `http://${devHost}:3001`
+    : Platform.select({
+        // Android emulators reach the host machine via 10.0.2.2.
+        android: 'http://10.0.2.2:3001',
+        default: 'http://localhost:3001',
+      }));
 
 export class ApiError extends Error {
   status: number;
