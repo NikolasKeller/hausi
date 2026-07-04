@@ -656,7 +656,7 @@ const styles = StyleSheet.create({
     minHeight: 96,
   },
   templateName: {
-    ...uiText(15, '800'),
+    ...display(16),
     color: colors.text,
   },
   templateVibe: {
