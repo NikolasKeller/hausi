@@ -32,20 +32,6 @@ const PROMOS: {
   gradient: [string, string];
 }[] = [
   {
-    emoji: '📅',
-    title: 'Introducing Calendars',
-    subtitle: 'All your parties, one grid',
-    route: '/calendar',
-    gradient: ['#4A3580', '#241B3A'],
-  },
-  {
-    emoji: '💘',
-    title: 'Have a crush?',
-    subtitle: 'Tell them. Anonymously-ish.',
-    route: '/profile',
-    gradient: ['#7A2E63', '#241B3A'],
-  },
-  {
     emoji: '💌',
     title: 'Send a card',
     subtitle: "Make someone's day",
