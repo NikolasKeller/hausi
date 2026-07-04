@@ -47,6 +47,10 @@ model Card {
   theme     String   @default("confetti")
   message   String
   createdAt DateTime @default(now())
+  // Per-side archive: hides the card from that party's "My cards" list without
+  // touching the other party's copy. Set when the sender/recipient archives.
+  fromArchivedAt DateTime?
+  toArchivedAt   DateTime?
 }
 
 // One-way crush; when reciprocal, both get notified.

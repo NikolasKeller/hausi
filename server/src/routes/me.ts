@@ -56,7 +56,13 @@ meRoutes.get('/', async (c) => {
     findMutuals(db, userId),
     computeBadges(userId),
     db.card.findMany({
-      where: { OR: [{ fromId: userId }, { toId: userId }] },
+      // Skip cards the viewer archived on their own side (sent or received).
+      where: {
+        OR: [
+          { fromId: userId, fromArchivedAt: null },
+          { toId: userId, toArchivedAt: null },
+        ],
+      },
       include: { from: true, to: true },
       orderBy: { createdAt: 'desc' },
       take: 30,
@@ -131,6 +137,23 @@ meRoutes.post('/cards', async (c) => {
   });
 
   return c.json({ card: toCardEntry(card) }, 201);
+});
+
+// Archive a card from your own "My cards" list. Stamps whichever side you are
+// (sender or recipient), so it disappears for you while the other party keeps
+// their copy; a share-by-link card stays reachable at GET /api/cards/:id.
+meRoutes.post('/cards/:id/archive', async (c) => {
+  const userId = c.get('userId');
+  const card = await db.card.findUnique({ where: { id: c.req.param('id') } });
+  if (!card) return c.json({ error: 'Card not found' }, 404);
+  if (card.fromId !== userId && card.toId !== userId)
+    return c.json({ error: 'Not your card' }, 403);
+
+  await db.card.update({
+    where: { id: card.id },
+    data: card.fromId === userId ? { fromArchivedAt: new Date() } : { toArchivedAt: new Date() },
+  });
+  return c.json({ ok: true });
 });
 
 // Toggle a crush on another user; a reciprocal crush notifies both.

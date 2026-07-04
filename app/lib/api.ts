@@ -203,6 +203,12 @@ export const api = {
   cardById(id: string) {
     return request<{ card: CardEntry }>(`/cards/${encodeURIComponent(id)}`);
   },
+  // Hide a card from your own "My cards" list (sent or received).
+  archiveCard(id: string) {
+    return request<{ ok: boolean }>(`/me/cards/${encodeURIComponent(id)}/archive`, {
+      method: 'POST',
+    });
+  },
   toggleCrush(userId: string) {
     return request<{ crushed: boolean; matched: boolean }>(
       `/me/crush/${encodeURIComponent(userId)}`,
