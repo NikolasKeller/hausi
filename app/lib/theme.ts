@@ -1,41 +1,30 @@
-// Hausi design system — a Partiful-inspired "physical party surface": stark
-// black ink and heavy structure layered over vibrant, festive gradients.
-//
-// The app runs two schemes:
-//   • LIGHT  — public / marketing surfaces (welcome, auth, shared invites,
-//              cards). Black ink on a paper canvas with pastel gradient washes,
-//              tilted sticker cards, and starburst accents.
-//   • DARK   — the logged-in app. Keeps the moody "dusk" base but adopts the
-//              same Partiful structure: heavy borders, big tight-tracked display
-//              type, scattered stickers, pill badges, high negative space.
-//
-// Pure black (`ink`) is the action/structure color everywhere; the vibrant
-// `brand` gradients are the festive surface it sits on.
+// Hausi design system — warm cream + black ink, editorial serif.
+// Inspired by the "Known" aesthetic: off-white linen backgrounds, near-black
+// text, warm caramel accent, no purple or neon. Clean and quiet-luxury.
 
-// ── DARK app palette ("dusk") ────────────────────────────────────────────────
+// ── App palette (warm cream / "linen") ───────────────────────────────────────
 export const colors = {
   // Surfaces
-  bg: '#171129',
-  card: '#241B3A',
-  cardBorder: '#3A2D5C',
-  inputBg: '#1D1533',
+  bg: '#EEEAE4',        // warm linen — replaces dark purple
+  card: '#F9F6F1',      // warm white card
+  cardBorder: '#DDD8D0', // soft warm hairline
+  inputBg: '#F4F1EB',   // slightly warmer input bg
   // Type
-  text: '#F7F5FF',
-  muted: '#A79BC8',
-  // Brand
-  accent: '#FF7AE0',
-  accentDark: '#C13FA8',
-  violet: '#8B5CF6',
-  helio: '#D241FA',
-  // Pure black — the Partiful action/structure ink. Used for heavy borders and
-  // dark-mode structural lines.
+  text: '#1A1714',      // near-black — replaces near-white
+  muted: '#9A9088',     // warm gray — replaces cold purple-gray
+  // Brand / accent — warm caramel/tan instead of neon pink
+  accent: '#C4956A',
+  accentDark: '#9A7050',
+  violet: '#8A7060',    // warm taupe (keeps the name for compat)
+  helio: '#C4956A',     // same as accent
+  // Pure black — structural ink
   ink: '#000000',
-  // Ink for text/icons sitting on the pink accent fill.
-  onAccent: '#1A1022',
+  // Text on the caramel accent fill
+  onAccent: '#FFFFFF',
   // Semantics
-  danger: '#FF6B81',
-  success: '#5EE6A8',
-  warning: '#FFD166',
+  danger: '#C0392B',
+  success: '#2D6A4F',
+  warning: '#C4956A',
 };
 
 // ── LIGHT public palette (the Partiful "paper" surface) ──────────────────────

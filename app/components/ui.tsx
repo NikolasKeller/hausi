@@ -49,27 +49,12 @@ export function Button({
       <Text style={[styles.buttonText, { color }]}>{title}</Text>
     );
 
-  if (variant === 'vibrant') {
-    return (
-      <Pressable
-        onPress={onPress}
-        disabled={isDisabled}
-        style={({ pressed }) => [pressed && styles.pressed, isDisabled && styles.disabled, style]}
-      >
-        <LinearGradient
-          colors={[...brand.party]}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
-          style={[styles.button, shadow.float]}
-        >
-          {label('#fff')}
-        </LinearGradient>
-      </Pressable>
-    );
-  }
+  // 'vibrant' used to render a party gradient; now the whole app is light/cream
+  // so treat it the same as primary (solid black) — keeps all callers working.
+  const effectiveVariant = variant === 'vibrant' ? 'primary' : variant;
 
-  if (variant === 'primary' || variant === 'paper') {
-    const filled = variant === 'primary';
+  if (effectiveVariant === 'primary' || effectiveVariant === 'paper') {
+    const filled = effectiveVariant === 'primary';
     return (
       <Pressable
         onPress={onPress}
@@ -89,7 +74,7 @@ export function Button({
   }
 
   // ghost / danger — bordered, transparent.
-  const edge = variant === 'danger' ? colors.danger : tone === 'paper' ? '#fff' : colors.ink;
+  const edge = effectiveVariant === 'danger' ? colors.danger : tone === 'paper' ? '#fff' : colors.ink;
   return (
     <Pressable
       onPress={onPress}

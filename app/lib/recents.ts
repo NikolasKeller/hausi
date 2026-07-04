@@ -30,3 +30,12 @@ export async function recordRecentEvent(event: RecentEvent): Promise<void> {
     // Recents are best-effort.
   }
 }
+
+export async function removeRecentEvent(slug: string): Promise<void> {
+  try {
+    const list = await getRecentEvents();
+    await storage.setItemAsync(KEY, JSON.stringify(list.filter((e) => e.slug !== slug)));
+  } catch {
+    // Best-effort.
+  }
+}

@@ -13,13 +13,13 @@ export default function TabsLayout() {
         headerShown: false,
         sceneStyle: { backgroundColor: colors.bg },
         tabBarStyle: {
-          backgroundColor: colors.ink,
-          borderTopColor: colors.ink,
-          borderTopWidth: 2,
+          backgroundColor: colors.card,
+          borderTopColor: colors.cardBorder,
+          borderTopWidth: 1,
           height: 62,
           paddingTop: 6,
         },
-        tabBarActiveTintColor: colors.accent,
+        tabBarActiveTintColor: colors.ink,
         tabBarInactiveTintColor: colors.muted,
         tabBarShowLabel: false,
       }}

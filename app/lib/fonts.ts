@@ -13,12 +13,11 @@ export const FONTS_TO_LOAD = {
   Archivo_900Black,
 };
 
-// The app's display voice — a heavy grotesque standing in for "Partiful Display"
-// for poster-style headers and event titles. Weight is baked into the family,
-// so reset fontWeight to avoid a synthesized bold. Two weights are loaded:
-// 900 (black) for statement headlines, 800 (extra-bold) for softer display.
-export const DISPLAY_FONT = 'Archivo_900Black';
-export const DISPLAY_FONT_HEAVY = 'Archivo_800ExtraBold';
+// The app's display voice — a serif (PlayfairDisplay) for editorial headlines,
+// giving the "Known"-style warm, quiet-luxury feel. Archivo Black is still used
+// for cover event titles where a poster-grade weight is needed.
+export const DISPLAY_FONT = 'PlayfairDisplay_700Bold';
+export const DISPLAY_FONT_HEAVY = 'Archivo_800ExtraBold'; // poster/cover weight
 export const displayTitle: TextStyle = { fontFamily: DISPLAY_FONT, fontWeight: 'normal' };
 
 // Partiful statement type: massive Archivo Black at very tight negative tracking
@@ -26,12 +25,15 @@ export const displayTitle: TextStyle = { fontFamily: DISPLAY_FONT, fontWeight: '
 // letterSpacing is absolute px in RN, so it scales with the font size.
 export function display(
   size: number,
-  opts?: { weight?: 'black' | 'heavy'; lineHeight?: number; tracking?: number }
+  opts?: { weight?: 'black' | 'heavy' | 'serif'; lineHeight?: number; tracking?: number }
 ): TextStyle {
-  const tracking = opts?.tracking ?? -0.03;
-  const lh = opts?.lineHeight ?? (size >= 56 ? 0.9 : size >= 32 ? 0.96 : 1.05);
+  // 'serif' or default = PlayfairDisplay (editorial), 'black'/'heavy' = Archivo (poster)
+  const isSerif = !opts?.weight || opts.weight === 'serif';
+  const family = isSerif ? DISPLAY_FONT : DISPLAY_FONT_HEAVY;
+  const tracking = opts?.tracking ?? (isSerif ? -0.02 : -0.03);
+  const lh = opts?.lineHeight ?? (size >= 56 ? 0.92 : size >= 32 ? 1.0 : 1.1);
   return {
-    fontFamily: opts?.weight === 'heavy' ? DISPLAY_FONT_HEAVY : DISPLAY_FONT,
+    fontFamily: family,
     fontWeight: 'normal',
     fontSize: size,
     letterSpacing: Math.round(size * tracking * 100) / 100,

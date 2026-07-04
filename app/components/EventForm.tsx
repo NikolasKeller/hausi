@@ -9,8 +9,10 @@ import {
   TextInput,
   View,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { useHeaderHeight } from '@react-navigation/elements';
+import { useRouter } from 'expo-router';
 import {
   CATEGORIES,
   CATEGORY_META,
@@ -94,6 +96,7 @@ const webPickerStyle = {
 } as const;
 
 export function EventForm({ initial, submitLabel, onSubmit, footer }: Props) {
+  const router = useRouter();
   const headerHeight = useHeaderHeight();
   const [title, setTitle] = useState(initial?.title ?? '');
   const [description, setDescription] = useState(initial?.description ?? '');
@@ -172,10 +175,24 @@ export function EventForm({ initial, submitLabel, onSubmit, footer }: Props) {
 
   return (
     <ThemeBackground theme={coverTheme} effect={effect}>
+      <SafeAreaView edges={['top']} style={{ backgroundColor: 'transparent' }}>
+        <View style={styles.formHeader}>
+          <Pressable onPress={() => router.back()} hitSlop={10} style={styles.formClose}>
+            <Text style={[styles.formCloseText, { color: ink.text }]}>✕</Text>
+          </Pressable>
+          <Pressable
+            onPress={submit}
+            disabled={saving}
+            style={[styles.formSave, { opacity: saving ? 0.5 : 1 }]}
+          >
+            <Text style={styles.formSaveText}>{saving ? 'Saving…' : 'Save'}</Text>
+          </Pressable>
+        </View>
+      </SafeAreaView>
       <KeyboardAvoidingView
         style={{ flex: 1 }}
         behavior="padding"
-        keyboardVerticalOffset={headerHeight}
+        keyboardVerticalOffset={0}
       >
         <ScrollView
           style={styles.container}
@@ -446,6 +463,37 @@ export function EventForm({ initial, submitLabel, onSubmit, footer }: Props) {
 }
 
 const styles = StyleSheet.create({
+  formHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+  },
+  formClose: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(255,255,255,0.28)',
+  },
+  formCloseText: {
+    fontSize: 16,
+    fontWeight: '700',
+  },
+  formSave: {
+    backgroundColor: '#000',
+    borderRadius: 999,
+    paddingHorizontal: 22,
+    paddingVertical: 10,
+  },
+  formSaveText: {
+    color: '#fff',
+    fontSize: 15,
+    fontWeight: '700',
+    letterSpacing: -0.3,
+  },
   container: {
     flex: 1,
     backgroundColor: 'transparent',
