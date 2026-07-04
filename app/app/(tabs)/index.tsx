@@ -371,9 +371,9 @@ const styles = StyleSheet.create({
   },
   wordmark: {
     color: colors.text,
-    fontSize: 24,
-    fontWeight: '800',
-    letterSpacing: -0.5,
+    fontSize: 28,
+    fontWeight: '900',
+    letterSpacing: -1.2,
   },
   bellButton: {
     padding: spacing.xs,
@@ -401,9 +401,9 @@ const styles = StyleSheet.create({
   },
   sectionTitle: {
     color: colors.text,
-    fontSize: 22,
-    fontWeight: '800',
-    letterSpacing: -0.5,
+    fontSize: 27,
+    fontWeight: '900',
+    letterSpacing: -1,
   },
   emptyNote: {
     color: colors.muted,
