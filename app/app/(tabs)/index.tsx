@@ -275,7 +275,7 @@ function TrendingCard({ event }: { event: ExploreEvent }) {
       onPress={() => router.push(`/event/${event.slug}`)}
       style={({ pressed }) => [styles.trendingCard, pressed && { opacity: 0.85 }]}
     >
-      <CoverGradient theme={event.coverTheme} style={styles.trendingCover} emojiOpacity={0.3}>
+      <CoverGradient theme={event.coverTheme} image={event.coverImage} style={styles.trendingCover} emojiOpacity={0.3}>
         <Text
           style={[styles.trendingTitle, titleFontStyle(event.titleFont)]}
           numberOfLines={2}
@@ -306,7 +306,7 @@ function RecentCard({ recent }: { recent: RecentEvent }) {
       onPress={() => router.push(`/event/${recent.slug}`)}
       style={({ pressed }) => [styles.recentCard, pressed && { opacity: 0.85 }]}
     >
-      <CoverGradient theme={recent.coverTheme} style={styles.recentCover} emojiOpacity={0.25}>
+      <CoverGradient theme={recent.coverTheme} image={recent.coverImage} style={styles.recentCover} emojiOpacity={0.25}>
         <Text style={[styles.recentTitle, titleFontStyle(recent.titleFont)]} numberOfLines={2}>
           {recent.title}
         </Text>
@@ -323,7 +323,7 @@ function CompactRow({ event, subtitle }: { event: ExploreEvent; subtitle: string
       onPress={() => router.push(`/event/${event.slug}`)}
       style={({ pressed }) => [styles.compactRow, pressed && { opacity: 0.85 }]}
     >
-      <CoverGradient theme={event.coverTheme} style={styles.compactCover} emojiOpacity={0.35} />
+      <CoverGradient theme={event.coverTheme} image={event.coverImage} style={styles.compactCover} emojiOpacity={0.35} />
       <View style={{ flex: 1, gap: 2 }}>
         <Text style={styles.compactTitle} numberOfLines={1}>
           {event.title}

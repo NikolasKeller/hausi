@@ -68,6 +68,7 @@ model Event {
   title         String
   description   String        @default("")
   coverTheme    String        @default("sunset")
+  coverImage    String        @default("")
   titleFont     String        @default("classic")
   effect        String        @default("none")
   date          DateTime

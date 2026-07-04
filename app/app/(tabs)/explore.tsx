@@ -47,7 +47,7 @@ function ExploreCard({ event }: { event: ExploreEvent }) {
       onPress={() => router.push(`/event/${event.slug}`)}
       style={({ pressed }) => [styles.card, pressed && { opacity: 0.85 }]}
     >
-      <CoverGradient theme={event.coverTheme} style={styles.poster} emojiOpacity={0.25}>
+      <CoverGradient theme={event.coverTheme} image={event.coverImage} style={styles.poster} emojiOpacity={0.25}>
         <Text style={[styles.posterTitle, titleFontStyle(event.titleFont)]} numberOfLines={3}>
           {event.title}
         </Text>

@@ -99,6 +99,7 @@ export default function EditEventScreen() {
         costPerPerson: event.costPerPerson,
         dressCode: event.dressCode,
         coverTheme: event.coverTheme,
+        coverImage: event.coverImage,
         titleFont: event.titleFont,
         effect: event.effect,
         date: new Date(event.date),

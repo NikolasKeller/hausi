@@ -58,6 +58,7 @@ export default function EventScreen() {
         slug: res.event.slug,
         title: res.event.title,
         coverTheme: res.event.coverTheme,
+        coverImage: res.event.coverImage,
         titleFont: res.event.titleFont,
         date: res.event.date,
       });
@@ -188,7 +189,7 @@ export default function EventScreen() {
   return (
     <KeyboardAvoidingView style={{ flex: 1, backgroundColor: colors.bg }} behavior="padding">
       <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
-        <CoverGradient theme={event.coverTheme} style={styles.hero}>
+        <CoverGradient theme={event.coverTheme} image={event.coverImage} style={styles.hero}>
           <EffectOverlay effect={event.effect} height={260} />
           <Text style={[styles.heroTitle, titleFontStyle(event.titleFont)]}>{event.title}</Text>
         </CoverGradient>
