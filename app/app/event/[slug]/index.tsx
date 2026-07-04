@@ -209,23 +209,6 @@ export default function EventScreen() {
     }
   }
 
-  async function confirmCancel() {
-    if (!event) return;
-    const ok = await confirmDialog(
-      'Cancel event?',
-      'All guests will be notified. The page stays visible.',
-      'Cancel event',
-      'Keep event'
-    );
-    if (!ok) return;
-    try {
-      const res = await api.cancelEvent(event.id);
-      setEvent(res.event);
-    } catch (e) {
-      notify('Cancel failed', e instanceof Error ? e.message : 'Try again');
-    }
-  }
-
   async function toggleRsvpsOpen() {
     if (!event) return;
     try {
@@ -732,7 +715,12 @@ export default function EventScreen() {
             onPress={() => setMenuOpen(false)}
           />
           <View style={[styles.menuSheetWrap, { paddingBottom: insets.bottom + spacing.lg }]}>
-            <Glass tint={ink.dark ? 'dark' : 'light'} radius={radius.lg} style={styles.menuSheet}>
+            <Glass
+              tint={ink.dark ? 'dark' : 'light'}
+              radius={radius.lg}
+              fill={ink.dark ? 'rgba(20,18,16,0.92)' : 'rgba(249,246,241,0.94)'}
+              style={styles.menuSheet}
+            >
               <Text style={[styles.menuTitle, { color: ink.subtext }]}>Manage event</Text>
               <ActionRow
                 icon="create-outline"
@@ -752,18 +740,6 @@ export default function EventScreen() {
                   onPress={() => {
                     setMenuOpen(false);
                     toggleRsvpsOpen();
-                  }}
-                />
-              ) : null}
-              {event.isHost && !isCanceled ? (
-                <ActionRow
-                  icon="close-circle-outline"
-                  label="Cancel event"
-                  color={colors.danger}
-                  divider={ink.hairline}
-                  onPress={() => {
-                    setMenuOpen(false);
-                    confirmCancel();
                   }}
                 />
               ) : null}
