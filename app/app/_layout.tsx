@@ -155,7 +155,7 @@ function RootNavigator() {
         }}
       />
       <Stack.Screen name="notifications" options={{ title: 'Notifications' }} />
-      <Stack.Screen name="event/[slug]/index" options={{ title: '', headerTransparent: true }} />
+      <Stack.Screen name="event/[slug]/index" options={{ headerShown: false }} />
       <Stack.Screen
         name="event/[slug]/edit"
         options={{
@@ -166,7 +166,10 @@ function RootNavigator() {
         }}
       />
       <Stack.Screen name="e/[slug]" options={{ headerShown: false }} />
-      <Stack.Screen name="card/[id]" options={{ title: '', headerTransparent: true }} />
+      <Stack.Screen
+        name="card/[id]"
+        options={{ title: '', headerTransparent: true, headerStyle: { backgroundColor: 'transparent' } }}
+      />
       <Stack.Screen name="c/[id]" options={{ headerShown: false }} />
     </Stack>
   );
