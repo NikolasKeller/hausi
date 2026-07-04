@@ -117,6 +117,7 @@ function Tabs({
     <ScrollView
       horizontal
       showsHorizontalScrollIndicator={false}
+      style={styles.tabsScroll}
       contentContainerStyle={styles.tabsRow}
     >
       {[{ key: 'all', label: 'All', emoji: '✦' }, ...tabs].map((t) => (
@@ -146,7 +147,7 @@ export function ThemePicker({
   return (
     <PickerShell title="Theme" onClose={onClose}>
       <Tabs tabs={THEME_CATEGORIES} active={cat} onSelect={(k) => setCat(k as typeof cat)} />
-      <ScrollView contentContainerStyle={styles.grid} showsVerticalScrollIndicator={false}>
+      <ScrollView style={styles.gridScroll} contentContainerStyle={styles.grid} showsVerticalScrollIndicator={false}>
         {list.map((c) => {
           const selected = c.key === value;
           return (
@@ -191,7 +192,7 @@ export function EffectPicker({
   return (
     <PickerShell title="Effect" onClose={onClose}>
       <Tabs tabs={EFFECT_CATEGORIES} active={cat} onSelect={setCat} />
-      <ScrollView contentContainerStyle={styles.grid} showsVerticalScrollIndicator={false}>
+      <ScrollView style={styles.gridScroll} contentContainerStyle={styles.grid} showsVerticalScrollIndicator={false}>
         <Pressable onPress={() => onChange('none')} style={styles.cell}>
           <View style={[styles.circle, value === 'none' && styles.swatchSelected]}>
             <Ionicons name="close" size={22} color="rgba(255,255,255,0.7)" />
@@ -236,10 +237,10 @@ const styles = StyleSheet.create({
     zIndex: 50,
   },
   sheet: {
-    maxHeight: '78%',
+    height: '80%',
     paddingTop: spacing.md,
-    paddingBottom: spacing.xl,
-    backgroundColor: 'rgba(18,16,28,0.55)',
+    paddingBottom: spacing.sm,
+    backgroundColor: 'rgba(18,16,28,0.72)',
   },
   sheetHeader: {
     flexDirection: 'row',
@@ -257,7 +258,9 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     backgroundColor: 'rgba(255,255,255,0.14)',
   },
+  tabsScroll: { flexGrow: 0, flexShrink: 0 },
   tabsRow: { flexDirection: 'row', gap: spacing.sm, paddingHorizontal: spacing.lg, paddingBottom: spacing.sm },
+  gridScroll: { flex: 1 },
   tab: { gap: 6 },
   tabEmoji: { fontSize: 13 },
   tabLabel: { ...uiText(13, '700'), color: 'rgba(255,255,255,0.7)' },
@@ -268,6 +271,7 @@ const styles = StyleSheet.create({
     gap: spacing.md,
     paddingHorizontal: spacing.lg,
     paddingTop: spacing.sm,
+    paddingBottom: spacing.xxl,
     justifyContent: 'space-between',
   },
   cell: { width: CELL, alignItems: 'center', gap: 6 },
