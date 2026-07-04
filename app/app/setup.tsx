@@ -87,9 +87,6 @@ export default function SetupScreen() {
             <View style={styles.heroWrap}>
               <View style={styles.glowRing} />
               <Avatar emoji={avatarEmoji} size={140} />
-              <View style={styles.cameraBadge}>
-                <Text style={styles.cameraEmoji}>📸</Text>
-              </View>
             </View>
 
             <View style={styles.grid}>
@@ -207,22 +204,6 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(180,140,255,0.18)',
     borderWidth: 1,
     borderColor: 'rgba(180,140,255,0.35)',
-  },
-  cameraBadge: {
-    position: 'absolute',
-    right: 8,
-    bottom: 8,
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: 'rgba(14,11,22,0.85)',
-    borderWidth: 1,
-    borderColor: 'rgba(247,245,255,0.3)',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  cameraEmoji: {
-    fontSize: 18,
   },
   grid: {
     flexDirection: 'row',
