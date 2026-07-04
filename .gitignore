@@ -9,3 +9,5 @@ web-build/
 *.db
 *.db-journal
 .context/
+app/ios/
+app/android/

@@ -10,7 +10,8 @@
     "backgroundColor": "#0E0B16",
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.hausi.app"
+      "bundleIdentifier": "com.hausi.app",
+      "appleTeamId": "XVLYVZN7Q3"
     },
     "android": {
       "package": "com.hausi.app",
