@@ -281,7 +281,11 @@ export function EventForm({ initial, submitLabel, onSubmit, footer }: Props) {
     <ThemeBackground theme={coverTheme}>
       <SafeAreaView edges={['top']} style={{ backgroundColor: 'transparent' }}>
         <View style={styles.formHeader}>
-          <Pressable onPress={() => router.back()} hitSlop={10} style={styles.formClose}>
+          <Pressable
+            onPress={() => (router.canGoBack() ? router.back() : router.replace('/'))}
+            hitSlop={10}
+            style={styles.formClose}
+          >
             <Text style={styles.formCloseText}>✕</Text>
           </Pressable>
           <Pressable

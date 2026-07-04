@@ -80,7 +80,11 @@ export default function EditEventScreen() {
   if (!event) {
     return (
       <PaperBackground>
-        <Pressable onPress={() => router.back()} hitSlop={10} style={styles.loadingClose}>
+        <Pressable
+          onPress={() => (router.canGoBack() ? router.back() : router.replace('/'))}
+          hitSlop={10}
+          style={styles.loadingClose}
+        >
           <Text style={styles.loadingCloseText}>✕</Text>
         </Pressable>
         <View style={styles.center}>
@@ -120,7 +124,8 @@ export default function EditEventScreen() {
       }}
       onSubmit={async (data) => {
         await api.updateEvent(event.id, data);
-        router.back();
+        if (router.canGoBack()) router.back();
+        else router.replace(`/event/${slug}`);
       }}
       footer={
         event.isHost ? (
