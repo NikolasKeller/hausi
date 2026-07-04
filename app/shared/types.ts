@@ -108,6 +108,7 @@ export interface EventSummary {
   slug: string;
   title: string;
   coverTheme: CoverTheme;
+  coverImage: string;
   titleFont: TitleFont;
   effect: Effect;
   date: string;
@@ -146,6 +147,7 @@ export interface EventInput {
   title: string;
   description?: string;
   coverTheme?: CoverTheme;
+  coverImage?: string;
   titleFont?: TitleFont;
   effect?: Effect;
   date: string;

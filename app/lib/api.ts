@@ -42,6 +42,14 @@ const API_ORIGIN =
 
 export const API_URL = `${API_ORIGIN}/api`;
 
+// Uploaded images come back as server-relative paths ("/uploads/x.jpg");
+// resolve them against the API origin so <Image> can load them.
+export function mediaUrl(path: string | null | undefined): string | undefined {
+  if (!path) return undefined;
+  if (/^https?:\/\//.test(path) || path.startsWith('data:')) return path;
+  return `${API_ORIGIN}${path}`;
+}
+
 export class ApiError extends Error {
   status: number;
   constructor(status: number, message: string) {
@@ -90,6 +98,12 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
 export const api = {
   config() {
     return request<{ inviteRequired: boolean }>('/config');
+  },
+  uploadImage(data: string, contentType: string) {
+    return request<{ url: string }>('/uploads', {
+      method: 'POST',
+      body: JSON.stringify({ data, contentType }),
+    });
   },
   requestPhoneCode(phone: string, invite?: string) {
     return request<PhoneRequestResponse>('/auth/phone/request', {

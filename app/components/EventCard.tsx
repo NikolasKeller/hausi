@@ -34,7 +34,7 @@ export function EventCard({ event }: { event: EventSummary }) {
       onPress={() => router.push(`/event/${event.slug}`)}
       style={({ pressed }) => [styles.card, pressed && { opacity: 0.85 }]}
     >
-      <CoverGradient theme={event.coverTheme} style={styles.cover} emojiOpacity={0.3}>
+      <CoverGradient theme={event.coverTheme} image={event.coverImage} style={styles.cover} emojiOpacity={0.3}>
         {event.canceledAt ? (
           <View style={styles.canceledBadge}>
             <Text style={styles.canceledText}>CANCELED</Text>

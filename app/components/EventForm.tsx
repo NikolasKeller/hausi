@@ -29,6 +29,7 @@ import { CoverGradient } from './CoverGradient';
 import { EffectOverlay } from './EffectOverlay';
 import { Button, ErrorText, Field } from './ui';
 import { formatEventDate, formatEventTime } from './EventCard';
+import { pickCoverImage } from '../lib/imageUpload';
 
 const EFFECT_LABELS: Record<Effect, string> = {
   none: '✖️ None',
@@ -47,6 +48,7 @@ export interface EventFormValues {
   costPerPerson: string;
   dressCode: string;
   coverTheme: CoverTheme;
+  coverImage: string;
   titleFont: TitleFont;
   effect: Effect;
   date: Date;
@@ -105,6 +107,8 @@ export function EventForm({ initial, submitLabel, onSubmit, footer }: Props) {
   const [costPerPerson, setCostPerPerson] = useState(initial?.costPerPerson ?? '');
   const [dressCode, setDressCode] = useState(initial?.dressCode ?? '');
   const [coverTheme, setCoverTheme] = useState<CoverTheme>(initial?.coverTheme ?? 'sunset');
+  const [coverImage, setCoverImage] = useState(initial?.coverImage ?? '');
+  const [uploadingCover, setUploadingCover] = useState(false);
   const [titleFont, setTitleFont] = useState<TitleFont>(initial?.titleFont ?? 'classic');
   const [effect, setEffect] = useState<Effect>(initial?.effect ?? 'none');
   const [date, setDate] = useState<Date>(initial?.date ?? defaultDate());
@@ -139,6 +143,7 @@ export function EventForm({ initial, submitLabel, onSubmit, footer }: Props) {
         costPerPerson: costPerPerson.trim(),
         dressCode: dressCode.trim(),
         coverTheme,
+        coverImage,
         titleFont,
         effect,
         date: date.toISOString(),
@@ -154,6 +159,14 @@ export function EventForm({ initial, submitLabel, onSubmit, footer }: Props) {
   function onPickerChange(_event: unknown, selected?: Date) {
     if (Platform.OS === 'android') setPicker(null);
     if (selected) setDate(selected);
+  }
+
+  async function onPickPhoto() {
+    if (uploadingCover) return;
+    setUploadingCover(true);
+    const url = await pickCoverImage();
+    if (url) setCoverImage(url);
+    setUploadingCover(false);
   }
 
   return (
@@ -174,12 +187,29 @@ export function EventForm({ initial, submitLabel, onSubmit, footer }: Props) {
           <Text style={styles.publicPillAction}>{isPublic ? 'Make private' : 'Make it public'}</Text>
         </Pressable>
 
-        <CoverGradient theme={coverTheme} style={styles.preview}>
+        <CoverGradient theme={coverTheme} image={coverImage} style={styles.preview}>
           <EffectOverlay effect={effect} height={140} />
           <Text style={[styles.previewTitle, titleFontStyle(titleFont)]} numberOfLines={3}>
             {title.trim() || 'Untitled Event'}
           </Text>
         </CoverGradient>
+
+        <View style={styles.photoRow}>
+          <Pressable style={styles.photoBtn} onPress={onPickPhoto} disabled={uploadingCover}>
+            <Text style={styles.photoBtnText}>
+              {uploadingCover
+                ? 'Uploading…'
+                : coverImage
+                  ? '🖼  Change cover photo'
+                  : '🖼  Add cover photo'}
+            </Text>
+          </Pressable>
+          {coverImage && !uploadingCover ? (
+            <Pressable style={styles.photoRemove} onPress={() => setCoverImage('')} hitSlop={8}>
+              <Text style={styles.photoRemoveText}>Remove</Text>
+            </Pressable>
+          ) : null}
+        </View>
 
         <View style={styles.fontRow}>
           {TITLE_FONTS.map((f) => (
@@ -393,6 +423,34 @@ const styles = StyleSheet.create({
     minHeight: 140,
     padding: spacing.md,
     justifyContent: 'flex-end',
+  },
+  photoRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+  },
+  photoBtn: {
+    flex: 1,
+    backgroundColor: colors.inputBg,
+    borderWidth: 1,
+    borderColor: colors.cardBorder,
+    borderRadius: radius.md,
+    paddingVertical: 12,
+    alignItems: 'center',
+  },
+  photoBtnText: {
+    color: colors.text,
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  photoRemove: {
+    paddingHorizontal: spacing.md,
+    paddingVertical: 12,
+  },
+  photoRemoveText: {
+    color: colors.danger,
+    fontSize: 14,
+    fontWeight: '700',
   },
   previewTitle: {
     color: '#fff',
