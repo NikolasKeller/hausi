@@ -35,6 +35,7 @@ import { EffectOverlay } from './EffectOverlay';
 import { Button, ErrorText } from './ui';
 import { ThemeBackground, ThemePicker, EffectPicker } from './themes';
 import { Burst } from './partiful';
+import { Glass } from './glass';
 import { formatEventDate, formatEventTime } from './EventCard';
 import { pickCoverImage } from '../lib/imageUpload';
 
@@ -63,25 +64,55 @@ interface Props {
   footer?: React.ReactNode;
 }
 
-// ── Local "paper" primitives ──────────────────────────────────────────────────
-// The theme gradient + effect fill the whole screen, so every control is a
-// solid, opaque paper surface (near-black ink on warm white) that lifts off the
-// gradient with a soft shadow. This keeps button labels legible on ANY theme —
-// bright or dark — while the vibrant surface stays full-screen behind them.
+// ── Frosted "glass" primitives ─────────────────────────────────────────────────
+// The theme gradient + effect fill the whole screen, and every control is a
+// translucent frosted pane that lets that surface glow through — the Partiful
+// look. Tint, border and text colour follow the theme's mood (dark frost + white
+// ink on vibrant/dark themes, light frost + near-black ink on pastel ones) so the
+// labels stay legible on ANY theme while the surface keeps showing through.
+
+type Ink = ReturnType<typeof themeInk>;
+
+// A faint wash painted over the blur so text keeps contrast on busy or very
+// bright gradients — darkens dark-mood glass, brightens light-mood glass.
+function glassFill(ink: Ink) {
+  return ink.dark ? 'rgba(0,0,0,0.18)' : 'rgba(255,255,255,0.26)';
+}
+
+// The frosted backdrop for a control: an absolute-fill pane painted behind its
+// content, so the control's existing layout/padding styles stay untouched. It
+// never intercepts taps (pointerEvents none), so parent Pressables still fire.
+function GlassBg({ ink, r = radius.md }: { ink: Ink; r?: number }) {
+  return (
+    <View pointerEvents="none" style={StyleSheet.absoluteFill}>
+      <Glass
+        tint={ink.glassTint}
+        intensity={26}
+        radius={r}
+        fill={glassFill(ink)}
+        style={{ flex: 1 }}
+      />
+    </View>
+  );
+}
 
 function SectionLabel({ children, color }: { children: React.ReactNode; color?: string }) {
   return <Text style={[styles.sectionLabel, color ? { color } : null]}>{children}</Text>;
 }
 
-// A tappable paper card — the base for every button/row on the form.
+// A tappable frosted card — the base for every button/row on the form.
 function PaperPressable({
+  ink,
   onPress,
   disabled,
+  radius: r = radius.md,
   style,
   children,
 }: {
+  ink: Ink;
   onPress: () => void;
   disabled?: boolean;
+  radius?: number;
   style?: StyleProp<ViewStyle>;
   children: React.ReactNode;
 }) {
@@ -89,24 +120,36 @@ function PaperPressable({
     <Pressable
       onPress={onPress}
       disabled={disabled}
-      style={({ pressed }) => [styles.card, pressed && styles.cardPressed, style]}
+      style={({ pressed }) => [styles.surface, style, pressed && styles.cardPressed]}
     >
+      <GlassBg ink={ink} r={r} />
       {children}
     </Pressable>
   );
 }
 
 function PaperField({
+  ink,
   label,
   labelColor,
   style,
   ...props
-}: TextInputProps & { label?: string; labelColor?: string; style?: TextInputProps['style'] }) {
+}: TextInputProps & {
+  ink: Ink;
+  label?: string;
+  labelColor?: string;
+  style?: TextInputProps['style'];
+}) {
   return (
     <View style={{ gap: 6 }}>
       {label ? <SectionLabel color={labelColor}>{label}</SectionLabel> : null}
-      <View style={styles.inputCard}>
-        <TextInput placeholderTextColor={colors.muted} style={[styles.input, style]} {...props} />
+      <View style={styles.surface}>
+        <GlassBg ink={ink} />
+        <TextInput
+          placeholderTextColor={ink.faint}
+          style={[styles.input, { color: ink.text }, style]}
+          {...props}
+        />
       </View>
     </View>
   );
@@ -244,8 +287,9 @@ export function EventForm({ initial, submitLabel, onSubmit, footer }: Props) {
     if (Platform.OS === 'web') {
       return (
         <View style={styles.dateButtonWrap}>
-          <View style={[styles.card, styles.dateButton]}>
-            <Text style={styles.dateText}>{labelText}</Text>
+          <View style={styles.dateButton}>
+            <GlassBg ink={ink} />
+            <Text style={[styles.dateText, { color: ink.text }]}>{labelText}</Text>
           </View>
           {React.createElement('input', {
             type: kind,
@@ -261,10 +305,11 @@ export function EventForm({ initial, submitLabel, onSubmit, footer }: Props) {
     }
     return (
       <PaperPressable
+        ink={ink}
         style={styles.dateButton}
         onPress={() => setPicker(picker === kind ? null : kind)}
       >
-        <Text style={styles.dateText}>{labelText}</Text>
+        <Text style={[styles.dateText, { color: ink.text }]}>{labelText}</Text>
       </PaperPressable>
     );
   }
@@ -282,7 +327,8 @@ export function EventForm({ initial, submitLabel, onSubmit, footer }: Props) {
       <SafeAreaView edges={['top']} style={{ backgroundColor: 'transparent' }}>
         <View style={styles.formHeader}>
           <Pressable onPress={() => router.back()} hitSlop={10} style={styles.formClose}>
-            <Text style={styles.formCloseText}>✕</Text>
+            <GlassBg ink={ink} r={18} />
+            <Text style={[styles.formCloseText, { color: ink.text }]}>✕</Text>
           </Pressable>
           <Pressable
             onPress={submit}
@@ -308,11 +354,16 @@ export function EventForm({ initial, submitLabel, onSubmit, footer }: Props) {
           contentContainerStyle={styles.content}
           keyboardShouldPersistTaps="handled"
         >
-        <PaperPressable onPress={() => setIsPublic(!isPublic)} style={styles.publicPill}>
-          <Text style={styles.publicPillText}>
+        <PaperPressable
+          ink={ink}
+          radius={radius.pill}
+          onPress={() => setIsPublic(!isPublic)}
+          style={styles.publicPill}
+        >
+          <Text style={[styles.publicPillText, { color: ink.subtext }]}>
             {isPublic ? '🌐 Public — anyone can find it' : '🔒 Private — invite only'}
           </Text>
-          <Text style={styles.publicPillAction}>
+          <Text style={[styles.publicPillAction, { color: ink.dark ? colors.accent : colors.accentDark }]}>
             {isPublic ? 'Make private' : 'Make it public'}
           </Text>
         </PaperPressable>
@@ -320,6 +371,7 @@ export function EventForm({ initial, submitLabel, onSubmit, footer }: Props) {
         {/* Title first, with the font picker directly beneath it — the poster
             editor order from the reference. */}
         <PaperField
+          ink={ink}
           label="Event title"
           labelColor={ink.faint}
           value={title}
@@ -333,19 +385,26 @@ export function EventForm({ initial, submitLabel, onSubmit, footer }: Props) {
         />
 
         <View style={styles.fontBar}>
+          <GlassBg ink={ink} r={radius.pill} />
           {TITLE_FONTS.map((f) => {
             const selected = titleFont === f;
             return (
               <Pressable
                 key={f}
                 onPress={() => setTitleFont(f)}
-                style={[styles.fontSeg, selected && styles.fontSegActive]}
+                style={[
+                  styles.fontSeg,
+                  selected && {
+                    backgroundColor: ink.dark ? 'rgba(255,255,255,0.22)' : 'rgba(255,255,255,0.62)',
+                    borderColor: ink.dark ? 'rgba(255,255,255,0.4)' : 'rgba(255,255,255,0.95)',
+                  },
+                ]}
               >
                 <Text
                   style={[
                     styles.fontSegText,
                     titleFontStyle(f),
-                    { color: selected ? '#fff' : light.text3 },
+                    { color: selected ? ink.text : ink.subtext },
                   ]}
                   numberOfLines={1}
                 >
@@ -366,8 +425,8 @@ export function EventForm({ initial, submitLabel, onSubmit, footer }: Props) {
         </CoverGradient>
 
         <View style={styles.photoRow}>
-          <PaperPressable style={styles.photoBtn} onPress={onPickPhoto} disabled={uploadingCover}>
-            <Text style={styles.cardBtnText}>
+          <PaperPressable ink={ink} style={styles.photoBtn} onPress={onPickPhoto} disabled={uploadingCover}>
+            <Text style={[styles.cardBtnText, { color: ink.text }]}>
               {uploadingCover
                 ? 'Uploading…'
                 : coverImage
@@ -383,11 +442,11 @@ export function EventForm({ initial, submitLabel, onSubmit, footer }: Props) {
         </View>
 
         <View style={styles.styleRow}>
-          <PaperPressable style={styles.styleBtn} onPress={() => setThemePickerOpen(true)}>
-            <Text style={styles.cardBtnText}>🎨 Theme</Text>
+          <PaperPressable ink={ink} style={styles.styleBtn} onPress={() => setThemePickerOpen(true)}>
+            <Text style={[styles.cardBtnText, { color: ink.text }]}>🎨 Theme</Text>
           </PaperPressable>
-          <PaperPressable style={styles.styleBtn} onPress={() => setEffectPickerOpen(true)}>
-            <Text style={styles.cardBtnText}>✨ Effect</Text>
+          <PaperPressable ink={ink} style={styles.styleBtn} onPress={() => setEffectPickerOpen(true)}>
+            <Text style={[styles.cardBtnText, { color: ink.text }]}>✨ Effect</Text>
           </PaperPressable>
         </View>
 
@@ -409,6 +468,7 @@ export function EventForm({ initial, submitLabel, onSubmit, footer }: Props) {
         </View>
 
         <PaperField
+          ink={ink}
           label="Where"
           labelColor={ink.faint}
           value={location}
@@ -417,6 +477,7 @@ export function EventForm({ initial, submitLabel, onSubmit, footer }: Props) {
           maxLength={LIMITS.location}
         />
         <PaperField
+          ink={ink}
           label="City"
           labelColor={ink.faint}
           value={city}
@@ -434,9 +495,16 @@ export function EventForm({ initial, submitLabel, onSubmit, footer }: Props) {
                 <Pressable
                   key={cat}
                   onPress={() => setCategory(cat)}
-                  style={[styles.optionPill, active && styles.optionPillActive]}
+                  style={[
+                    styles.optionPill,
+                    active && {
+                      backgroundColor: ink.dark ? 'rgba(255,255,255,0.24)' : 'rgba(255,255,255,0.64)',
+                      borderColor: ink.dark ? 'rgba(255,255,255,0.45)' : 'rgba(255,255,255,0.95)',
+                    },
+                  ]}
                 >
-                  <Text style={[styles.chipLabel, { color: active ? '#fff' : light.text2 }]}>
+                  {!active ? <GlassBg ink={ink} r={radius.pill} /> : null}
+                  <Text style={[styles.chipLabel, { color: active ? ink.text : ink.subtext }]}>
                     {CATEGORY_META[cat].emoji} {CATEGORY_META[cat].label}
                   </Text>
                 </Pressable>
@@ -446,6 +514,7 @@ export function EventForm({ initial, submitLabel, onSubmit, footer }: Props) {
         </View>
 
         <PaperField
+          ink={ink}
           label="Cost per person (optional)"
           labelColor={ink.faint}
           value={costPerPerson}
@@ -454,6 +523,7 @@ export function EventForm({ initial, submitLabel, onSubmit, footer }: Props) {
           maxLength={60}
         />
         <PaperField
+          ink={ink}
           label="Dress code (optional)"
           labelColor={ink.faint}
           value={dressCode}
@@ -464,21 +534,23 @@ export function EventForm({ initial, submitLabel, onSubmit, footer }: Props) {
 
         <View style={{ gap: 6 }}>
           <SectionLabel color={ink.faint}>Description</SectionLabel>
-          <View style={styles.inputCard}>
+          <View style={styles.surface}>
+            <GlassBg ink={ink} />
             <TextInput
               value={description}
               onChangeText={setDescription}
               placeholder="Add a description of your event"
-              placeholderTextColor={colors.muted}
+              placeholderTextColor={ink.faint}
               multiline
               numberOfLines={4}
               maxLength={LIMITS.description}
-              style={[styles.input, styles.descInput]}
+              style={[styles.input, styles.descInput, { color: ink.text }]}
             />
           </View>
         </View>
 
         <PaperField
+          ink={ink}
           label="Max guests (optional)"
           labelColor={ink.faint}
           value={maxGuests}
@@ -488,22 +560,35 @@ export function EventForm({ initial, submitLabel, onSubmit, footer }: Props) {
         />
 
         <View style={styles.plusOneRow}>
-          <Text style={styles.plusOneLabel}>Plus ones per guest</Text>
+          <GlassBg ink={ink} />
+          <Text style={[styles.plusOneLabel, { color: ink.subtext }]}>Plus ones per guest</Text>
           <View style={styles.stepper}>
             <Pressable
               onPress={() => setPlusOneLimit(Math.max(0, plusOneLimit - 1))}
-              style={styles.stepButton}
+              style={[
+                styles.stepButton,
+                {
+                  backgroundColor: ink.dark ? 'rgba(255,255,255,0.16)' : 'rgba(255,255,255,0.55)',
+                  borderColor: ink.hairline,
+                },
+              ]}
             >
-              <Text style={styles.stepText}>−</Text>
+              <Text style={[styles.stepText, { color: ink.text }]}>−</Text>
             </Pressable>
-            <Text style={styles.plusOneValue}>
+            <Text style={[styles.plusOneValue, { color: ink.text }]}>
               {plusOneLimit === 0 ? 'None' : `+${plusOneLimit}`}
             </Text>
             <Pressable
               onPress={() => setPlusOneLimit(Math.min(LIMITS.plusOnes, plusOneLimit + 1))}
-              style={styles.stepButton}
+              style={[
+                styles.stepButton,
+                {
+                  backgroundColor: ink.dark ? 'rgba(255,255,255,0.16)' : 'rgba(255,255,255,0.55)',
+                  borderColor: ink.hairline,
+                },
+              ]}
             >
-              <Text style={styles.stepText}>＋</Text>
+              <Text style={[styles.stepText, { color: ink.text }]}>＋</Text>
             </Pressable>
           </View>
         </View>
@@ -565,10 +650,7 @@ const styles = StyleSheet.create({
     borderRadius: 18,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: colors.card,
-    borderWidth: 1,
-    borderColor: colors.cardBorder,
-    ...shadow.card,
+    overflow: 'hidden',
   },
   formCloseText: {
     fontSize: 16,
@@ -596,27 +678,15 @@ const styles = StyleSheet.create({
     paddingBottom: spacing.section,
   },
 
-  // ── Shared paper surfaces (opaque; lift off the gradient with a shadow) ──
-  card: {
-    backgroundColor: colors.card,
-    borderWidth: 1,
-    borderColor: colors.cardBorder,
+  // ── Shared frosted surfaces (translucent; the theme gradient glows through) ──
+  surface: {
     borderRadius: radius.md,
-    ...shadow.card,
   },
   cardPressed: {
     opacity: 0.7,
   },
   cardBtnText: {
-    color: colors.text,
     ...uiText(15, '700'),
-  },
-  inputCard: {
-    backgroundColor: colors.inputBg,
-    borderWidth: 1,
-    borderColor: colors.cardBorder,
-    borderRadius: radius.md,
-    ...shadow.card,
   },
   input: {
     color: colors.text,
@@ -717,13 +787,9 @@ const styles = StyleSheet.create({
   fontBar: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: colors.card,
-    borderWidth: 1,
-    borderColor: colors.cardBorder,
     borderRadius: radius.pill,
     padding: 4,
     gap: 2,
-    ...shadow.card,
   },
   fontSeg: {
     flex: 1,
@@ -732,9 +798,8 @@ const styles = StyleSheet.create({
     paddingVertical: 9,
     paddingHorizontal: 4,
     borderRadius: radius.pill,
-  },
-  fontSegActive: {
-    backgroundColor: colors.ink,
+    borderWidth: 1,
+    borderColor: 'transparent',
   },
   fontSegText: {
     fontSize: 15,
@@ -768,17 +833,12 @@ const styles = StyleSheet.create({
     gap: spacing.sm,
   },
   optionPill: {
-    backgroundColor: colors.card,
     borderWidth: 1,
-    borderColor: colors.cardBorder,
+    borderColor: 'transparent',
     borderRadius: radius.pill,
     paddingHorizontal: spacing.md,
     paddingVertical: 8,
-    ...shadow.card,
-  },
-  optionPillActive: {
-    backgroundColor: colors.ink,
-    borderColor: colors.ink,
+    overflow: 'hidden',
   },
   chipLabel: {
     ...uiText(13, '600'),
@@ -795,13 +855,9 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    backgroundColor: colors.card,
-    borderWidth: 1,
-    borderColor: colors.cardBorder,
     borderRadius: radius.md,
     padding: spacing.sm,
     paddingHorizontal: spacing.md,
-    ...shadow.card,
   },
   plusOneLabel: {
     color: light.text2,
@@ -818,9 +874,7 @@ const styles = StyleSheet.create({
     borderRadius: 18,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: colors.inputBg,
     borderWidth: 1,
-    borderColor: colors.cardBorder,
   },
   stepText: {
     color: colors.text,
