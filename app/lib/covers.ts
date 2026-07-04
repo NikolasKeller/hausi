@@ -41,6 +41,7 @@ export const COVERS: Record<CoverTheme, CoverSpec> = {
   berry: { key: 'berry', label: 'Berry', colors: ['#2A0A2E', '#6A1B4D', '#B0306E'], emoji: '🫐', category: 'dark', mood: 'dark' },
   storm: { key: 'storm', label: 'Storm', colors: ['#1C2331', '#3A4A63', '#6B7A99'], emoji: '⛈️', category: 'dark', mood: 'dark' },
   blossom: { key: 'blossom', label: 'Blossom', colors: ['#FFF0F5', '#FBD3E0', '#F7A8C4'], emoji: '🌸', category: 'seasonal', mood: 'light' },
+  halloween: { key: 'halloween', label: 'Halloween', colors: ['#0B0613', '#3B1053', '#E8590C'], emoji: '🎃', category: 'seasonal', mood: 'dark' },
 };
 
 export const COVER_LIST: CoverSpec[] = Object.values(COVERS);

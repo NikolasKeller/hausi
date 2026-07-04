@@ -39,6 +39,7 @@ export const COVER_THEMES = [
   'berry',
   'storm',
   'blossom',
+  'halloween',
 ] as const;
 
 export type CoverTheme = (typeof COVER_THEMES)[number];
