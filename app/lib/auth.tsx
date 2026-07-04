@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useEffect, useMemo, useState } from 'react';
+import { Platform } from 'react-native';
 import { storage } from './storage';
 import type { AuthResponse } from '../shared/types';
 import { api, setAuthToken, setOnUnauthorized } from './api';
@@ -48,6 +49,26 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           setUser(restored);
           // A returning user with a profile → greet them by name.
           if (restored.name?.trim()) setWelcomeBack(restored.name.trim().split(' ')[0]);
+        } else if (Platform.OS === 'web') {
+          // Local storage was cleared (e.g. iOS Safari eviction) but the durable
+          // server cookie may still be valid — restore the session from it. The
+          // cookie is HttpOnly so we can't read the token; same-origin requests
+          // carry it automatically, so no Bearer token is needed.
+          try {
+            const { token: cookieToken, user: cookieUser } = await api.sessionFromCookie();
+            // Re-hydrate the Bearer token too, so it's sent on future calls and
+            // a later 401 (cookie expired / user gone) still triggers sign-out
+            // instead of stranding the session on a dead cookie.
+            setAuthToken(cookieToken);
+            setUser(cookieUser);
+            await Promise.all([
+              storage.setItemAsync(TOKEN_KEY, cookieToken),
+              storage.setItemAsync(USER_KEY, JSON.stringify(cookieUser)),
+            ]);
+            if (cookieUser.name?.trim()) setWelcomeBack(cookieUser.name.trim().split(' ')[0]);
+          } catch {
+            // No valid cookie session — stay signed out.
+          }
         }
       } catch {
         // Corrupt session — start signed out.
@@ -98,6 +119,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         await persist({ token: res.token, user: sessionUser });
       },
       logout: async () => {
+        api.serverLogout().catch(() => {}); // clear the durable cookie too
         setAuthToken(null);
         setUser(null);
         await Promise.all([
