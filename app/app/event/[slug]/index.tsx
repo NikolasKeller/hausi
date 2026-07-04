@@ -73,16 +73,26 @@ export default function EventScreen() {
     }, [load])
   );
 
-  async function setRsvp(status: RsvpStatus, plusOnes = 0) {
+  async function setRsvp(status: RsvpStatus) {
     if (!event || rsvpBusy) return;
     setRsvpBusy(true);
     try {
-      const res = await api.rsvp(event.id, status, plusOnes);
+      const res = await api.rsvp(event.id, status);
       setEvent(res.event);
     } catch (e) {
       notify('RSVP failed', e instanceof Error ? e.message : 'Try again');
     } finally {
       setRsvpBusy(false);
+    }
+  }
+
+  async function dropPlusOne(plusOneId: string) {
+    if (!event) return;
+    try {
+      const res = await api.removePlusOne(event.id, plusOneId);
+      setEvent(res.event);
+    } catch (e) {
+      notify('Remove failed', e instanceof Error ? e.message : 'Try again');
     }
   }
 
@@ -181,8 +191,19 @@ export default function EventScreen() {
   }
 
   const myRsvp = event.rsvps.find((r) => r.user.id === user?.id);
+  const myPlusOne = myRsvp?.guests?.[0] ?? null;
   const spotsLeft =
     event.maxGuests != null ? Math.max(0, event.maxGuests - event.counts.going) : null;
+  const canAddPlusOne = spotsLeft == null || spotsLeft > 0;
+  // People who can't be a +1 because they're already on the list (as a guest or
+  // someone else's +1) — handed to the picker so they don't show up there.
+  const plusOneExclude = event.rsvps
+    .flatMap((r) => [
+      r.status !== 'CANT' ? r.user.id : null,
+      ...r.guests.map((g) => g.userId),
+    ])
+    .filter((id): id is string => !!id)
+    .join(',');
   const isCanceled = event.canceledAt != null;
   const rsvpLocked = isCanceled || (!event.rsvpsOpen && !event.canManage);
 
@@ -266,7 +287,7 @@ export default function EventScreen() {
                 return (
                   <Pressable
                     key={opt.status}
-                    onPress={() => setRsvp(opt.status, active ? (myRsvp?.plusOnes ?? 0) : 0)}
+                    onPress={() => setRsvp(opt.status)}
                     disabled={rsvpBusy}
                     style={[styles.rsvpButton, active && styles.rsvpButtonActive]}
                   >
@@ -294,33 +315,38 @@ export default function EventScreen() {
             </View>
           ) : null}
 
-          {!rsvpLocked && myRsvp?.status === 'GOING' && event.plusOneLimit > 0 ? (
+          {myRsvp?.status === 'GOING' && event.plusOneLimit > 0 && (myPlusOne != null || !rsvpLocked) ? (
             <View style={styles.plusOnesRow}>
-              <Text style={styles.plusOnesLabel}>Plus ones</Text>
-              <View style={styles.stepper}>
-                <Pressable
-                  onPress={() => setRsvp('GOING', Math.max(0, (myRsvp.plusOnes ?? 0) - 1))}
-                  style={styles.stepButton}
-                  disabled={rsvpBusy}
-                >
-                  <Text style={styles.stepText}>−</Text>
-                </Pressable>
-                <Text style={styles.plusOnesValue}>+{myRsvp.plusOnes}</Text>
+              <Text style={styles.plusOnesLabel}>Your plus one</Text>
+              {myPlusOne ? (
+                <View style={styles.plusOneChip}>
+                  <Avatar emoji={myPlusOne.avatarEmoji} size={24} />
+                  <Text style={styles.plusOneChipName} numberOfLines={1}>
+                    {myPlusOne.name}
+                  </Text>
+                  <Pressable
+                    onPress={() => dropPlusOne(myPlusOne.id)}
+                    hitSlop={8}
+                    style={styles.removeGuest}
+                  >
+                    <Text style={styles.removeGuestText}>✕</Text>
+                  </Pressable>
+                </View>
+              ) : canAddPlusOne ? (
                 <Pressable
                   onPress={() =>
-                    setRsvp('GOING', Math.min(event.plusOneLimit, (myRsvp.plusOnes ?? 0) + 1))
+                    router.push({
+                      pathname: '/add-plus-one',
+                      params: { eventId: event.id, slug: event.slug, exclude: plusOneExclude },
+                    })
                   }
-                  style={[
-                    styles.stepButton,
-                    (myRsvp.plusOnes >= event.plusOneLimit || spotsLeft === 0) && {
-                      opacity: 0.4,
-                    },
-                  ]}
-                  disabled={rsvpBusy || myRsvp.plusOnes >= event.plusOneLimit || spotsLeft === 0}
+                  style={styles.addPlusOneButton}
                 >
-                  <Text style={styles.stepText}>＋</Text>
+                  <Text style={styles.addPlusOneText}>＋ Bring a +1</Text>
                 </Pressable>
-              </View>
+              ) : (
+                <Text style={styles.plusOnesFull}>Event is full</Text>
+              )}
             </View>
           ) : null}
 
@@ -380,23 +406,49 @@ export default function EventScreen() {
                 <Text style={styles.guestGroupTitle}>{title}</Text>
                 {guests.map((r) => {
                   const isCohost = event.cohosts.some((ch) => ch.id === r.user.id);
+                  const isMe = r.user.id === user?.id;
                   return (
-                    <View key={r.user.id} style={styles.guestRow}>
-                      <Avatar emoji={r.user.avatarEmoji} size={32} />
-                      <Text style={[styles.guestName, { flex: 1 }]}>
-                        {r.user.name}
-                        {r.plusOnes > 0 ? ` +${r.plusOnes}` : ''}
-                        {r.user.id === event.host.id ? '  👑' : isCohost ? '  🤝' : ''}
-                      </Text>
-                      {event.canManage && r.user.id !== event.host.id && !isCohost ? (
-                        <Pressable
-                          onPress={() => confirmRemoveGuest(r.user.id, r.user.name)}
-                          style={styles.removeGuest}
-                          hitSlop={8}
-                        >
-                          <Text style={styles.removeGuestText}>✕</Text>
-                        </Pressable>
-                      ) : null}
+                    <View key={r.user.id} style={{ gap: spacing.sm }}>
+                      <View style={styles.guestRow}>
+                        <Avatar emoji={r.user.avatarEmoji} size={32} />
+                        <Text style={[styles.guestName, { flex: 1 }]}>
+                          {r.user.name}
+                          {r.user.id === event.host.id ? '  👑' : isCohost ? '  🤝' : ''}
+                        </Text>
+                        {event.canManage && r.user.id !== event.host.id && !isCohost ? (
+                          <Pressable
+                            onPress={() => confirmRemoveGuest(r.user.id, r.user.name)}
+                            style={styles.removeGuest}
+                            hitSlop={8}
+                          >
+                            <Text style={styles.removeGuestText}>✕</Text>
+                          </Pressable>
+                        ) : null}
+                      </View>
+                      {/* Your own +1 is managed via the chip above, so only list others' here. */}
+                      {!isMe
+                        ? r.guests.map((g) => (
+                            <View key={g.id} style={[styles.guestRow, styles.plusOneGuestRow]}>
+                              <Avatar emoji={g.avatarEmoji} size={26} />
+                              <Text
+                                style={[styles.plusOneGuestName, { flex: 1 }]}
+                                numberOfLines={1}
+                              >
+                                {g.name}
+                                <Text style={styles.plusOneTag}>{`  +1 of ${r.user.name}`}</Text>
+                              </Text>
+                              {event.canManage ? (
+                                <Pressable
+                                  onPress={() => dropPlusOne(g.id)}
+                                  style={styles.removeGuest}
+                                  hitSlop={8}
+                                >
+                                  <Text style={styles.removeGuestText}>✕</Text>
+                                </Pressable>
+                              ) : null}
+                            </View>
+                          ))
+                        : null}
                     </View>
                   );
                 })}
@@ -599,32 +651,46 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontWeight: '600',
   },
-  stepper: {
+  plusOneChip: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: spacing.md,
+    gap: spacing.xs,
+    maxWidth: '60%',
   },
-  stepButton: {
-    width: 34,
-    height: 34,
-    borderRadius: 17,
-    backgroundColor: colors.inputBg,
-    borderWidth: 1,
-    borderColor: colors.cardBorder,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  stepText: {
+  plusOneChipName: {
     color: colors.text,
-    fontSize: 18,
+    fontSize: 15,
     fontWeight: '700',
+    flexShrink: 1,
   },
-  plusOnesValue: {
+  addPlusOneButton: {
+    borderWidth: 1,
+    borderColor: colors.accent,
+    borderRadius: radius.pill,
+    paddingHorizontal: spacing.md,
+    paddingVertical: 8,
+  },
+  addPlusOneText: {
     color: colors.accent,
-    fontSize: 16,
-    fontWeight: '800',
-    minWidth: 32,
-    textAlign: 'center',
+    fontWeight: '700',
+    fontSize: 14,
+  },
+  plusOnesFull: {
+    color: colors.muted,
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  plusOneGuestRow: {
+    paddingLeft: spacing.lg,
+  },
+  plusOneGuestName: {
+    color: colors.text,
+    fontSize: 15,
+  },
+  plusOneTag: {
+    color: colors.muted,
+    fontSize: 12,
+    fontStyle: 'italic',
   },
   hostActions: {
     flexDirection: 'row',

@@ -6,6 +6,7 @@ import type {
   EventDetail,
   EventSummary,
   ExploreEvent,
+  PlusOneGuest,
   PublicUser,
   RsvpCounts,
   RsvpEntry,
@@ -14,12 +15,20 @@ import type {
 } from '../../../app/shared/types.js';
 
 type UserRow = { id: string; name: string; avatarEmoji: string };
+type PlusOneRow = {
+  id: string;
+  name: string;
+  userId: string | null;
+  user: UserRow | null;
+};
 type RsvpRow = {
   status: string;
   plusOnes: number;
   userId: string;
   waitlistedAt: Date | null;
   user: UserRow;
+  // Present only on detail queries (eventInclude); summary/explore skip it.
+  plusOneGuests?: PlusOneRow[];
 };
 type CommentRow = { id: string; text: string; type: string; createdAt: Date; user: UserRow };
 type CohostRow = { userId: string; user: UserRow };
@@ -140,6 +149,14 @@ export function toEventDetail(
         user: toPublicUser(r.user),
         status: r.status as RsvpStatus,
         plusOnes: r.plusOnes,
+        guests: (r.plusOneGuests ?? []).map(
+          (g): PlusOneGuest => ({
+            id: g.id,
+            name: g.name,
+            avatarEmoji: g.user?.avatarEmoji ?? '🎟️',
+            userId: g.userId,
+          })
+        ),
       })
     ),
     comments: event.comments.map(

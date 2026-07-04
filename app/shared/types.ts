@@ -82,10 +82,22 @@ export interface PhoneVerifyResponse extends AuthResponse {
   isNew: boolean;
 }
 
+// A named +1 an attendee brings. Linked to a Hausi user (picked from mutuals)
+// or a standalone name+phone entry. avatarEmoji falls back to a ticket when
+// there's no linked account.
+export interface PlusOneGuest {
+  id: string;
+  name: string;
+  avatarEmoji: string;
+  userId: string | null;
+}
+
 export interface RsvpEntry {
   user: PublicUser;
   status: RsvpStatus;
+  // Head count of plus-ones (== guests.length); kept for capacity display.
   plusOnes: number;
+  guests: PlusOneGuest[];
 }
 
 export interface CommentEntry {

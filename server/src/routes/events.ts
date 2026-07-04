@@ -12,6 +12,7 @@ import {
 import { makeSlug } from '../lib/slug.js';
 import { unlinkImage } from '../lib/uploads.js';
 import { notify } from '../lib/notify.js';
+import { findMutuals } from '../lib/mutuals.js';
 import { ledger } from '../lib/ledger.js';
 import {
   CATEGORIES,
@@ -25,7 +26,10 @@ import {
 const eventInclude = {
   host: true,
   cohosts: { include: { user: true } },
-  rsvps: { include: { user: true }, orderBy: { createdAt: 'asc' as const } },
+  rsvps: {
+    include: { user: true, plusOneGuests: { include: { user: true } } },
+    orderBy: { createdAt: 'asc' as const },
+  },
   comments: { include: { user: true }, orderBy: { createdAt: 'asc' as const } },
 };
 
@@ -54,8 +58,17 @@ const eventInputSchema = z.object({
 
 const rsvpSchema = z.object({
   status: z.enum(RSVP_CHOICES),
-  plusOnes: z.number().int().min(0).max(LIMITS.plusOnes).optional(),
 });
+
+// A +1 is either an existing Hausi user (picked from mutuals) or a manual
+// name + phone entry. Extra keys are ignored, so { userId } wins if both appear.
+const plusOneSchema = z.union([
+  z.object({ userId: z.string().min(1) }),
+  z.object({
+    name: z.string().trim().min(1).max(LIMITS.name),
+    phone: z.string().trim().min(3).max(30),
+  }),
+]);
 
 const commentSchema = z.object({
   text: z.string().trim().min(1).max(LIMITS.comment),
@@ -258,12 +271,18 @@ eventRoutes.patch('/:id', async (c) => {
     });
 
     // A lowered plus-one limit clamps existing parties so nobody is stuck
-    // above the new cap (and the freed seats can go to the waitlist).
+    // above the new cap (and the freed seats can go to the waitlist). Drop the
+    // named +1 rows too, keeping the oldest, so the count stays in sync.
     if (data.plusOneLimit != null) {
       const over = await tx.rsvp.findMany({
         where: { eventId: existing.id, plusOnes: { gt: data.plusOneLimit } },
+        include: { plusOneGuests: { orderBy: { createdAt: 'asc' } } },
       });
       for (const r of over) {
+        const excess = r.plusOneGuests.slice(data.plusOneLimit);
+        if (excess.length) {
+          await tx.plusOne.deleteMany({ where: { id: { in: excess.map((g) => g.id) } } });
+        }
         await tx.rsvp.update({
           where: { id: r.id },
           data: { plusOnes: data.plusOneLimit },
@@ -383,7 +402,6 @@ eventRoutes.put('/:id/rsvp', async (c) => {
   const parsed = rsvpSchema.safeParse(await c.req.json().catch(() => null));
   if (!parsed.success) return c.json({ error: 'Invalid RSVP' }, 400);
   const requestedStatus = parsed.data.status;
-  const plusOnes = requestedStatus === 'GOING' ? (parsed.data.plusOnes ?? 0) : 0;
 
   try {
     // Interactive transaction so concurrent RSVPs can't race past the capacity check.
@@ -398,22 +416,16 @@ eventRoutes.put('/:id/rsvp', async (c) => {
       const isManager = canManageEvent(event, userId);
       const previous = event.rsvps.find((r) => r.userId === userId);
 
-      // Closed RSVPs block joining or growing a party, but guests must always
-      // be able to withdraw (CANT/MAYBE) or shrink their plus ones.
-      const isDowngrade =
-        previous != null &&
-        (requestedStatus !== 'GOING' ||
-          (previous.status === 'GOING' && plusOnes <= previous.plusOnes));
+      // Plus-ones ride along with a GOING status and are managed on their own
+      // endpoint — here we only carry the existing count forward, and drop them
+      // entirely when the guest steps back to MAYBE/CANT.
+      const plusOnes = requestedStatus === 'GOING' ? (previous?.plusOnes ?? 0) : 0;
+
+      // Closed RSVPs block a new join, but guests must always be able to
+      // withdraw (CANT/MAYBE) or re-confirm a spot they already hold.
+      const isDowngrade = previous != null && (requestedStatus !== 'GOING' || previous.status === 'GOING');
       if (!event.rsvpsOpen && !isManager && !isDowngrade) {
         throw new HttpError('RSVPs are closed', 409);
-      }
-      if (plusOnes > event.plusOneLimit) {
-        throw new HttpError(
-          event.plusOneLimit === 0
-            ? 'No plus ones for this event'
-            : `Max +${event.plusOneLimit} for this event`,
-          400
-        );
       }
 
       // A full event puts NEW going requests on the waitlist. A guest who
@@ -439,11 +451,16 @@ eventRoutes.put('/:id/rsvp', async (c) => {
             ? previous.waitlistedAt
             : new Date()
           : null;
-      await tx.rsvp.upsert({
+      const saved = await tx.rsvp.upsert({
         where: { eventId_userId: { eventId, userId } },
         create: { eventId, userId, status, plusOnes, waitlistedAt },
         update: { status, plusOnes, waitlistedAt },
       });
+
+      // Stepping away from GOING releases any +1 the guest was bringing.
+      if (requestedStatus !== 'GOING') {
+        await tx.plusOne.deleteMany({ where: { rsvpId: saved.id } });
+      }
 
       // Activity-feed entry on the Party Wall when the status actually changes.
       if (!previous || previous.status !== status) {
@@ -506,6 +523,140 @@ eventRoutes.delete('/:id/rsvp/:userId', async (c) => {
     include: eventInclude,
   });
   return c.json({ event: toEventDetail(updated, me) });
+});
+
+// Bring a +1 to an event you're going to. Exactly one is allowed per guest —
+// either a Hausi user picked from your mutuals, or a manual name + phone. The
+// +1 counts as one extra head toward capacity via Rsvp.plusOnes.
+eventRoutes.post('/:id/plus-one', async (c) => {
+  const userId = c.get('userId');
+  const eventId = c.req.param('id');
+
+  const parsed = plusOneSchema.safeParse(await c.req.json().catch(() => null));
+  if (!parsed.success) {
+    return c.json({ error: 'Enter a name and phone number for your plus one' }, 400);
+  }
+  const input = parsed.data;
+
+  try {
+    await db.$transaction(async (tx) => {
+      const event = await tx.event.findUnique({
+        where: { id: eventId },
+        include: { rsvps: { include: { user: true, plusOneGuests: true } }, cohosts: true },
+      });
+      if (!event) throw new HttpError('Event not found', 404);
+      if (event.canceledAt) throw new HttpError('This event was canceled', 409);
+
+      const isManager = canManageEvent(event, userId);
+      const mine = event.rsvps.find((r) => r.userId === userId);
+      if (!mine || mine.status !== 'GOING') {
+        throw new HttpError("Say you're going before adding a plus one", 400);
+      }
+      if (!event.rsvpsOpen && !isManager) throw new HttpError('RSVPs are closed', 409);
+      if (event.plusOneLimit <= 0) throw new HttpError('No plus ones for this event', 400);
+      if (mine.plusOneGuests.length >= 1) {
+        throw new HttpError('You can only bring one plus one', 409);
+      }
+      // The +1 adds one head; a full event has no room for it (no waitlisting).
+      if (event.maxGuests != null && countRsvps(event.rsvps).going + 1 > event.maxGuests) {
+        throw new HttpError('Not enough spots left for a plus one', 409);
+      }
+
+      let name: string;
+      let phone: string | null;
+      let linkedUserId: string | null;
+      if ('userId' in input) {
+        if (input.userId === userId) {
+          throw new HttpError("You're already going — pick someone else", 400);
+        }
+        const guest = await tx.user.findUnique({ where: { id: input.userId } });
+        if (!guest) throw new HttpError('That person is no longer on Hausi', 404);
+        // Linked +1s must be someone you've actually partied with. The client
+        // only offers mutuals; this closes the direct-API bypass (attaching a
+        // stranger's name/avatar to the guest list without any connection).
+        const mutuals = await findMutuals(tx, userId);
+        if (!mutuals.has(guest.id)) {
+          throw new HttpError("You can only bring people you've partied with", 403);
+        }
+        // Don't double-count someone already on the list or already brought by
+        // another guest.
+        const onList = event.rsvps.some((r) => r.userId === guest.id && r.status !== 'CANT');
+        const alreadyPlusOne = event.rsvps.some((r) =>
+          r.plusOneGuests.some((g) => g.userId === guest.id)
+        );
+        if (onList || alreadyPlusOne) {
+          throw new HttpError(`${guest.name} is already on the guest list`, 409);
+        }
+        name = guest.name;
+        phone = guest.phone;
+        linkedUserId = guest.id;
+      } else {
+        name = input.name;
+        phone = input.phone;
+        linkedUserId = null;
+      }
+
+      await tx.plusOne.create({ data: { rsvpId: mine.id, name, phone, userId: linkedUserId } });
+      // Recompute the denormalized count from the rows so it can never drift.
+      const guestCount = await tx.plusOne.count({ where: { rsvpId: mine.id } });
+      await tx.rsvp.update({ where: { id: mine.id }, data: { plusOnes: guestCount } });
+
+      await tx.comment.create({
+        data: { eventId, userId, text: `is bringing ${name} 🎟️`, type: 'system' },
+      });
+      await notify(tx, managerIds(event).filter((id) => id !== userId), {
+        type: 'RSVP',
+        text: `${mine.user.name} is bringing ${name} to "${event.title}" 🎟️`,
+        eventSlug: event.slug,
+      });
+    });
+  } catch (e) {
+    if (e instanceof HttpError) return c.json({ error: e.message }, e.code);
+    // Lost a race for the one-+1 slot (unique [rsvpId]).
+    if (e && typeof e === 'object' && (e as { code?: string }).code === 'P2002') {
+      return c.json({ error: 'You can only bring one plus one' }, 409);
+    }
+    throw e;
+  }
+
+  const updated = await db.event.findUniqueOrThrow({ where: { id: eventId }, include: eventInclude });
+  return c.json({ event: toEventDetail(updated, userId) }, 201);
+});
+
+// Remove a +1 — the guest who added it, or a host/cohost, can drop it. The
+// freed seat may let the waitlist advance.
+eventRoutes.delete('/:id/plus-one/:plusOneId', async (c) => {
+  const userId = c.get('userId');
+  const eventId = c.req.param('id');
+  const plusOneId = c.req.param('plusOneId');
+
+  try {
+    await db.$transaction(async (tx) => {
+      const event = await tx.event.findUnique({ where: { id: eventId }, include: { cohosts: true } });
+      if (!event) throw new HttpError('Event not found', 404);
+      const plusOne = await tx.plusOne.findUnique({
+        where: { id: plusOneId },
+        include: { rsvp: true },
+      });
+      if (!plusOne || plusOne.rsvp.eventId !== eventId) {
+        throw new HttpError('Plus one not found', 404);
+      }
+      if (plusOne.rsvp.userId !== userId && !canManageEvent(event, userId)) {
+        throw new HttpError('You can only remove your own plus one', 403);
+      }
+      await tx.plusOne.delete({ where: { id: plusOne.id } });
+      // Recompute the count from the surviving rows (self-heals any drift).
+      const guestCount = await tx.plusOne.count({ where: { rsvpId: plusOne.rsvpId } });
+      await tx.rsvp.update({ where: { id: plusOne.rsvpId }, data: { plusOnes: guestCount } });
+      await promoteWaitlist(tx, eventId);
+    });
+  } catch (e) {
+    if (e instanceof HttpError) return c.json({ error: e.message }, e.code);
+    throw e;
+  }
+
+  const updated = await db.event.findUniqueOrThrow({ where: { id: eventId }, include: eventInclude });
+  return c.json({ event: toEventDetail(updated, userId) });
 });
 
 // Cohost management — creator only.
