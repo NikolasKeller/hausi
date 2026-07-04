@@ -2,22 +2,25 @@ import React from 'react';
 import { Tabs } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { colors } from '../../lib/theme';
+import { ScreenBackground } from '../../components/ScreenBackground';
 
 export default function TabsLayout() {
   return (
-    <Tabs
-      screenOptions={{
-        headerShown: false,
-        tabBarStyle: {
-          backgroundColor: '#0A0812',
-          borderTopColor: colors.cardBorder,
-          borderTopWidth: 0.5,
-        },
-        tabBarActiveTintColor: colors.text,
-        tabBarInactiveTintColor: colors.muted,
-        tabBarShowLabel: false,
-      }}
-    >
+    <ScreenBackground>
+      <Tabs
+        screenOptions={{
+          headerShown: false,
+          sceneStyle: { backgroundColor: 'transparent' },
+          tabBarStyle: {
+            backgroundColor: '#120D22',
+            borderTopColor: colors.cardBorder,
+            borderTopWidth: 0.5,
+          },
+          tabBarActiveTintColor: colors.accent,
+          tabBarInactiveTintColor: colors.muted,
+          tabBarShowLabel: false,
+        }}
+      >
       <Tabs.Screen
         name="index"
         options={{
@@ -65,6 +68,7 @@ export default function TabsLayout() {
           ),
         }}
       />
-    </Tabs>
+      </Tabs>
+    </ScreenBackground>
   );
 }

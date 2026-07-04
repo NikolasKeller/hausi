@@ -309,7 +309,7 @@ export default function ExploreScreen() {
 const styles = StyleSheet.create({
   safe: {
     flex: 1,
-    backgroundColor: colors.bg,
+    backgroundColor: 'transparent',
   },
   center: {
     flex: 1,
@@ -439,7 +439,7 @@ const styles = StyleSheet.create({
   },
   chipActive: {
     borderColor: colors.accent,
-    backgroundColor: '#241C3B',
+    backgroundColor: 'rgba(255,122,224,0.12)',
   },
   chipEmoji: {
     fontSize: 14,

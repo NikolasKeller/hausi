@@ -324,7 +324,7 @@ export default function CalendarScreen() {
 const styles = StyleSheet.create({
   safe: {
     flex: 1,
-    backgroundColor: colors.bg,
+    backgroundColor: 'transparent',
   },
   center: {
     flex: 1,

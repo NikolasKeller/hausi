@@ -33,21 +33,21 @@ const PROMOS: {
     title: 'Introducing Calendars',
     subtitle: 'All your parties, one grid',
     route: '/calendar',
-    gradient: ['#2B2050', '#1A1626'],
+    gradient: ['#4A3580', '#241B3A'],
   },
   {
     emoji: '💘',
     title: 'Have a crush?',
     subtitle: 'Tell them. Anonymously-ish.',
     route: '/profile',
-    gradient: ['#3A1B2A', '#1A1626'],
+    gradient: ['#7A2E63', '#241B3A'],
   },
   {
     emoji: '💌',
     title: 'Send a card',
     subtitle: "Make someone's day",
     route: '/send-card',
-    gradient: ['#14313A', '#1A1626'],
+    gradient: ['#8A5A3A', '#241B3A'],
   },
 ];
 
@@ -331,7 +331,7 @@ function CompactRow({ event, subtitle }: { event: ExploreEvent; subtitle: string
 const styles = StyleSheet.create({
   screen: {
     flex: 1,
-    backgroundColor: colors.bg,
+    backgroundColor: 'transparent',
   },
   center: {
     flex: 1,
