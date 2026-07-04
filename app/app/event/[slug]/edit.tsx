@@ -13,10 +13,8 @@ import { api } from '../../../lib/api';
 import { confirmDialog, notify } from '../../../lib/dialogs';
 import { colors, light, radius, spacing } from '../../../lib/theme';
 import { kicker, uiText } from '../../../lib/fonts';
-import { themeInk } from '../../../lib/covers';
 import { EventForm } from '../../../components/EventForm';
-import { Glass } from '../../../components/glass';
-import { ThemeBackground } from '../../../components/themes';
+import { PaperBackground } from '../../../components/partiful';
 import { Avatar } from '../../../components/Avatar';
 
 export default function EditEventScreen() {
@@ -79,22 +77,18 @@ export default function EditEventScreen() {
   }
 
   if (!event) {
-    const loadingTheme = 'sunset';
-    const loadingInk = themeInk(loadingTheme);
     return (
-      <ThemeBackground theme={loadingTheme}>
+      <PaperBackground>
         <View style={styles.center}>
           {error ? (
             <Text style={[styles.errorText, { color: colors.danger }]}>{error}</Text>
           ) : (
-            <ActivityIndicator color={loadingInk.text} size="large" />
+            <ActivityIndicator color={colors.accent} size="large" />
           )}
         </View>
-      </ThemeBackground>
+      </PaperBackground>
     );
   }
-
-  const ink = themeInk(event.coverTheme);
 
   return (
     <EventForm
@@ -122,48 +116,40 @@ export default function EditEventScreen() {
       }}
       footer={
         event.isHost ? (
-          <View style={[styles.cohostSection, { borderColor: ink.hairline }]}>
-            <Text style={[styles.cohostKicker, { color: ink.faint }]}>Share the load</Text>
-            <Text style={[styles.cohostTitle, { color: ink.text }]}>Co-hosts 🤝</Text>
+          <View style={styles.cohostSection}>
+            <Text style={styles.cohostKicker}>Share the load</Text>
+            <Text style={styles.cohostTitle}>Co-hosts 🤝</Text>
             {event.cohosts.length === 0 ? (
-              <Text style={[styles.cohostEmpty, { color: ink.faint }]}>
+              <Text style={styles.cohostEmpty}>
                 Co-hosts can edit the event and manage the guest list.
               </Text>
             ) : (
               event.cohosts.map((ch) => (
-                <Glass
-                  key={ch.id}
-                  radius={radius.md}
-                  intensity={24}
-                  tint={ink.glassTint}
-                  style={styles.cohostRow}
-                >
+                <View key={ch.id} style={styles.cohostRow}>
                   <Avatar emoji={ch.avatarEmoji} size={30} />
-                  <Text style={[styles.cohostName, { color: ink.subtext }]}>{ch.name}</Text>
+                  <Text style={styles.cohostName}>{ch.name}</Text>
                   <Pressable
                     onPress={() => removeCohost(ch.id, ch.name)}
-                    style={styles.cohostRemoveWrap}
+                    style={styles.cohostRemove}
                     hitSlop={8}
                   >
-                    <Glass radius={13} intensity={30} tint={ink.glassTint} style={styles.cohostRemove}>
-                      <Text style={[styles.cohostRemoveText, { color: ink.faint }]}>✕</Text>
-                    </Glass>
+                    <Text style={styles.cohostRemoveText}>✕</Text>
                   </Pressable>
-                </Glass>
+                </View>
               ))
             )}
             <View style={styles.cohostInputRow}>
-              <Glass radius={14} intensity={24} tint={ink.glassTint} style={styles.cohostInputWrap}>
+              <View style={styles.cohostInputWrap}>
                 <TextInput
                   value={cohostEmail}
                   onChangeText={setCohostEmail}
                   placeholder="friend@example.com"
-                  placeholderTextColor={ink.faint}
+                  placeholderTextColor={colors.muted}
                   autoCapitalize="none"
                   keyboardType="email-address"
-                  style={[styles.cohostInput, { color: ink.text }]}
+                  style={styles.cohostInput}
                 />
-              </Glass>
+              </View>
               <Pressable
                 onPress={addCohost}
                 disabled={cohostBusy || !cohostEmail.trim()}
@@ -199,12 +185,12 @@ const styles = StyleSheet.create({
   cohostSection: {
     gap: spacing.sm,
     borderTopWidth: StyleSheet.hairlineWidth,
-    borderColor: 'rgba(0,0,0,0.15)',
+    borderColor: colors.cardBorder,
     paddingTop: spacing.lg,
     marginTop: spacing.sm,
   },
   cohostKicker: {
-    ...kicker('rgba(0,0,0,0.5)'),
+    ...kicker(light.text3),
   },
   cohostTitle: {
     color: light.text,
@@ -220,24 +206,28 @@ const styles = StyleSheet.create({
     gap: spacing.sm,
     paddingVertical: 8,
     paddingHorizontal: spacing.md,
+    backgroundColor: colors.card,
+    borderWidth: 1,
+    borderColor: colors.cardBorder,
+    borderRadius: radius.md,
   },
   cohostName: {
     color: light.text2,
     ...uiText(15, '500'),
     flex: 1,
   },
-  cohostRemoveWrap: {
-    width: 26,
-    height: 26,
-  },
   cohostRemove: {
     width: 26,
     height: 26,
+    borderRadius: 13,
     alignItems: 'center',
     justifyContent: 'center',
+    backgroundColor: colors.inputBg,
+    borderWidth: 1,
+    borderColor: colors.cardBorder,
   },
   cohostRemoveText: {
-    color: 'rgba(0,0,0,0.5)',
+    color: light.text3,
     fontSize: 12,
     fontWeight: '700',
   },
@@ -247,10 +237,14 @@ const styles = StyleSheet.create({
   },
   cohostInputWrap: {
     flex: 1,
+    backgroundColor: colors.inputBg,
+    borderWidth: 1,
+    borderColor: colors.cardBorder,
+    borderRadius: radius.md,
   },
   cohostInput: {
     flex: 1,
-    color: '#0A0A0A',
+    color: colors.text,
     paddingHorizontal: spacing.md,
     paddingVertical: 10,
     fontSize: 15,
