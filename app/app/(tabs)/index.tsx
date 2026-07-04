@@ -1,4 +1,4 @@
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import {
   ActivityIndicator,
   Pressable,
@@ -14,6 +14,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import type { ExploreEvent, HomeFeed } from '../../shared/types';
 import { api } from '../../lib/api';
+import { useAuth } from '../../lib/auth';
 import { getRecentEvents, type RecentEvent } from '../../lib/recents';
 import { colors, radius, spacing } from '../../lib/theme';
 import { titleFontStyle, displayTitle } from '../../lib/fonts';
@@ -56,11 +57,21 @@ export default withScreenBackground(HomeScreen);
 
 function HomeScreen() {
   const router = useRouter();
+  const { welcomeBack, dismissWelcome } = useAuth();
   const [home, setHome] = useState<HomeFeed | null>(null);
   const [recents, setRecents] = useState<RecentEvent[]>([]);
   const [unread, setUnread] = useState(0);
   const [error, setError] = useState<string | null>(null);
   const [refreshing, setRefreshing] = useState(false);
+  // Greet a returning user once, on app open, then let it fade.
+  const [welcome, setWelcome] = useState<string | null>(null);
+  useEffect(() => {
+    if (!welcomeBack) return;
+    setWelcome(welcomeBack);
+    dismissWelcome(); // consume so it won't reappear on tab switches
+    const t = setTimeout(() => setWelcome(null), 5000);
+    return () => clearTimeout(t);
+  }, [welcomeBack, dismissWelcome]);
 
   const fetchAll = useCallback(async () => {
     const [homeRes, recentList, notifRes] = await Promise.all([
@@ -163,6 +174,19 @@ function HomeScreen() {
         }
       >
         {header}
+
+        {welcome ? (
+          <Pressable onPress={() => setWelcome(null)} style={styles.sectionGroup}>
+            <LinearGradient
+              colors={[colors.accentDark, '#C13FFF']}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              style={styles.welcomeBanner}
+            >
+              <Text style={styles.welcomeText}>👋 Welcome back — let&apos;s party, {welcome}! 🎉</Text>
+            </LinearGradient>
+          </Pressable>
+        ) : null}
 
         <View style={styles.sectionGroup}>
           <Text style={styles.sectionTitle}>Trending in {home.city} 🔥</Text>
@@ -402,6 +426,17 @@ const styles = StyleSheet.create({
   emptyNote: {
     color: colors.muted,
     fontSize: 14,
+  },
+  welcomeBanner: {
+    borderRadius: radius.lg,
+    paddingVertical: 14,
+    paddingHorizontal: spacing.md,
+  },
+  welcomeText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: '800',
+    letterSpacing: -0.3,
   },
   horizontalScroll: {
     marginHorizontal: -spacing.md,

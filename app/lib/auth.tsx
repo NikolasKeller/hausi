@@ -20,6 +20,10 @@ interface AuthContextValue {
   logout: () => Promise<void>;
   // Refresh the cached session user after a profile edit.
   updateUser: (user: SessionUser) => void;
+  // First name to greet a returning user with — set only when a saved session
+  // is restored on app open (not on fresh signup), cleared once shown.
+  welcomeBack: string | null;
+  dismissWelcome: () => void;
 }
 
 const DEV_PHONE = '+10000000001';
@@ -29,6 +33,7 @@ const AuthContext = createContext<AuthContextValue | null>(null);
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<SessionUser | null>(null);
   const [initializing, setInitializing] = useState(true);
+  const [welcomeBack, setWelcomeBack] = useState<string | null>(null);
 
   useEffect(() => {
     (async () => {
@@ -38,8 +43,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           storage.getItemAsync(USER_KEY),
         ]);
         if (token && storedUser) {
+          const restored = JSON.parse(storedUser) as SessionUser;
           setAuthToken(token);
-          setUser(JSON.parse(storedUser) as SessionUser);
+          setUser(restored);
+          // A returning user with a profile → greet them by name.
+          if (restored.name?.trim()) setWelcomeBack(restored.name.trim().split(' ')[0]);
         }
       } catch {
         // Corrupt session — start signed out.
@@ -101,8 +109,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setUser(updated);
         storage.setItemAsync(USER_KEY, JSON.stringify(updated)).catch(() => {});
       },
+      welcomeBack,
+      dismissWelcome: () => setWelcomeBack(null),
     };
-  }, [user, initializing]);
+  }, [user, initializing, welcomeBack]);
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
