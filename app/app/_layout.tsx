@@ -47,6 +47,9 @@ function RootNavigator() {
   const router = useRouter();
   // Where a signed-out user was heading (e.g. an invite deep link) — restored after auth.
   const pendingPath = useRef<string | null>(null);
+  // Distinguishes "just pressed log out" (had a session) from "arrived signed
+  // out via a link" — logout should land on the intro, not the phone screen.
+  const hadSession = useRef(false);
 
   const devAutoTried = useRef(false);
   useEffect(() => {
@@ -62,20 +65,20 @@ function RootNavigator() {
     if (initializing) return;
     const inAuthGroup = segments[0] === '(auth)';
     if (!user && !inAuthGroup) {
-      const arrivedViaLink = pathname && pathname !== '/';
+      const arrivedViaLink = !hadSession.current && pathname && pathname !== '/';
       if (arrivedViaLink) pendingPath.current = pathname;
       // Invitees jump straight to phone entry; everyone else gets the intro.
       router.replace(arrivedViaLink ? '/phone' : '/welcome');
+    } else if (user && !user.name.trim()) {
+      // Onboarding is mandatory: until a name is saved, every route —
+      // including a reload or a typed URL — funnels back to profile setup.
+      if (segments[0] !== 'setup') router.replace('/setup');
     } else if (user && inAuthGroup) {
-      // First-timers (no name yet) finish profile setup before landing.
-      if (!user.name.trim()) {
-        router.replace('/setup');
-        return;
-      }
       const target = pendingPath.current ?? '/';
       pendingPath.current = null;
       router.replace(target as never);
     }
+    hadSession.current = !!user;
   }, [user, initializing, segments, pathname, router]);
 
   if (initializing || !fontsReady) {
