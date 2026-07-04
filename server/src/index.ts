@@ -10,6 +10,7 @@ import { eventRoutes } from './routes/events.js';
 import { notificationRoutes } from './routes/notifications.js';
 import { discoverRoutes } from './routes/discover.js';
 import { meRoutes } from './routes/me.js';
+import { dedupeUsersByPhone } from './lib/dedupeUsers.js';
 
 const app = new Hono();
 
@@ -54,6 +55,14 @@ app.onError((err, c) => {
   console.error(err);
   return c.json({ error: 'Internal server error' }, 500);
 });
+
+// Collapse any pre-canonicalization duplicate accounts on boot. Best-effort:
+// a failure here must never stop the server from coming up.
+try {
+  await dedupeUsersByPhone();
+} catch (e) {
+  console.error('User dedupe skipped:', e);
+}
 
 const port = Number(process.env.PORT ?? 3001);
 serve({ fetch: app.fetch, port }, (info) => {
