@@ -310,7 +310,7 @@ export default function EventScreen() {
                 <Burst size={60} rays={8} color={colors.helio} rotate={-14} style={styles.heroBurst} />
                 <Burst size={38} rays={6} color={colors.accent} rotate={12} style={styles.heroBurst2} />
                 <Text style={styles.heroKicker}>You're invited</Text>
-                <Text style={[styles.heroTitle, titleFontStyle(event.titleFont)]}>{event.title}</Text>
+                <Text style={[styles.heroTitle, titleFontStyle(event.titleFont, 56)]}>{event.title}</Text>
               </CoverGradient>
             </View>
           ) : (
@@ -319,7 +319,7 @@ export default function EventScreen() {
               <Text
                 style={[
                   styles.heroTitlePlain,
-                  titleFontStyle(event.titleFont),
+                  titleFontStyle(event.titleFont, 56),
                   { color: ink.text },
                 ]}
               >

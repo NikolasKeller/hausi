@@ -48,7 +48,7 @@ function ExploreCard({ event }: { event: ExploreEvent }) {
       style={({ pressed }) => [styles.card, pressed && { opacity: 0.85 }]}
     >
       <CoverGradient theme={event.coverTheme} image={event.coverImage} style={styles.poster} emojiOpacity={0.25}>
-        <Text style={[styles.posterTitle, titleFontStyle(event.titleFont)]} numberOfLines={3}>
+        <Text style={[styles.posterTitle, titleFontStyle(event.titleFont, 20)]} numberOfLines={3}>
           {event.title}
         </Text>
       </CoverGradient>

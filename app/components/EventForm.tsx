@@ -328,8 +328,9 @@ export function EventForm({ initial, submitLabel, onSubmit, footer }: Props) {
           maxLength={LIMITS.title}
           // Pin the line box so switching fonts only swaps the glyphs — the
           // field keeps the same height instead of growing for tall faces
-          // (Pacifico/Bungee) and shrinking for compact ones.
-          style={[titleFontStyle(titleFont), styles.titleFieldInput]}
+          // (Pacifico/Bungee) and shrinking for compact ones. The size (16) is
+          // optically corrected per-face so the text stays visually the same.
+          style={[titleFontStyle(titleFont, 16), styles.titleFieldInput]}
         />
 
         <View style={styles.fontBar}>
@@ -360,7 +361,7 @@ export function EventForm({ initial, submitLabel, onSubmit, footer }: Props) {
         <CoverGradient theme={coverTheme} image={coverImage} style={styles.preview}>
           <Burst size={44} rays={8} color="rgba(255,255,255,0.9)" rotate={-12} style={styles.previewBurst} />
           <Text style={styles.previewKicker}>Live preview</Text>
-          <Text style={[styles.previewTitle, titleFontStyle(titleFont)]} numberOfLines={3}>
+          <Text style={[styles.previewTitle, titleFontStyle(titleFont, 38)]} numberOfLines={3}>
             {title.trim() || 'Untitled Event'}
           </Text>
         </CoverGradient>
