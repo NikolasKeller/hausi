@@ -13,8 +13,10 @@ import { api } from '../../../lib/api';
 import { confirmDialog, notify } from '../../../lib/dialogs';
 import { colors, light, radius, spacing } from '../../../lib/theme';
 import { kicker, uiText } from '../../../lib/fonts';
+import { themeInk } from '../../../lib/covers';
 import { EventForm } from '../../../components/EventForm';
-import { AmbientBackground, Glass } from '../../../components/glass';
+import { Glass } from '../../../components/glass';
+import { ThemeBackground } from '../../../components/themes';
 import { Avatar } from '../../../components/Avatar';
 
 export default function EditEventScreen() {
@@ -77,18 +79,22 @@ export default function EditEventScreen() {
   }
 
   if (!event) {
+    const loadingTheme = 'sunset';
+    const loadingInk = themeInk(loadingTheme);
     return (
-      <AmbientBackground variant="cloud">
+      <ThemeBackground theme={loadingTheme}>
         <View style={styles.center}>
           {error ? (
-            <Text style={styles.errorText}>{error}</Text>
+            <Text style={[styles.errorText, { color: colors.danger }]}>{error}</Text>
           ) : (
-            <ActivityIndicator color={light.text} size="large" />
+            <ActivityIndicator color={loadingInk.text} size="large" />
           )}
         </View>
-      </AmbientBackground>
+      </ThemeBackground>
     );
   }
+
+  const ink = themeInk(event.coverTheme);
 
   return (
     <EventForm
@@ -116,11 +122,11 @@ export default function EditEventScreen() {
       }}
       footer={
         event.isHost ? (
-          <View style={styles.cohostSection}>
-            <Text style={styles.cohostKicker}>Share the load</Text>
-            <Text style={styles.cohostTitle}>Co-hosts 🤝</Text>
+          <View style={[styles.cohostSection, { borderColor: ink.hairline }]}>
+            <Text style={[styles.cohostKicker, { color: ink.faint }]}>Share the load</Text>
+            <Text style={[styles.cohostTitle, { color: ink.text }]}>Co-hosts 🤝</Text>
             {event.cohosts.length === 0 ? (
-              <Text style={styles.cohostEmpty}>
+              <Text style={[styles.cohostEmpty, { color: ink.faint }]}>
                 Co-hosts can edit the event and manage the guest list.
               </Text>
             ) : (
@@ -129,33 +135,33 @@ export default function EditEventScreen() {
                   key={ch.id}
                   radius={radius.md}
                   intensity={24}
-                  tint="light"
+                  tint={ink.glassTint}
                   style={styles.cohostRow}
                 >
                   <Avatar emoji={ch.avatarEmoji} size={30} />
-                  <Text style={styles.cohostName}>{ch.name}</Text>
+                  <Text style={[styles.cohostName, { color: ink.subtext }]}>{ch.name}</Text>
                   <Pressable
                     onPress={() => removeCohost(ch.id, ch.name)}
                     style={styles.cohostRemoveWrap}
                     hitSlop={8}
                   >
-                    <Glass radius={13} intensity={30} tint="light" style={styles.cohostRemove}>
-                      <Text style={styles.cohostRemoveText}>✕</Text>
+                    <Glass radius={13} intensity={30} tint={ink.glassTint} style={styles.cohostRemove}>
+                      <Text style={[styles.cohostRemoveText, { color: ink.faint }]}>✕</Text>
                     </Glass>
                   </Pressable>
                 </Glass>
               ))
             )}
             <View style={styles.cohostInputRow}>
-              <Glass radius={14} intensity={24} tint="light" style={styles.cohostInputWrap}>
+              <Glass radius={14} intensity={24} tint={ink.glassTint} style={styles.cohostInputWrap}>
                 <TextInput
                   value={cohostEmail}
                   onChangeText={setCohostEmail}
                   placeholder="friend@example.com"
-                  placeholderTextColor="rgba(0,0,0,0.42)"
+                  placeholderTextColor={ink.faint}
                   autoCapitalize="none"
                   keyboardType="email-address"
-                  style={styles.cohostInput}
+                  style={[styles.cohostInput, { color: ink.text }]}
                 />
               </Glass>
               <Pressable

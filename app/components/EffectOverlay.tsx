@@ -14,14 +14,55 @@ interface ParticleSpec {
   tilt: number; // deterministic static rotation, decorative only
 }
 
-const EFFECT_CONFIG: Record<
-  Exclude<Effect, 'none'>,
-  { emojis: string[]; motion: 'fall' | 'twinkle' | 'float' }
-> = {
+type Motion = 'fall' | 'twinkle' | 'float';
+
+const EFFECT_CONFIG: Record<Exclude<Effect, 'none'>, { emojis: string[]; motion: Motion }> = {
   confetti: { emojis: ['🎊', '🎉', '✨', '🎈', '🥳', '🎁'], motion: 'fall' },
   sparkles: { emojis: ['✨', '⭐', '💫', '🌟', '💖'], motion: 'twinkle' },
   balloons: { emojis: ['🎈', '🎈', '🎀', '🥳'], motion: 'float' },
+  hearts: { emojis: ['💕', '❤️', '💖', '💗'], motion: 'float' },
+  stars: { emojis: ['✨', '⭐', '🌟', '💫'], motion: 'twinkle' },
+  leaves: { emojis: ['🍃', '🍂', '🌿'], motion: 'fall' },
+  petals: { emojis: ['🌸', '🌷', '🌹'], motion: 'fall' },
+  snow: { emojis: ['❄️', '🌨️', '⛄'], motion: 'fall' },
+  bubbles: { emojis: ['🫧', '🔵', '💧'], motion: 'float' },
+  fireworks: { emojis: ['🎆', '🎇', '✨'], motion: 'twinkle' },
+  autumn: { emojis: ['🍁', '🍂', '🌰'], motion: 'fall' },
+  music: { emojis: ['🎵', '🎶', '🎼'], motion: 'float' },
+  butterflies: { emojis: ['🦋', '🌸'], motion: 'float' },
+  spooky: { emojis: ['🦇', '👻', '🕸️'], motion: 'float' },
+  lightning: { emojis: ['⚡', '🌩️', '✨'], motion: 'twinkle' },
 };
+
+// Catalog for the effect picker: a single preview emoji + a category for the
+// tab filter. Order defines the grid order (with 'none' rendered first by the
+// picker itself).
+export type EffectCategory = 'trending' | 'classic' | 'fun' | 'seasonal';
+
+export const EFFECT_CATEGORIES: { key: EffectCategory; label: string; emoji: string }[] = [
+  { key: 'trending', label: 'Trending', emoji: '🔥' },
+  { key: 'classic', label: 'Classic', emoji: '🎉' },
+  { key: 'fun', label: 'Fun', emoji: '🎈' },
+  { key: 'seasonal', label: 'Seasonal', emoji: '🍁' },
+];
+
+export const EFFECT_META: { key: Exclude<Effect, 'none'>; label: string; emoji: string; category: EffectCategory }[] = [
+  { key: 'hearts', label: 'Hearts', emoji: '💕', category: 'trending' },
+  { key: 'stars', label: 'Stars', emoji: '🌟', category: 'trending' },
+  { key: 'fireworks', label: 'Fireworks', emoji: '🎆', category: 'trending' },
+  { key: 'lightning', label: 'Lightning', emoji: '⚡', category: 'trending' },
+  { key: 'confetti', label: 'Confetti', emoji: '🎊', category: 'classic' },
+  { key: 'sparkles', label: 'Sparkles', emoji: '✨', category: 'classic' },
+  { key: 'balloons', label: 'Balloons', emoji: '🎈', category: 'fun' },
+  { key: 'bubbles', label: 'Bubbles', emoji: '🫧', category: 'fun' },
+  { key: 'music', label: 'Music', emoji: '🎵', category: 'fun' },
+  { key: 'butterflies', label: 'Butterflies', emoji: '🦋', category: 'fun' },
+  { key: 'leaves', label: 'Leaves', emoji: '🍃', category: 'seasonal' },
+  { key: 'petals', label: 'Petals', emoji: '🌸', category: 'seasonal' },
+  { key: 'autumn', label: 'Autumn', emoji: '🍁', category: 'seasonal' },
+  { key: 'snow', label: 'Snow', emoji: '❄️', category: 'seasonal' },
+  { key: 'spooky', label: 'Spooky', emoji: '👻', category: 'seasonal' },
+];
 
 // Deterministic particle layout so the same event always looks the same.
 // (Seed math is deliberately index-based — do not change the constants.)
@@ -139,10 +180,18 @@ function Particle({
   );
 }
 
-export function EffectOverlay({ effect, height = 260 }: { effect: string; height?: number }) {
+export function EffectOverlay({
+  effect,
+  height = 260,
+  count = 12,
+}: {
+  effect: string;
+  height?: number;
+  count?: number;
+}) {
   if (effect === 'none' || !(effect in EFFECT_CONFIG)) return null;
   const config = EFFECT_CONFIG[effect as Exclude<Effect, 'none'>];
-  const specs = particles(config.emojis, 10);
+  const specs = particles(config.emojis, count);
   return (
     <View
       style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, overflow: 'hidden' }}

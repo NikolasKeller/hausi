@@ -18,12 +18,27 @@ export const LIMITS = {
 } as const;
 
 export const COVER_THEMES = [
+  // original six
   'sunset',
   'ocean',
   'candy',
   'midnight',
   'forest',
   'disco',
+  // themes — full-page event backgrounds (light + dark moods, grouped by
+  // category for the theme picker). Order roughly follows the picker grid.
+  'cloud',
+  'lava',
+  'aurora',
+  'noir',
+  'cottoncandy',
+  'peach',
+  'lavender',
+  'matcha',
+  'gold',
+  'berry',
+  'storm',
+  'blossom',
 ] as const;
 
 export type CoverTheme = (typeof COVER_THEMES)[number];
@@ -32,7 +47,26 @@ export const TITLE_FONTS = ['classic', 'literary', 'fancy', 'eclectic'] as const
 
 export type TitleFont = (typeof TITLE_FONTS)[number];
 
-export const EFFECTS = ['none', 'confetti', 'sparkles', 'balloons'] as const;
+export const EFFECTS = [
+  'none',
+  // motion particle effects (original)
+  'confetti',
+  'sparkles',
+  'balloons',
+  // overlay pattern effects (scattered stickers layered over the theme)
+  'hearts',
+  'stars',
+  'leaves',
+  'petals',
+  'snow',
+  'bubbles',
+  'fireworks',
+  'autumn',
+  'music',
+  'butterflies',
+  'spooky',
+  'lightning',
+] as const;
 
 export type Effect = (typeof EFFECTS)[number];
 

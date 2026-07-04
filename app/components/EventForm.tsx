@@ -14,7 +14,6 @@ import { useHeaderHeight } from '@react-navigation/elements';
 import {
   CATEGORIES,
   CATEGORY_META,
-  EFFECTS,
   LIMITS,
   TITLE_FONTS,
   type Category,
@@ -24,22 +23,15 @@ import {
   type TitleFont,
 } from '../shared/types';
 import { colors, light, radius, spacing } from '../lib/theme';
-import { COVER_LIST } from '../lib/covers';
+import { themeInk } from '../lib/covers';
 import { TITLE_FONT_LABELS, titleFontStyle, display, kicker, uiText } from '../lib/fonts';
 import { CoverGradient } from './CoverGradient';
-import { EffectOverlay } from './EffectOverlay';
 import { Button, ErrorText } from './ui';
-import { AmbientBackground, Glass, GlassField, GlassPill } from './glass';
+import { Glass, GlassField, GlassPill } from './glass';
+import { ThemeBackground, ThemePicker, EffectPicker } from './themes';
 import { Burst } from './partiful';
 import { formatEventDate, formatEventTime } from './EventCard';
 import { pickCoverImage } from '../lib/imageUpload';
-
-const EFFECT_LABELS: Record<Effect, string> = {
-  none: '✖️ None',
-  confetti: '🎊 Confetti',
-  sparkles: '✨ Sparkles',
-  balloons: '🎈 Balloons',
-};
 
 export interface EventFormValues {
   title: string;
@@ -122,8 +114,12 @@ export function EventForm({ initial, submitLabel, onSubmit, footer }: Props) {
   );
   const [plusOneLimit, setPlusOneLimit] = useState<number>(initial?.plusOneLimit ?? 1);
   const [picker, setPicker] = useState<'date' | 'time' | null>(null);
+  const [themePickerOpen, setThemePickerOpen] = useState(false);
+  const [effectPickerOpen, setEffectPickerOpen] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+
+  const ink = themeInk(coverTheme);
 
   async function submit() {
     if (!title.trim()) {
@@ -175,7 +171,7 @@ export function EventForm({ initial, submitLabel, onSubmit, footer }: Props) {
   }
 
   return (
-    <AmbientBackground variant="cloud">
+    <ThemeBackground theme={coverTheme} effect={effect}>
       <KeyboardAvoidingView
         style={{ flex: 1 }}
         behavior="padding"
@@ -187,18 +183,17 @@ export function EventForm({ initial, submitLabel, onSubmit, footer }: Props) {
           keyboardShouldPersistTaps="handled"
         >
         <Pressable onPress={() => setIsPublic(!isPublic)}>
-          <GlassPill style={styles.publicPill}>
-            <Text style={styles.publicPillText}>
+          <GlassPill tint={ink.glassTint} style={styles.publicPill}>
+            <Text style={[styles.publicPillText, { color: ink.subtext }]}>
               {isPublic ? '🌐 Public — anyone can find it' : '🔒 Private — invite only'}
             </Text>
-            <Text style={styles.publicPillAction}>
+            <Text style={[styles.publicPillAction, { color: ink.text }]}>
               {isPublic ? 'Make private' : 'Make it public'}
             </Text>
           </GlassPill>
         </Pressable>
 
         <CoverGradient theme={coverTheme} image={coverImage} style={styles.preview}>
-          <EffectOverlay effect={effect} height={210} />
           <Burst size={44} rays={8} color={colors.helio} rotate={-12} style={styles.previewBurst} />
           <Text style={styles.previewKicker}>Live preview</Text>
           <Text style={[styles.previewTitle, titleFontStyle(titleFont)]} numberOfLines={3}>
@@ -208,8 +203,8 @@ export function EventForm({ initial, submitLabel, onSubmit, footer }: Props) {
 
         <View style={styles.photoRow}>
           <Pressable style={styles.photoBtnWrap} onPress={onPickPhoto} disabled={uploadingCover}>
-            <Glass radius={radius.md} intensity={24} tint="light" style={styles.photoBtn}>
-              <Text style={styles.photoBtnText}>
+            <Glass radius={radius.md} intensity={24} tint={ink.glassTint} style={styles.photoBtn}>
+              <Text style={[styles.photoBtnText, { color: ink.text }]}>
                 {uploadingCover
                   ? 'Uploading…'
                   : coverImage
@@ -225,8 +220,21 @@ export function EventForm({ initial, submitLabel, onSubmit, footer }: Props) {
           ) : null}
         </View>
 
+        <View style={styles.styleRow}>
+          <Pressable style={styles.styleBtnWrap} onPress={() => setThemePickerOpen(true)}>
+            <Glass radius={radius.md} intensity={24} tint={ink.glassTint} style={styles.styleBtn}>
+              <Text style={[styles.styleBtnText, { color: ink.text }]}>🎨 Theme</Text>
+            </Glass>
+          </Pressable>
+          <Pressable style={styles.styleBtnWrap} onPress={() => setEffectPickerOpen(true)}>
+            <Glass radius={radius.md} intensity={24} tint={ink.glassTint} style={styles.styleBtn}>
+              <Text style={[styles.styleBtnText, { color: ink.text }]}>✨ Effect</Text>
+            </Glass>
+          </Pressable>
+        </View>
+
         <View style={{ gap: spacing.xs }}>
-          <Text style={styles.label}>Title font</Text>
+          <Text style={[styles.label, { color: ink.faint }]}>Title font</Text>
           <View style={styles.fontRow}>
             {TITLE_FONTS.map((f, i) => (
               <Pressable
@@ -240,50 +248,19 @@ export function EventForm({ initial, submitLabel, onSubmit, footer }: Props) {
                 <Glass
                   radius={radius.md}
                   intensity={titleFont === f ? 40 : 24}
-                  tint="light"
-                  fill={titleFont === f ? 'rgba(255,255,255,0.34)' : undefined}
+                  tint={ink.glassTint}
+                  fill={
+                    titleFont === f
+                      ? ink.dark
+                        ? 'rgba(255,255,255,0.18)'
+                        : 'rgba(255,255,255,0.34)'
+                      : undefined
+                  }
                   style={styles.fontChip}
                 >
-                  <Text style={[styles.fontChipSample, titleFontStyle(f)]}>Aa</Text>
-                  <Text style={styles.chipLabel}>{TITLE_FONT_LABELS[f]}</Text>
+                  <Text style={[styles.fontChipSample, titleFontStyle(f), { color: ink.text }]}>Aa</Text>
+                  <Text style={[styles.chipLabel, { color: ink.subtext }]}>{TITLE_FONT_LABELS[f]}</Text>
                 </Glass>
-              </Pressable>
-            ))}
-          </View>
-        </View>
-
-        <View style={{ gap: spacing.xs }}>
-          <Text style={styles.label}>Cover theme</Text>
-          <View style={styles.themeRow}>
-            {COVER_LIST.map((c, i) => (
-              <Pressable
-                key={c.key}
-                onPress={() => setCoverTheme(c.key)}
-                style={{ transform: [{ rotate: `${(i % 2 === 0 ? -1 : 1) * 4}deg` }] }}
-              >
-                <CoverGradient
-                  theme={c.key}
-                  emojiOpacity={0}
-                  style={StyleSheet.flatten([
-                    styles.themeChip,
-                    coverTheme === c.key && styles.themeChipActive,
-                  ])}
-                >
-                  <Text style={styles.themeEmoji}>{c.emoji}</Text>
-                </CoverGradient>
-              </Pressable>
-            ))}
-          </View>
-        </View>
-
-        <View style={{ gap: spacing.xs }}>
-          <Text style={styles.label}>Effect</Text>
-          <View style={styles.themeRow}>
-            {EFFECTS.map((e) => (
-              <Pressable key={e} onPress={() => setEffect(e)}>
-                <GlassPill active={effect === e} style={styles.optionPill}>
-                  <Text style={styles.chipLabel}>{EFFECT_LABELS[e]}</Text>
-                </GlassPill>
               </Pressable>
             ))}
           </View>
@@ -298,22 +275,22 @@ export function EventForm({ initial, submitLabel, onSubmit, footer }: Props) {
         />
 
         <View style={{ gap: spacing.xs }}>
-          <Text style={styles.label}>When</Text>
+          <Text style={[styles.label, { color: ink.faint }]}>When</Text>
           <View style={styles.dateRow}>
             <Pressable
               style={styles.dateButtonWrap}
               onPress={() => setPicker(picker === 'date' ? null : 'date')}
             >
-              <Glass radius={14} intensity={24} tint="light" style={styles.dateButton}>
-                <Text style={styles.dateText}>{formatEventDate(date.toISOString())}</Text>
+              <Glass radius={14} intensity={24} tint={ink.glassTint} style={styles.dateButton}>
+                <Text style={[styles.dateText, { color: ink.text }]}>{formatEventDate(date.toISOString())}</Text>
               </Glass>
             </Pressable>
             <Pressable
               style={styles.dateButtonWrap}
               onPress={() => setPicker(picker === 'time' ? null : 'time')}
             >
-              <Glass radius={14} intensity={24} tint="light" style={styles.dateButton}>
-                <Text style={styles.dateText}>{formatEventTime(date.toISOString())}</Text>
+              <Glass radius={14} intensity={24} tint={ink.glassTint} style={styles.dateButton}>
+                <Text style={[styles.dateText, { color: ink.text }]}>{formatEventTime(date.toISOString())}</Text>
               </Glass>
             </Pressable>
           </View>
@@ -365,12 +342,12 @@ export function EventForm({ initial, submitLabel, onSubmit, footer }: Props) {
         />
 
         <View style={{ gap: spacing.xs }}>
-          <Text style={styles.label}>Category</Text>
+          <Text style={[styles.label, { color: ink.faint }]}>Category</Text>
           <View style={styles.themeRow}>
             {CATEGORIES.map((cat) => (
               <Pressable key={cat} onPress={() => setCategory(cat)}>
-                <GlassPill active={category === cat} style={styles.optionPill}>
-                  <Text style={styles.chipLabel}>
+                <GlassPill active={category === cat} tint={ink.glassTint} style={styles.optionPill}>
+                  <Text style={[styles.chipLabel, { color: ink.subtext }]}>
                     {CATEGORY_META[cat].emoji} {CATEGORY_META[cat].label}
                   </Text>
                 </GlassPill>
@@ -395,17 +372,17 @@ export function EventForm({ initial, submitLabel, onSubmit, footer }: Props) {
         />
 
         <View style={{ gap: 6 }}>
-          <Text style={styles.glassFieldLabel}>Description</Text>
-          <Glass radius={14} intensity={24} tint="light" style={styles.descPanel}>
+          <Text style={[styles.glassFieldLabel, { color: ink.faint }]}>Description</Text>
+          <Glass radius={14} intensity={24} tint={ink.glassTint} style={styles.descPanel}>
             <TextInput
               value={description}
               onChangeText={setDescription}
               placeholder="Add a description of your event"
-              placeholderTextColor="rgba(0,0,0,0.42)"
+              placeholderTextColor={ink.faint}
               multiline
               numberOfLines={4}
               maxLength={LIMITS.description}
-              style={styles.descInput}
+              style={[styles.descInput, { color: ink.text }]}
             />
           </Glass>
         </View>
@@ -418,26 +395,26 @@ export function EventForm({ initial, submitLabel, onSubmit, footer }: Props) {
           keyboardType="number-pad"
         />
 
-        <Glass radius={radius.md} intensity={24} tint="light" style={styles.plusOneRow}>
-          <Text style={styles.plusOneLabel}>Plus ones per guest</Text>
+        <Glass radius={radius.md} intensity={24} tint={ink.glassTint} style={styles.plusOneRow}>
+          <Text style={[styles.plusOneLabel, { color: ink.subtext }]}>Plus ones per guest</Text>
           <View style={styles.stepper}>
             <Pressable
               onPress={() => setPlusOneLimit(Math.max(0, plusOneLimit - 1))}
               style={styles.stepButtonWrap}
             >
-              <Glass radius={18} intensity={30} tint="light" style={styles.stepButton}>
-                <Text style={styles.stepText}>−</Text>
+              <Glass radius={18} intensity={30} tint={ink.glassTint} style={styles.stepButton}>
+                <Text style={[styles.stepText, { color: ink.text }]}>−</Text>
               </Glass>
             </Pressable>
-            <Text style={styles.plusOneValue}>
+            <Text style={[styles.plusOneValue, { color: ink.text }]}>
               {plusOneLimit === 0 ? 'None' : `+${plusOneLimit}`}
             </Text>
             <Pressable
               onPress={() => setPlusOneLimit(Math.min(LIMITS.plusOnes, plusOneLimit + 1))}
               style={styles.stepButtonWrap}
             >
-              <Glass radius={18} intensity={30} tint="light" style={styles.stepButton}>
-                <Text style={styles.stepText}>＋</Text>
+              <Glass radius={18} intensity={30} tint={ink.glassTint} style={styles.stepButton}>
+                <Text style={[styles.stepText, { color: ink.text }]}>＋</Text>
               </Glass>
             </Pressable>
           </View>
@@ -448,7 +425,28 @@ export function EventForm({ initial, submitLabel, onSubmit, footer }: Props) {
         {footer}
         </ScrollView>
       </KeyboardAvoidingView>
-    </AmbientBackground>
+
+      {themePickerOpen ? (
+        <ThemePicker
+          value={coverTheme}
+          onChange={(t) => {
+            setCoverTheme(t as CoverTheme);
+            setThemePickerOpen(false);
+          }}
+          onClose={() => setThemePickerOpen(false)}
+        />
+      ) : null}
+      {effectPickerOpen ? (
+        <EffectPicker
+          value={effect}
+          onChange={(e) => {
+            setEffect(e as Effect);
+            setEffectPickerOpen(false);
+          }}
+          onClose={() => setEffectPickerOpen(false)}
+        />
+      ) : null}
+    </ThemeBackground>
   );
 }
 
@@ -527,20 +525,20 @@ const styles = StyleSheet.create({
     flexWrap: 'wrap',
     gap: spacing.md,
   },
-  themeChip: {
-    width: 52,
-    height: 52,
-    borderRadius: radius.md,
+  styleRow: {
+    flexDirection: 'row',
+    gap: spacing.sm,
+  },
+  styleBtnWrap: {
+    flex: 1,
+  },
+  styleBtn: {
+    paddingVertical: 14,
     alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 2,
-    borderColor: 'transparent',
   },
-  themeChipActive: {
-    borderColor: '#fff',
-  },
-  themeEmoji: {
-    fontSize: 24,
+  styleBtnText: {
+    color: light.text,
+    ...uiText(15, '700'),
   },
   dateRow: {
     flexDirection: 'row',

@@ -20,7 +20,8 @@ import { shareText } from '../../../lib/share';
 import { colors, radius, rsvp, spacing } from '../../../lib/theme';
 import { titleFontStyle, display, kicker, uiText } from '../../../lib/fonts';
 import { CoverGradient } from '../../../components/CoverGradient';
-import { EffectOverlay } from '../../../components/EffectOverlay';
+import { ThemeBackground, themeInk } from '../../../components/themes';
+import { Glass } from '../../../components/glass';
 import { Avatar } from '../../../components/Avatar';
 import { Button } from '../../../components/ui';
 import { Burst, PillBadge } from '../../../components/partiful';
@@ -197,6 +198,8 @@ export default function EventScreen() {
     );
   }
 
+  const ink = themeInk(event.coverTheme);
+
   const myRsvp = event.rsvps.find((r) => r.user.id === user?.id);
   const myPlusOne = myRsvp?.guests?.[0] ?? null;
   const spotsLeft =
@@ -215,329 +218,379 @@ export default function EventScreen() {
   const rsvpLocked = isCanceled || (!event.rsvpsOpen && !event.canManage);
 
   return (
-    <KeyboardAvoidingView style={{ flex: 1, backgroundColor: colors.bg }} behavior="padding">
-      <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
-        <CoverGradient theme={event.coverTheme} image={event.coverImage} style={styles.hero}>
-          <EffectOverlay effect={event.effect} height={360} />
-          <Burst size={60} rays={8} color={colors.helio} rotate={-14} style={styles.heroBurst} />
-          <Burst size={38} rays={6} color={colors.accent} rotate={12} style={styles.heroBurst2} />
-          <Text style={styles.heroKicker}>You're invited</Text>
-          <Text style={[styles.heroTitle, titleFontStyle(event.titleFont)]}>{event.title}</Text>
-        </CoverGradient>
-
-        {isCanceled ? (
-          <View style={styles.canceledBanner}>
-            <Text style={styles.canceledBannerText}>
-              😢 This event was canceled by the host
-            </Text>
-          </View>
-        ) : null}
-
-        <View style={styles.section}>
-          <View style={styles.hostRow}>
-            <Avatar emoji={event.host.avatarEmoji} size={44} />
-            <View style={{ flex: 1 }}>
-              <Text style={styles.hostedBy}>Hosted by</Text>
-              <Text style={styles.hostName}>
-                {event.isHost ? `${event.host.name} (you)` : event.host.name}
-                {event.cohosts.length
-                  ? ` + ${event.cohosts.map((ch) => ch.name).join(', ')}`
-                  : ''}
-              </Text>
+    <ThemeBackground theme={event.coverTheme} effect={event.effect}>
+      <KeyboardAvoidingView style={{ flex: 1 }} behavior="padding">
+        <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
+          {event.coverImage ? (
+            <View style={styles.posterWrap}>
+              <CoverGradient
+                theme={event.coverTheme}
+                image={event.coverImage}
+                style={styles.poster}
+              >
+                <Burst size={60} rays={8} color={colors.helio} rotate={-14} style={styles.heroBurst} />
+                <Burst size={38} rays={6} color={colors.accent} rotate={12} style={styles.heroBurst2} />
+                <Text style={styles.heroKicker}>You're invited</Text>
+                <Text style={[styles.heroTitle, titleFontStyle(event.titleFont)]}>{event.title}</Text>
+              </CoverGradient>
             </View>
-            <Pressable onPress={share} style={styles.shareButton}>
-              <Text style={styles.shareText}>Share link</Text>
-            </Pressable>
-          </View>
-
-          <View style={styles.metaCard}>
-            <Text style={styles.metaLine}>
-              🗓️ {formatEventDate(event.date)} · {formatEventTime(event.date)}
-            </Text>
-            {event.location ? (
-              <Text style={styles.metaLine}>
-                📍 {event.location}
-                {event.city ? `, ${event.city}` : ''}
-              </Text>
-            ) : null}
-            {event.costPerPerson ? (
-              <Text style={styles.metaLine}>💸 {event.costPerPerson}</Text>
-            ) : null}
-            {event.dressCode ? <Text style={styles.metaLine}>👗 {event.dressCode}</Text> : null}
-            {spotsLeft != null ? (
-              <Text style={styles.metaLine}>
-                🎟️ {spotsLeft > 0 ? `${spotsLeft} spots left` : 'Event is full'}
-              </Text>
-            ) : null}
-          </View>
-
-          {event.description ? <Text style={styles.description}>{event.description}</Text> : null}
-
-          {rsvpLocked ? (
-            !isCanceled ? (
-              <View style={{ gap: spacing.sm }}>
-                <View style={styles.lockedNote}>
-                  <Text style={styles.lockedNoteText}>🔒 RSVPs are closed for this event</Text>
-                </View>
-                {myRsvp && myRsvp.status !== 'CANT' ? (
-                  <Button
-                    title="I can't make it anymore"
-                    variant="ghost"
-                    tone="paper"
-                    onPress={() => setRsvp('CANT')}
-                  />
-                ) : null}
-              </View>
-            ) : null
           ) : (
-            <View style={styles.rsvpRow}>
-              {RSVP_OPTIONS.map((opt) => {
-                const active =
-                  myRsvp?.status === opt.status ||
-                  (opt.status === 'GOING' && myRsvp?.status === 'WAITLIST');
-                return (
-                  <Pressable
-                    key={opt.status}
-                    onPress={() => setRsvp(opt.status)}
-                    disabled={rsvpBusy}
-                    style={[styles.rsvpButton, active && styles.rsvpButtonActive]}
-                  >
-                    <Text style={styles.rsvpEmoji}>{opt.emoji}</Text>
-                    <Text style={[styles.rsvpLabel, active && styles.rsvpLabelActive]}>
-                      {opt.status === 'GOING' && myRsvp?.status === 'WAITLIST'
-                        ? 'Waitlist'
-                        : opt.label}
-                    </Text>
-                  </Pressable>
-                );
-              })}
+            <View style={styles.heroBlock}>
+              <Text style={[styles.heroKickerPlain, { color: ink.subtext }]}>You're invited</Text>
+              <Text
+                style={[
+                  styles.heroTitlePlain,
+                  titleFontStyle(event.titleFont),
+                  { color: ink.text },
+                ]}
+              >
+                {event.title}
+              </Text>
             </View>
           )}
 
-          {myRsvp?.status === 'WAITLIST' ? (
-            <View style={styles.lockedNote}>
-              <Text style={styles.lockedNoteText}>
-                ⏳ The event is full — you're #
-                {event.rsvps.filter((r) => r.status === 'WAITLIST').findIndex(
-                  (r) => r.user.id === user?.id
-                ) + 1}{' '}
-                on the waitlist
+          {isCanceled ? (
+            <View style={styles.canceledBanner}>
+              <Text style={styles.canceledBannerText}>
+                😢 This event was canceled by the host
               </Text>
             </View>
           ) : null}
 
-          {myRsvp?.status === 'GOING' && event.plusOneLimit > 0 && (myPlusOne != null || !rsvpLocked) ? (
-            <View style={styles.plusOnesRow}>
-              <Text style={styles.plusOnesLabel}>Your plus one</Text>
-              {myPlusOne ? (
-                <View style={styles.plusOneChip}>
-                  <Avatar emoji={myPlusOne.avatarEmoji} size={24} />
-                  <Text style={styles.plusOneChipName} numberOfLines={1}>
-                    {myPlusOne.name}
-                  </Text>
-                  {myPlusOne.userId == null ? (
-                    // Not on Hausi yet — resurface the invite link to text them.
-                    <Pressable onPress={sharePlusOneInvite} hitSlop={8}>
-                      <Text style={styles.plusOneShareText}>Share invite</Text>
-                    </Pressable>
-                  ) : null}
-                  <Pressable
-                    onPress={() => dropPlusOne(myPlusOne.id)}
-                    hitSlop={8}
-                    style={styles.removeGuest}
-                  >
-                    <Text style={styles.removeGuestText}>✕</Text>
-                  </Pressable>
-                </View>
-              ) : canAddPlusOne ? (
-                <Pressable
-                  onPress={() =>
-                    router.push({
-                      pathname: '/add-plus-one',
-                      params: {
-                        eventId: event.id,
-                        slug: event.slug,
-                        title: event.title,
-                        exclude: plusOneExclude,
-                      },
-                    })
-                  }
-                  style={styles.addPlusOneButton}
-                >
-                  <Text style={styles.addPlusOneText}>＋ Bring a +1</Text>
-                </Pressable>
-              ) : (
-                <Text style={styles.plusOnesFull}>Event is full</Text>
-              )}
+          <View style={styles.section}>
+            <View style={styles.hostRow}>
+              <Avatar emoji={event.host.avatarEmoji} size={44} />
+              <View style={{ flex: 1 }}>
+                <Text style={[styles.hostedBy, { color: ink.faint }]}>Hosted by</Text>
+                <Text style={[styles.hostName, { color: ink.text }]}>
+                  {event.isHost ? `${event.host.name} (you)` : event.host.name}
+                  {event.cohosts.length
+                    ? ` + ${event.cohosts.map((ch) => ch.name).join(', ')}`
+                    : ''}
+                </Text>
+              </View>
+              <Pressable onPress={share}>
+                <Glass tint={ink.glassTint} radius={radius.pill} style={styles.shareButton}>
+                  <Text style={[styles.shareText, { color: ink.text }]}>Share link</Text>
+                </Glass>
+              </Pressable>
             </View>
-          ) : null}
 
-          {event.canManage ? (
-            <View style={{ gap: spacing.sm }}>
-              {!isCanceled ? (
-                <View style={styles.hostActions}>
-                  <Button
-                    title="Edit event"
-                    variant="ghost"
-                    tone="paper"
-                    onPress={() => router.push(`/event/${event.slug}/edit`)}
-                    style={{ flex: 1 }}
-                  />
-                  <Button
-                    title={event.rsvpsOpen ? 'Close RSVPs' : 'Open RSVPs'}
-                    variant="ghost"
-                    tone="paper"
-                    onPress={toggleRsvpsOpen}
-                    style={{ flex: 1 }}
-                  />
-                </View>
+            <Glass tint={ink.glassTint} radius={radius.md} style={styles.metaCard}>
+              <Text style={[styles.metaLine, { color: ink.text }]}>
+                🗓️ {formatEventDate(event.date)} · {formatEventTime(event.date)}
+              </Text>
+              {event.location ? (
+                <Text style={[styles.metaLine, { color: ink.text }]}>
+                  📍 {event.location}
+                  {event.city ? `, ${event.city}` : ''}
+                </Text>
               ) : null}
-              {event.isHost ? (
-                <View style={styles.hostActions}>
-                  {!isCanceled ? (
+              {event.costPerPerson ? (
+                <Text style={[styles.metaLine, { color: ink.text }]}>💸 {event.costPerPerson}</Text>
+              ) : null}
+              {event.dressCode ? (
+                <Text style={[styles.metaLine, { color: ink.text }]}>👗 {event.dressCode}</Text>
+              ) : null}
+              {spotsLeft != null ? (
+                <Text style={[styles.metaLine, { color: ink.text }]}>
+                  🎟️ {spotsLeft > 0 ? `${spotsLeft} spots left` : 'Event is full'}
+                </Text>
+              ) : null}
+            </Glass>
+
+            {event.description ? (
+              <Text style={[styles.description, { color: ink.text }]}>{event.description}</Text>
+            ) : null}
+
+            {rsvpLocked ? (
+              !isCanceled ? (
+                <View style={{ gap: spacing.sm }}>
+                  <Glass tint={ink.glassTint} radius={radius.md} style={styles.lockedNote}>
+                    <Text style={[styles.lockedNoteText, { color: ink.subtext }]}>
+                      🔒 RSVPs are closed for this event
+                    </Text>
+                  </Glass>
+                  {myRsvp && myRsvp.status !== 'CANT' ? (
                     <Button
-                      title="Cancel event"
-                      variant="danger"
-                      onPress={confirmCancel}
-                      style={{ flex: 1 }}
+                      title="I can't make it anymore"
+                      variant="ghost"
+                      tone={ink.dark ? 'paper' : 'ink'}
+                      onPress={() => setRsvp('CANT')}
                     />
                   ) : null}
-                  <Button
-                    title="Delete"
-                    variant="danger"
-                    onPress={confirmDelete}
-                    style={{ flex: 1 }}
-                  />
                 </View>
-              ) : null}
-            </View>
-          ) : null}
-
-          <View style={styles.divider} />
-
-          <View style={styles.sectionHead}>
-            <Text style={styles.kickerLabel}>Who's coming</Text>
-            <Text style={styles.sectionTitle}>Guest list</Text>
-            <View style={styles.countPills}>
-              <PillBadge label={`${event.counts.going} going`} bg={rsvp.going.bg} color={rsvp.going.text} />
-              <PillBadge label={`${event.counts.maybe} maybe`} bg={rsvp.maybe.bg} color={rsvp.maybe.text} />
-              {event.counts.waitlist > 0 ? (
-                <PillBadge
-                  label={`${event.counts.waitlist} waitlist`}
-                  bg={rsvp.waitlist.bg}
-                  color={rsvp.waitlist.text}
-                />
-              ) : null}
-            </View>
-          </View>
-          {STATUS_SECTIONS.map(({ status, title }) => {
-            const guests = event.rsvps.filter((r) => r.status === status);
-            if (!guests.length) return null;
-            return (
-              <View key={status} style={{ gap: spacing.sm }}>
-                <Text style={styles.guestGroupTitle}>{title}</Text>
-                {guests.map((r) => {
-                  const isCohost = event.cohosts.some((ch) => ch.id === r.user.id);
-                  const isMe = r.user.id === user?.id;
+              ) : null
+            ) : (
+              <View style={styles.rsvpRow}>
+                {RSVP_OPTIONS.map((opt) => {
+                  const active =
+                    myRsvp?.status === opt.status ||
+                    (opt.status === 'GOING' && myRsvp?.status === 'WAITLIST');
                   return (
-                    <View key={r.user.id} style={{ gap: spacing.sm }}>
-                      <View style={styles.guestRow}>
-                        <Avatar emoji={r.user.avatarEmoji} size={32} />
-                        <Text style={[styles.guestName, { flex: 1 }]}>
-                          {r.user.name}
-                          {r.user.id === event.host.id ? '  👑' : isCohost ? '  🤝' : ''}
+                    <Pressable
+                      key={opt.status}
+                      onPress={() => setRsvp(opt.status)}
+                      disabled={rsvpBusy}
+                      style={styles.rsvpButtonWrap}
+                    >
+                      <Glass
+                        tint={ink.glassTint}
+                        radius={radius.md}
+                        fill={active ? (ink.dark ? 'rgba(255,255,255,0.18)' : 'rgba(255,255,255,0.34)') : undefined}
+                        style={[styles.rsvpButton, active && styles.rsvpButtonActive]}
+                      >
+                        <Text style={styles.rsvpEmoji}>{opt.emoji}</Text>
+                        <Text
+                          style={[
+                            styles.rsvpLabel,
+                            { color: active ? ink.text : ink.subtext },
+                          ]}
+                        >
+                          {opt.status === 'GOING' && myRsvp?.status === 'WAITLIST'
+                            ? 'Waitlist'
+                            : opt.label}
                         </Text>
-                        {event.canManage && r.user.id !== event.host.id && !isCohost ? (
-                          <Pressable
-                            onPress={() => confirmRemoveGuest(r.user.id, r.user.name)}
-                            style={styles.removeGuest}
-                            hitSlop={8}
-                          >
-                            <Text style={styles.removeGuestText}>✕</Text>
-                          </Pressable>
-                        ) : null}
-                      </View>
-                      {/* Your own +1 is managed via the chip above, so only list others' here. */}
-                      {!isMe
-                        ? r.guests.map((g) => (
-                            <View key={g.id} style={[styles.guestRow, styles.plusOneGuestRow]}>
-                              <Avatar emoji={g.avatarEmoji} size={26} />
-                              <Text
-                                style={[styles.plusOneGuestName, { flex: 1 }]}
-                                numberOfLines={1}
-                              >
-                                {g.name}
-                                <Text style={styles.plusOneTag}>{`  +1 of ${r.user.name}`}</Text>
-                              </Text>
-                              {event.canManage ? (
-                                <Pressable
-                                  onPress={() => dropPlusOne(g.id)}
-                                  style={styles.removeGuest}
-                                  hitSlop={8}
-                                >
-                                  <Text style={styles.removeGuestText}>✕</Text>
-                                </Pressable>
-                              ) : null}
-                            </View>
-                          ))
-                        : null}
-                    </View>
+                      </Glass>
+                    </Pressable>
                   );
                 })}
               </View>
-            );
-          })}
+            )}
 
-          <View style={styles.divider} />
-
-          <View style={styles.sectionHead}>
-            <Text style={styles.kickerLabel}>Say hi</Text>
-            <Text style={styles.sectionTitle}>Party Wall 💬</Text>
-          </View>
-          {event.comments.length === 0 ? (
-            <Text style={styles.noComments}>No comments yet — break the ice!</Text>
-          ) : (
-            event.comments.map((c) =>
-              c.type === 'system' ? (
-                <Text key={c.id} style={styles.systemEntry}>
-                  {c.user.avatarEmoji} {c.user.name} {c.text}
+            {myRsvp?.status === 'WAITLIST' ? (
+              <Glass tint={ink.glassTint} radius={radius.md} style={styles.lockedNote}>
+                <Text style={[styles.lockedNoteText, { color: ink.subtext }]}>
+                  ⏳ The event is full — you're #
+                  {event.rsvps.filter((r) => r.status === 'WAITLIST').findIndex(
+                    (r) => r.user.id === user?.id
+                  ) + 1}{' '}
+                  on the waitlist
                 </Text>
-              ) : (
-                <View key={c.id} style={styles.commentRow}>
-                  <Avatar emoji={c.user.avatarEmoji} size={32} />
-                  <View style={styles.commentBubble}>
-                    <Text style={styles.commentAuthor}>{c.user.name}</Text>
-                    <Text style={styles.commentText}>{c.text}</Text>
+              </Glass>
+            ) : null}
+
+            {myRsvp?.status === 'GOING' && event.plusOneLimit > 0 && (myPlusOne != null || !rsvpLocked) ? (
+              <Glass tint={ink.glassTint} radius={radius.md} style={styles.plusOnesRow}>
+                <Text style={[styles.plusOnesLabel, { color: ink.text }]}>Your plus one</Text>
+                {myPlusOne ? (
+                  <View style={styles.plusOneChip}>
+                    <Avatar emoji={myPlusOne.avatarEmoji} size={24} />
+                    <Text style={[styles.plusOneChipName, { color: ink.text }]} numberOfLines={1}>
+                      {myPlusOne.name}
+                    </Text>
+                    {myPlusOne.userId == null ? (
+                      // Not on Hausi yet — resurface the invite link to text them.
+                      <Pressable onPress={sharePlusOneInvite} hitSlop={8}>
+                        <Text style={[styles.plusOneShareText, { color: ink.text }]}>Share invite</Text>
+                      </Pressable>
+                    ) : null}
+                    <Pressable
+                      onPress={() => dropPlusOne(myPlusOne.id)}
+                      hitSlop={8}
+                      style={[styles.removeGuest, { borderColor: ink.hairline }]}
+                    >
+                      <Text style={[styles.removeGuestText, { color: ink.subtext }]}>✕</Text>
+                    </Pressable>
                   </View>
+                ) : canAddPlusOne ? (
+                  <Pressable
+                    onPress={() =>
+                      router.push({
+                        pathname: '/add-plus-one',
+                        params: {
+                          eventId: event.id,
+                          slug: event.slug,
+                          title: event.title,
+                          exclude: plusOneExclude,
+                        },
+                      })
+                    }
+                  >
+                    <Glass tint={ink.glassTint} radius={radius.pill} style={styles.addPlusOneButton}>
+                      <Text style={[styles.addPlusOneText, { color: ink.text }]}>＋ Bring a +1</Text>
+                    </Glass>
+                  </Pressable>
+                ) : (
+                  <Text style={[styles.plusOnesFull, { color: ink.faint }]}>Event is full</Text>
+                )}
+              </Glass>
+            ) : null}
+
+            {event.canManage ? (
+              <View style={{ gap: spacing.sm }}>
+                {!isCanceled ? (
+                  <View style={styles.hostActions}>
+                    <Button
+                      title="Edit event"
+                      variant="ghost"
+                      tone={ink.dark ? 'paper' : 'ink'}
+                      onPress={() => router.push(`/event/${event.slug}/edit`)}
+                      style={{ flex: 1 }}
+                    />
+                    <Button
+                      title={event.rsvpsOpen ? 'Close RSVPs' : 'Open RSVPs'}
+                      variant="ghost"
+                      tone={ink.dark ? 'paper' : 'ink'}
+                      onPress={toggleRsvpsOpen}
+                      style={{ flex: 1 }}
+                    />
+                  </View>
+                ) : null}
+                {event.isHost ? (
+                  <View style={styles.hostActions}>
+                    {!isCanceled ? (
+                      <Button
+                        title="Cancel event"
+                        variant="danger"
+                        onPress={confirmCancel}
+                        style={{ flex: 1 }}
+                      />
+                    ) : null}
+                    <Button
+                      title="Delete"
+                      variant="danger"
+                      onPress={confirmDelete}
+                      style={{ flex: 1 }}
+                    />
+                  </View>
+                ) : null}
+              </View>
+            ) : null}
+
+            <View style={[styles.divider, { backgroundColor: ink.hairline }]} />
+
+            <View style={styles.sectionHead}>
+              <Text style={[styles.kickerLabel, { color: ink.subtext }]}>Who's coming</Text>
+              <Text style={[styles.sectionTitle, { color: ink.text }]}>Guest list</Text>
+              <View style={styles.countPills}>
+                <PillBadge label={`${event.counts.going} going`} bg={rsvp.going.bg} color={rsvp.going.text} />
+                <PillBadge label={`${event.counts.maybe} maybe`} bg={rsvp.maybe.bg} color={rsvp.maybe.text} />
+                {event.counts.waitlist > 0 ? (
+                  <PillBadge
+                    label={`${event.counts.waitlist} waitlist`}
+                    bg={rsvp.waitlist.bg}
+                    color={rsvp.waitlist.text}
+                  />
+                ) : null}
+              </View>
+            </View>
+            {STATUS_SECTIONS.map(({ status, title }) => {
+              const guests = event.rsvps.filter((r) => r.status === status);
+              if (!guests.length) return null;
+              return (
+                <View key={status} style={{ gap: spacing.sm }}>
+                  <Text style={[styles.guestGroupTitle, { color: ink.subtext }]}>{title}</Text>
+                  {guests.map((r) => {
+                    const isCohost = event.cohosts.some((ch) => ch.id === r.user.id);
+                    const isMe = r.user.id === user?.id;
+                    return (
+                      <View key={r.user.id} style={{ gap: spacing.sm }}>
+                        <Glass tint={ink.glassTint} radius={radius.md} style={styles.guestRow}>
+                          <Avatar emoji={r.user.avatarEmoji} size={32} />
+                          <Text style={[styles.guestName, { flex: 1, color: ink.text }]}>
+                            {r.user.name}
+                            {r.user.id === event.host.id ? '  👑' : isCohost ? '  🤝' : ''}
+                          </Text>
+                          {event.canManage && r.user.id !== event.host.id && !isCohost ? (
+                            <Pressable
+                              onPress={() => confirmRemoveGuest(r.user.id, r.user.name)}
+                              style={[styles.removeGuest, { borderColor: ink.hairline }]}
+                              hitSlop={8}
+                            >
+                              <Text style={[styles.removeGuestText, { color: ink.subtext }]}>✕</Text>
+                            </Pressable>
+                          ) : null}
+                        </Glass>
+                        {/* Your own +1 is managed via the chip above, so only list others' here. */}
+                        {!isMe
+                          ? r.guests.map((g) => (
+                              <Glass
+                                key={g.id}
+                                tint={ink.glassTint}
+                                radius={radius.md}
+                                style={[styles.guestRow, styles.plusOneGuestRow]}
+                              >
+                                <Avatar emoji={g.avatarEmoji} size={26} />
+                                <Text
+                                  style={[styles.plusOneGuestName, { flex: 1, color: ink.text }]}
+                                  numberOfLines={1}
+                                >
+                                  {g.name}
+                                  <Text style={[styles.plusOneTag, { color: ink.faint }]}>{`  +1 of ${r.user.name}`}</Text>
+                                </Text>
+                                {event.canManage ? (
+                                  <Pressable
+                                    onPress={() => dropPlusOne(g.id)}
+                                    style={[styles.removeGuest, { borderColor: ink.hairline }]}
+                                    hitSlop={8}
+                                  >
+                                    <Text style={[styles.removeGuestText, { color: ink.subtext }]}>✕</Text>
+                                  </Pressable>
+                                ) : null}
+                              </Glass>
+                            ))
+                          : null}
+                      </View>
+                    );
+                  })}
                 </View>
+              );
+            })}
+
+            <View style={[styles.divider, { backgroundColor: ink.hairline }]} />
+
+            <View style={styles.sectionHead}>
+              <Text style={[styles.kickerLabel, { color: ink.subtext }]}>Say hi</Text>
+              <Text style={[styles.sectionTitle, { color: ink.text }]}>Party Wall 💬</Text>
+            </View>
+            {event.comments.length === 0 ? (
+              <Text style={[styles.noComments, { color: ink.faint }]}>No comments yet — break the ice!</Text>
+            ) : (
+              event.comments.map((c) =>
+                c.type === 'system' ? (
+                  <Text key={c.id} style={[styles.systemEntry, { color: ink.faint }]}>
+                    {c.user.avatarEmoji} {c.user.name} {c.text}
+                  </Text>
+                ) : (
+                  <View key={c.id} style={styles.commentRow}>
+                    <Avatar emoji={c.user.avatarEmoji} size={32} />
+                    <Glass tint={ink.glassTint} radius={radius.md} style={styles.commentBubble}>
+                      <Text style={[styles.commentAuthor, { color: ink.text }]}>{c.user.name}</Text>
+                      <Text style={[styles.commentText, { color: ink.text }]}>{c.text}</Text>
+                    </Glass>
+                  </View>
+                )
               )
-            )
-          )}
-          <View style={styles.commentInputRow}>
-            <TextInput
-              value={commentText}
-              onChangeText={setCommentText}
-              placeholder="Write something…"
-              placeholderTextColor={colors.muted}
-              style={styles.commentInput}
-              multiline
-              maxLength={LIMITS.comment}
-            />
-            <Pressable
-              onPress={sendComment}
-              disabled={sendingComment || !commentText.trim()}
-              style={[styles.sendButton, !commentText.trim() && { opacity: 0.4 }]}
-            >
-              {sendingComment ? (
-                <ActivityIndicator color="#fff" size="small" />
-              ) : (
-                <Text style={styles.sendText}>Send</Text>
-              )}
-            </Pressable>
+            )}
+            <View style={styles.commentInputRow}>
+              <Glass tint={ink.glassTint} radius={radius.md} style={styles.commentInputWrap}>
+                <TextInput
+                  value={commentText}
+                  onChangeText={setCommentText}
+                  placeholder="Write something…"
+                  placeholderTextColor={ink.faint}
+                  style={[styles.commentInput, { color: ink.text }]}
+                  multiline
+                  maxLength={LIMITS.comment}
+                />
+              </Glass>
+              <Pressable
+                onPress={sendComment}
+                disabled={sendingComment || !commentText.trim()}
+                style={[styles.sendButton, !commentText.trim() && { opacity: 0.4 }]}
+              >
+                {sendingComment ? (
+                  <ActivityIndicator color="#fff" size="small" />
+                ) : (
+                  <Text style={styles.sendText}>Send</Text>
+                )}
+              </Pressable>
+            </View>
           </View>
-        </View>
-      </ScrollView>
-    </KeyboardAvoidingView>
+        </ScrollView>
+      </KeyboardAvoidingView>
+    </ThemeBackground>
   );
 }
 
@@ -555,21 +608,31 @@ const styles = StyleSheet.create({
   content: {
     paddingBottom: spacing.section,
   },
-  hero: {
-    minHeight: 380,
+  posterWrap: {
+    padding: spacing.lg,
+    paddingTop: 80,
+  },
+  poster: {
+    minHeight: 300,
     justifyContent: 'flex-end',
     padding: spacing.lg,
-    paddingTop: 100,
+    borderRadius: radius.lg,
     overflow: 'hidden',
+  },
+  heroBlock: {
+    paddingHorizontal: spacing.lg,
+    paddingTop: 100,
+    paddingBottom: spacing.md,
+    gap: spacing.sm,
   },
   heroBurst: {
     position: 'absolute',
-    top: 108,
+    top: 24,
     right: 24,
   },
   heroBurst2: {
     position: 'absolute',
-    top: 168,
+    top: 84,
     right: 84,
   },
   heroKicker: {
@@ -589,6 +652,14 @@ const styles = StyleSheet.create({
     textShadowOffset: { width: 0, height: 2 },
     textShadowRadius: 8,
   },
+  heroKickerPlain: {
+    ...kicker(),
+  },
+  heroTitlePlain: {
+    fontSize: 56,
+    letterSpacing: -1,
+    lineHeight: 56,
+  },
   canceledBanner: {
     backgroundColor: 'rgba(255,107,129,0.12)',
     borderBottomWidth: 2,
@@ -601,14 +672,9 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   lockedNote: {
-    backgroundColor: colors.card,
-    borderWidth: 2,
-    borderColor: colors.cardBorder,
-    borderRadius: radius.md,
     padding: spacing.md,
   },
   lockedNoteText: {
-    color: colors.muted,
     ...uiText(14, '500'),
     textAlign: 'center',
   },
@@ -622,45 +688,33 @@ const styles = StyleSheet.create({
     gap: spacing.sm,
   },
   hostedBy: {
-    color: colors.muted,
     ...kicker(),
   },
   hostName: {
-    color: colors.text,
     ...uiText(16, '700'),
   },
   shareButton: {
-    borderWidth: 2,
-    borderColor: colors.accent,
-    borderRadius: radius.pill,
     paddingHorizontal: spacing.md,
     paddingVertical: 8,
   },
   shareText: {
-    color: colors.accent,
     ...uiText(14, '700'),
   },
   metaCard: {
-    backgroundColor: colors.card,
-    borderWidth: 2,
-    borderColor: colors.ink,
-    borderRadius: radius.md,
     padding: spacing.md,
     gap: spacing.sm,
   },
   metaLine: {
-    color: colors.text,
     ...uiText(16, '500'),
   },
   description: {
-    color: colors.text,
     ...uiText(16, '400', { lineHeight: 1.45 }),
   },
   sectionHead: {
     gap: spacing.xs,
   },
   kickerLabel: {
-    ...kicker(colors.accent),
+    ...kicker(),
   },
   countPills: {
     flexDirection: 'row',
@@ -672,43 +726,29 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     gap: spacing.sm,
   },
-  rsvpButton: {
+  rsvpButtonWrap: {
     flex: 1,
+  },
+  rsvpButton: {
     alignItems: 'center',
     gap: 4,
-    backgroundColor: colors.card,
-    borderWidth: 2,
-    borderColor: colors.cardBorder,
-    borderRadius: radius.md,
     paddingVertical: spacing.md,
   },
-  rsvpButtonActive: {
-    borderColor: colors.accent,
-    backgroundColor: 'rgba(255,122,224,0.12)',
-  },
+  rsvpButtonActive: {},
   rsvpEmoji: {
     fontSize: 28,
   },
   rsvpLabel: {
-    color: colors.muted,
     ...uiText(14, '700'),
-  },
-  rsvpLabelActive: {
-    color: colors.text,
   },
   plusOnesRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    backgroundColor: colors.card,
-    borderWidth: 2,
-    borderColor: colors.cardBorder,
-    borderRadius: radius.md,
     padding: spacing.sm,
     paddingHorizontal: spacing.md,
   },
   plusOnesLabel: {
-    color: colors.text,
     ...uiText(15, '600'),
   },
   plusOneChip: {
@@ -718,38 +758,29 @@ const styles = StyleSheet.create({
     maxWidth: '60%',
   },
   plusOneChipName: {
-    color: colors.text,
     ...uiText(15, '700'),
     flexShrink: 1,
   },
   plusOneShareText: {
-    color: colors.accent,
     ...uiText(13, '700'),
   },
   addPlusOneButton: {
-    borderWidth: 2,
-    borderColor: colors.accent,
-    borderRadius: radius.pill,
     paddingHorizontal: spacing.md,
     paddingVertical: 8,
   },
   addPlusOneText: {
-    color: colors.accent,
     ...uiText(14, '700'),
   },
   plusOnesFull: {
-    color: colors.muted,
     ...uiText(14, '600'),
   },
   plusOneGuestRow: {
-    paddingLeft: spacing.lg,
+    marginLeft: spacing.lg,
   },
   plusOneGuestName: {
-    color: colors.text,
     ...uiText(15, '400'),
   },
   plusOneTag: {
-    color: colors.muted,
     fontSize: 12,
     fontStyle: 'italic',
   },
@@ -759,31 +790,28 @@ const styles = StyleSheet.create({
   },
   divider: {
     height: 2,
-    backgroundColor: colors.cardBorder,
     marginVertical: spacing.sm,
   },
   sectionTitle: {
-    color: colors.text,
     ...display(34),
   },
   guestGroupTitle: {
-    ...kicker(colors.accent),
+    ...kicker(),
   },
   guestRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing.sm,
+    padding: spacing.sm,
+    paddingHorizontal: spacing.md,
   },
   guestName: {
-    color: colors.text,
     ...uiText(16, '500'),
   },
   noComments: {
-    color: colors.muted,
     ...uiText(15, '400'),
   },
   systemEntry: {
-    color: colors.muted,
     fontSize: 13,
     textAlign: 'center',
     fontStyle: 'italic',
@@ -792,14 +820,12 @@ const styles = StyleSheet.create({
     width: 26,
     height: 26,
     borderRadius: 13,
-    backgroundColor: colors.inputBg,
+    backgroundColor: 'rgba(0,0,0,0.12)',
     borderWidth: 2,
-    borderColor: colors.cardBorder,
     alignItems: 'center',
     justifyContent: 'center',
   },
   removeGuestText: {
-    color: colors.muted,
     fontSize: 12,
     fontWeight: '700',
   },
@@ -810,20 +836,14 @@ const styles = StyleSheet.create({
   },
   commentBubble: {
     flex: 1,
-    backgroundColor: colors.card,
-    borderWidth: 2,
-    borderColor: colors.cardBorder,
-    borderRadius: radius.md,
     padding: spacing.sm,
     paddingHorizontal: spacing.md,
     gap: 2,
   },
   commentAuthor: {
-    color: colors.accent,
     ...uiText(13, '700'),
   },
   commentText: {
-    color: colors.text,
     ...uiText(15, '400', { lineHeight: 1.4 }),
   },
   commentInputRow: {
@@ -831,17 +851,14 @@ const styles = StyleSheet.create({
     gap: spacing.sm,
     alignItems: 'flex-end',
   },
-  commentInput: {
+  commentInputWrap: {
     flex: 1,
-    backgroundColor: colors.inputBg,
-    borderWidth: 2,
-    borderColor: colors.cardBorder,
-    borderRadius: radius.md,
-    color: colors.text,
+    maxHeight: 120,
+  },
+  commentInput: {
     paddingHorizontal: spacing.md,
     paddingVertical: 10,
     fontSize: 15,
-    maxHeight: 120,
   },
   sendButton: {
     backgroundColor: colors.accentDark,
