@@ -87,6 +87,27 @@ export const TITLE_FONT_STYLES: Record<TitleFont, TextStyle> = {
   eclectic: { fontFamily: 'Bungee_400Regular', fontWeight: 'normal', letterSpacing: 0 },
 };
 
-export function titleFontStyle(font: string): TextStyle {
-  return TITLE_FONT_STYLES[font as TitleFont] ?? TITLE_FONT_STYLES.classic;
+// Optical-size correction. Each face renders at a different apparent size for the
+// same fontSize because their cap-heights differ (measured from the actual TTFs,
+// per 1000 em): Archivo ~690, Playfair ~715, Pacifico ~853, Bungee ~720. Left
+// uncorrected, picking "Fancy" (Pacifico) blows the title up ~24% and "Literary"
+// shrinks it. These factors equalize the height of the capitals — the dominant
+// visual anchor for Title-Case titles — so switching fonts swaps the glyphs
+// without changing the size. Tune here if a face still reads too big/small.
+export const TITLE_FONT_SCALE: Record<TitleFont, number> = {
+  classic: 1.0,
+  literary: 0.96,
+  fancy: 0.8,
+  eclectic: 0.95,
+};
+
+// Returns the style for a title font. Pass the intended base `size` and the
+// returned fontSize is optically corrected so every face renders at the same
+// apparent size; omit `size` to get just the family/weight/tracking (e.g. for
+// the font-picker chips, which intentionally preview each face's own flavor).
+export function titleFontStyle(font: string, size?: number): TextStyle {
+  const key = (font in TITLE_FONT_STYLES ? font : 'classic') as TitleFont;
+  const base = TITLE_FONT_STYLES[key];
+  if (size == null) return base;
+  return { ...base, fontSize: Math.round(size * TITLE_FONT_SCALE[key]) };
 }

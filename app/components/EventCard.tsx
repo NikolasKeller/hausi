@@ -40,7 +40,7 @@ export function EventCard({ event }: { event: EventSummary }) {
             <Text style={styles.canceledText}>CANCELED</Text>
           </View>
         ) : null}
-        <Text style={[styles.title, titleFontStyle(event.titleFont)]} numberOfLines={2}>
+        <Text style={[styles.title, titleFontStyle(event.titleFont, 38)]} numberOfLines={2}>
           {event.title}
         </Text>
       </CoverGradient>

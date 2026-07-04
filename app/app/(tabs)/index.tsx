@@ -298,7 +298,7 @@ function TrendingCard({ event }: { event: ExploreEvent }) {
     >
       <CoverGradient theme={event.coverTheme} image={event.coverImage} style={styles.trendingCover} emojiOpacity={0.3}>
         <Text
-          style={[styles.trendingTitle, titleFontStyle(event.titleFont)]}
+          style={[styles.trendingTitle, titleFontStyle(event.titleFont, 22)]}
           numberOfLines={2}
         >
           {event.title}
@@ -328,7 +328,7 @@ function RecentCard({ recent }: { recent: RecentEvent }) {
       style={({ pressed }) => [styles.recentCard, pressed && { opacity: 0.85 }]}
     >
       <CoverGradient theme={recent.coverTheme} image={recent.coverImage} style={styles.recentCover} emojiOpacity={0.25}>
-        <Text style={[styles.recentTitle, titleFontStyle(recent.titleFont)]} numberOfLines={2}>
+        <Text style={[styles.recentTitle, titleFontStyle(recent.titleFont, 14)]} numberOfLines={2}>
           {recent.title}
         </Text>
       </CoverGradient>
