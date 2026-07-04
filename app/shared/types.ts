@@ -36,6 +36,30 @@ export const EFFECTS = ['none', 'confetti', 'sparkles', 'balloons'] as const;
 
 export type Effect = (typeof EFFECTS)[number];
 
+export const CATEGORIES = [
+  'music',
+  'community',
+  'arts',
+  'food',
+  'sports',
+  'other',
+] as const;
+
+export type Category = (typeof CATEGORIES)[number];
+
+export const CATEGORY_META: Record<Category, { label: string; emoji: string }> = {
+  music: { label: 'Music', emoji: '🪩' },
+  community: { label: 'Community', emoji: '👥' },
+  arts: { label: 'Arts', emoji: '🎨' },
+  food: { label: 'Food', emoji: '🍜' },
+  sports: { label: 'Sports', emoji: '🏀' },
+  other: { label: 'Other', emoji: '✨' },
+};
+
+export const CARD_THEMES = ['confetti', 'birthday', 'thanks', 'miss-you', 'congrats'] as const;
+
+export type CardTheme = (typeof CARD_THEMES)[number];
+
 export interface PublicUser {
   id: string;
   name: string;
@@ -44,7 +68,18 @@ export interface PublicUser {
 
 export interface AuthResponse {
   token: string;
-  user: PublicUser & { email: string };
+  user: PublicUser & { email: string | null; phone: string | null };
+}
+
+export interface PhoneRequestResponse {
+  sent: boolean;
+  // Present only while no SMS provider is configured (local dev):
+  // the app shows it as a simulated text message.
+  devCode?: string;
+}
+
+export interface PhoneVerifyResponse extends AuthResponse {
+  isNew: boolean;
 }
 
 export interface RsvpEntry {
@@ -77,6 +112,9 @@ export interface EventSummary {
   effect: Effect;
   date: string;
   location: string;
+  city: string;
+  category: Category;
+  isPublic: boolean;
   host: PublicUser;
   isHost: boolean;
   canManage: boolean;
@@ -85,8 +123,17 @@ export interface EventSummary {
   counts: RsvpCounts;
 }
 
+// A public event as shown on Explore/Home discovery surfaces.
+export interface ExploreEvent extends EventSummary {
+  description: string;
+  interested: number;
+  friendGoing: PublicUser | null;
+}
+
 export interface EventDetail extends EventSummary {
   description: string;
+  costPerPerson: string;
+  dressCode: string;
   maxGuests: number | null;
   plusOneLimit: number;
   rsvpsOpen: boolean;
@@ -103,9 +150,57 @@ export interface EventInput {
   effect?: Effect;
   date: string;
   location?: string;
+  city?: string;
+  category?: Category;
+  isPublic?: boolean;
+  costPerPerson?: string;
+  dressCode?: string;
   maxGuests?: number | null;
   plusOneLimit?: number;
   rsvpsOpen?: boolean;
+}
+
+export interface HomeFeed {
+  city: string;
+  trendingNearby: ExploreEvent[];
+  palsGoing: ExploreEvent[];
+  trendingNow: ExploreEvent[];
+}
+
+export interface Mutual {
+  user: PublicUser;
+  sharedEventTitle: string;
+  sharedEventSlug: string;
+  crushed: boolean;
+}
+
+export interface Badge {
+  key: string;
+  label: string;
+  emoji: string;
+  value: number;
+}
+
+export interface CardEntry {
+  id: string;
+  from: PublicUser;
+  to: PublicUser;
+  theme: CardTheme;
+  message: string;
+  createdAt: string;
+}
+
+export interface MyProfile {
+  id: string;
+  name: string;
+  email: string | null;
+  phone: string | null;
+  avatarEmoji: string;
+  city: string;
+  joinedAt: string;
+  badges: Badge[];
+  mutuals: Mutual[];
+  cards: CardEntry[];
 }
 
 export interface NotificationEntry {

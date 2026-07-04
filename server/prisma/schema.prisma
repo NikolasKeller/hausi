@@ -2,47 +2,91 @@ generator client {
   provider = "prisma-client-js"
 }
 
+// Local dev runs on SQLite. To go live on Postgres (e.g. Supabase):
+// change provider to "postgresql", point DATABASE_URL in server/.env at the
+// connection string, and run `npx prisma db push`. Nothing else changes —
+// mutuals, badges, trending etc. are all computed from these tables.
 datasource db {
   provider = "sqlite"
   url      = env("DATABASE_URL")
 }
 
+// Auth is phone-first (SMS code). Email/password remains only for legacy
+// dev accounts and disappears with the Supabase Auth migration.
 model User {
-  id            String         @id @default(cuid())
-  name          String
-  email         String         @unique
-  passwordHash  String
-  avatarEmoji   String         @default("🙂")
-  createdAt     DateTime       @default(now())
-  events        Event[]        @relation("HostEvents")
-  rsvps         Rsvp[]
-  comments      Comment[]
-  cohosting     EventCohost[]
-  notifications Notification[]
+  id                 String    @id @default(cuid())
+  name               String    @default("")
+  email              String?   @unique
+  passwordHash       String?
+  phone              String?   @unique
+  phoneCode          String?
+  phoneCodeExpiresAt DateTime?
+  avatarEmoji        String    @default("🙂")
+  city               String    @default("San Francisco")
+  createdAt      DateTime       @default(now())
+  events         Event[]        @relation("HostEvents")
+  rsvps          Rsvp[]
+  comments       Comment[]
+  cohosting      EventCohost[]
+  notifications  Notification[]
+  cardsSent      Card[]         @relation("CardsSent")
+  cardsReceived  Card[]         @relation("CardsReceived")
+  crushesSent    Crush[]        @relation("CrushesSent")
+  crushesGotten  Crush[]        @relation("CrushesGotten")
+}
+
+// A digital greeting card sent between users.
+model Card {
+  id        String   @id @default(cuid())
+  fromId    String
+  from      User     @relation("CardsSent", fields: [fromId], references: [id], onDelete: Cascade)
+  toId      String
+  to        User     @relation("CardsReceived", fields: [toId], references: [id], onDelete: Cascade)
+  theme     String   @default("confetti")
+  message   String
+  createdAt DateTime @default(now())
+}
+
+// One-way crush; when reciprocal, both get notified.
+model Crush {
+  id        String   @id @default(cuid())
+  fromId    String
+  from      User     @relation("CrushesSent", fields: [fromId], references: [id], onDelete: Cascade)
+  toId      String
+  to        User     @relation("CrushesGotten", fields: [toId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+
+  @@unique([fromId, toId])
 }
 
 // titleFont: classic | literary | fancy | eclectic
 // effect: none | confetti | sparkles | balloons
+// category: music | community | arts | food | sports | other
 model Event {
-  id           String        @id @default(cuid())
-  slug         String        @unique
-  title        String
-  description  String        @default("")
-  coverTheme   String        @default("sunset")
-  titleFont    String        @default("classic")
-  effect       String        @default("none")
-  date         DateTime
-  location     String        @default("")
-  maxGuests    Int?
-  plusOneLimit Int           @default(1)
-  rsvpsOpen    Boolean       @default(true)
-  canceledAt   DateTime?
-  hostId       String
-  host         User          @relation("HostEvents", fields: [hostId], references: [id], onDelete: Cascade)
-  createdAt    DateTime      @default(now())
-  rsvps        Rsvp[]
-  comments     Comment[]
-  cohosts      EventCohost[]
+  id            String        @id @default(cuid())
+  slug          String        @unique
+  title         String
+  description   String        @default("")
+  coverTheme    String        @default("sunset")
+  titleFont     String        @default("classic")
+  effect        String        @default("none")
+  date          DateTime
+  location      String        @default("")
+  city          String        @default("")
+  category      String        @default("community")
+  isPublic      Boolean       @default(false)
+  costPerPerson String        @default("")
+  dressCode     String        @default("")
+  maxGuests     Int?
+  plusOneLimit  Int           @default(1)
+  rsvpsOpen     Boolean       @default(true)
+  canceledAt    DateTime?
+  hostId        String
+  host          User          @relation("HostEvents", fields: [hostId], references: [id], onDelete: Cascade)
+  createdAt     DateTime      @default(now())
+  rsvps         Rsvp[]
+  comments      Comment[]
+  cohosts       EventCohost[]
 }
 
 model EventCohost {

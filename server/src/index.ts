@@ -8,6 +8,8 @@ import { logger } from 'hono/logger';
 import { authRoutes } from './routes/auth.js';
 import { eventRoutes } from './routes/events.js';
 import { notificationRoutes } from './routes/notifications.js';
+import { discoverRoutes } from './routes/discover.js';
+import { meRoutes } from './routes/me.js';
 
 const app = new Hono();
 
@@ -21,6 +23,8 @@ api.get('/health', (c) => c.json({ name: 'Hausi API', ok: true }));
 api.route('/auth', authRoutes);
 api.route('/events', eventRoutes);
 api.route('/notifications', notificationRoutes);
+api.route('/discover', discoverRoutes);
+api.route('/me', meRoutes);
 app.route('/api', api);
 app.all('/api/*', (c) => c.json({ error: 'Not found' }, 404));
 
@@ -38,7 +42,7 @@ if (existsSync(join(webRoot, 'index.html'))) {
     );
   };
   app.use('*', serveStatic({ root: webRoot, onFound: cacheHeaders }));
-  // SPA fallback: /login, /e/:slug etc. only exist client-side.
+  // SPA fallback: /welcome, /e/:slug etc. only exist client-side.
   app.get('*', serveStatic({ path: join(webRoot, 'index.html'), onFound: cacheHeaders }));
 } else {
   app.get('/', (c) => c.json({ name: 'Hausi API', ok: true, web: 'not bundled' }));

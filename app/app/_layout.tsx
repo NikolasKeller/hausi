@@ -1,11 +1,32 @@
 import React, { useEffect, useRef } from 'react';
-import { ActivityIndicator, Platform, StyleSheet, View } from 'react-native';
+import { ActivityIndicator, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
 import { Stack, usePathname, useRouter, useSegments } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useFonts } from 'expo-font';
 import { AuthProvider, useAuth } from '../lib/auth';
 import { FONTS_TO_LOAD } from '../lib/fonts';
 import { colors } from '../lib/theme';
+
+// ✕ in modal headers so nothing forces the user to complete a flow.
+function ModalClose() {
+  const router = useRouter();
+  return (
+    <Pressable
+      onPress={() => router.back()}
+      hitSlop={12}
+      style={{
+        width: 30,
+        height: 30,
+        borderRadius: 15,
+        backgroundColor: colors.card,
+        alignItems: 'center',
+        justifyContent: 'center',
+      }}
+    >
+      <Text style={{ color: colors.text, fontSize: 15, fontWeight: '700' }}>✕</Text>
+    </Pressable>
+  );
+}
 
 function RootNavigator() {
   const { user, initializing } = useAuth();
@@ -24,9 +45,14 @@ function RootNavigator() {
     if (!user && !inAuthGroup) {
       const arrivedViaLink = pathname && pathname !== '/';
       if (arrivedViaLink) pendingPath.current = pathname;
-      // Invitees without an account go through signup first, per the invite flow.
-      router.replace(arrivedViaLink ? '/signup' : '/login');
+      // Invitees jump straight to phone entry; everyone else gets the intro.
+      router.replace(arrivedViaLink ? '/phone' : '/welcome');
     } else if (user && inAuthGroup) {
+      // First-timers (no name yet) finish profile setup before landing.
+      if (!user.name.trim()) {
+        router.replace('/setup');
+        return;
+      }
       const target = pendingPath.current ?? '/';
       pendingPath.current = null;
       router.replace(target as never);
@@ -52,11 +78,46 @@ function RootNavigator() {
       }}
     >
       <Stack.Screen name="(auth)" options={{ headerShown: false }} />
-      <Stack.Screen name="index" options={{ headerShown: false }} />
-      <Stack.Screen name="create" options={{ title: 'New Event', presentation: 'modal' }} />
+      <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+      <Stack.Screen name="setup" options={{ headerShown: false, gestureEnabled: false }} />
+      <Stack.Screen
+        name="new-event"
+        options={{
+          title: 'New Event',
+          presentation: 'modal',
+          gestureEnabled: true,
+          headerLeft: () => <ModalClose />,
+        }}
+      />
+      <Stack.Screen
+        name="send-card"
+        options={{
+          title: 'Send a Card',
+          presentation: 'modal',
+          gestureEnabled: true,
+          headerLeft: () => <ModalClose />,
+        }}
+      />
+      <Stack.Screen
+        name="edit-profile"
+        options={{
+          title: 'Edit Profile',
+          presentation: 'modal',
+          gestureEnabled: true,
+          headerLeft: () => <ModalClose />,
+        }}
+      />
       <Stack.Screen name="notifications" options={{ title: 'Notifications' }} />
       <Stack.Screen name="event/[slug]/index" options={{ title: '', headerTransparent: true }} />
-      <Stack.Screen name="event/[slug]/edit" options={{ title: 'Edit Event', presentation: 'modal' }} />
+      <Stack.Screen
+        name="event/[slug]/edit"
+        options={{
+          title: 'Edit Event',
+          presentation: 'modal',
+          gestureEnabled: true,
+          headerLeft: () => <ModalClose />,
+        }}
+      />
       <Stack.Screen name="e/[slug]" options={{ headerShown: false }} />
     </Stack>
   );

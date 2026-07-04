@@ -1,9 +1,11 @@
 import type {
+  Category,
   CommentEntry,
   CoverTheme,
   Effect,
   EventDetail,
   EventSummary,
+  ExploreEvent,
   PublicUser,
   RsvpCounts,
   RsvpEntry,
@@ -31,6 +33,11 @@ type EventRow = {
   effect: string;
   date: Date;
   location: string;
+  city: string;
+  category: string;
+  isPublic: boolean;
+  costPerPerson: string;
+  dressCode: string;
   maxGuests: number | null;
   plusOneLimit: number;
   rsvpsOpen: boolean;
@@ -74,12 +81,35 @@ export function toEventSummary(event: EventRow, viewerId: string): EventSummary 
     effect: event.effect as Effect,
     date: event.date.toISOString(),
     location: event.location,
+    city: event.city,
+    category: event.category as Category,
+    isPublic: event.isPublic,
     host: toPublicUser(event.host),
     isHost: event.hostId === viewerId,
     canManage: canManageEvent(event, viewerId),
     canceledAt: event.canceledAt ? event.canceledAt.toISOString() : null,
     myRsvp: (mine?.status as RsvpStatus | undefined) ?? null,
     counts: countRsvps(event.rsvps),
+  };
+}
+
+// Discovery-surface shape: adds interest count and a friend who's going.
+export function toExploreEvent(
+  event: EventRow & { description: string },
+  viewerId: string,
+  friendIds?: Set<string>
+): ExploreEvent {
+  const counts = countRsvps(event.rsvps);
+  const friend = friendIds
+    ? event.rsvps.find(
+        (r) => r.status === 'GOING' && r.userId !== viewerId && friendIds.has(r.userId)
+      )
+    : undefined;
+  return {
+    ...toEventSummary(event, viewerId),
+    description: event.description,
+    interested: counts.going + counts.maybe,
+    friendGoing: friend ? toPublicUser(friend.user) : null,
   };
 }
 
@@ -90,6 +120,8 @@ export function toEventDetail(
   return {
     ...toEventSummary(event, viewerId),
     description: event.description,
+    costPerPerson: event.costPerPerson,
+    dressCode: event.dressCode,
     maxGuests: event.maxGuests,
     plusOneLimit: event.plusOneLimit,
     rsvpsOpen: event.rsvpsOpen,

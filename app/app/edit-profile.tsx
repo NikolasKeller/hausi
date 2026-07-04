@@ -1,0 +1,167 @@
+import React, { useEffect, useState } from 'react';
+import {
+  ActivityIndicator,
+  KeyboardAvoidingView,
+  Platform,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  View,
+} from 'react-native';
+import { useRouter } from 'expo-router';
+import { LIMITS } from '../shared/types';
+import { api } from '../lib/api';
+import { useAuth } from '../lib/auth';
+import { colors, radius, spacing } from '../lib/theme';
+import { Button, ErrorText, Field } from '../components/ui';
+
+const AVATARS = ['🎉', '🦄', '🕺', '🌸', '🐙', '🪩', '🌈', '🍕', '👽', '🔥', '🐸', '💫'];
+
+export default function EditProfileScreen() {
+  const router = useRouter();
+  const { user, updateUser } = useAuth();
+  const [loaded, setLoaded] = useState(false);
+  const [name, setName] = useState('');
+  const [avatarEmoji, setAvatarEmoji] = useState('🎉');
+  const [city, setCity] = useState('');
+  const [error, setError] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    let active = true;
+    (async () => {
+      try {
+        const res = await api.myProfile();
+        if (!active) return;
+        setName(res.profile.name);
+        setAvatarEmoji(res.profile.avatarEmoji);
+        setCity(res.profile.city);
+        setLoaded(true);
+      } catch (e) {
+        if (!active) return;
+        setError(e instanceof Error ? e.message : 'Could not load profile');
+        setLoaded(true);
+      }
+    })();
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  async function save() {
+    if (!name.trim()) {
+      setError('Name cannot be empty');
+      return;
+    }
+    setError(null);
+    setSaving(true);
+    try {
+      const res = await api.updateProfile({
+        name: name.trim(),
+        avatarEmoji,
+        city: city.trim(),
+      });
+      if (user) {
+        updateUser({ ...user, name: res.user.name, avatarEmoji: res.user.avatarEmoji });
+      }
+      router.back();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Could not save profile');
+      setSaving(false);
+    }
+  }
+
+  if (!loaded) {
+    return (
+      <View style={styles.center}>
+        <ActivityIndicator color={colors.accent} size="large" />
+      </View>
+    );
+  }
+
+  return (
+    <KeyboardAvoidingView
+      style={styles.flex}
+      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+    >
+      <ScrollView contentContainerStyle={styles.container} keyboardShouldPersistTaps="handled">
+        <Field
+          label="Name"
+          value={name}
+          onChangeText={setName}
+          placeholder="Your name"
+          maxLength={LIMITS.name}
+        />
+
+        <View style={{ gap: spacing.xs }}>
+          <Text style={styles.label}>Avatar</Text>
+          <View style={styles.avatarGrid}>
+            {AVATARS.map((emoji) => (
+              <Pressable
+                key={emoji}
+                onPress={() => setAvatarEmoji(emoji)}
+                style={[styles.avatarChip, avatarEmoji === emoji && styles.avatarChipActive]}
+              >
+                <Text style={{ fontSize: 24 }}>{emoji}</Text>
+              </Pressable>
+            ))}
+          </View>
+        </View>
+
+        <Field
+          label="City"
+          value={city}
+          onChangeText={setCity}
+          placeholder="Where the parties are"
+          maxLength={LIMITS.location}
+        />
+
+        <ErrorText message={error} />
+        <Button title="Save" onPress={save} loading={saving} />
+      </ScrollView>
+    </KeyboardAvoidingView>
+  );
+}
+
+const styles = StyleSheet.create({
+  flex: {
+    flex: 1,
+    backgroundColor: colors.bg,
+  },
+  center: {
+    flex: 1,
+    backgroundColor: colors.bg,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  container: {
+    padding: spacing.lg,
+    gap: spacing.md,
+  },
+  label: {
+    color: colors.muted,
+    fontSize: 13,
+    fontWeight: '600',
+    textTransform: 'uppercase',
+    letterSpacing: 1,
+  },
+  avatarGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: spacing.sm,
+  },
+  avatarChip: {
+    width: 44,
+    height: 44,
+    borderRadius: radius.md,
+    backgroundColor: colors.inputBg,
+    borderWidth: 2,
+    borderColor: colors.cardBorder,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  avatarChipActive: {
+    borderColor: colors.accent,
+  },
+});

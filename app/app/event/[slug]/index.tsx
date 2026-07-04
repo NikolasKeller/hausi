@@ -17,6 +17,7 @@ import { LIMITS, type EventDetail, type RsvpStatus } from '../../../shared/types
 import { api } from '../../../lib/api';
 import { useAuth } from '../../../lib/auth';
 import { confirmDialog, notify } from '../../../lib/dialogs';
+import { recordRecentEvent } from '../../../lib/recents';
 import { colors, radius, spacing } from '../../../lib/theme';
 import { titleFontStyle } from '../../../lib/fonts';
 import { CoverGradient } from '../../../components/CoverGradient';
@@ -54,6 +55,13 @@ export default function EventScreen() {
       const res = await api.eventBySlug(slug);
       setEvent(res.event);
       setError(null);
+      recordRecentEvent({
+        slug: res.event.slug,
+        title: res.event.title,
+        coverTheme: res.event.coverTheme,
+        titleFont: res.event.titleFont,
+        date: res.event.date,
+      });
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Could not load event');
     }
@@ -229,7 +237,16 @@ export default function EventScreen() {
             <Text style={styles.metaLine}>
               🗓️ {formatEventDate(event.date)} · {formatEventTime(event.date)}
             </Text>
-            {event.location ? <Text style={styles.metaLine}>📍 {event.location}</Text> : null}
+            {event.location ? (
+              <Text style={styles.metaLine}>
+                📍 {event.location}
+                {event.city ? `, ${event.city}` : ''}
+              </Text>
+            ) : null}
+            {event.costPerPerson ? (
+              <Text style={styles.metaLine}>💸 {event.costPerPerson}</Text>
+            ) : null}
+            {event.dressCode ? <Text style={styles.metaLine}>👗 {event.dressCode}</Text> : null}
             {spotsLeft != null ? (
               <Text style={styles.metaLine}>
                 🎟️ {spotsLeft > 0 ? `${spotsLeft} spots left` : 'Event is full'}

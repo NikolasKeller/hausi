@@ -2,11 +2,19 @@ import { Platform } from 'react-native';
 import Constants from 'expo-constants';
 import type {
   AuthResponse,
+  CardEntry,
+  CardTheme,
+  Category,
   CommentEntry,
   EventDetail,
   EventInput,
   EventSummary,
+  ExploreEvent,
+  HomeFeed,
+  MyProfile,
   NotificationEntry,
+  PhoneRequestResponse,
+  PhoneVerifyResponse,
   RsvpStatus,
 } from '../shared/types';
 
@@ -80,8 +88,17 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
 }
 
 export const api = {
-  signup(data: { name: string; email: string; password: string; avatarEmoji?: string }) {
-    return request<AuthResponse>('/auth/signup', { method: 'POST', body: JSON.stringify(data) });
+  requestPhoneCode(phone: string) {
+    return request<PhoneRequestResponse>('/auth/phone/request', {
+      method: 'POST',
+      body: JSON.stringify({ phone }),
+    });
+  },
+  verifyPhoneCode(phone: string, code: string) {
+    return request<PhoneVerifyResponse>('/auth/phone/verify', {
+      method: 'POST',
+      body: JSON.stringify({ phone, code }),
+    });
   },
   login(data: { email: string; password: string }) {
     return request<AuthResponse>('/auth/login', { method: 'POST', body: JSON.stringify(data) });
@@ -120,6 +137,39 @@ export const api = {
     return request<{ event: EventDetail }>(
       `/events/${eventId}/cohosts/${encodeURIComponent(userId)}`,
       { method: 'DELETE' }
+    );
+  },
+  home() {
+    return request<HomeFeed>('/discover/home');
+  },
+  explore(city?: string, category?: Category | 'all') {
+    const params = new URLSearchParams();
+    if (city) params.set('city', city);
+    if (category && category !== 'all') params.set('category', category);
+    const qs = params.toString();
+    return request<{ events: ExploreEvent[]; cities: string[] }>(
+      `/discover/explore${qs ? `?${qs}` : ''}`
+    );
+  },
+  myProfile() {
+    return request<{ profile: MyProfile }>('/me');
+  },
+  updateProfile(data: { name?: string; avatarEmoji?: string; city?: string }) {
+    return request<{ user: AuthResponse['user'] & { city: string } }>('/me', {
+      method: 'PATCH',
+      body: JSON.stringify(data),
+    });
+  },
+  sendCard(toUserId: string, theme: CardTheme, message: string) {
+    return request<{ card: CardEntry }>('/me/cards', {
+      method: 'POST',
+      body: JSON.stringify({ toUserId, theme, message }),
+    });
+  },
+  toggleCrush(userId: string) {
+    return request<{ crushed: boolean; matched: boolean }>(
+      `/me/crush/${encodeURIComponent(userId)}`,
+      { method: 'POST' }
     );
   },
   async notifications() {

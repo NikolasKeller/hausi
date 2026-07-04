@@ -11,14 +11,12 @@ type SessionUser = AuthResponse['user'];
 interface AuthContextValue {
   user: SessionUser | null;
   initializing: boolean;
-  signup: (data: {
-    name: string;
-    email: string;
-    password: string;
-    avatarEmoji?: string;
-  }) => Promise<void>;
-  login: (data: { email: string; password: string }) => Promise<void>;
+  // Phone OTP flow: request a code, then verify it. Returns isNew so the
+  // app can run profile setup for first-timers.
+  verifyPhone: (phone: string, code: string) => Promise<{ isNew: boolean }>;
   logout: () => Promise<void>;
+  // Refresh the cached session user after a profile edit.
+  updateUser: (user: SessionUser) => void;
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null);
@@ -69,8 +67,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return {
       user,
       initializing,
-      signup: async (data) => persist(await api.signup(data)),
-      login: async (data) => persist(await api.login(data)),
+      verifyPhone: async (phone, code) => {
+        const res = await api.verifyPhoneCode(phone, code);
+        await persist(res);
+        return { isNew: res.isNew };
+      },
       logout: async () => {
         setAuthToken(null);
         setUser(null);
@@ -78,6 +79,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           storage.deleteItemAsync(TOKEN_KEY),
           storage.deleteItemAsync(USER_KEY),
         ]);
+      },
+      updateUser: (updated) => {
+        setUser(updated);
+        SecureStore.setItemAsync(USER_KEY, JSON.stringify(updated)).catch(() => {});
       },
     };
   }, [user, initializing]);

@@ -86,6 +86,20 @@ own pages, which are served from the same origin in production).
 | GET | `/api/notifications` | Your notifications + unread count |
 | POST | `/api/notifications/read-all` | Mark all read |
 
+## Going live with a real database (e.g. Supabase)
+
+Local dev runs on SQLite with seeded demo data. The social layer is fully
+computed from live tables — mutuals derive from shared guest lists, badges
+from real counts, trending from real RSVPs — so swapping in a real database
+requires no application changes:
+
+1. In `server/prisma/schema.prisma` change `provider = "sqlite"` to `"postgresql"`.
+2. In `server/.env` set `DATABASE_URL` to the Supabase pooled connection string (see `.env.example`).
+3. `npx prisma db push` to create the tables, and set a strong `JWT_SECRET`.
+
+`npm run seed` **refuses to run against a non-SQLite database**, so demo
+users/events never reach production — real signups populate everything.
+
 ## Deploying to Railway (web app / PWA)
 
 The repo root has a `Dockerfile` + `railway.json`: one container exports the app
