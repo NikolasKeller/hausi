@@ -1,6 +1,9 @@
 import React, { useEffect, useRef } from 'react';
-import { Animated, Easing, Text, View } from 'react-native';
+import { Animated, Easing, Platform, Text, View } from 'react-native';
 import type { Effect } from '../shared/types';
+
+// react-native-web has no native driver; silence its fallback warning.
+const useNativeDriver = Platform.OS !== 'web';
 
 interface ParticleSpec {
   emoji: string;
@@ -49,9 +52,9 @@ function Particle({
           toValue: 1,
           duration: spec.duration,
           easing: Easing.linear,
-          useNativeDriver: true,
+          useNativeDriver,
         }),
-        Animated.timing(progress, { toValue: 0, duration: 0, useNativeDriver: true }),
+        Animated.timing(progress, { toValue: 0, duration: 0, useNativeDriver }),
       ])
     );
     loop.start();

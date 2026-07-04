@@ -18,11 +18,13 @@ export const TITLE_FONT_LABELS: Record<TitleFont, string> = {
 };
 
 // Style for big event titles per font choice. `classic` uses the system font.
+// The loaded faces carry their weight in the family name, so fontWeight resets
+// to normal — otherwise browsers on web synthesize a faux-bold on top.
 export const TITLE_FONT_STYLES: Record<TitleFont, TextStyle> = {
   classic: { fontWeight: '800', letterSpacing: -1 },
-  literary: { fontFamily: 'PlayfairDisplay_700Bold', letterSpacing: 0 },
-  fancy: { fontFamily: 'Pacifico_400Regular', letterSpacing: 0 },
-  eclectic: { fontFamily: 'Bungee_400Regular', letterSpacing: 0 },
+  literary: { fontFamily: 'PlayfairDisplay_700Bold', fontWeight: 'normal', letterSpacing: 0 },
+  fancy: { fontFamily: 'Pacifico_400Regular', fontWeight: 'normal', letterSpacing: 0 },
+  eclectic: { fontFamily: 'Bungee_400Regular', fontWeight: 'normal', letterSpacing: 0 },
 };
 
 export function titleFontStyle(font: string): TextStyle {

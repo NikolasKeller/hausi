@@ -11,3 +11,5 @@ web-build/
 .context/
 app/ios/
 app/android/
+# local copy of the web export used to test production serving
+server/public/

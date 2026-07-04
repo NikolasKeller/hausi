@@ -1,7 +1,6 @@
 import React, { useCallback, useState } from 'react';
 import {
   ActivityIndicator,
-  Alert,
   Pressable,
   StyleSheet,
   Text,
@@ -11,6 +10,7 @@ import {
 import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import type { EventDetail } from '../../../shared/types';
 import { api } from '../../../lib/api';
+import { confirmDialog, notify } from '../../../lib/dialogs';
 import { colors, radius, spacing } from '../../../lib/theme';
 import { EventForm } from '../../../components/EventForm';
 import { Avatar } from '../../../components/Avatar';
@@ -52,7 +52,7 @@ export default function EditEventScreen() {
       setEvent(res.event);
       setCohostEmail('');
     } catch (e) {
-      Alert.alert('Could not add co-host', e instanceof Error ? e.message : 'Try again');
+      notify('Could not add co-host', e instanceof Error ? e.message : 'Try again');
     } finally {
       setCohostBusy(false);
     }
@@ -60,21 +60,18 @@ export default function EditEventScreen() {
 
   async function removeCohost(userId: string, name: string) {
     if (!event) return;
-    Alert.alert('Remove co-host?', `${name} will lose host powers but stay on the guest list.`, [
-      { text: 'Cancel', style: 'cancel' },
-      {
-        text: 'Remove',
-        style: 'destructive',
-        onPress: async () => {
-          try {
-            const res = await api.removeCohost(event.id, userId);
-            setEvent(res.event);
-          } catch (e) {
-            Alert.alert('Remove failed', e instanceof Error ? e.message : 'Try again');
-          }
-        },
-      },
-    ]);
+    const ok = await confirmDialog(
+      'Remove co-host?',
+      `${name} will lose host powers but stay on the guest list.`,
+      'Remove'
+    );
+    if (!ok) return;
+    try {
+      const res = await api.removeCohost(event.id, userId);
+      setEvent(res.event);
+    } catch (e) {
+      notify('Remove failed', e instanceof Error ? e.message : 'Try again');
+    }
   }
 
   if (!event) {

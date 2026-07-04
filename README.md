@@ -67,28 +67,53 @@ EXPO_PUBLIC_API_URL=http://192.168.x.x:3001 npx expo start
 
 ## API overview
 
+All routes are mounted under `/api` (so they never collide with the web app's
+own pages, which are served from the same origin in production).
+
 | Method | Path | Description |
 | --- | --- | --- |
-| POST | `/auth/signup`, `/auth/login` | JWT auth |
-| GET | `/events` | Your feed (hosting + RSVP'd) |
-| POST | `/events` | Create event |
-| GET | `/events/by-slug/:slug` | Resolve invite link |
-| PATCH / DELETE | `/events/:id` | Host only |
-| PUT | `/events/:id/rsvp` | Upsert RSVP (`GOING` \| `MAYBE` \| `CANT`, `plusOnes`); full events → waitlist |
-| DELETE | `/events/:id/rsvp/:userId` | Host removes a guest |
-| POST | `/events/:id/cancel` | Cancel (keeps page, notifies guests) |
-| POST / DELETE | `/events/:id/cohosts[/:userId]` | Manage cohosts (creator only) |
-| GET / POST | `/events/:id/comments` | Party Wall |
-| GET | `/notifications` | Your notifications + unread count |
-| POST | `/notifications/read-all` | Mark all read |
+| GET | `/api/health` | Health check |
+| POST | `/api/auth/signup`, `/api/auth/login` | JWT auth |
+| GET | `/api/events` | Your feed (hosting + RSVP'd) |
+| POST | `/api/events` | Create event |
+| GET | `/api/events/by-slug/:slug` | Resolve invite link |
+| PATCH / DELETE | `/api/events/:id` | Host only |
+| PUT | `/api/events/:id/rsvp` | Upsert RSVP (`GOING` \| `MAYBE` \| `CANT`, `plusOnes`); full events → waitlist |
+| DELETE | `/api/events/:id/rsvp/:userId` | Host removes a guest |
+| POST | `/api/events/:id/cancel` | Cancel (keeps page, notifies guests) |
+| POST / DELETE | `/api/events/:id/cohosts[/:userId]` | Manage cohosts (creator only) |
+| GET / POST | `/api/events/:id/comments` | Party Wall |
+| GET | `/api/notifications` | Your notifications + unread count |
+| POST | `/api/notifications/read-all` | Mark all read |
 
-## Rolling it out
+## Deploying to Railway (web app / PWA)
 
-The repo ships with `app/eas.json` and bundle identifiers (`com.hausi.app`) so device builds are one command away:
+The repo root has a `Dockerfile` + `railway.json`: one container exports the app
+to web (`expo export`), and the Hono server serves it (phone-sized layout on any
+screen, installable via "Add to Home Screen") alongside the API under `/api`.
 
-1. **Deploy the server** — any Node host works (Fly.io, Railway, Render). SQLite needs a persistent disk (e.g. a Fly volume); for real multi-instance traffic swap the Prisma datasource to Postgres (one-line schema change + `prisma db push`). Set a strong `JWT_SECRET`.
-2. **Point the app at it** — build with `EXPO_PUBLIC_API_URL=https://your-api.example.com`.
-3. **Build for devices** (needs a free [Expo account](https://expo.dev): `npm i -g eas-cli && eas login`):
+1. Create a Railway service from this GitHub repo — the Dockerfile is picked up
+   automatically.
+2. Add a **volume** mounted at `/data` (the sqlite database lives there;
+   without it, data resets on every deploy).
+3. Set the **`JWT_SECRET`** variable (e.g. `openssl rand -hex 32`); the server
+   refuses to boot in production without it. `DATABASE_URL` defaults to
+   `file:/data/hausi.db` — override only if you mount the volume elsewhere.
+4. Generate a public domain (service → Settings → Networking) and share
+   `https://<your-domain>/` — invite links (`/e/<slug>`) work directly.
+
+On iPhones: open the link in Safari → Share → **Add to Home Screen** to get the
+full-screen app. Android/Chrome offers "Install app" automatically.
+
+## Native device builds (EAS)
+
+The repo also ships `app/eas.json` and bundle identifiers (`com.hausi.app`) for
+real native builds:
+
+1. **Point the app at your server** — build with
+   `EXPO_PUBLIC_API_URL=https://your-api.example.com` (origin only, no `/api`).
+2. **Build for devices** (needs a free [Expo account](https://expo.dev):
+   `npm i -g eas-cli && eas login`):
 
    ```bash
    cd app

@@ -1,5 +1,6 @@
 import React, { useCallback, useMemo, useState } from 'react';
 import {
+  ActivityIndicator,
   Pressable,
   RefreshControl,
   SectionList,
@@ -117,7 +118,13 @@ export default function HomeScreen() {
           />
         }
         ListEmptyComponent={
-          loading ? null : (
+          loading ? (
+            // RefreshControl's spinner never shows on web, so the first load
+            // needs its own indicator.
+            <View style={styles.empty}>
+              <ActivityIndicator color={colors.accent} size="large" />
+            </View>
+          ) : (
             <View style={styles.empty}>
               <Text style={styles.emptyEmoji}>🎈</Text>
               <Text style={styles.emptyTitle}>

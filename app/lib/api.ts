@@ -15,15 +15,24 @@ import type {
 // work without configuration. hostUri looks like "192.168.1.23:8081".
 const devHost = Constants.expoConfig?.hostUri?.split(':')[0];
 
-export const API_URL =
+// EXPO_PUBLIC_API_URL is the server ORIGIN (no /api suffix).
+const API_ORIGIN =
   process.env.EXPO_PUBLIC_API_URL ??
-  (devHost && devHost !== 'localhost' && devHost !== '127.0.0.1'
-    ? `http://${devHost}:3001`
-    : Platform.select({
-        // Android emulators reach the host machine via 10.0.2.2.
-        android: 'http://10.0.2.2:3001',
-        default: 'http://localhost:3001',
-      }));
+  (Platform.OS === 'web'
+    ? __DEV__
+      ? // Dev web runs on Metro's port; the API is a separate origin.
+        'http://localhost:3001'
+      : // The exported web app is served by the API server itself.
+        ''
+    : devHost && devHost !== 'localhost' && devHost !== '127.0.0.1'
+      ? `http://${devHost}:3001`
+      : Platform.select({
+          // Android emulators reach the host machine via 10.0.2.2.
+          android: 'http://10.0.2.2:3001',
+          default: 'http://localhost:3001',
+        }));
+
+export const API_URL = `${API_ORIGIN}/api`;
 
 export class ApiError extends Error {
   status: number;

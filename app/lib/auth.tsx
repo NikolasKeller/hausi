@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useEffect, useMemo, useState } from 'react';
-import * as SecureStore from 'expo-secure-store';
+import { storage } from './storage';
 import type { AuthResponse } from '../shared/types';
 import { api, setAuthToken, setOnUnauthorized } from './api';
 
@@ -31,8 +31,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     (async () => {
       try {
         const [token, storedUser] = await Promise.all([
-          SecureStore.getItemAsync(TOKEN_KEY),
-          SecureStore.getItemAsync(USER_KEY),
+          storage.getItemAsync(TOKEN_KEY),
+          storage.getItemAsync(USER_KEY),
         ]);
         if (token && storedUser) {
           setAuthToken(token);
@@ -51,8 +51,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setOnUnauthorized(() => {
       setAuthToken(null);
       setUser(null);
-      SecureStore.deleteItemAsync(TOKEN_KEY).catch(() => {});
-      SecureStore.deleteItemAsync(USER_KEY).catch(() => {});
+      storage.deleteItemAsync(TOKEN_KEY).catch(() => {});
+      storage.deleteItemAsync(USER_KEY).catch(() => {});
     });
     return () => setOnUnauthorized(null);
   }, []);
@@ -62,8 +62,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setAuthToken(res.token);
       setUser(res.user);
       await Promise.all([
-        SecureStore.setItemAsync(TOKEN_KEY, res.token),
-        SecureStore.setItemAsync(USER_KEY, JSON.stringify(res.user)),
+        storage.setItemAsync(TOKEN_KEY, res.token),
+        storage.setItemAsync(USER_KEY, JSON.stringify(res.user)),
       ]);
     }
     return {
@@ -75,8 +75,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setAuthToken(null);
         setUser(null);
         await Promise.all([
-          SecureStore.deleteItemAsync(TOKEN_KEY),
-          SecureStore.deleteItemAsync(USER_KEY),
+          storage.deleteItemAsync(TOKEN_KEY),
+          storage.deleteItemAsync(USER_KEY),
         ]);
       },
     };

@@ -1,5 +1,5 @@
 import React, { useEffect, useRef } from 'react';
-import { ActivityIndicator, View } from 'react-native';
+import { ActivityIndicator, Platform, StyleSheet, View } from 'react-native';
 import { Stack, usePathname, useRouter, useSegments } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useFonts } from 'expo-font';
@@ -62,11 +62,39 @@ function RootNavigator() {
   );
 }
 
+// On web the app keeps a phone-sized column no matter the screen: full width
+// on mobile browsers, centered 430px "phone" on desktop.
+function WebFrame({ children }: { children: React.ReactNode }) {
+  if (Platform.OS !== 'web') return <>{children}</>;
+  return (
+    <View style={frameStyles.page}>
+      <View style={frameStyles.phone}>{children}</View>
+    </View>
+  );
+}
+
+const frameStyles = StyleSheet.create({
+  page: {
+    flex: 1,
+    backgroundColor: '#070510',
+    alignItems: 'center',
+  },
+  phone: {
+    flex: 1,
+    width: '100%',
+    maxWidth: 430,
+    backgroundColor: colors.bg,
+    ...(Platform.OS === 'web' ? { boxShadow: '0 0 48px rgba(0,0,0,0.6)' } : null),
+  },
+});
+
 export default function RootLayout() {
   return (
     <AuthProvider>
       <StatusBar style="light" />
-      <RootNavigator />
+      <WebFrame>
+        <RootNavigator />
+      </WebFrame>
     </AuthProvider>
   );
 }

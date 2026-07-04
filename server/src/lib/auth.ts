@@ -2,6 +2,12 @@ import type { MiddlewareHandler } from 'hono';
 import { sign, verify } from 'hono/jwt';
 import { db } from './db.js';
 
+// The dev fallback is public knowledge (it's in the repo) — with it, anyone
+// could mint tokens for any user. Refuse to boot in production without a real
+// secret.
+if (process.env.NODE_ENV === 'production' && !process.env.JWT_SECRET) {
+  throw new Error('JWT_SECRET must be set in production');
+}
 const JWT_SECRET = process.env.JWT_SECRET ?? 'hausi-dev-secret-change-me';
 const TOKEN_TTL_SECONDS = 60 * 60 * 24 * 30; // 30 days
 
