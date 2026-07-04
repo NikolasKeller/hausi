@@ -5,10 +5,14 @@ import { makeSlug } from '../src/lib/slug.js';
 // Demo data is for local development only. A real database (e.g. Supabase
 // Postgres) must never receive it — real users populate mutuals, badges and
 // trending organically, since all of those are computed from live tables.
-if (!DATABASE_URL.startsWith('file:') && process.env.SEED_FORCE !== '1') {
+// Seeding starts by DELETING every row, so it must also refuse to run inside
+// the production container (the Railway sqlite volume is a real database).
+const looksLikeProduction =
+  !DATABASE_URL.startsWith('file:') || process.env.NODE_ENV === 'production';
+if (looksLikeProduction && process.env.SEED_FORCE !== '1') {
   console.error(
-    `Refusing to seed a non-SQLite database (${DATABASE_URL.split('@').pop()}).\n` +
-      'This looks like a real/production database. Set SEED_FORCE=1 to override.'
+    `Refusing to seed what looks like a real/production database (${DATABASE_URL.split('@').pop()}).\n` +
+      'Seeding WIPES ALL DATA first. Set SEED_FORCE=1 to override.'
   );
   process.exit(1);
 }

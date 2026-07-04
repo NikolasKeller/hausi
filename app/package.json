@@ -6,6 +6,7 @@
     "@expo-google-fonts/bungee": "^0.4.1",
     "@expo-google-fonts/pacifico": "^0.4.1",
     "@expo-google-fonts/playfair-display": "^0.4.2",
+    "@expo/metro-runtime": "~57.0.3",
     "@expo/vector-icons": "^15.1.1",
     "@react-native-community/datetimepicker": "9.1.0",
     "expo": "~57.0.2",
@@ -18,9 +19,11 @@
     "expo-secure-store": "~57.0.0",
     "expo-status-bar": "~57.0.0",
     "react": "19.2.3",
+    "react-dom": "19.2.3",
     "react-native": "0.86.0",
     "react-native-safe-area-context": "~5.7.0",
-    "react-native-screens": "4.25.2"
+    "react-native-screens": "4.25.2",
+    "react-native-web": "^0.21.2"
   },
   "devDependencies": {
     "@types/react": "~19.2.2",
@@ -31,6 +34,7 @@
     "android": "expo run:android",
     "ios": "expo run:ios",
     "web": "expo start --web",
+    "export:web": "expo export --platform web && node scripts/postexport.mjs",
     "typecheck": "tsc --noEmit"
   },
   "private": true

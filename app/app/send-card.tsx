@@ -1,7 +1,6 @@
 import React, { useCallback, useState } from 'react';
 import {
   ActivityIndicator,
-  Alert,
   KeyboardAvoidingView,
   Pressable,
   ScrollView,
@@ -17,6 +16,7 @@ import {
   type MyProfile,
 } from '../shared/types';
 import { api } from '../lib/api';
+import { notify } from '../lib/dialogs';
 import { colors, radius, spacing } from '../lib/theme';
 import { titleFontStyle } from '../lib/fonts';
 import { CoverGradient } from '../components/CoverGradient';
@@ -78,7 +78,7 @@ export default function SendCardScreen() {
     setError(null);
     try {
       await api.sendCard(toUserId, theme, text);
-      Alert.alert('Card sent 💌');
+      notify('Card sent 💌', 'Your card is on its way.');
       router.back();
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Could not send the card');

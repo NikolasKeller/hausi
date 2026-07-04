@@ -1,10 +1,8 @@
 import React, { useCallback, useState } from 'react';
 import {
   ActivityIndicator,
-  Alert,
   Pressable,
   ScrollView,
-  Share,
   StyleSheet,
   Text,
   View,
@@ -16,6 +14,8 @@ import { LinearGradient } from 'expo-linear-gradient';
 import type { CardEntry, MyProfile } from '../../shared/types';
 import { api } from '../../lib/api';
 import { useAuth } from '../../lib/auth';
+import { confirmDialog, notify } from '../../lib/dialogs';
+import { shareText } from '../../lib/share';
 import { colors, radius, spacing } from '../../lib/theme';
 import { Avatar } from '../../components/Avatar';
 import { CoverGradient } from '../../components/CoverGradient';
@@ -73,22 +73,14 @@ export default function ProfileScreen() {
     }, [])
   );
 
-  function openSettings() {
-    Alert.alert('Settings', 'Manage your Hausi account', [
-      { text: 'Cancel', style: 'cancel' },
-      {
-        text: 'Log out',
-        style: 'destructive',
-        onPress: () => {
-          logout().catch(() => {});
-        },
-      },
-    ]);
+  async function openSettings() {
+    const ok = await confirmDialog('Log out?', 'You can log back in with your phone number.', 'Log out');
+    if (ok) logout().catch(() => {});
   }
 
   async function shareProfile() {
     if (!profile) return;
-    await Share.share({ message: `Add me on Hausi 🎉 — ${profile.name}` });
+    await shareText(`Add me on Hausi 🎉 — ${profile.name}`);
   }
 
   async function toggleCrush(userId: string) {
@@ -107,10 +99,10 @@ export default function ProfileScreen() {
           : prev
       );
       if (res.matched) {
-        Alert.alert("It's a match 💘", 'They crushed on you too. Go say hi!');
+        notify("It's a match 💘", 'They crushed on you too. Go say hi!');
       }
     } catch (e) {
-      Alert.alert('Crush failed', e instanceof Error ? e.message : 'Try again');
+      notify('Crush failed', e instanceof Error ? e.message : 'Try again');
     } finally {
       setCrushBusy(null);
     }

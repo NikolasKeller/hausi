@@ -1,11 +1,9 @@
 import React, { useCallback, useState } from 'react';
 import {
   ActivityIndicator,
-  Alert,
   KeyboardAvoidingView,
   Pressable,
   ScrollView,
-  Share,
   StyleSheet,
   Text,
   TextInput,
@@ -16,7 +14,9 @@ import * as Linking from 'expo-linking';
 import { LIMITS, type EventDetail, type RsvpStatus } from '../../../shared/types';
 import { api } from '../../../lib/api';
 import { useAuth } from '../../../lib/auth';
+import { confirmDialog, notify } from '../../../lib/dialogs';
 import { recordRecentEvent } from '../../../lib/recents';
+import { shareText } from '../../../lib/share';
 import { colors, radius, spacing } from '../../../lib/theme';
 import { titleFontStyle } from '../../../lib/fonts';
 import { CoverGradient } from '../../../components/CoverGradient';
@@ -79,7 +79,7 @@ export default function EventScreen() {
       const res = await api.rsvp(event.id, status, plusOnes);
       setEvent(res.event);
     } catch (e) {
-      Alert.alert('RSVP failed', e instanceof Error ? e.message : 'Try again');
+      notify('RSVP failed', e instanceof Error ? e.message : 'Try again');
     } finally {
       setRsvpBusy(false);
     }
@@ -88,66 +88,53 @@ export default function EventScreen() {
   async function share() {
     if (!event) return;
     const url = Linking.createURL(`e/${event.slug}`);
-    await Share.share({
-      message: `You're invited: ${event.title} — ${formatEventDate(event.date)} at ${formatEventTime(event.date)}.\nOpen in Hausi: ${url}`,
-    });
+    const message = `You're invited: ${event.title} — ${formatEventDate(event.date)} at ${formatEventTime(event.date)}.\nOpen in Hausi: ${url}`;
+    await shareText(message, url);
   }
 
-  function confirmRemoveGuest(guestId: string, guestName: string) {
-    Alert.alert('Remove guest?', `${guestName} will be removed from the guest list.`, [
-      { text: 'Cancel', style: 'cancel' },
-      {
-        text: 'Remove',
-        style: 'destructive',
-        onPress: async () => {
-          if (!event) return;
-          try {
-            const res = await api.removeGuest(event.id, guestId);
-            setEvent(res.event);
-          } catch (e) {
-            Alert.alert('Remove failed', e instanceof Error ? e.message : 'Try again');
-          }
-        },
-      },
-    ]);
-  }
-
-  function confirmDelete() {
+  async function confirmRemoveGuest(guestId: string, guestName: string) {
     if (!event) return;
-    Alert.alert('Delete event?', 'This removes the event for all guests.', [
-      { text: 'Cancel', style: 'cancel' },
-      {
-        text: 'Delete',
-        style: 'destructive',
-        onPress: async () => {
-          try {
-            await api.deleteEvent(event.id);
-            router.replace('/');
-          } catch (e) {
-            Alert.alert('Delete failed', e instanceof Error ? e.message : 'Try again');
-          }
-        },
-      },
-    ]);
+    const ok = await confirmDialog(
+      'Remove guest?',
+      `${guestName} will be removed from the guest list.`,
+      'Remove'
+    );
+    if (!ok) return;
+    try {
+      const res = await api.removeGuest(event.id, guestId);
+      setEvent(res.event);
+    } catch (e) {
+      notify('Remove failed', e instanceof Error ? e.message : 'Try again');
+    }
   }
 
-  function confirmCancel() {
+  async function confirmDelete() {
     if (!event) return;
-    Alert.alert('Cancel event?', 'All guests will be notified. The page stays visible.', [
-      { text: 'Keep event', style: 'cancel' },
-      {
-        text: 'Cancel event',
-        style: 'destructive',
-        onPress: async () => {
-          try {
-            const res = await api.cancelEvent(event.id);
-            setEvent(res.event);
-          } catch (e) {
-            Alert.alert('Cancel failed', e instanceof Error ? e.message : 'Try again');
-          }
-        },
-      },
-    ]);
+    const ok = await confirmDialog('Delete event?', 'This removes the event for all guests.', 'Delete');
+    if (!ok) return;
+    try {
+      await api.deleteEvent(event.id);
+      router.replace('/');
+    } catch (e) {
+      notify('Delete failed', e instanceof Error ? e.message : 'Try again');
+    }
+  }
+
+  async function confirmCancel() {
+    if (!event) return;
+    const ok = await confirmDialog(
+      'Cancel event?',
+      'All guests will be notified. The page stays visible.',
+      'Cancel event',
+      'Keep event'
+    );
+    if (!ok) return;
+    try {
+      const res = await api.cancelEvent(event.id);
+      setEvent(res.event);
+    } catch (e) {
+      notify('Cancel failed', e instanceof Error ? e.message : 'Try again');
+    }
   }
 
   async function toggleRsvpsOpen() {
@@ -156,7 +143,7 @@ export default function EventScreen() {
       const res = await api.updateEvent(event.id, { rsvpsOpen: !event.rsvpsOpen });
       setEvent(res.event);
     } catch (e) {
-      Alert.alert('Update failed', e instanceof Error ? e.message : 'Try again');
+      notify('Update failed', e instanceof Error ? e.message : 'Try again');
     }
   }
 
@@ -168,7 +155,7 @@ export default function EventScreen() {
       setCommentText('');
       await load();
     } catch (e) {
-      Alert.alert('Comment failed', e instanceof Error ? e.message : 'Try again');
+      notify('Comment failed', e instanceof Error ? e.message : 'Try again');
     } finally {
       setSendingComment(false);
     }
