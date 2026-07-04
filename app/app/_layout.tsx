@@ -3,9 +3,18 @@ import { ActivityIndicator, Platform, Pressable, StyleSheet, Text, View } from '
 import { Stack, usePathname, useRouter, useSegments } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useFonts } from 'expo-font';
+import { enableScreens } from 'react-native-screens';
 import { AuthProvider, useAuth } from '../lib/auth';
 import { FONTS_TO_LOAD } from '../lib/fonts';
 import { colors } from '../lib/theme';
+
+// react-native-screens disables itself on web, which drops the tab navigator
+// into a fallback that keeps every tab mounted and painted behind the focused
+// one — with our transparent sceneStyle the pages render on top of each other.
+// The library's web shim hides blurred tabs with display:none, so force it on.
+if (Platform.OS === 'web') {
+  enableScreens(true);
+}
 
 // ✕ in modal headers so nothing forces the user to complete a flow.
 function ModalClose() {

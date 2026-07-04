@@ -4,6 +4,13 @@ import { randomInt } from 'node:crypto';
 import { z } from 'zod';
 import { db } from '../lib/db.js';
 import { createToken } from '../lib/auth.js';
+import {
+  checkVerification,
+  sendSms,
+  smsEnabled,
+  startVerification,
+  verifyEnabled,
+} from '../lib/sms.js';
 import type { AuthResponse } from '../../../app/shared/types.js';
 
 const CODE_TTL_MS = 10 * 60 * 1000;
@@ -80,9 +87,9 @@ authRoutes.use('/phone/*', async (c, next) => {
 // Unset (the default) keeps signup fully open, which is fine for a private link.
 export const INVITE_CODE = process.env.INVITE_CODE?.trim() || null;
 
-// Step 1: request an SMS code. Without an SMS provider configured (local
-// dev / until the Supabase Auth migration), the code is returned in the
-// response so the app can show it as a simulated text message.
+// Step 1: request an SMS code. When Twilio is configured (TWILIO_* env vars),
+// the code is texted and NOT returned. Otherwise — local dev, or a deploy
+// without Twilio — it's returned so the app can show it as a mock text.
 authRoutes.post('/phone/request', async (c) => {
   const body = await c.req.json().catch(() => null);
   if (INVITE_CODE && (body as { invite?: string } | null)?.invite?.trim() !== INVITE_CODE) {
@@ -92,6 +99,22 @@ authRoutes.post('/phone/request', async (c) => {
   if (!parsed.success) return c.json({ error: 'Enter a valid phone number' }, 400);
   const { phone } = parsed.data;
 
+  // Twilio Verify owns the code end-to-end — we only make sure a profile row
+  // exists for this phone and let Twilio send. Nothing is stored on our side.
+  if (verifyEnabled) {
+    await db.user.upsert({ where: { phone }, create: { phone }, update: {} });
+    try {
+      await startVerification(phone);
+    } catch (e) {
+      console.error('Verify start failed:', e);
+      const detail = e instanceof Error ? e.message : 'unknown error';
+      return c.json({ error: `Could not send the code — ${detail}` }, 502);
+    }
+    return c.json({ sent: true });
+  }
+
+  // Otherwise we generate and store our own code (texted via Messages API, or
+  // returned on screen in dev).
   const code = String(randomInt(0, 1000000)).padStart(6, '0');
   const expiresAt = new Date(Date.now() + CODE_TTL_MS);
 
@@ -101,10 +124,14 @@ authRoutes.post('/phone/request', async (c) => {
     update: { phoneCode: code, phoneCodeExpiresAt: expiresAt },
   });
 
-  if (process.env.SMS_PROVIDER) {
-    // No sender is implemented yet — fail loudly rather than swallowing every
-    // code and making signup impossible. Leave SMS_PROVIDER unset.
-    throw new Error('SMS_PROVIDER is set but no SMS sender is implemented');
+  if (smsEnabled) {
+    try {
+      await sendSms(phone, `${code} is your Hausi verification code`);
+    } catch (e) {
+      console.error('SMS send failed:', e);
+      return c.json({ error: 'Could not send the code — check the number and try again' }, 502);
+    }
+    return c.json({ sent: true });
   }
   return c.json({ sent: true, devCode: code });
 });
@@ -115,6 +142,22 @@ authRoutes.post('/phone/verify', async (c) => {
   const parsed = verifySchema.safeParse(await c.req.json().catch(() => null));
   if (!parsed.success) return c.json({ error: 'Enter the 6-digit code' }, 400);
   const { phone, code } = parsed.data;
+
+  // Twilio Verify checks the code; on approval we upsert the profile (the
+  // request step created it, but be safe) and mint the session.
+  if (verifyEnabled) {
+    let approved = false;
+    try {
+      approved = await checkVerification(phone, code);
+    } catch (e) {
+      console.error('Verify check failed:', e);
+      const detail = e instanceof Error ? e.message : 'unknown error';
+      return c.json({ error: `Could not verify the code — ${detail}` }, 502);
+    }
+    if (!approved) return c.json({ error: 'Wrong or expired code — try again' }, 401);
+    const user = await db.user.upsert({ where: { phone }, create: { phone }, update: {} });
+    return c.json({ ...(await authResponse(user)), isNew: user.name.trim() === '' });
+  }
 
   const user = await db.user.findUnique({ where: { phone } });
   if (
