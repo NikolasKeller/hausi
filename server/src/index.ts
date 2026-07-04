@@ -11,6 +11,7 @@ import { notificationRoutes } from './routes/notifications.js';
 import { discoverRoutes } from './routes/discover.js';
 import { meRoutes } from './routes/me.js';
 import { dedupeUsersByPhone } from './lib/dedupeUsers.js';
+import { db } from './lib/db.js';
 
 const app = new Hono();
 
@@ -62,6 +63,16 @@ try {
   await dedupeUsersByPhone();
 } catch (e) {
   console.error('User dedupe skipped:', e);
+}
+
+// Persistence check: if this count keeps resetting after a redeploy, the
+// SQLite DB at DATABASE_URL is NOT on a persistent volume — that (not the app)
+// is why logins don't stick, since every deploy drops all accounts and
+// invalidates their tokens. On Railway, mount a volume at /data.
+try {
+  console.log(`Accounts in DB at boot: ${await db.user.count()}`);
+} catch (e) {
+  console.error('Account count failed:', e);
 }
 
 const port = Number(process.env.PORT ?? 3001);
