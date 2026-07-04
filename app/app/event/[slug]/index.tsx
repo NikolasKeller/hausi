@@ -28,9 +28,9 @@ import { Burst, PillBadge } from '../../../components/partiful';
 import { formatEventDate, formatEventTime } from '../../../components/EventCard';
 
 const RSVP_OPTIONS: { status: RsvpStatus; label: string; emoji: string }[] = [
-  { status: 'GOING', label: 'Going', emoji: '🎉' },
+  { status: 'GOING', label: 'Going', emoji: '👍' },
   { status: 'MAYBE', label: 'Maybe', emoji: '🤔' },
-  { status: 'CANT', label: "Can't", emoji: '😢' },
+  { status: 'CANT', label: "Can't Go", emoji: '😢' },
 ];
 
 const STATUS_SECTIONS: { status: RsvpStatus; title: string }[] = [
@@ -49,6 +49,7 @@ export default function EventScreen() {
   const [rsvpBusy, setRsvpBusy] = useState(false);
   const [commentText, setCommentText] = useState('');
   const [sendingComment, setSendingComment] = useState(false);
+  const [showAllGuests, setShowAllGuests] = useState(false);
 
   const load = useCallback(async () => {
     if (!slug) return;
@@ -216,6 +217,12 @@ export default function EventScreen() {
     .join(',');
   const isCanceled = event.canceledAt != null;
   const rsvpLocked = isCanceled || (!event.rsvpsOpen && !event.canManage);
+  // Guest-list summary preview: going + maybe, in that order.
+  const previewGuests = event.rsvps.filter(
+    (r) => r.status === 'GOING' || r.status === 'MAYBE'
+  );
+  const previewShown = previewGuests.slice(0, 7);
+  const previewExtra = event.counts.going + event.counts.maybe - previewShown.length;
 
   return (
     <ThemeBackground theme={event.coverTheme} effect={event.effect}>
@@ -303,6 +310,44 @@ export default function EventScreen() {
               <Text style={[styles.description, { color: ink.text }]}>{event.description}</Text>
             ) : null}
 
+            {/* Guest list summary — same order as the reference: heading, counts,
+                a row of avatars, then a "View all" toggle for the full list. */}
+            <Glass tint={ink.glassTint} radius={radius.md} style={styles.guestSummary}>
+              <View style={styles.guestSummaryHead}>
+                <View>
+                  <Text style={[styles.kickerLabel, { color: ink.subtext }]}>Who's coming</Text>
+                  <Text style={[styles.sectionTitle, { color: ink.text }]}>Guest List</Text>
+                </View>
+                <Pressable onPress={() => setShowAllGuests((v) => !v)}>
+                  <Glass tint={ink.glassTint} radius={radius.pill} style={styles.viewAllPill}>
+                    <Text style={[styles.viewAllText, { color: ink.text }]}>
+                      {showAllGuests ? 'Hide' : 'View all'}
+                    </Text>
+                  </Glass>
+                </Pressable>
+              </View>
+              <Text style={[styles.guestCountsLine, { color: ink.subtext }]}>
+                {event.counts.going} Going · {event.counts.maybe} Maybe
+                {event.counts.waitlist > 0 ? ` · ${event.counts.waitlist} Waitlist` : ''}
+              </Text>
+              {previewShown.length ? (
+                <View style={styles.avatarStack}>
+                  {previewShown.map((r, i) => (
+                    <View key={r.user.id} style={i > 0 ? { marginLeft: -10 } : undefined}>
+                      <Avatar emoji={r.user.avatarEmoji} size={40} />
+                    </View>
+                  ))}
+                  {previewExtra > 0 ? (
+                    <Glass tint={ink.glassTint} radius={999} style={[styles.avatarMore, { marginLeft: -10 }]}>
+                      <Text style={[styles.avatarMoreText, { color: ink.text }]}>+{previewExtra}</Text>
+                    </Glass>
+                  ) : null}
+                </View>
+              ) : (
+                <Text style={[styles.guestEmpty, { color: ink.faint }]}>Be the first to RSVP 👀</Text>
+              )}
+            </Glass>
+
             {rsvpLocked ? (
               !isCanceled ? (
                 <View style={{ gap: spacing.sm }}>
@@ -332,26 +377,26 @@ export default function EventScreen() {
                       key={opt.status}
                       onPress={() => setRsvp(opt.status)}
                       disabled={rsvpBusy}
-                      style={styles.rsvpButtonWrap}
+                      style={({ pressed }) => [styles.rsvpButtonWrap, pressed && { opacity: 0.8 }]}
                     >
                       <Glass
                         tint={ink.glassTint}
-                        radius={radius.md}
-                        fill={active ? (ink.dark ? 'rgba(255,255,255,0.18)' : 'rgba(255,255,255,0.34)') : undefined}
-                        style={[styles.rsvpButton, active && styles.rsvpButtonActive]}
+                        radius={999}
+                        fill={active ? (ink.dark ? 'rgba(255,255,255,0.22)' : 'rgba(255,255,255,0.42)') : undefined}
+                        style={[styles.rsvpCircle, active && { borderColor: ink.text, borderWidth: 2 }]}
                       >
                         <Text style={styles.rsvpEmoji}>{opt.emoji}</Text>
-                        <Text
-                          style={[
-                            styles.rsvpLabel,
-                            { color: active ? ink.text : ink.subtext },
-                          ]}
-                        >
-                          {opt.status === 'GOING' && myRsvp?.status === 'WAITLIST'
-                            ? 'Waitlist'
-                            : opt.label}
-                        </Text>
                       </Glass>
+                      <Text
+                        style={[
+                          styles.rsvpLabel,
+                          { color: active ? ink.text : ink.subtext, fontWeight: active ? '800' : '600' },
+                        ]}
+                      >
+                        {opt.status === 'GOING' && myRsvp?.status === 'WAITLIST'
+                          ? 'Waitlist'
+                          : opt.label}
+                      </Text>
                     </Pressable>
                   );
                 })}
@@ -458,6 +503,8 @@ export default function EventScreen() {
               </View>
             ) : null}
 
+            {showAllGuests ? (
+            <>
             <View style={[styles.divider, { backgroundColor: ink.hairline }]} />
 
             <View style={styles.sectionHead}>
@@ -537,6 +584,8 @@ export default function EventScreen() {
                 </View>
               );
             })}
+            </>
+            ) : null}
 
             <View style={[styles.divider, { backgroundColor: ink.hairline }]} />
 
@@ -724,22 +773,61 @@ const styles = StyleSheet.create({
   },
   rsvpRow: {
     flexDirection: 'row',
-    gap: spacing.sm,
+    justifyContent: 'center',
+    gap: spacing.xl,
+    paddingVertical: spacing.sm,
   },
   rsvpButtonWrap: {
-    flex: 1,
-  },
-  rsvpButton: {
     alignItems: 'center',
-    gap: 4,
-    paddingVertical: spacing.md,
+    gap: spacing.sm,
   },
-  rsvpButtonActive: {},
+  rsvpCircle: {
+    width: 76,
+    height: 76,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   rsvpEmoji: {
-    fontSize: 28,
+    fontSize: 32,
   },
   rsvpLabel: {
     ...uiText(14, '700'),
+  },
+  guestSummary: {
+    padding: spacing.md,
+    gap: spacing.sm,
+  },
+  guestSummaryHead: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    justifyContent: 'space-between',
+  },
+  viewAllPill: {
+    paddingHorizontal: spacing.md,
+    paddingVertical: 8,
+  },
+  viewAllText: {
+    ...uiText(13, '700'),
+  },
+  guestCountsLine: {
+    ...uiText(14, '600'),
+  },
+  avatarStack: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 2,
+  },
+  avatarMore: {
+    width: 40,
+    height: 40,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  avatarMoreText: {
+    ...uiText(13, '800'),
+  },
+  guestEmpty: {
+    ...uiText(14, '500'),
   },
   plusOnesRow: {
     flexDirection: 'row',
