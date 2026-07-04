@@ -76,16 +76,26 @@ function rsvpPhrase(status: string, plusOnes: number): string {
   return RSVP_PHRASES[status] ?? 'updated their RSVP';
 }
 
-// Promote waitlisted guests FIFO while capacity allows. Runs inside the
-// caller's transaction; writes system entries and notifications for each promotion.
+// Promote waitlisted guests FIFO (by waitlist-join time) while capacity allows.
+// Paused while RSVPs are closed — the host froze the list; reopening resumes it.
+// Runs inside the caller's transaction; writes system entries and notifications.
 async function promoteWaitlist(tx: Prisma.TransactionClient, eventId: string) {
   const event = await tx.event.findUnique({
     where: { id: eventId },
-    include: { rsvps: { include: { user: true }, orderBy: { createdAt: 'asc' } } },
+    include: {
+      rsvps: { include: { user: true } },
+      cohosts: true,
+    },
   });
-  if (!event || event.canceledAt) return;
+  if (!event || event.canceledAt || !event.rsvpsOpen) return;
 
-  const waitlist = event.rsvps.filter((r) => r.status === 'WAITLIST');
+  const waitlist = event.rsvps
+    .filter((r) => r.status === 'WAITLIST')
+    .sort(
+      (a, b) =>
+        (a.waitlistedAt?.getTime() ?? a.createdAt.getTime()) -
+        (b.waitlistedAt?.getTime() ?? b.createdAt.getTime())
+    );
   if (!waitlist.length) return;
 
   let capacityLeft =
@@ -97,7 +107,10 @@ async function promoteWaitlist(tx: Prisma.TransactionClient, eventId: string) {
     const needed = 1 + entry.plusOnes;
     if (needed > capacityLeft) break; // strict FIFO: don't skip ahead of the queue
     capacityLeft -= needed;
-    await tx.rsvp.update({ where: { id: entry.id }, data: { status: 'GOING' } });
+    await tx.rsvp.update({
+      where: { id: entry.id },
+      data: { status: 'GOING', waitlistedAt: null },
+    });
     await tx.comment.create({
       data: {
         eventId,
@@ -111,6 +124,15 @@ async function promoteWaitlist(tx: Prisma.TransactionClient, eventId: string) {
       text: `You're off the waitlist for "${event.title}" — you're going! 🎉`,
       eventSlug: event.slug,
     });
+    await notify(
+      tx,
+      managerIds(event).filter((id) => id !== entry.userId),
+      {
+        type: 'RSVP',
+        text: `${entry.user.name} is off the waitlist — going 🎉 — "${event.title}"`,
+        eventSlug: event.slug,
+      }
+    );
   }
 }
 
@@ -194,6 +216,9 @@ eventRoutes.patch('/:id', async (c) => {
   if (!canManageEvent(existing, userId)) {
     return c.json({ error: 'Only hosts can edit this event' }, 403);
   }
+  if (existing.canceledAt) {
+    return c.json({ error: "Canceled events can't be edited" }, 409);
+  }
 
   const parsed = eventInputSchema.partial().safeParse(await c.req.json().catch(() => null));
   if (!parsed.success) return c.json({ error: 'Invalid event data' }, 400);
@@ -206,8 +231,22 @@ eventRoutes.patch('/:id', async (c) => {
       include: eventInclude,
     });
 
-    // Capacity may have grown (or the cap dropped entirely) — promote the queue.
-    if ('maxGuests' in data) {
+    // A lowered plus-one limit clamps existing parties so nobody is stuck
+    // above the new cap (and the freed seats can go to the waitlist).
+    if (data.plusOneLimit != null) {
+      const over = await tx.rsvp.findMany({
+        where: { eventId: existing.id, plusOnes: { gt: data.plusOneLimit } },
+      });
+      for (const r of over) {
+        await tx.rsvp.update({
+          where: { id: r.id },
+          data: { plusOnes: data.plusOneLimit },
+        });
+      }
+    }
+
+    // Capacity may have grown (cap raised/dropped, parties clamped, RSVPs reopened).
+    if ('maxGuests' in data || data.plusOneLimit != null || data.rsvpsOpen === true) {
       await promoteWaitlist(tx, existing.id);
     }
 
@@ -295,7 +334,17 @@ eventRoutes.put('/:id/rsvp', async (c) => {
       if (event.canceledAt) throw new HttpError('This event was canceled', 409);
 
       const isManager = canManageEvent(event, userId);
-      if (!event.rsvpsOpen && !isManager) throw new HttpError('RSVPs are closed', 409);
+      const previous = event.rsvps.find((r) => r.userId === userId);
+
+      // Closed RSVPs block joining or growing a party, but guests must always
+      // be able to withdraw (CANT/MAYBE) or shrink their plus ones.
+      const isDowngrade =
+        previous != null &&
+        (requestedStatus !== 'GOING' ||
+          (previous.status === 'GOING' && plusOnes <= previous.plusOnes));
+      if (!event.rsvpsOpen && !isManager && !isDowngrade) {
+        throw new HttpError('RSVPs are closed', 409);
+      }
       if (plusOnes > event.plusOneLimit) {
         throw new HttpError(
           event.plusOneLimit === 0
@@ -305,19 +354,33 @@ eventRoutes.put('/:id/rsvp', async (c) => {
         );
       }
 
-      // A full event puts new GOING requests on the waitlist instead.
+      // A full event puts NEW going requests on the waitlist. A guest who
+      // already holds a GOING spot is never demoted — an over-capacity
+      // party-size increase is rejected instead.
       let status: string = requestedStatus;
       if (requestedStatus === 'GOING' && event.maxGuests != null) {
         const others = event.rsvps.filter((r) => r.userId !== userId);
         const goingCount = countRsvps(others).going;
-        if (goingCount + 1 + plusOnes > event.maxGuests) status = 'WAITLIST';
+        if (goingCount + 1 + plusOnes > event.maxGuests) {
+          if (previous?.status === 'GOING') {
+            throw new HttpError('Not enough spots left for that many plus ones', 409);
+          }
+          status = 'WAITLIST';
+        }
       }
 
-      const previous = event.rsvps.find((r) => r.userId === userId);
+      // Entering the waitlist stamps the FIFO position; re-submitting while
+      // already waitlisted keeps it.
+      const waitlistedAt =
+        status === 'WAITLIST'
+          ? previous?.status === 'WAITLIST'
+            ? previous.waitlistedAt
+            : new Date()
+          : null;
       await tx.rsvp.upsert({
         where: { eventId_userId: { eventId, userId } },
-        create: { eventId, userId, status, plusOnes },
-        update: { status, plusOnes },
+        create: { eventId, userId, status, plusOnes, waitlistedAt },
+        update: { status, plusOnes, waitlistedAt },
       });
 
       // Activity-feed entry on the Party Wall when the status actually changes.
@@ -367,6 +430,9 @@ eventRoutes.delete('/:id/rsvp/:userId', async (c) => {
   if (targetUserId === event.hostId) {
     return c.json({ error: "The host can't be removed from their own event" }, 400);
   }
+  if (event.cohosts.some((ch) => ch.userId === targetUserId)) {
+    return c.json({ error: 'Remove them as co-host first' }, 400);
+  }
 
   await db.$transaction(async (tx) => {
     await tx.rsvp.deleteMany({ where: { eventId, userId: targetUserId } });
@@ -390,6 +456,7 @@ eventRoutes.post('/:id/cohosts', async (c) => {
   });
   if (!event) return c.json({ error: 'Event not found' }, 404);
   if (event.hostId !== me) return c.json({ error: 'Only the host can add co-hosts' }, 403);
+  if (event.canceledAt) return c.json({ error: "Canceled events can't get new co-hosts" }, 409);
 
   const parsed = cohostSchema.safeParse(await c.req.json().catch(() => null));
   if (!parsed.success) return c.json({ error: 'Enter a valid email' }, 400);

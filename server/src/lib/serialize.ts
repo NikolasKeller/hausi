@@ -12,7 +12,13 @@ import type {
 } from '../../../app/shared/types.js';
 
 type UserRow = { id: string; name: string; avatarEmoji: string };
-type RsvpRow = { status: string; plusOnes: number; userId: string; user: UserRow };
+type RsvpRow = {
+  status: string;
+  plusOnes: number;
+  userId: string;
+  waitlistedAt: Date | null;
+  user: UserRow;
+};
 type CommentRow = { id: string; text: string; type: string; createdAt: Date; user: UserRow };
 type CohostRow = { userId: string; user: UserRow };
 type EventRow = {
@@ -88,7 +94,14 @@ export function toEventDetail(
     plusOneLimit: event.plusOneLimit,
     rsvpsOpen: event.rsvpsOpen,
     cohosts: event.cohosts.map((c) => toPublicUser(c.user)),
-    rsvps: event.rsvps.map(
+    // Waitlist entries are ordered by when they joined the queue (the FIFO key);
+    // everything else keeps the incoming createdAt order.
+    rsvps: [
+      ...event.rsvps.filter((r) => r.status !== 'WAITLIST'),
+      ...event.rsvps
+        .filter((r) => r.status === 'WAITLIST')
+        .sort((a, b) => (a.waitlistedAt?.getTime() ?? 0) - (b.waitlistedAt?.getTime() ?? 0)),
+    ].map(
       (r): RsvpEntry => ({
         user: toPublicUser(r.user),
         status: r.status as RsvpStatus,

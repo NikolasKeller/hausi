@@ -9,9 +9,11 @@
     "userInterfaceStyle": "dark",
     "backgroundColor": "#0E0B16",
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "bundleIdentifier": "com.hausi.app"
     },
     "android": {
+      "package": "com.hausi.app",
       "adaptiveIcon": {
         "backgroundColor": "#0E0B16",
         "foregroundImage": "./assets/android-icon-foreground.png",

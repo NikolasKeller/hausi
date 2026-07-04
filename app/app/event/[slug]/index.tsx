@@ -239,8 +239,17 @@ export default function EventScreen() {
 
           {rsvpLocked ? (
             !isCanceled ? (
-              <View style={styles.lockedNote}>
-                <Text style={styles.lockedNoteText}>🔒 RSVPs are closed for this event</Text>
+              <View style={{ gap: spacing.sm }}>
+                <View style={styles.lockedNote}>
+                  <Text style={styles.lockedNoteText}>🔒 RSVPs are closed for this event</Text>
+                </View>
+                {myRsvp && myRsvp.status !== 'CANT' ? (
+                  <Button
+                    title="I can't make it anymore"
+                    variant="ghost"
+                    onPress={() => setRsvp('CANT')}
+                  />
+                ) : null}
               </View>
             ) : null
           ) : (
@@ -298,9 +307,11 @@ export default function EventScreen() {
                   }
                   style={[
                     styles.stepButton,
-                    myRsvp.plusOnes >= event.plusOneLimit && { opacity: 0.4 },
+                    (myRsvp.plusOnes >= event.plusOneLimit || spotsLeft === 0) && {
+                      opacity: 0.4,
+                    },
                   ]}
-                  disabled={rsvpBusy || myRsvp.plusOnes >= event.plusOneLimit}
+                  disabled={rsvpBusy || myRsvp.plusOnes >= event.plusOneLimit || spotsLeft === 0}
                 >
                   <Text style={styles.stepText}>＋</Text>
                 </Pressable>
@@ -310,22 +321,22 @@ export default function EventScreen() {
 
           {event.canManage ? (
             <View style={{ gap: spacing.sm }}>
-              <View style={styles.hostActions}>
-                <Button
-                  title="Edit event"
-                  variant="ghost"
-                  onPress={() => router.push(`/event/${event.slug}/edit`)}
-                  style={{ flex: 1 }}
-                />
-                {!isCanceled ? (
+              {!isCanceled ? (
+                <View style={styles.hostActions}>
+                  <Button
+                    title="Edit event"
+                    variant="ghost"
+                    onPress={() => router.push(`/event/${event.slug}/edit`)}
+                    style={{ flex: 1 }}
+                  />
                   <Button
                     title={event.rsvpsOpen ? 'Close RSVPs' : 'Open RSVPs'}
                     variant="ghost"
                     onPress={toggleRsvpsOpen}
                     style={{ flex: 1 }}
                   />
-                ) : null}
-              </View>
+                </View>
+              ) : null}
               {event.isHost ? (
                 <View style={styles.hostActions}>
                   {!isCanceled ? (
@@ -372,7 +383,7 @@ export default function EventScreen() {
                         {r.plusOnes > 0 ? ` +${r.plusOnes}` : ''}
                         {r.user.id === event.host.id ? '  👑' : isCohost ? '  🤝' : ''}
                       </Text>
-                      {event.canManage && r.user.id !== event.host.id ? (
+                      {event.canManage && r.user.id !== event.host.id && !isCohost ? (
                         <Pressable
                           onPress={() => confirmRemoveGuest(r.user.id, r.user.name)}
                           style={styles.removeGuest}

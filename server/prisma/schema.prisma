@@ -71,16 +71,19 @@ model Notification {
 }
 
 // status: GOING | MAYBE | CANT | WAITLIST (SQLite has no enums)
+// waitlistedAt records when the guest entered the waitlist — the FIFO key.
+// createdAt can't serve that role: it's frozen at the user's first RSVP of any status.
 model Rsvp {
-  id        String   @id @default(cuid())
-  eventId   String
-  event     Event    @relation(fields: [eventId], references: [id], onDelete: Cascade)
-  userId    String
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  status    String
-  plusOnes  Int      @default(0)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id           String    @id @default(cuid())
+  eventId      String
+  event        Event     @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  userId       String
+  user         User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  status       String
+  plusOnes     Int       @default(0)
+  waitlistedAt DateTime?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
 
   @@unique([eventId, userId])
 }

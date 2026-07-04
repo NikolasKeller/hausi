@@ -38,8 +38,9 @@ export default function NotificationsScreen() {
           if (!active) return;
           setItems(res.notifications);
           if (res.unread > 0) {
-            // Mark as read after showing; unread styling uses the fetched snapshot.
-            api.markNotificationsRead().catch(() => {});
+            // Mark only what was fetched as read (newest createdAt as cutoff),
+            // so notifications arriving mid-visit stay unread.
+            api.markNotificationsRead(res.notifications[0]?.createdAt).catch(() => {});
           }
         } catch {
           // Show whatever we have; pull-to-refresh isn't critical here.

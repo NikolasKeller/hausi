@@ -44,11 +44,15 @@ EXPO_PUBLIC_API_URL=http://192.168.x.x:3001 npx expo start
 ## Features
 
 - **Auth** – signup/login with email + password (JWT in `expo-secure-store`), emoji avatars
-- **Events** – create, edit, delete; six gradient/emoji cover themes with live title preview; date/time picker; optional guest cap
+- **Events** – create, edit, delete; six gradient/emoji cover themes, four title fonts (Classic/Literary/Fancy/Eclectic) and animated effects (confetti/sparkles/balloons) with live preview; date/time picker; optional guest cap
 - **Invite links** – native share sheet; the invite deep link opens the event directly, signed-out guests are routed through signup first. In Expo Go the Share button emits a working `exp://<host>:8081/--/e/<slug>` link; the `hausi://e/<slug>` scheme takes effect in a development/standalone build (`npx expo run:ios`)
-- **RSVPs** – Going / Maybe / Can't with plus-ones; capacity enforcement when the event is full
-- **Guest list** – emoji avatars grouped by status with live counters (X going, Y maybe); hosts can remove guests
+- **RSVPs** – Going / Maybe / Can't with plus-ones; per-event plus-one limit; hosts can open/close RSVPs
+- **Waitlist** – full events queue GOING requests; freed spots auto-promote FIFO with a notification
+- **Guest list** – emoji avatars grouped by status with live counters (going/maybe/waitlist); hosts can remove guests
+- **Cohosts** – add by email; cohosts can edit the event and manage guests
+- **Cancellation** – canceling keeps the page alive with a banner and notifies every guest; delete stays separate
 - **Party Wall** – per-event feed with comments and activity entries ("Mia is going with +2 🎉")
+- **Notifications** – in-app bell with unread badge: RSVPs and comments for hosts, updates/cancellations for guests, waitlist promotions
 - **Home feed** – your events split into Upcoming and Past
 
 ## Try the main flow
@@ -70,10 +74,31 @@ EXPO_PUBLIC_API_URL=http://192.168.x.x:3001 npx expo start
 | POST | `/events` | Create event |
 | GET | `/events/by-slug/:slug` | Resolve invite link |
 | PATCH / DELETE | `/events/:id` | Host only |
-| PUT | `/events/:id/rsvp` | Upsert RSVP (`GOING` \| `MAYBE` \| `CANT`, `plusOnes`) |
+| PUT | `/events/:id/rsvp` | Upsert RSVP (`GOING` \| `MAYBE` \| `CANT`, `plusOnes`); full events → waitlist |
 | DELETE | `/events/:id/rsvp/:userId` | Host removes a guest |
+| POST | `/events/:id/cancel` | Cancel (keeps page, notifies guests) |
+| POST / DELETE | `/events/:id/cohosts[/:userId]` | Manage cohosts (creator only) |
 | GET / POST | `/events/:id/comments` | Party Wall |
+| GET | `/notifications` | Your notifications + unread count |
+| POST | `/notifications/read-all` | Mark all read |
+
+## Rolling it out
+
+The repo ships with `app/eas.json` and bundle identifiers (`com.hausi.app`) so device builds are one command away:
+
+1. **Deploy the server** — any Node host works (Fly.io, Railway, Render). SQLite needs a persistent disk (e.g. a Fly volume); for real multi-instance traffic swap the Prisma datasource to Postgres (one-line schema change + `prisma db push`). Set a strong `JWT_SECRET`.
+2. **Point the app at it** — build with `EXPO_PUBLIC_API_URL=https://your-api.example.com`.
+3. **Build for devices** (needs a free [Expo account](https://expo.dev): `npm i -g eas-cli && eas login`):
+
+   ```bash
+   cd app
+   eas build --profile preview --platform ios      # internal distribution / simulator
+   eas build --profile production --platform all   # store-ready builds
+   eas submit --platform ios                       # TestFlight
+   ```
+
+   The `hausi://e/<slug>` invite deep link becomes fully functional in these builds.
 
 ## Out of scope (by design)
 
-Image uploads, SMS/email sending, "Text Blasts", payments, and app-store builds (EAS) — all addable later.
+Image uploads, SMS/email sending, "Text Blasts", payments — all addable later.

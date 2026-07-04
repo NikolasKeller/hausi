@@ -9,7 +9,9 @@ import { colors } from '../lib/theme';
 
 function RootNavigator() {
   const { user, initializing } = useAuth();
-  const [fontsLoaded] = useFonts(FONTS_TO_LOAD);
+  // On font failure, proceed anyway — titles fall back to the system font.
+  const [fontsLoaded, fontError] = useFonts(FONTS_TO_LOAD);
+  const fontsReady = fontsLoaded || fontError != null;
   const segments = useSegments();
   const pathname = usePathname();
   const router = useRouter();
@@ -31,7 +33,7 @@ function RootNavigator() {
     }
   }, [user, initializing, segments, pathname, router]);
 
-  if (initializing || !fontsLoaded) {
+  if (initializing || !fontsReady) {
     return (
       <View style={{ flex: 1, backgroundColor: colors.bg, alignItems: 'center', justifyContent: 'center' }}>
         <ActivityIndicator color={colors.accent} size="large" />

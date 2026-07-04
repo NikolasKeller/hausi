@@ -28,7 +28,18 @@ export default function EditEventScreen() {
       if (!slug || event) return;
       api
         .eventBySlug(slug)
-        .then((res) => setEvent(res.event))
+        .then((res) => {
+          if (!res.event.canManage) {
+            setError('Only hosts can edit this event');
+            return;
+          }
+          if (res.event.canceledAt) {
+            setError("Canceled events can't be edited");
+            return;
+          }
+          setEvent(res.event);
+          setError(null);
+        })
         .catch((e) => setError(e instanceof Error ? e.message : 'Could not load event'));
     }, [slug, event])
   );
@@ -66,18 +77,14 @@ export default function EditEventScreen() {
     ]);
   }
 
-  if (error) {
-    return (
-      <View style={styles.center}>
-        <Text style={styles.errorText}>{error}</Text>
-      </View>
-    );
-  }
-
   if (!event) {
     return (
       <View style={styles.center}>
-        <ActivityIndicator color={colors.accent} size="large" />
+        {error ? (
+          <Text style={styles.errorText}>{error}</Text>
+        ) : (
+          <ActivityIndicator color={colors.accent} size="large" />
+        )}
       </View>
     );
   }

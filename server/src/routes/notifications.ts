@@ -29,8 +29,15 @@ notificationRoutes.get('/', async (c) => {
 
 notificationRoutes.post('/read-all', async (c) => {
   const userId = c.get('userId');
+  // `before` scopes the mark to what the client actually fetched, so
+  // notifications that arrive mid-visit aren't marked read unseen.
+  const body = await c.req.json().catch(() => ({}));
+  const before =
+    typeof body?.before === 'string' && !Number.isNaN(Date.parse(body.before))
+      ? new Date(body.before)
+      : null;
   await db.notification.updateMany({
-    where: { userId, readAt: null },
+    where: { userId, readAt: null, ...(before ? { createdAt: { lte: before } } : {}) },
     data: { readAt: new Date() },
   });
   return c.json({ ok: true });
