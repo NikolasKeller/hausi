@@ -10,6 +10,8 @@ import {
   View,
 } from 'react-native';
 import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { Ionicons } from '@expo/vector-icons';
 import * as Linking from 'expo-linking';
 import { LIMITS, type EventDetail, type RsvpStatus } from '../../../shared/types';
 import { api } from '../../../lib/api';
@@ -43,6 +45,7 @@ const STATUS_SECTIONS: { status: RsvpStatus; title: string }[] = [
 export default function EventScreen() {
   const { slug } = useLocalSearchParams<{ slug: string }>();
   const router = useRouter();
+  const insets = useSafeAreaInsets();
   const { user } = useAuth();
   const [event, setEvent] = useState<EventDetail | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -640,6 +643,18 @@ export default function EventScreen() {
           </View>
         </ScrollView>
       </KeyboardAvoidingView>
+
+      {/* Floating back button — the screen has no nav header (so no opaque bar
+          over the full-bleed theme); this glass chip sits over the cover. */}
+      <Pressable
+        onPress={() => (router.canGoBack() ? router.back() : router.replace('/'))}
+        hitSlop={10}
+        style={[styles.backFab, { top: insets.top + spacing.sm }]}
+      >
+        <Glass tint={ink.glassTint} radius={999} style={styles.backFabInner}>
+          <Ionicons name="chevron-back" size={24} color={ink.text} />
+        </Glass>
+      </Pressable>
     </ThemeBackground>
   );
 }
@@ -652,6 +667,17 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     gap: spacing.md,
     padding: spacing.lg,
+  },
+  backFab: {
+    position: 'absolute',
+    left: spacing.lg,
+    zIndex: 20,
+  },
+  backFabInner: {
+    width: 40,
+    height: 40,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   errorEmoji: { fontSize: 48 },
   errorText: { color: colors.text, ...uiText(17, '500'), textAlign: 'center' },
