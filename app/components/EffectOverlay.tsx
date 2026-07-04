@@ -11,18 +11,20 @@ interface ParticleSpec {
   size: number;
   delay: number;
   duration: number;
+  tilt: number; // deterministic static rotation, decorative only
 }
 
 const EFFECT_CONFIG: Record<
   Exclude<Effect, 'none'>,
   { emojis: string[]; motion: 'fall' | 'twinkle' | 'float' }
 > = {
-  confetti: { emojis: ['🎊', '🎉', '✨', '🎈'], motion: 'fall' },
-  sparkles: { emojis: ['✨', '⭐', '💫'], motion: 'twinkle' },
-  balloons: { emojis: ['🎈', '🎈', '🎀'], motion: 'float' },
+  confetti: { emojis: ['🎊', '🎉', '✨', '🎈', '🥳', '🎁'], motion: 'fall' },
+  sparkles: { emojis: ['✨', '⭐', '💫', '🌟', '💖'], motion: 'twinkle' },
+  balloons: { emojis: ['🎈', '🎈', '🎀', '🥳'], motion: 'float' },
 };
 
 // Deterministic particle layout so the same event always looks the same.
+// (Seed math is deliberately index-based — do not change the constants.)
 function particles(emojis: string[], count: number): ParticleSpec[] {
   return Array.from({ length: count }, (_, i) => ({
     emoji: emojis[i % emojis.length],
@@ -30,6 +32,9 @@ function particles(emojis: string[], count: number): ParticleSpec[] {
     size: 16 + ((i * 13) % 14),
     delay: (i * 450) % 3000,
     duration: 3800 + ((i * 700) % 2400),
+    // Deterministic per-particle tilt so stickers scatter at playful angles
+    // without touching the layout seed above.
+    tilt: ((i * 29 + 7) % 31) - 15,
   }));
 }
 
@@ -108,6 +113,8 @@ function Particle({
         outputRange: [0.05, 0.9, 0.05],
       }),
       transform: [
+        // Static deterministic tilt gives the sparkles a scattered-sticker feel.
+        { rotate: `${spec.tilt}deg` },
         {
           scale: progress.interpolate({ inputRange: [0, 0.5, 1], outputRange: [0.7, 1.15, 0.7] }),
         },

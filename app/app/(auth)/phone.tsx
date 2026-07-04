@@ -11,8 +11,10 @@ import {
 import { useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { api } from '../../lib/api';
-import { colors, radius, spacing } from '../../lib/theme';
+import { light, radius, spacing } from '../../lib/theme';
+import { display, kicker, uiText } from '../../lib/fonts';
 import { AuroraBackground } from '../../components/AuroraBackground';
+import { PaperCard } from '../../components/partiful';
 import { Button, ErrorText } from '../../components/ui';
 
 const COUNTRY_CODES = [
@@ -75,58 +77,61 @@ export default function PhoneScreen() {
             contentContainerStyle={styles.content}
             keyboardShouldPersistTaps="handled"
           >
-            <Text style={styles.title}>Join the party</Text>
+            <Text style={styles.kicker}>Step 1 of 2</Text>
+            <Text style={styles.title}>Join the{'\n'}party</Text>
             <Text style={styles.subtitle}>Just for event updates. No spam 🤙</Text>
 
-            <View style={styles.phoneRow}>
-              <Pressable style={styles.countryPill} onPress={() => setPickerOpen(!pickerOpen)}>
-                <Text style={styles.countryText}>
-                  {country.flag} {country.code}
-                </Text>
-                <Text style={styles.countryCaret}>▾</Text>
-              </Pressable>
-              <TextInput
-                value={digits}
-                onChangeText={(t) => setDigits(t.replace(/[^0-9 ]/g, ''))}
-                placeholder="Phone number"
-                placeholderTextColor="rgba(247,245,255,0.5)"
-                keyboardType="phone-pad"
-                autoFocus
-                style={styles.phoneInput}
-                maxLength={16}
-              />
-            </View>
-
-            {pickerOpen ? (
-              <View style={styles.picker}>
-                {COUNTRY_CODES.map((c, i) => (
-                  <Pressable
-                    key={c.code}
-                    onPress={() => {
-                      setCountryIndex(i);
-                      setPickerOpen(false);
-                    }}
-                    style={[styles.pickerItem, i === countryIndex && styles.pickerItemActive]}
-                  >
-                    <Text style={styles.pickerText}>
-                      {c.flag} {c.code}
-                    </Text>
-                  </Pressable>
-                ))}
+            <PaperCard rotate={-1.5} style={styles.card}>
+              <View style={styles.phoneRow}>
+                <Pressable style={styles.countryPill} onPress={() => setPickerOpen(!pickerOpen)}>
+                  <Text style={styles.countryText}>
+                    {country.flag} {country.code}
+                  </Text>
+                  <Text style={styles.countryCaret}>▾</Text>
+                </Pressable>
+                <TextInput
+                  value={digits}
+                  onChangeText={(t) => setDigits(t.replace(/[^0-9 ]/g, ''))}
+                  placeholder="Phone number"
+                  placeholderTextColor={light.muted}
+                  keyboardType="phone-pad"
+                  autoFocus
+                  style={styles.phoneInput}
+                  maxLength={16}
+                />
               </View>
-            ) : null}
 
-            {inviteRequired ? (
-              <TextInput
-                value={invite}
-                onChangeText={setInvite}
-                placeholder="Invite code"
-                placeholderTextColor="rgba(247,245,255,0.5)"
-                autoCapitalize="none"
-                autoCorrect={false}
-                style={styles.phoneInput}
-              />
-            ) : null}
+              {pickerOpen ? (
+                <View style={styles.picker}>
+                  {COUNTRY_CODES.map((c, i) => (
+                    <Pressable
+                      key={c.code}
+                      onPress={() => {
+                        setCountryIndex(i);
+                        setPickerOpen(false);
+                      }}
+                      style={[styles.pickerItem, i === countryIndex && styles.pickerItemActive]}
+                    >
+                      <Text style={styles.pickerText}>
+                        {c.flag} {c.code}
+                      </Text>
+                    </Pressable>
+                  ))}
+                </View>
+              ) : null}
+
+              {inviteRequired ? (
+                <TextInput
+                  value={invite}
+                  onChangeText={setInvite}
+                  placeholder="Invite code"
+                  placeholderTextColor={light.muted}
+                  autoCapitalize="none"
+                  autoCorrect={false}
+                  style={styles.phoneInput}
+                />
+              ) : null}
+            </PaperCard>
 
             <ErrorText message={error} />
             <View style={{ flex: 1 }} />
@@ -137,6 +142,7 @@ export default function PhoneScreen() {
             </Text>
             <Button
               title={sending ? 'Sending…' : 'Send code'}
+              variant="primary"
               onPress={sendCode}
               loading={sending}
               style={valid ? undefined : styles.buttonDisabled}
@@ -158,18 +164,23 @@ const styles = StyleSheet.create({
     paddingTop: spacing.xl * 2,
     gap: spacing.md,
   },
-  title: {
-    color: '#fff',
-    fontSize: 34,
-    fontWeight: '800',
+  kicker: {
+    ...kicker(light.text2),
     textAlign: 'center',
-    letterSpacing: -1,
+  },
+  title: {
+    color: light.text,
+    ...display(56),
+    textAlign: 'center',
   },
   subtitle: {
-    color: 'rgba(247,245,255,0.8)',
-    fontSize: 16,
+    color: light.text2,
+    ...uiText(16, '500'),
     textAlign: 'center',
-    marginBottom: spacing.lg,
+    marginBottom: spacing.md,
+  },
+  card: {
+    gap: spacing.md,
   },
   phoneRow: {
     flexDirection: 'row',
@@ -179,38 +190,37 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
-    backgroundColor: 'rgba(14,11,22,0.55)',
-    borderWidth: 1,
-    borderColor: 'rgba(247,245,255,0.25)',
-    borderRadius: radius.md,
+    backgroundColor: light.paper,
+    borderWidth: 2,
+    borderColor: light.ink,
+    borderRadius: radius.sm,
     paddingHorizontal: spacing.md,
-    paddingVertical: 14,
+    paddingVertical: 13,
   },
   countryText: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: '600',
+    color: light.text,
+    ...uiText(16, '700'),
   },
   countryCaret: {
-    color: 'rgba(247,245,255,0.7)',
+    color: light.text3,
     fontSize: 12,
   },
   phoneInput: {
     flex: 1,
-    backgroundColor: 'rgba(14,11,22,0.55)',
-    borderWidth: 1,
-    borderColor: 'rgba(247,245,255,0.25)',
-    borderRadius: radius.md,
-    color: '#fff',
+    backgroundColor: light.paper,
+    borderWidth: 2,
+    borderColor: light.ink,
+    borderRadius: radius.sm,
+    color: light.text,
     paddingHorizontal: spacing.md,
     fontSize: 18,
-    paddingVertical: 14,
+    paddingVertical: 12,
   },
   picker: {
-    backgroundColor: 'rgba(14,11,22,0.85)',
-    borderWidth: 1,
-    borderColor: 'rgba(247,245,255,0.2)',
-    borderRadius: radius.md,
+    backgroundColor: light.paper,
+    borderWidth: 2,
+    borderColor: light.ink,
+    borderRadius: radius.sm,
     overflow: 'hidden',
   },
   pickerItem: {
@@ -218,17 +228,16 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.md,
   },
   pickerItemActive: {
-    backgroundColor: 'rgba(180,140,255,0.25)',
+    backgroundColor: 'rgba(0,0,0,0.06)',
   },
   pickerText: {
-    color: '#fff',
-    fontSize: 15,
+    color: light.text,
+    ...uiText(15, '600'),
   },
   smallPrint: {
-    color: 'rgba(247,245,255,0.55)',
-    fontSize: 12,
+    color: light.text3,
+    ...uiText(12, '500', { lineHeight: 1.4 }),
     textAlign: 'center',
-    lineHeight: 17,
   },
   buttonDisabled: {
     opacity: 0.5,

@@ -2,8 +2,8 @@ import React from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import type { EventSummary } from '../shared/types';
-import { colors, radius, spacing } from '../lib/theme';
-import { titleFontStyle } from '../lib/fonts';
+import { colors, radius, rsvp, spacing } from '../lib/theme';
+import { titleFontStyle, uiText, kicker } from '../lib/fonts';
 import { CoverGradient } from './CoverGradient';
 import { Avatar } from './Avatar';
 
@@ -34,7 +34,7 @@ export function EventCard({ event }: { event: EventSummary }) {
       onPress={() => router.push(`/event/${event.slug}`)}
       style={({ pressed }) => [styles.card, pressed && { opacity: 0.85 }]}
     >
-      <CoverGradient theme={event.coverTheme} image={event.coverImage} style={styles.cover} emojiOpacity={0.3}>
+      <CoverGradient theme={event.coverTheme} image={event.coverImage} style={styles.cover} emojiOpacity={0.45}>
         {event.canceledAt ? (
           <View style={styles.canceledBadge}>
             <Text style={styles.canceledText}>CANCELED</Text>
@@ -45,19 +45,21 @@ export function EventCard({ event }: { event: EventSummary }) {
         </Text>
       </CoverGradient>
       <View style={styles.body}>
-        <View style={{ flex: 1, gap: 2 }}>
+        <View style={{ flex: 1, gap: spacing.xs }}>
           <Text style={styles.date}>
             {formatEventDate(event.date)} · {formatEventTime(event.date)}
           </Text>
           <View style={styles.hostRow}>
-            <Avatar emoji={event.host.avatarEmoji} size={22} />
+            <Avatar emoji={event.host.avatarEmoji} size={26} />
             <Text style={styles.hostName} numberOfLines={1}>
               {event.isHost ? 'You are hosting' : `Hosted by ${event.host.name}`}
             </Text>
           </View>
         </View>
         <View style={styles.badges}>
-          <Text style={styles.going}>{event.counts.going} going</Text>
+          <View style={styles.goingPill}>
+            <Text style={styles.going}>{event.counts.going} going</Text>
+          </View>
           {event.myRsvp && !event.isHost ? (
             <Text style={styles.myStatus}>{STATUS_LABEL[event.myRsvp]}</Text>
           ) : null}
@@ -71,71 +73,72 @@ const styles = StyleSheet.create({
   card: {
     backgroundColor: colors.card,
     borderRadius: radius.lg,
-    borderWidth: 1,
-    borderColor: colors.cardBorder,
+    borderWidth: 2,
+    borderColor: colors.ink,
     overflow: 'hidden',
   },
   cover: {
-    minHeight: 110,
-    padding: spacing.md,
+    minHeight: 150,
+    padding: spacing.lg,
     justifyContent: 'flex-end',
   },
   title: {
     color: '#fff',
-    fontSize: 26,
-    fontWeight: '800',
-    letterSpacing: -0.5,
+    fontSize: 38,
+    letterSpacing: -1,
     textShadowColor: 'rgba(0,0,0,0.35)',
     textShadowOffset: { width: 0, height: 2 },
     textShadowRadius: 6,
   },
   canceledBadge: {
     position: 'absolute',
-    top: spacing.sm,
-    right: spacing.sm,
-    backgroundColor: 'rgba(0,0,0,0.55)',
+    top: spacing.md,
+    right: spacing.md,
+    backgroundColor: colors.ink,
     borderRadius: radius.pill,
-    paddingHorizontal: spacing.sm,
-    paddingVertical: 4,
+    paddingHorizontal: spacing.md,
+    paddingVertical: 6,
   },
   canceledText: {
-    color: colors.danger,
-    fontSize: 11,
-    fontWeight: '800',
-    letterSpacing: 1,
+    ...kicker(colors.danger),
+    fontSize: 12,
   },
   body: {
     flexDirection: 'row',
     alignItems: 'center',
-    padding: spacing.md,
-    gap: spacing.sm,
+    padding: spacing.lg,
+    gap: spacing.md,
   },
   date: {
+    ...uiText(14, '700'),
     color: colors.accent,
-    fontWeight: '700',
-    fontSize: 14,
   },
   hostRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: spacing.xs,
+    gap: spacing.sm,
   },
   hostName: {
+    ...uiText(13, '500'),
     color: colors.muted,
-    fontSize: 13,
     flexShrink: 1,
   },
   badges: {
     alignItems: 'flex-end',
-    gap: 2,
+    gap: spacing.xs,
+  },
+  goingPill: {
+    backgroundColor: rsvp.going.bg,
+    borderRadius: radius.pill,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: 4,
   },
   going: {
-    color: colors.success,
-    fontWeight: '700',
-    fontSize: 13,
+    ...uiText(13, '700'),
+    color: rsvp.going.text,
   },
   myStatus: {
+    ...uiText(12, '600'),
     color: colors.muted,
-    fontSize: 12,
   },
 });

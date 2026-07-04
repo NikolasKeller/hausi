@@ -13,8 +13,10 @@ import { useLocalSearchParams } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { api } from '../../lib/api';
 import { useAuth } from '../../lib/auth';
-import { radius, spacing } from '../../lib/theme';
+import { light, radius, shadow, spacing } from '../../lib/theme';
+import { display, kicker, uiText } from '../../lib/fonts';
 import { AuroraBackground } from '../../components/AuroraBackground';
+import { PaperCard } from '../../components/partiful';
 import { Button, ErrorText } from '../../components/ui';
 
 const RESEND_SECONDS = 30;
@@ -94,25 +96,28 @@ export default function CodeScreen() {
 
         <KeyboardAvoidingView style={{ flex: 1 }} behavior="padding">
           <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
-            <Text style={styles.title}>Verify your phone</Text>
+            <Text style={styles.kicker}>Step 2 of 2</Text>
+            <Text style={styles.title}>Verify your{'\n'}phone</Text>
             <Text style={styles.subtitle}>We sent {phone} a code via SMS</Text>
 
-            <TextInput
-              value={code}
-              onChangeText={(t) => {
-                const clean = t.replace(/[^0-9]/g, '').slice(0, 6);
-                setCode(clean);
-                if (clean.length === 6) submit(clean);
-              }}
-              placeholder="000000"
-              placeholderTextColor="rgba(247,245,255,0.35)"
-              keyboardType="number-pad"
-              autoFocus
-              style={styles.codeInput}
-              maxLength={6}
-              textContentType="oneTimeCode"
-              autoComplete="one-time-code"
-            />
+            <PaperCard rotate={1.5} style={styles.card}>
+              <TextInput
+                value={code}
+                onChangeText={(t) => {
+                  const clean = t.replace(/[^0-9]/g, '').slice(0, 6);
+                  setCode(clean);
+                  if (clean.length === 6) submit(clean);
+                }}
+                placeholder="000000"
+                placeholderTextColor={light.muted}
+                keyboardType="number-pad"
+                autoFocus
+                style={styles.codeInput}
+                maxLength={6}
+                textContentType="oneTimeCode"
+                autoComplete="one-time-code"
+              />
+            </PaperCard>
 
             <Text style={styles.resend} onPress={resend}>
               {resendIn > 0
@@ -124,6 +129,7 @@ export default function CodeScreen() {
             <View style={{ flex: 1 }} />
             <Button
               title={busy ? 'Verifying…' : 'Next'}
+              variant="primary"
               onPress={() => submit()}
               loading={busy}
               style={code.length === 6 ? undefined : styles.buttonDisabled}
@@ -145,11 +151,12 @@ const styles = StyleSheet.create({
     gap: spacing.sm,
     marginHorizontal: spacing.md,
     marginTop: spacing.sm,
-    backgroundColor: 'rgba(40,32,64,0.95)',
-    borderWidth: 1,
-    borderColor: 'rgba(247,245,255,0.18)',
+    backgroundColor: light.paper,
+    borderWidth: 2,
+    borderColor: light.ink,
     borderRadius: radius.lg,
     padding: spacing.md,
+    ...shadow.float,
   },
   bannerIcon: {
     width: 34,
@@ -160,18 +167,16 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   bannerFrom: {
-    color: 'rgba(247,245,255,0.7)',
-    fontSize: 12,
-    fontWeight: '700',
+    color: light.text3,
+    ...uiText(12, '700'),
   },
   bannerText: {
-    color: '#fff',
-    fontSize: 14,
-    fontWeight: '600',
+    color: light.text,
+    ...uiText(14, '600'),
   },
   bannerNow: {
-    color: 'rgba(247,245,255,0.5)',
-    fontSize: 12,
+    color: light.muted,
+    ...uiText(12, '500'),
   },
   content: {
     flexGrow: 1,
@@ -179,35 +184,35 @@ const styles = StyleSheet.create({
     paddingTop: spacing.xl * 2,
     gap: spacing.md,
   },
-  title: {
-    color: '#fff',
-    fontSize: 34,
-    fontWeight: '800',
+  kicker: {
+    ...kicker(light.text2),
     textAlign: 'center',
-    letterSpacing: -1,
+  },
+  title: {
+    color: light.text,
+    ...display(56),
+    textAlign: 'center',
   },
   subtitle: {
-    color: 'rgba(247,245,255,0.8)',
-    fontSize: 16,
+    color: light.text2,
+    ...uiText(16, '500'),
     textAlign: 'center',
-    marginBottom: spacing.lg,
+    marginBottom: spacing.md,
+  },
+  card: {
+    paddingVertical: spacing.md,
   },
   codeInput: {
-    backgroundColor: 'rgba(14,11,22,0.55)',
-    borderWidth: 1,
-    borderColor: 'rgba(247,245,255,0.25)',
-    borderRadius: radius.md,
-    color: '#fff',
-    paddingHorizontal: spacing.md,
-    paddingVertical: 16,
-    fontSize: 28,
-    letterSpacing: 12,
+    color: light.text,
+    paddingVertical: spacing.sm,
+    fontSize: 36,
+    letterSpacing: 14,
     textAlign: 'center',
-    fontWeight: '700',
+    fontWeight: '800',
   },
   resend: {
-    color: 'rgba(247,245,255,0.7)',
-    fontSize: 14,
+    color: light.text3,
+    ...uiText(14, '600'),
     textAlign: 'center',
   },
   buttonDisabled: {

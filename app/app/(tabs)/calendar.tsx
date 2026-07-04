@@ -13,11 +13,12 @@ import { useFocusEffect, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import type { EventSummary } from '../../shared/types';
 import { api, mediaUrl } from '../../lib/api';
-import { displayTitle } from '../../lib/fonts';
-import { colors, radius, spacing } from '../../lib/theme';
+import { display, kicker, uiText } from '../../lib/fonts';
+import { colors, radius, shadow, spacing } from '../../lib/theme';
 import { COVERS } from '../../lib/covers';
 import { EventCard } from '../../components/EventCard';
 import { Button } from '../../components/ui';
+import { Burst } from '../../components/partiful';
 import { withScreenBackground } from '../../components/ScreenBackground';
 
 const MONTHS = [
@@ -152,7 +153,7 @@ function CalendarScreen() {
         <View style={styles.center}>
           <Text style={styles.errorEmoji}>🫠</Text>
           <Text style={styles.errorText}>{error}</Text>
-          <Button title="Try again" variant="ghost" onPress={retry} />
+          <Button title="Try again" variant="ghost" tone="paper" onPress={retry} />
         </View>
       </SafeAreaView>
     );
@@ -184,9 +185,12 @@ function CalendarScreen() {
       <ScrollView contentContainerStyle={styles.content}>
         <View style={styles.header}>
           <View style={styles.monthRow}>
-            <Text style={styles.monthTitle} numberOfLines={1}>
-              {monthTitle}
-            </Text>
+            <View style={styles.monthTitleWrap}>
+              <Text style={[styles.kicker, kicker(colors.accent)]}>Your calendar</Text>
+              <Text style={styles.monthTitle} numberOfLines={1}>
+                {monthTitle}
+              </Text>
+            </View>
             {mode === 'grid' ? (
               <View style={styles.chevrons}>
                 <Pressable onPress={() => shiftMonth(-1)} style={styles.chevronButton} hitSlop={6}>
@@ -293,12 +297,12 @@ function CalendarScreen() {
                   <Text style={styles.emptySubtitle}>
                     No commitments today. Do whatever you want
                   </Text>
-                  <Pressable
+                  <Button
+                    title="Plan something"
+                    variant="vibrant"
                     onPress={() => router.push('/new-event')}
-                    style={({ pressed }) => [styles.planButton, pressed && { opacity: 0.85 }]}
-                  >
-                    <Text style={styles.planButtonText}>Plan something</Text>
-                  </Pressable>
+                    style={styles.planButton}
+                  />
                 </View>
               ) : (
                 <View style={styles.panelEvents}>
@@ -311,7 +315,10 @@ function CalendarScreen() {
           </>
         ) : (
           <View style={styles.listSections}>
-            <Text style={styles.sectionTitle}>Upcoming</Text>
+            <View style={styles.sectionHead}>
+              <Text style={styles.sectionTitle}>Upcoming</Text>
+              <Burst size={30} color={colors.helio} rotate={12} style={styles.sectionBurst} />
+            </View>
             {upcoming.length === 0 ? (
               <Text style={styles.sectionEmpty}>Nothing planned — yet 👀</Text>
             ) : (
@@ -320,7 +327,7 @@ function CalendarScreen() {
 
             {past.length > 0 ? (
               <>
-                <Text style={[styles.sectionTitle, { marginTop: spacing.md }]}>Past</Text>
+                <Text style={[styles.sectionTitle, { marginTop: spacing.lg }]}>Past</Text>
                 {past.map((ev) => (
                   <EventCard key={ev.id} event={ev} />
                 ))}
@@ -349,45 +356,51 @@ const styles = StyleSheet.create({
     fontSize: 48,
   },
   errorText: {
+    ...uiText(17),
     color: colors.text,
-    fontSize: 17,
     textAlign: 'center',
   },
   content: {
     padding: spacing.md,
     paddingBottom: spacing.xl * 2,
-    gap: spacing.md,
+    gap: spacing.lg,
   },
   header: {
     flexDirection: 'row',
-    alignItems: 'center',
+    alignItems: 'flex-end',
     justifyContent: 'space-between',
     gap: spacing.sm,
   },
   monthRow: {
     flexDirection: 'row',
-    alignItems: 'center',
+    alignItems: 'flex-end',
     gap: spacing.sm,
     flex: 1,
   },
+  monthTitleWrap: {
+    flexShrink: 1,
+    gap: spacing.xs,
+  },
+  kicker: {
+    color: colors.accent,
+  },
   monthTitle: {
-    ...displayTitle,
+    ...display(44),
     color: colors.text,
-    fontSize: 34,
-    letterSpacing: -1,
     flexShrink: 1,
   },
   chevrons: {
     flexDirection: 'row',
     gap: spacing.xs,
+    marginBottom: spacing.xs,
   },
   chevronButton: {
-    width: 30,
-    height: 30,
-    borderRadius: 15,
+    width: 32,
+    height: 32,
+    borderRadius: 16,
     backgroundColor: colors.card,
-    borderWidth: 1,
-    borderColor: colors.cardBorder,
+    borderWidth: 2,
+    borderColor: colors.ink,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -395,27 +408,27 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing.sm,
+    marginBottom: spacing.xs,
   },
   todayPill: {
-    borderWidth: 1,
-    borderColor: colors.cardBorder,
+    borderWidth: 2,
+    borderColor: colors.ink,
     backgroundColor: colors.card,
     borderRadius: radius.pill,
     paddingHorizontal: spacing.md,
     paddingVertical: 8,
   },
   todayPillText: {
+    ...uiText(13, '700'),
     color: colors.text,
-    fontWeight: '700',
-    fontSize: 14,
   },
   toggleButton: {
-    width: 38,
-    height: 38,
-    borderRadius: 19,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
     backgroundColor: colors.card,
-    borderWidth: 1,
-    borderColor: colors.cardBorder,
+    borderWidth: 2,
+    borderColor: colors.ink,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -423,11 +436,10 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
   },
   weekdayLabel: {
+    ...kicker(),
     flex: 1,
     textAlign: 'center',
     color: colors.muted,
-    fontSize: 12,
-    fontWeight: '600',
   },
   grid: {
     gap: spacing.sm,
@@ -474,11 +486,12 @@ const styles = StyleSheet.create({
   },
   panel: {
     backgroundColor: colors.card,
-    borderWidth: 1,
-    borderColor: colors.cardBorder,
+    borderWidth: 2,
+    borderColor: colors.ink,
     borderRadius: radius.lg,
-    padding: spacing.md,
+    padding: spacing.lg,
     gap: spacing.md,
+    ...shadow.card,
   },
   panelHandle: {
     alignSelf: 'center',
@@ -488,16 +501,16 @@ const styles = StyleSheet.create({
     backgroundColor: colors.cardBorder,
   },
   panelTitle: {
-    fontSize: 16,
+    fontSize: 17,
     textAlign: 'center',
   },
   panelStrong: {
+    ...uiText(17, '800'),
     color: colors.text,
-    fontWeight: '800',
   },
   panelMuted: {
+    ...uiText(17, '600'),
     color: colors.muted,
-    fontWeight: '600',
   },
   panelEvents: {
     gap: spacing.md,
@@ -508,41 +521,38 @@ const styles = StyleSheet.create({
     paddingVertical: spacing.lg,
   },
   emptyEmoji: {
-    fontSize: 44,
+    fontSize: 48,
   },
   emptyTitle: {
+    ...display(24),
     color: colors.text,
-    fontSize: 20,
-    fontWeight: '800',
   },
   emptySubtitle: {
+    ...uiText(15),
     color: colors.muted,
-    fontSize: 15,
     textAlign: 'center',
   },
   planButton: {
     marginTop: spacing.sm,
-    backgroundColor: '#fff',
-    borderRadius: radius.pill,
-    paddingHorizontal: spacing.lg,
-    paddingVertical: 12,
-  },
-  planButtonText: {
-    color: colors.bg,
-    fontSize: 16,
-    fontWeight: '700',
+    alignSelf: 'stretch',
   },
   listSections: {
     gap: spacing.md,
   },
+  sectionHead: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+  },
   sectionTitle: {
+    ...display(30),
     color: colors.text,
-    fontSize: 22,
-    fontWeight: '800',
-    letterSpacing: -0.5,
+  },
+  sectionBurst: {
+    marginBottom: spacing.xs,
   },
   sectionEmpty: {
+    ...uiText(15),
     color: colors.muted,
-    fontSize: 15,
   },
 });

@@ -17,12 +17,13 @@ import { useAuth } from '../../../lib/auth';
 import { confirmDialog, notify } from '../../../lib/dialogs';
 import { recordRecentEvent } from '../../../lib/recents';
 import { shareText } from '../../../lib/share';
-import { colors, radius, spacing } from '../../../lib/theme';
-import { titleFontStyle } from '../../../lib/fonts';
+import { colors, radius, rsvp, spacing } from '../../../lib/theme';
+import { titleFontStyle, display, kicker, uiText } from '../../../lib/fonts';
 import { CoverGradient } from '../../../components/CoverGradient';
 import { EffectOverlay } from '../../../components/EffectOverlay';
 import { Avatar } from '../../../components/Avatar';
 import { Button } from '../../../components/ui';
+import { Burst, PillBadge } from '../../../components/partiful';
 import { formatEventDate, formatEventTime } from '../../../components/EventCard';
 
 const RSVP_OPTIONS: { status: RsvpStatus; label: string; emoji: string }[] = [
@@ -183,7 +184,7 @@ export default function EventScreen() {
       <View style={styles.center}>
         <Text style={styles.errorEmoji}>🫠</Text>
         <Text style={styles.errorText}>{error}</Text>
-        <Button title="Back home" variant="ghost" onPress={() => router.replace('/')} />
+        <Button title="Back home" variant="ghost" tone="paper" onPress={() => router.replace('/')} />
       </View>
     );
   }
@@ -218,6 +219,9 @@ export default function EventScreen() {
       <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
         <CoverGradient theme={event.coverTheme} image={event.coverImage} style={styles.hero}>
           <EffectOverlay effect={event.effect} height={360} />
+          <Burst size={60} rays={8} color={colors.helio} rotate={-14} style={styles.heroBurst} />
+          <Burst size={38} rays={6} color={colors.accent} rotate={12} style={styles.heroBurst2} />
+          <Text style={styles.heroKicker}>You're invited</Text>
           <Text style={[styles.heroTitle, titleFontStyle(event.titleFont)]}>{event.title}</Text>
         </CoverGradient>
 
@@ -231,7 +235,7 @@ export default function EventScreen() {
 
         <View style={styles.section}>
           <View style={styles.hostRow}>
-            <Avatar emoji={event.host.avatarEmoji} size={40} />
+            <Avatar emoji={event.host.avatarEmoji} size={44} />
             <View style={{ flex: 1 }}>
               <Text style={styles.hostedBy}>Hosted by</Text>
               <Text style={styles.hostName}>
@@ -279,6 +283,7 @@ export default function EventScreen() {
                   <Button
                     title="I can't make it anymore"
                     variant="ghost"
+                    tone="paper"
                     onPress={() => setRsvp('CANT')}
                   />
                 ) : null}
@@ -369,12 +374,14 @@ export default function EventScreen() {
                   <Button
                     title="Edit event"
                     variant="ghost"
+                    tone="paper"
                     onPress={() => router.push(`/event/${event.slug}/edit`)}
                     style={{ flex: 1 }}
                   />
                   <Button
                     title={event.rsvpsOpen ? 'Close RSVPs' : 'Open RSVPs'}
                     variant="ghost"
+                    tone="paper"
                     onPress={toggleRsvpsOpen}
                     style={{ flex: 1 }}
                   />
@@ -403,13 +410,21 @@ export default function EventScreen() {
 
           <View style={styles.divider} />
 
-          <Text style={styles.sectionTitle}>
-            Guest list{' '}
-            <Text style={styles.sectionCount}>
-              {event.counts.going} going · {event.counts.maybe} maybe
-              {event.counts.waitlist > 0 ? ` · ${event.counts.waitlist} waitlist` : ''}
-            </Text>
-          </Text>
+          <View style={styles.sectionHead}>
+            <Text style={styles.kickerLabel}>Who's coming</Text>
+            <Text style={styles.sectionTitle}>Guest list</Text>
+            <View style={styles.countPills}>
+              <PillBadge label={`${event.counts.going} going`} bg={rsvp.going.bg} color={rsvp.going.text} />
+              <PillBadge label={`${event.counts.maybe} maybe`} bg={rsvp.maybe.bg} color={rsvp.maybe.text} />
+              {event.counts.waitlist > 0 ? (
+                <PillBadge
+                  label={`${event.counts.waitlist} waitlist`}
+                  bg={rsvp.waitlist.bg}
+                  color={rsvp.waitlist.text}
+                />
+              ) : null}
+            </View>
+          </View>
           {STATUS_SECTIONS.map(({ status, title }) => {
             const guests = event.rsvps.filter((r) => r.status === status);
             if (!guests.length) return null;
@@ -470,7 +485,10 @@ export default function EventScreen() {
 
           <View style={styles.divider} />
 
-          <Text style={styles.sectionTitle}>Party Wall 💬</Text>
+          <View style={styles.sectionHead}>
+            <Text style={styles.kickerLabel}>Say hi</Text>
+            <Text style={styles.sectionTitle}>Party Wall 💬</Text>
+          </View>
           {event.comments.length === 0 ? (
             <Text style={styles.noComments}>No comments yet — break the ice!</Text>
           ) : (
@@ -528,52 +546,70 @@ const styles = StyleSheet.create({
     padding: spacing.lg,
   },
   errorEmoji: { fontSize: 48 },
-  errorText: { color: colors.text, fontSize: 17, textAlign: 'center' },
+  errorText: { color: colors.text, ...uiText(17, '500'), textAlign: 'center' },
   content: {
-    paddingBottom: spacing.xl * 2,
+    paddingBottom: spacing.section,
   },
   hero: {
-    minHeight: 360,
+    minHeight: 380,
     justifyContent: 'flex-end',
     padding: spacing.lg,
     paddingTop: 100,
+    overflow: 'hidden',
+  },
+  heroBurst: {
+    position: 'absolute',
+    top: 108,
+    right: 24,
+  },
+  heroBurst2: {
+    position: 'absolute',
+    top: 168,
+    right: 84,
+  },
+  heroKicker: {
+    ...kicker(),
+    color: 'rgba(255,255,255,0.92)',
+    marginBottom: spacing.sm,
+    textShadowColor: 'rgba(0,0,0,0.35)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 4,
   },
   heroTitle: {
     color: '#fff',
-    fontSize: 50,
-    fontWeight: '800',
+    fontSize: 56,
     letterSpacing: -1,
+    lineHeight: 56,
     textShadowColor: 'rgba(0,0,0,0.4)',
     textShadowOffset: { width: 0, height: 2 },
     textShadowRadius: 8,
   },
   canceledBanner: {
     backgroundColor: 'rgba(255,107,129,0.12)',
-    borderBottomWidth: 1,
+    borderBottomWidth: 2,
     borderColor: colors.danger,
     padding: spacing.md,
   },
   canceledBannerText: {
     color: colors.danger,
-    fontSize: 15,
-    fontWeight: '700',
+    ...uiText(15, '700'),
     textAlign: 'center',
   },
   lockedNote: {
     backgroundColor: colors.card,
-    borderWidth: 1,
+    borderWidth: 2,
     borderColor: colors.cardBorder,
     borderRadius: radius.md,
     padding: spacing.md,
   },
   lockedNoteText: {
     color: colors.muted,
-    fontSize: 14,
+    ...uiText(14, '500'),
     textAlign: 'center',
   },
   section: {
-    padding: spacing.md,
-    gap: spacing.md,
+    padding: spacing.lg,
+    gap: spacing.lg,
   },
   hostRow: {
     flexDirection: 'row',
@@ -582,15 +618,14 @@ const styles = StyleSheet.create({
   },
   hostedBy: {
     color: colors.muted,
-    fontSize: 12,
+    ...kicker(),
   },
   hostName: {
     color: colors.text,
-    fontSize: 16,
-    fontWeight: '700',
+    ...uiText(16, '700'),
   },
   shareButton: {
-    borderWidth: 1,
+    borderWidth: 2,
     borderColor: colors.accent,
     borderRadius: radius.pill,
     paddingHorizontal: spacing.md,
@@ -598,25 +633,35 @@ const styles = StyleSheet.create({
   },
   shareText: {
     color: colors.accent,
-    fontWeight: '700',
-    fontSize: 14,
+    ...uiText(14, '700'),
   },
   metaCard: {
     backgroundColor: colors.card,
-    borderWidth: 1,
-    borderColor: colors.cardBorder,
+    borderWidth: 2,
+    borderColor: colors.ink,
     borderRadius: radius.md,
     padding: spacing.md,
-    gap: spacing.xs,
+    gap: spacing.sm,
   },
   metaLine: {
     color: colors.text,
-    fontSize: 16,
+    ...uiText(16, '500'),
   },
   description: {
     color: colors.text,
-    fontSize: 16,
-    lineHeight: 23,
+    ...uiText(16, '400', { lineHeight: 1.45 }),
+  },
+  sectionHead: {
+    gap: spacing.xs,
+  },
+  kickerLabel: {
+    ...kicker(colors.accent),
+  },
+  countPills: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: spacing.sm,
+    marginTop: spacing.xs,
   },
   rsvpRow: {
     flexDirection: 'row',
@@ -630,19 +675,18 @@ const styles = StyleSheet.create({
     borderWidth: 2,
     borderColor: colors.cardBorder,
     borderRadius: radius.md,
-    paddingVertical: spacing.sm,
+    paddingVertical: spacing.md,
   },
   rsvpButtonActive: {
     borderColor: colors.accent,
     backgroundColor: 'rgba(255,122,224,0.12)',
   },
   rsvpEmoji: {
-    fontSize: 26,
+    fontSize: 28,
   },
   rsvpLabel: {
     color: colors.muted,
-    fontWeight: '700',
-    fontSize: 14,
+    ...uiText(14, '700'),
   },
   rsvpLabelActive: {
     color: colors.text,
@@ -652,7 +696,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     backgroundColor: colors.card,
-    borderWidth: 1,
+    borderWidth: 2,
     borderColor: colors.cardBorder,
     borderRadius: radius.md,
     padding: spacing.sm,
@@ -660,8 +704,7 @@ const styles = StyleSheet.create({
   },
   plusOnesLabel: {
     color: colors.text,
-    fontSize: 15,
-    fontWeight: '600',
+    ...uiText(15, '600'),
   },
   plusOneChip: {
     flexDirection: 'row',
@@ -671,17 +714,15 @@ const styles = StyleSheet.create({
   },
   plusOneChipName: {
     color: colors.text,
-    fontSize: 15,
-    fontWeight: '700',
+    ...uiText(15, '700'),
     flexShrink: 1,
   },
   plusOneShareText: {
     color: colors.accent,
-    fontSize: 13,
-    fontWeight: '700',
+    ...uiText(13, '700'),
   },
   addPlusOneButton: {
-    borderWidth: 1,
+    borderWidth: 2,
     borderColor: colors.accent,
     borderRadius: radius.pill,
     paddingHorizontal: spacing.md,
@@ -689,20 +730,18 @@ const styles = StyleSheet.create({
   },
   addPlusOneText: {
     color: colors.accent,
-    fontWeight: '700',
-    fontSize: 14,
+    ...uiText(14, '700'),
   },
   plusOnesFull: {
     color: colors.muted,
-    fontSize: 14,
-    fontWeight: '600',
+    ...uiText(14, '600'),
   },
   plusOneGuestRow: {
     paddingLeft: spacing.lg,
   },
   plusOneGuestName: {
     color: colors.text,
-    fontSize: 15,
+    ...uiText(15, '400'),
   },
   plusOneTag: {
     color: colors.muted,
@@ -714,26 +753,16 @@ const styles = StyleSheet.create({
     gap: spacing.sm,
   },
   divider: {
-    height: 1,
+    height: 2,
     backgroundColor: colors.cardBorder,
+    marginVertical: spacing.sm,
   },
   sectionTitle: {
     color: colors.text,
-    fontSize: 22,
-    fontWeight: '800',
-    letterSpacing: -0.5,
-  },
-  sectionCount: {
-    color: colors.muted,
-    fontSize: 14,
-    fontWeight: '600',
+    ...display(34),
   },
   guestGroupTitle: {
-    color: colors.accent,
-    fontSize: 13,
-    fontWeight: '700',
-    textTransform: 'uppercase',
-    letterSpacing: 1,
+    ...kicker(colors.accent),
   },
   guestRow: {
     flexDirection: 'row',
@@ -742,11 +771,11 @@ const styles = StyleSheet.create({
   },
   guestName: {
     color: colors.text,
-    fontSize: 16,
+    ...uiText(16, '500'),
   },
   noComments: {
     color: colors.muted,
-    fontSize: 15,
+    ...uiText(15, '400'),
   },
   systemEntry: {
     color: colors.muted,
@@ -759,7 +788,7 @@ const styles = StyleSheet.create({
     height: 26,
     borderRadius: 13,
     backgroundColor: colors.inputBg,
-    borderWidth: 1,
+    borderWidth: 2,
     borderColor: colors.cardBorder,
     alignItems: 'center',
     justifyContent: 'center',
@@ -777,7 +806,7 @@ const styles = StyleSheet.create({
   commentBubble: {
     flex: 1,
     backgroundColor: colors.card,
-    borderWidth: 1,
+    borderWidth: 2,
     borderColor: colors.cardBorder,
     borderRadius: radius.md,
     padding: spacing.sm,
@@ -786,13 +815,11 @@ const styles = StyleSheet.create({
   },
   commentAuthor: {
     color: colors.accent,
-    fontSize: 13,
-    fontWeight: '700',
+    ...uiText(13, '700'),
   },
   commentText: {
     color: colors.text,
-    fontSize: 15,
-    lineHeight: 21,
+    ...uiText(15, '400', { lineHeight: 1.4 }),
   },
   commentInputRow: {
     flexDirection: 'row',
@@ -802,7 +829,7 @@ const styles = StyleSheet.create({
   commentInput: {
     flex: 1,
     backgroundColor: colors.inputBg,
-    borderWidth: 1,
+    borderWidth: 2,
     borderColor: colors.cardBorder,
     borderRadius: radius.md,
     color: colors.text,
@@ -814,11 +841,11 @@ const styles = StyleSheet.create({
   sendButton: {
     backgroundColor: colors.accentDark,
     borderRadius: radius.pill,
-    paddingHorizontal: spacing.md,
+    paddingHorizontal: spacing.lg,
     paddingVertical: 12,
   },
   sendText: {
     color: '#fff',
-    fontWeight: '700',
+    ...uiText(15, '700'),
   },
 });

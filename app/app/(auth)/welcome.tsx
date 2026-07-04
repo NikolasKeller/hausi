@@ -1,9 +1,12 @@
 import React, { useEffect, useRef } from 'react';
-import { Animated, Easing, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Animated, Easing, Platform, StyleSheet, Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { AuroraBackground } from '../../components/AuroraBackground';
-import { radius, spacing } from '../../lib/theme';
+import { Seal } from '../../components/partiful';
+import { Button } from '../../components/ui';
+import { display, kicker, uiText } from '../../lib/fonts';
+import { brand, light, radius, shadow, spacing } from '../../lib/theme';
 
 // react-native-web has no native driver; silence its fallback warning.
 const useNativeDriver = Platform.OS !== 'web';
@@ -129,20 +132,17 @@ export default function WelcomeScreen() {
             },
           ]}
         >
-          <Text style={styles.house}>🏠</Text>
+          <Seal size={72} color={brand.party[1]} rotate={-10} style={styles.seal}>
+            <Text style={styles.house}>🏠</Text>
+          </Seal>
+          <Text style={styles.kicker}>You're invited</Text>
           <Text style={styles.wordmark}>Hausi</Text>
           <Text style={styles.tagline}>Parties worth showing up for</Text>
         </Animated.View>
 
         <View style={{ height: spacing.xl + spacing.sm }} />
 
-        <Pressable
-          accessibilityRole="button"
-          onPress={() => router.push('/phone')}
-          style={({ pressed }) => [styles.cta, pressed && styles.ctaPressed]}
-        >
-          <Text style={styles.ctaText}>Get started</Text>
-        </Pressable>
+        <Button title="Get started" variant="primary" onPress={() => router.push('/phone')} />
         <Text style={styles.footnote}>Takes 30 seconds. No email needed ✨</Text>
         {__DEV__ ? (
           <Text style={styles.devLink} onPress={() => router.push('/dev-login')}>
@@ -171,15 +171,13 @@ const styles = StyleSheet.create({
     position: 'absolute',
   },
   chatBubble: {
-    backgroundColor: 'rgba(255,255,255,0.96)',
+    backgroundColor: light.paper,
     borderRadius: 18,
+    borderWidth: 2,
+    borderColor: light.ink,
     paddingHorizontal: 14,
     paddingVertical: 9,
-    shadowColor: '#1B1030',
-    shadowOpacity: 0.25,
-    shadowRadius: 12,
-    shadowOffset: { width: 0, height: 6 },
-    elevation: 5,
+    ...shadow.card,
   },
   tailLeft: {
     borderBottomLeftRadius: 4,
@@ -188,70 +186,55 @@ const styles = StyleSheet.create({
     borderBottomRightRadius: 4,
   },
   chatText: {
-    color: '#2A1E4F',
-    fontSize: 13,
-    fontWeight: '600',
+    color: light.text,
+    ...uiText(13, '700'),
   },
   tagBubble: {
-    backgroundColor: 'rgba(255,255,255,0.16)',
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.3)',
+    backgroundColor: light.paper,
+    borderWidth: 2,
+    borderColor: light.ink,
     borderRadius: radius.pill,
-    paddingHorizontal: 12,
-    paddingVertical: 6,
+    paddingHorizontal: 14,
+    paddingVertical: 7,
+    ...shadow.card,
   },
   tagText: {
-    color: 'rgba(247,245,255,0.85)',
+    color: light.text,
     fontSize: 12,
     fontWeight: '700',
     letterSpacing: 0.4,
+    textTransform: 'uppercase',
   },
   brand: {
     alignItems: 'center',
     gap: spacing.sm,
   },
+  seal: {
+    marginBottom: spacing.xs,
+  },
   house: {
-    fontSize: 56,
+    fontSize: 34,
+  },
+  kicker: {
+    ...kicker(light.text2),
   },
   wordmark: {
-    color: '#fff',
-    fontSize: 64,
-    fontWeight: '800',
-    letterSpacing: -2,
-    textShadowColor: 'rgba(255,122,224,0.6)',
-    textShadowOffset: { width: 0, height: 0 },
-    textShadowRadius: 20,
+    color: light.text,
+    ...display(96),
   },
   tagline: {
-    color: 'rgba(247,245,255,0.85)',
-    fontSize: 17,
-    fontWeight: '500',
-  },
-  cta: {
-    backgroundColor: '#fff',
-    borderRadius: radius.pill,
-    height: 56,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  ctaPressed: {
-    opacity: 0.85,
-    transform: [{ scale: 0.98 }],
-  },
-  ctaText: {
-    color: '#241B3A',
-    fontSize: 17,
-    fontWeight: '800',
+    color: light.text2,
+    ...uiText(18, '500'),
   },
   footnote: {
-    color: 'rgba(247,245,255,0.6)',
-    fontSize: 12,
+    color: light.text3,
+    ...uiText(12, '500'),
     textAlign: 'center',
     marginTop: spacing.sm + 2,
   },
   devLink: {
-    color: 'rgba(247,245,255,0.45)',
-    fontSize: 12,
+    color: light.muted,
+    ...uiText(12, '500'),
     textAlign: 'center',
     marginTop: spacing.md,
     textDecorationLine: 'underline',

@@ -16,11 +16,12 @@ import { api } from '../../lib/api';
 import { useAuth } from '../../lib/auth';
 import { confirmDialog, notify } from '../../lib/dialogs';
 import { shareText } from '../../lib/share';
-import { colors, radius, spacing } from '../../lib/theme';
-import { displayTitle } from '../../lib/fonts';
+import { colors, radius, shadow, spacing } from '../../lib/theme';
+import { display, kicker, uiText } from '../../lib/fonts';
 import { Avatar } from '../../components/Avatar';
 import { CoverGradient } from '../../components/CoverGradient';
 import { Button } from '../../components/ui';
+import { Burst, Seal } from '../../components/partiful';
 import { withScreenBackground } from '../../components/ScreenBackground';
 
 function joinedLabel(iso: string): string {
@@ -117,7 +118,7 @@ function ProfileScreen() {
       <SafeAreaView style={styles.safe} edges={['top']}>
         <View style={styles.center}>
           <Text style={styles.errorText}>{error}</Text>
-          <Button title="Retry" variant="ghost" onPress={load} />
+          <Button title="Retry" variant="ghost" tone="paper" onPress={load} />
         </View>
       </SafeAreaView>
     );
@@ -144,9 +145,7 @@ function ProfileScreen() {
     <SafeAreaView style={styles.safe} edges={['top']}>
       <ScrollView contentContainerStyle={styles.container}>
         <View style={styles.header}>
-          <Text style={[styles.headerName, displayTitle]} numberOfLines={1}>
-            {profile.name}
-          </Text>
+          <Text style={[styles.headerKicker, kicker(colors.accent)]}>Your profile</Text>
           <View style={styles.headerActions}>
             <Pressable
               onPress={() => router.push('/edit-profile')}
@@ -164,27 +163,33 @@ function ProfileScreen() {
         </View>
 
         <View style={styles.hero}>
-          <LinearGradient
-            colors={['rgba(124,92,255,0.35)', 'rgba(180,140,255,0.12)', 'rgba(14,11,22,0)']}
-            start={{ x: 0.5, y: 0 }}
-            end={{ x: 0.5, y: 1 }}
-            style={styles.heroGlow}
-          >
-            <Avatar emoji={profile.avatarEmoji} size={120} />
-          </LinearGradient>
-          <Text style={[styles.bigName, displayTitle]}>{profile.name}</Text>
+          <View style={styles.avatarStack}>
+            <LinearGradient
+              colors={['rgba(124,92,255,0.35)', 'rgba(180,140,255,0.12)', 'rgba(14,11,22,0)']}
+              start={{ x: 0.5, y: 0 }}
+              end={{ x: 0.5, y: 1 }}
+              style={styles.heroGlow}
+            >
+              <Seal size={148} color={colors.violet} rotate={-6} style={styles.avatarSeal}>
+                <Avatar emoji={profile.avatarEmoji} size={120} />
+              </Seal>
+            </LinearGradient>
+            <Burst size={44} color={colors.helio} rotate={14} style={styles.heroBurst} />
+          </View>
+          <Text style={styles.bigName}>{profile.name}</Text>
         </View>
 
         <View style={styles.actionRow}>
           <Button
             title="Edit profile"
             variant="ghost"
+            tone="paper"
             onPress={() => router.push('/edit-profile')}
             style={styles.actionButton}
           />
           <Button
             title="Share profile"
-            variant="ghost"
+            variant="paper"
             onPress={shareProfile}
             style={styles.actionButton}
           />
@@ -301,12 +306,12 @@ const styles = StyleSheet.create({
     padding: spacing.lg,
   },
   errorText: {
+    ...uiText(15),
     color: colors.danger,
-    fontSize: 15,
     textAlign: 'center',
   },
   container: {
-    paddingBottom: spacing.xl,
+    paddingBottom: spacing.xxl,
   },
   header: {
     flexDirection: 'row',
@@ -316,10 +321,8 @@ const styles = StyleSheet.create({
     paddingTop: spacing.sm,
     gap: spacing.sm,
   },
-  headerName: {
-    color: colors.text,
-    fontSize: 18,
-    fontWeight: '700',
+  headerKicker: {
+    color: colors.accent,
     flexShrink: 1,
   },
   headerActions: {
@@ -327,12 +330,12 @@ const styles = StyleSheet.create({
     gap: spacing.sm,
   },
   roundButton: {
-    width: 38,
-    height: 38,
-    borderRadius: 19,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
     backgroundColor: colors.card,
-    borderWidth: 1,
-    borderColor: colors.cardBorder,
+    borderWidth: 2,
+    borderColor: colors.ink,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -344,18 +347,28 @@ const styles = StyleSheet.create({
     marginTop: spacing.lg,
     gap: spacing.md,
   },
-  heroGlow: {
-    width: 180,
-    height: 180,
-    borderRadius: 90,
+  avatarStack: {
     alignItems: 'center',
     justifyContent: 'center',
   },
+  heroGlow: {
+    width: 200,
+    height: 200,
+    borderRadius: 100,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  avatarSeal: {
+    ...shadow.float,
+  },
+  heroBurst: {
+    position: 'absolute',
+    top: 6,
+    right: 18,
+  },
   bigName: {
+    ...display(48),
     color: colors.text,
-    fontSize: 40,
-    fontWeight: '800',
-    letterSpacing: -1.5,
     textAlign: 'center',
     paddingHorizontal: spacing.lg,
   },
@@ -363,37 +376,35 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     gap: spacing.sm,
     paddingHorizontal: spacing.md,
-    marginTop: spacing.md,
+    marginTop: spacing.lg,
   },
   actionButton: {
     flex: 1,
   },
   metaLine: {
+    ...uiText(14),
     color: colors.muted,
-    fontSize: 14,
     textAlign: 'center',
     marginTop: spacing.md,
   },
   section: {
-    marginTop: spacing.xl,
+    marginTop: spacing.xxl,
     gap: spacing.sm,
   },
   sectionTitle: {
+    ...display(28),
     color: colors.text,
-    fontSize: 22,
-    fontWeight: '800',
-    letterSpacing: -0.5,
     paddingHorizontal: spacing.md,
   },
   sectionSubtitle: {
+    ...uiText(14),
     color: colors.muted,
-    fontSize: 14,
     paddingHorizontal: spacing.md,
-    marginTop: -spacing.xs,
+    marginTop: spacing.xs,
   },
   emptyText: {
+    ...uiText(14),
     color: colors.muted,
-    fontSize: 14,
     paddingHorizontal: spacing.md,
   },
   badgeRow: {
@@ -402,24 +413,24 @@ const styles = StyleSheet.create({
   },
   badgeChip: {
     backgroundColor: colors.card,
-    borderWidth: 1.5,
+    borderWidth: 2,
     borderRadius: radius.lg,
     paddingVertical: spacing.md,
     paddingHorizontal: spacing.lg,
     alignItems: 'center',
     gap: 2,
     minWidth: 130,
+    ...shadow.card,
   },
   badgeEmoji: {
     fontSize: 32,
   },
   badgeValue: {
-    fontSize: 26,
-    fontWeight: '800',
+    ...display(26),
   },
   badgeLabel: {
+    ...uiText(12),
     color: colors.muted,
-    fontSize: 12,
     textAlign: 'center',
   },
   mutualsGrid: {
@@ -440,21 +451,20 @@ const styles = StyleSheet.create({
     gap: 1,
   },
   mutualName: {
+    ...uiText(14, '700'),
     color: colors.text,
-    fontSize: 14,
-    fontWeight: '700',
   },
   mutualShared: {
+    ...uiText(12),
     color: colors.muted,
-    fontSize: 12,
   },
   heartButton: {
-    width: 34,
-    height: 34,
-    borderRadius: 17,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
     backgroundColor: colors.card,
-    borderWidth: 1,
-    borderColor: colors.cardBorder,
+    borderWidth: 2,
+    borderColor: colors.ink,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -469,24 +479,21 @@ const styles = StyleSheet.create({
     gap: spacing.xs,
   },
   cardFrom: {
+    ...uiText(13, '800'),
     color: '#fff',
-    fontSize: 13,
-    fontWeight: '800',
     textShadowColor: 'rgba(0,0,0,0.35)',
     textShadowOffset: { width: 0, height: 1 },
     textShadowRadius: 4,
   },
   cardMessage: {
+    ...uiText(14, '400', { lineHeight: 1.35 }),
     color: '#fff',
-    fontSize: 14,
-    lineHeight: 19,
     textShadowColor: 'rgba(0,0,0,0.35)',
     textShadowOffset: { width: 0, height: 1 },
     textShadowRadius: 4,
   },
   cardDate: {
+    ...uiText(11, '600'),
     color: 'rgba(255,255,255,0.85)',
-    fontSize: 11,
-    fontWeight: '600',
   },
 });

@@ -10,77 +10,119 @@ import {
   type ViewStyle,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-import { brandGradient, colors, radius, spacing } from '../lib/theme';
+import { brand, colors, light, radius, shadow, spacing } from '../lib/theme';
 
+export type ButtonVariant = 'primary' | 'vibrant' | 'paper' | 'ghost' | 'danger';
+
+// The Partiful button family:
+//   primary  — solid BLACK fill, white text. The signature action; pops on the
+//              light paper canvas and on top of vibrant gradients.
+//   vibrant  — party gradient fill (heliotrope→pink→blue). Hero CTA for dark
+//              screens where a black fill would vanish.
+//   paper    — white fill, black text. Primary CTA on dark surfaces.
+//   ghost    — transparent + a heavy 2px border. `tone` sets ink (black) or
+//              paper (white) for the border + label.
+//   danger   — transparent + red border/label for destructive actions.
 export function Button({
   title,
   onPress,
   loading,
+  disabled,
   variant = 'primary',
+  tone = 'ink',
   style,
 }: {
   title: string;
   onPress: () => void;
   loading?: boolean;
-  variant?: 'primary' | 'ghost' | 'danger';
+  disabled?: boolean;
+  variant?: ButtonVariant;
+  tone?: 'ink' | 'paper';
   style?: ViewStyle;
 }) {
-  const inner = loading ? (
-    <ActivityIndicator color={variant === 'primary' ? '#fff' : colors.accent} />
-  ) : (
-    <Text
-      style={[
-        styles.buttonText,
-        variant === 'ghost' && { color: colors.accent },
-        variant === 'danger' && { color: colors.danger },
-      ]}
-    >
-      {title}
-    </Text>
-  );
+  const isDisabled = loading || disabled;
 
-  if (variant === 'primary') {
+  const label = (color: string) =>
+    loading ? (
+      <ActivityIndicator color={color} />
+    ) : (
+      <Text style={[styles.buttonText, { color }]}>{title}</Text>
+    );
+
+  if (variant === 'vibrant') {
     return (
-      <Pressable onPress={onPress} disabled={loading} style={({ pressed }) => [pressed && styles.pressed, style]}>
+      <Pressable
+        onPress={onPress}
+        disabled={isDisabled}
+        style={({ pressed }) => [pressed && styles.pressed, isDisabled && styles.disabled, style]}
+      >
         <LinearGradient
-          colors={[...brandGradient]}
+          colors={[...brand.party]}
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 1 }}
-          style={styles.button}
+          style={[styles.button, shadow.float]}
         >
-          {inner}
+          {label('#fff')}
         </LinearGradient>
       </Pressable>
     );
   }
+
+  if (variant === 'primary' || variant === 'paper') {
+    const filled = variant === 'primary';
+    return (
+      <Pressable
+        onPress={onPress}
+        disabled={isDisabled}
+        style={({ pressed }) => [
+          styles.button,
+          styles.solid,
+          { backgroundColor: filled ? colors.ink : light.paper },
+          pressed && styles.pressed,
+          isDisabled && styles.disabled,
+          style,
+        ]}
+      >
+        {label(filled ? '#fff' : colors.ink)}
+      </Pressable>
+    );
+  }
+
+  // ghost / danger — bordered, transparent.
+  const edge = variant === 'danger' ? colors.danger : tone === 'paper' ? '#fff' : colors.ink;
   return (
     <Pressable
       onPress={onPress}
-      disabled={loading}
+      disabled={isDisabled}
       style={({ pressed }) => [
         styles.button,
-        styles.ghostButton,
-        variant === 'danger' && { borderColor: colors.danger },
+        styles.ghost,
+        { borderColor: edge },
         pressed && styles.pressed,
+        isDisabled && styles.disabled,
         style,
       ]}
     >
-      {inner}
+      {label(edge)}
     </Pressable>
   );
 }
 
 export function Field({
-  label,
+  label: labelText,
+  tone = 'dark',
   style,
   ...props
-}: TextInputProps & { label?: string; style?: TextInputProps['style'] }) {
+}: TextInputProps & { label?: string; tone?: 'dark' | 'light'; style?: TextInputProps['style'] }) {
+  const isLight = tone === 'light';
   return (
     <View style={{ gap: spacing.xs }}>
-      {label ? <Text style={styles.label}>{label}</Text> : null}
+      {labelText ? (
+        <Text style={[styles.label, isLight && { color: light.text3 }]}>{labelText}</Text>
+      ) : null}
       <TextInput
-        placeholderTextColor={colors.muted}
-        style={[styles.input, style]}
+        placeholderTextColor={isLight ? light.muted : colors.muted}
+        style={[styles.input, isLight && styles.inputLight, style]}
         {...props}
       />
     </View>
@@ -95,23 +137,30 @@ export function ErrorText({ message }: { message: string | null }) {
 const styles = StyleSheet.create({
   button: {
     borderRadius: radius.pill,
-    paddingVertical: 14,
-    paddingHorizontal: spacing.lg,
+    paddingVertical: 16,
+    paddingHorizontal: spacing.xl,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  ghostButton: {
-    borderWidth: 1,
-    borderColor: colors.cardBorder,
+  solid: {
+    // Heavy black CTAs get a subtle lift so they read as physical.
+    ...shadow.card,
+  },
+  ghost: {
+    borderWidth: 2,
     backgroundColor: 'transparent',
   },
   pressed: {
-    opacity: 0.75,
+    opacity: 0.8,
+    transform: [{ scale: 0.98 }],
+  },
+  disabled: {
+    opacity: 0.45,
   },
   buttonText: {
-    color: '#fff',
     fontSize: 16,
     fontWeight: '700',
+    letterSpacing: -0.5,
   },
   label: {
     color: colors.muted,
@@ -122,16 +171,23 @@ const styles = StyleSheet.create({
   },
   input: {
     backgroundColor: colors.inputBg,
-    borderWidth: 1,
+    borderWidth: 1.5,
     borderColor: colors.cardBorder,
-    borderRadius: radius.md,
+    borderRadius: radius.sm,
     color: colors.text,
     paddingHorizontal: spacing.md,
-    paddingVertical: 12,
+    paddingVertical: 13,
     fontSize: 16,
+  },
+  inputLight: {
+    backgroundColor: light.paper,
+    borderWidth: 2,
+    borderColor: light.ink,
+    color: light.text,
   },
   error: {
     color: colors.danger,
     fontSize: 14,
+    fontWeight: '700',
   },
 });
