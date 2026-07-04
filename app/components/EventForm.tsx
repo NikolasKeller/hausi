@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useContext, useState } from 'react';
 import {
   KeyboardAvoidingView,
   Platform,
@@ -31,8 +31,8 @@ import { TITLE_FONT_LABELS, titleFontStyle, display, kicker, uiText } from '../l
 import { CoverGradient } from './CoverGradient';
 import { EffectOverlay } from './EffectOverlay';
 import { Button, ErrorText } from './ui';
-import { ThemePicker, EffectPicker } from './themes';
-import { Burst, PaperBackground } from './partiful';
+import { ThemePicker, EffectPicker, ThemeBackground, themeInk } from './themes';
+import { Burst } from './partiful';
 import { formatEventDate, formatEventTime } from './EventCard';
 import { pickCoverImage } from '../lib/imageUpload';
 
@@ -62,13 +62,16 @@ interface Props {
 }
 
 // ── Local "paper" primitives ──────────────────────────────────────────────────
-// The form lives on the calm warm-linen "Known" canvas, so every control is a
-// solid, high-contrast paper surface (near-black ink on warm white) rather than
-// translucent glass floating over a vibrant gradient. This keeps button labels
-// legible and the palette quiet — the only vibrant color is the cover preview.
+// The form is WYSIWYG: it sits on the *event's own theme* background, so what you
+// see while composing is what guests get. Every control is still a solid, opaque
+// paper surface (near-black ink on warm white) so it stays legible on any theme —
+// dark or light. Only the free-floating bits (section labels, header/submit
+// actions) follow the theme's mood via FormInkContext.
+const FormInkContext = React.createContext<string>(light.text3);
 
 function SectionLabel({ children }: { children: React.ReactNode }) {
-  return <Text style={styles.sectionLabel}>{children}</Text>;
+  const color = useContext(FormInkContext);
+  return <Text style={[styles.sectionLabel, { color }]}>{children}</Text>;
 }
 
 // A tappable paper card — the base for every button/row on the form.
@@ -167,6 +170,10 @@ export function EventForm({ initial, submitLabel, onSubmit, footer }: Props) {
   const [effectPickerOpen, setEffectPickerOpen] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+  // Content palette for the live theme — drives the free-floating labels and
+  // actions so they stay readable whether the cover is a dark Halloween or a
+  // light Blossom. Paper cards keep their own fixed ink.
+  const ink = themeInk(coverTheme);
 
   async function submit() {
     if (!title.trim()) {
@@ -218,7 +225,8 @@ export function EventForm({ initial, submitLabel, onSubmit, footer }: Props) {
   }
 
   return (
-    <PaperBackground>
+    <ThemeBackground theme={coverTheme} effect={effect}>
+      <FormInkContext.Provider value={ink.subtext}>
       <SafeAreaView edges={['top']} style={{ backgroundColor: 'transparent' }}>
         <View style={styles.formHeader}>
           <Pressable onPress={() => router.back()} hitSlop={10} style={styles.formClose}>
@@ -227,9 +235,11 @@ export function EventForm({ initial, submitLabel, onSubmit, footer }: Props) {
           <Pressable
             onPress={submit}
             disabled={saving}
-            style={[styles.formSave, { opacity: saving ? 0.5 : 1 }]}
+            style={[styles.formSave, ink.dark && styles.formSavePaper, { opacity: saving ? 0.5 : 1 }]}
           >
-            <Text style={styles.formSaveText}>{saving ? 'Saving…' : 'Save'}</Text>
+            <Text style={[styles.formSaveText, ink.dark && styles.formSaveTextInk]}>
+              {saving ? 'Saving…' : 'Save'}
+            </Text>
           </Pressable>
         </View>
       </SafeAreaView>
@@ -467,7 +477,12 @@ export function EventForm({ initial, submitLabel, onSubmit, footer }: Props) {
         </View>
 
         <ErrorText message={error} />
-        <Button title={submitLabel} onPress={submit} loading={saving} variant="primary" />
+        <Button
+          title={submitLabel}
+          onPress={submit}
+          loading={saving}
+          variant={ink.dark ? 'paper' : 'primary'}
+        />
         {footer}
         </ScrollView>
       </KeyboardAvoidingView>
@@ -492,7 +507,8 @@ export function EventForm({ initial, submitLabel, onSubmit, footer }: Props) {
           onClose={() => setEffectPickerOpen(false)}
         />
       ) : null}
-    </PaperBackground>
+      </FormInkContext.Provider>
+    </ThemeBackground>
   );
 }
 
@@ -530,6 +546,14 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontWeight: '700',
     letterSpacing: -0.3,
+  },
+  // On dark themes a black pill vanishes into the background — flip to a white
+  // paper pill with ink text so "Save" always reads.
+  formSavePaper: {
+    backgroundColor: '#fff',
+  },
+  formSaveTextInk: {
+    color: colors.ink,
   },
   container: {
     flex: 1,
