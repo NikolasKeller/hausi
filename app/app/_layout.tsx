@@ -45,9 +45,14 @@ function RootNavigator() {
     if (!user && !inAuthGroup) {
       const arrivedViaLink = pathname && pathname !== '/';
       if (arrivedViaLink) pendingPath.current = pathname;
-      // Invitees without an account go through signup first, per the invite flow.
-      router.replace(arrivedViaLink ? '/signup' : '/login');
+      // Invitees jump straight to phone entry; everyone else gets the intro.
+      router.replace(arrivedViaLink ? '/phone' : '/welcome');
     } else if (user && inAuthGroup) {
+      // First-timers (no name yet) finish profile setup before landing.
+      if (!user.name.trim()) {
+        router.replace('/setup');
+        return;
+      }
       const target = pendingPath.current ?? '/';
       pendingPath.current = null;
       router.replace(target as never);
@@ -74,6 +79,7 @@ function RootNavigator() {
     >
       <Stack.Screen name="(auth)" options={{ headerShown: false }} />
       <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+      <Stack.Screen name="setup" options={{ headerShown: false, gestureEnabled: false }} />
       <Stack.Screen
         name="new-event"
         options={{

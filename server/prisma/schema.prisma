@@ -11,13 +11,18 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+// Auth is phone-first (SMS code). Email/password remains only for legacy
+// dev accounts and disappears with the Supabase Auth migration.
 model User {
-  id             String         @id @default(cuid())
-  name           String
-  email          String         @unique
-  passwordHash   String
-  avatarEmoji    String         @default("🙂")
-  city           String         @default("San Francisco")
+  id                 String    @id @default(cuid())
+  name               String    @default("")
+  email              String?   @unique
+  passwordHash       String?
+  phone              String?   @unique
+  phoneCode          String?
+  phoneCodeExpiresAt DateTime?
+  avatarEmoji        String    @default("🙂")
+  city               String    @default("San Francisco")
   createdAt      DateTime       @default(now())
   events         Event[]        @relation("HostEvents")
   rsvps          Rsvp[]

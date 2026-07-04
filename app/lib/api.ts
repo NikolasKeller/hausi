@@ -13,6 +13,8 @@ import type {
   HomeFeed,
   MyProfile,
   NotificationEntry,
+  PhoneRequestResponse,
+  PhoneVerifyResponse,
   RsvpStatus,
 } from '../shared/types';
 
@@ -77,8 +79,17 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
 }
 
 export const api = {
-  signup(data: { name: string; email: string; password: string; avatarEmoji?: string }) {
-    return request<AuthResponse>('/auth/signup', { method: 'POST', body: JSON.stringify(data) });
+  requestPhoneCode(phone: string) {
+    return request<PhoneRequestResponse>('/auth/phone/request', {
+      method: 'POST',
+      body: JSON.stringify({ phone }),
+    });
+  },
+  verifyPhoneCode(phone: string, code: string) {
+    return request<PhoneVerifyResponse>('/auth/phone/verify', {
+      method: 'POST',
+      body: JSON.stringify({ phone, code }),
+    });
   },
   login(data: { email: string; password: string }) {
     return request<AuthResponse>('/auth/login', { method: 'POST', body: JSON.stringify(data) });

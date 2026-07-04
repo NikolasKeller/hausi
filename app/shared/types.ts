@@ -68,7 +68,18 @@ export interface PublicUser {
 
 export interface AuthResponse {
   token: string;
-  user: PublicUser & { email: string };
+  user: PublicUser & { email: string | null; phone: string | null };
+}
+
+export interface PhoneRequestResponse {
+  sent: boolean;
+  // Present only while no SMS provider is configured (local dev):
+  // the app shows it as a simulated text message.
+  devCode?: string;
+}
+
+export interface PhoneVerifyResponse extends AuthResponse {
+  isNew: boolean;
 }
 
 export interface RsvpEntry {
@@ -182,7 +193,8 @@ export interface CardEntry {
 export interface MyProfile {
   id: string;
   name: string;
-  email: string;
+  email: string | null;
+  phone: string | null;
   avatarEmoji: string;
   city: string;
   joinedAt: string;

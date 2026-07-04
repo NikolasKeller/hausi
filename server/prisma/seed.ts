@@ -34,16 +34,16 @@ async function main() {
   const SF = 'San Francisco';
 
   const userSpecs = [
-    { name: 'Demo Host', email: 'demo@hausi.app', avatarEmoji: '🎉', city: SF },
-    { name: 'Mia', email: 'mia@hausi.app', avatarEmoji: '🦄', city: SF },
-    { name: 'Leo', email: 'leo@hausi.app', avatarEmoji: '🕺', city: SF },
-    { name: 'Zoe', email: 'zoe@hausi.app', avatarEmoji: '🌸', city: SF },
-    { name: 'Noah', email: 'noah@hausi.app', avatarEmoji: '🛹', city: SF },
-    { name: 'Ava', email: 'ava@hausi.app', avatarEmoji: '🎷', city: SF },
-    { name: 'Kai', email: 'kai@hausi.app', avatarEmoji: '🌊', city: SF },
-    { name: 'Luna', email: 'luna@hausi.app', avatarEmoji: '🌙', city: 'Berlin' },
-    { name: 'Max', email: 'max@hausi.app', avatarEmoji: '🍕', city: 'Berlin' },
-    { name: 'Iris', email: 'iris@hausi.app', avatarEmoji: '🎨', city: 'New York' },
+    { name: 'Demo Host', email: 'demo@hausi.app', phone: '+14155550100', avatarEmoji: '🎉', city: SF },
+    { name: 'Mia', email: 'mia@hausi.app', phone: '+14155550101', avatarEmoji: '🦄', city: SF },
+    { name: 'Leo', email: 'leo@hausi.app', phone: '+14155550102', avatarEmoji: '🕺', city: SF },
+    { name: 'Zoe', email: 'zoe@hausi.app', phone: '+14155550103', avatarEmoji: '🌸', city: SF },
+    { name: 'Noah', email: 'noah@hausi.app', phone: '+14155550104', avatarEmoji: '🛹', city: SF },
+    { name: 'Ava', email: 'ava@hausi.app', phone: '+14155550105', avatarEmoji: '🎷', city: SF },
+    { name: 'Kai', email: 'kai@hausi.app', phone: '+14155550106', avatarEmoji: '🌊', city: SF },
+    { name: 'Luna', email: 'luna@hausi.app', phone: '+14155550107', avatarEmoji: '🌙', city: 'Berlin' },
+    { name: 'Max', email: 'max@hausi.app', phone: '+14155550108', avatarEmoji: '🍕', city: 'Berlin' },
+    { name: 'Iris', email: 'iris@hausi.app', phone: '+14155550109', avatarEmoji: '🎨', city: 'New York' },
   ];
   const users = [] as Awaited<ReturnType<typeof db.user.create>>[];
   for (const u of userSpecs) {

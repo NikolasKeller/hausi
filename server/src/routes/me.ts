@@ -98,6 +98,7 @@ meRoutes.get('/', async (c) => {
     id: me.id,
     name: me.name,
     email: me.email,
+    phone: me.phone,
     avatarEmoji: me.avatarEmoji,
     city: me.city,
     joinedAt: me.createdAt.toISOString(),
