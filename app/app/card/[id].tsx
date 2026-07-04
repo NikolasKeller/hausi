@@ -5,12 +5,12 @@ import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import type { CardEntry } from '../../shared/types';
 import { api } from '../../lib/api';
 import { CARD_META } from '../../lib/cards';
-import { colors, light, radius, spacing } from '../../lib/theme';
+import { colors, radius, shadow, spacing } from '../../lib/theme';
 import { display, kicker, titleFontStyle, uiText } from '../../lib/fonts';
 import { CoverGradient } from '../../components/CoverGradient';
 import { Avatar } from '../../components/Avatar';
 import { Button } from '../../components/ui';
-import { Burst, PaperBackground, PaperCard, Seal, TiltCard } from '../../components/partiful';
+import { PaperBackground } from '../../components/partiful';
 
 export default function CardScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -43,9 +43,7 @@ export default function CardScreen() {
     return (
       <PaperBackground>
         <View style={styles.center}>
-          <Seal size={92} color={light.sand} rotate={-8}>
-            <Text style={styles.errorEmoji}>🫠</Text>
-          </Seal>
+          <Text style={styles.errorEmoji}>🫠</Text>
           <Text style={styles.centerText}>{error}</Text>
           <Button title="Back home" variant="ghost" onPress={() => router.replace('/')} />
         </View>
@@ -57,7 +55,7 @@ export default function CardScreen() {
     return (
       <PaperBackground>
         <View style={styles.center}>
-          <ActivityIndicator color={light.ink} size="large" />
+          <ActivityIndicator color={colors.text} size="large" />
         </View>
       </PaperBackground>
     );
@@ -70,26 +68,25 @@ export default function CardScreen() {
       <SafeAreaView style={styles.safe} edges={['top', 'bottom']}>
         <ScrollView contentContainerStyle={styles.content}>
           <View style={styles.header}>
-            <Text style={[styles.kicker, kicker(light.text3)]}>A card for you</Text>
-            <Text style={[styles.headline, display(52)]}>You{'’'}ve got mail</Text>
+            <Text style={styles.kicker}>A card for you</Text>
+            <Text style={styles.headline}>
+              You{'’'}ve got <Text style={styles.headlineAccent}>mail</Text>
+            </Text>
           </View>
 
-          <TiltCard rotate={-3} float style={styles.cardWrap}>
-            <PaperCard style={styles.cardPaper}>
-              <Burst size={54} color={light.sand} rotate={12} style={styles.cardBurst} />
-              <CoverGradient theme={meta.cover} style={styles.card} emojiOpacity={0.18}>
-                <Text style={styles.emoji}>{meta.emoji}</Text>
-                <Text style={[styles.message, titleFontStyle('fancy')]}>{card.message}</Text>
-                <View style={styles.fromRow}>
-                  <Avatar emoji={card.from.avatarEmoji} size={28} />
-                  <Text style={styles.fromText}>from {card.from.name}</Text>
-                </View>
-              </CoverGradient>
-            </PaperCard>
-          </TiltCard>
+          <View style={styles.cardWrap}>
+            <CoverGradient theme={meta.cover} style={styles.card} emojiOpacity={0.18}>
+              <Text style={styles.emoji}>{meta.emoji}</Text>
+              <Text style={[styles.message, titleFontStyle('fancy')]}>{card.message}</Text>
+              <View style={styles.fromRow}>
+                <Avatar emoji={card.from.avatarEmoji} size={28} />
+                <Text style={styles.fromText}>from {card.from.name}</Text>
+              </View>
+            </CoverGradient>
+          </View>
 
           <View style={styles.actions}>
-            <Button title="Send your own card 💌" variant="primary" onPress={() => router.replace('/send-card')} />
+            <Button title="Send your own card" variant="primary" onPress={() => router.replace('/send-card')} />
             <Button title="Go to Hausi" variant="ghost" onPress={() => router.replace('/')} />
           </View>
         </ScrollView>
@@ -110,12 +107,12 @@ const styles = StyleSheet.create({
     padding: spacing.lg,
   },
   errorEmoji: {
-    fontSize: 40,
+    fontSize: 48,
   },
   centerText: {
-    color: light.text2,
+    color: colors.muted,
     textAlign: 'center',
-    ...uiText(17, '500'),
+    ...uiText(17, '400'),
   },
   content: {
     flexGrow: 1,
@@ -127,23 +124,24 @@ const styles = StyleSheet.create({
     gap: spacing.sm,
   },
   kicker: {
-    color: light.text3,
+    ...kicker(colors.muted),
   },
   headline: {
-    color: light.ink,
+    color: colors.text,
+    ...display(52),
+  },
+  headlineAccent: {
+    ...display(52),
+    fontStyle: 'italic',
   },
   cardWrap: {
     alignSelf: 'stretch',
-  },
-  cardPaper: {
+    backgroundColor: colors.card,
+    borderWidth: 1,
+    borderColor: colors.cardBorder,
+    borderRadius: radius.lg,
     padding: spacing.sm,
-    overflow: 'visible',
-  },
-  cardBurst: {
-    position: 'absolute',
-    top: -22,
-    right: -14,
-    zIndex: 2,
+    ...shadow.card,
   },
   card: {
     minHeight: 340,
@@ -156,6 +154,7 @@ const styles = StyleSheet.create({
   emoji: {
     fontSize: 72,
   },
+  // White is intentional here: this text sits on the colorful CoverGradient art.
   message: {
     color: '#fff',
     fontSize: 30,
@@ -170,6 +169,7 @@ const styles = StyleSheet.create({
     gap: spacing.xs,
     marginTop: spacing.sm,
   },
+  // White is intentional here: this text sits on the colorful CoverGradient art.
   fromText: {
     color: '#fff',
     fontSize: 15,

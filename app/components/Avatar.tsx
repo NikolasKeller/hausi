@@ -3,7 +3,6 @@ import { StyleSheet, Text, View } from 'react-native';
 import { colors } from '../lib/theme';
 
 export function Avatar({ emoji, size = 36 }: { emoji: string; size?: number }) {
-  const border = Math.max(2, Math.round(size * 0.08));
   return (
     <View
       style={[
@@ -12,7 +11,6 @@ export function Avatar({ emoji, size = 36 }: { emoji: string; size?: number }) {
           width: size,
           height: size,
           borderRadius: size / 2,
-          borderWidth: border,
         },
       ]}
     >
@@ -23,9 +21,10 @@ export function Avatar({ emoji, size = 36 }: { emoji: string; size?: number }) {
 
 const styles = StyleSheet.create({
   circle: {
-    // Bright sticker chip with a heavy black ring so it pops in tight rows.
-    backgroundColor: colors.accent,
-    borderColor: colors.ink,
+    // Calm warm-white chip with a soft 1px hairline — quiet, no heavy black ring.
+    backgroundColor: colors.card,
+    borderWidth: 1,
+    borderColor: colors.cardBorder,
     alignItems: 'center',
     justifyContent: 'center',
   },

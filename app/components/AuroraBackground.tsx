@@ -1,193 +1,28 @@
-import React, { useEffect, useRef } from 'react';
-import { Animated, Easing, Platform, StyleSheet, View, useWindowDimensions } from 'react-native';
+import React from 'react';
+import { StyleSheet, View } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-import { Burst } from './partiful';
-import { brand, light } from '../lib/theme';
+import { colors } from '../lib/theme';
 
-// react-native-web has no native driver; silence its fallback warning.
-const useNativeDriver = Platform.OS !== 'web';
-
-interface OrbSpec {
-  size: number;
-  left: number; // percent
-  top: number; // percent
-  color: string;
-  duration: number;
-  delay: number;
-  drift: number;
-  rotate: number;
-  rays: number;
-}
-
-// A few small starburst accents that drift gently — kept in the top corners,
-// clear of where any screen's headline or content sits, so nothing collides
-// with the text. Restraint over confetti-storm: a couple of sparkles, not a mess.
-const ORBS: OrbSpec[] = [
-  { size: 36, left: 4, top: 4, color: brand.party[0], duration: 9000, delay: 0, drift: 14, rotate: -14, rays: 8 },
-  { size: 26, left: 86, top: 3, color: brand.party[2], duration: 10000, delay: 600, drift: 12, rotate: 10, rays: 6 },
-];
-
-function Orb({ spec }: { spec: OrbSpec }) {
-  const progress = useRef(new Animated.Value(0)).current;
-
-  useEffect(() => {
-    const loop = Animated.loop(
-      Animated.sequence([
-        Animated.delay(spec.delay),
-        Animated.timing(progress, {
-          toValue: 1,
-          duration: spec.duration,
-          easing: Easing.inOut(Easing.sin),
-          useNativeDriver,
-        }),
-        Animated.timing(progress, {
-          toValue: 0,
-          duration: spec.duration,
-          easing: Easing.inOut(Easing.sin),
-          useNativeDriver,
-        }),
-      ])
-    );
-    loop.start();
-    return () => loop.stop();
-  }, [progress, spec.delay, spec.duration]);
-
-  return (
-    <Animated.View
-      pointerEvents="none"
-      style={{
-        position: 'absolute',
-        left: `${spec.left}%`,
-        top: `${spec.top}%`,
-        opacity: 0.85,
-        transform: [
-          {
-            translateY: progress.interpolate({
-              inputRange: [0, 1],
-              outputRange: [0, -spec.drift],
-            }),
-          },
-          {
-            translateX: progress.interpolate({
-              inputRange: [0, 1],
-              outputRange: [0, spec.drift / 2],
-            }),
-          },
-          { scale: progress.interpolate({ inputRange: [0, 1], outputRange: [1, 1.12] }) },
-        ],
-      }}
-    >
-      <Burst size={spec.size} rays={spec.rays} color={spec.color} rotate={spec.rotate} />
-    </Animated.View>
-  );
-}
-
-const CONFETTI_COLORS = ['#FF4FD8', '#4B7BFF', '#D241FA', '#001666', '#F0B6E0'];
-
-function ConfettiPiece({ index, height }: { index: number; height: number }) {
-  const progress = useRef(new Animated.Value(0)).current;
-  const duration = 9000 + ((index * 977) % 5000);
-  const delay = (index * 653) % 6000;
-  const left = (index * 41 + 7) % 96;
-
-  useEffect(() => {
-    const loop = Animated.loop(
-      Animated.sequence([
-        Animated.delay(delay),
-        Animated.timing(progress, {
-          toValue: 1,
-          duration,
-          easing: Easing.linear,
-          useNativeDriver,
-        }),
-        Animated.timing(progress, { toValue: 0, duration: 0, useNativeDriver }),
-      ])
-    );
-    loop.start();
-    return () => loop.stop();
-  }, [progress, delay, duration]);
-
-  return (
-    <Animated.View
-      pointerEvents="none"
-      style={{
-        position: 'absolute',
-        left: `${left}%`,
-        top: -12,
-        width: 7,
-        height: 5,
-        borderRadius: 1.5,
-        backgroundColor: CONFETTI_COLORS[index % CONFETTI_COLORS.length],
-        opacity: progress.interpolate({
-          inputRange: [0, 0.08, 0.85, 1],
-          outputRange: [0, 0.9, 0.9, 0],
-        }),
-        transform: [
-          {
-            translateY: progress.interpolate({
-              inputRange: [0, 1],
-              outputRange: [0, height + 24],
-            }),
-          },
-          {
-            translateX: progress.interpolate({
-              inputRange: [0, 0.5, 1],
-              outputRange: [0, index % 2 === 0 ? 24 : -24, 0],
-            }),
-          },
-          {
-            rotate: progress.interpolate({
-              inputRange: [0, 1],
-              outputRange: ['0deg', index % 2 === 0 ? '540deg' : '-540deg'],
-            }),
-          },
-        ],
-      }}
-    />
-  );
-}
-
-// Full-screen light festive backdrop for the onboarding flow: a warm paper
-// canvas with pastel party washes, drifting starburst stickers, and optional
-// falling confetti.
+// Calm "Known" auth backdrop: a flat warm-linen canvas with a single very soft
+// warm bloom falling from the top — no animated orbs, no starburst stickers, no
+// confetti. The `confetti` prop is kept for API compatibility with callers but
+// no longer renders anything.
 export function AuroraBackground({
   children,
-  confetti = false,
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  confetti = true,
 }: {
   children?: React.ReactNode;
   confetti?: boolean;
 }) {
-  const { height } = useWindowDimensions();
   return (
     <View style={styles.fill}>
       <LinearGradient
-        colors={[...brand.periwinkle]}
+        colors={['rgba(196,149,106,0.10)', 'rgba(238,234,228,0)']}
         locations={[0, 1]}
         style={styles.washTop}
         pointerEvents="none"
       />
-      <LinearGradient
-        colors={['rgba(248,196,255,0.6)', 'rgba(248,196,255,0)']}
-        start={{ x: 1, y: 0 }}
-        end={{ x: 0.15, y: 0.6 }}
-        style={styles.washCorner}
-        pointerEvents="none"
-      />
-      <LinearGradient
-        colors={['rgba(133,218,220,0)', 'rgba(133,218,220,0.4)']}
-        start={{ x: 0, y: 1 }}
-        end={{ x: 0.6, y: 0.4 }}
-        style={styles.washBottom}
-        pointerEvents="none"
-      />
-      {ORBS.map((spec, i) => (
-        <Orb key={i} spec={spec} />
-      ))}
-      {confetti
-        ? Array.from({ length: 14 }, (_, i) => (
-            <ConfettiPiece key={i} index={i} height={height} />
-          ))
-        : null}
       {children}
     </View>
   );
@@ -197,27 +32,13 @@ const styles = StyleSheet.create({
   fill: {
     flex: 1,
     overflow: 'hidden',
-    backgroundColor: light.bg,
+    backgroundColor: colors.bg,
   },
   washTop: {
     position: 'absolute',
     top: 0,
     left: 0,
     right: 0,
-    height: 560,
-  },
-  washCorner: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    height: 380,
-  },
-  washBottom: {
-    position: 'absolute',
-    left: 0,
-    right: 0,
-    bottom: 0,
-    height: 320,
+    height: 520,
   },
 });

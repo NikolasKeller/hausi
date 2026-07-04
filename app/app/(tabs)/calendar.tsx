@@ -18,7 +18,6 @@ import { colors, radius, shadow, spacing } from '../../lib/theme';
 import { COVERS } from '../../lib/covers';
 import { EventCard } from '../../components/EventCard';
 import { Button } from '../../components/ui';
-import { Burst } from '../../components/partiful';
 import { withScreenBackground } from '../../components/ScreenBackground';
 
 const MONTHS = [
@@ -180,161 +179,175 @@ function CalendarScreen() {
       ? MONTHS[view.month]
       : `${MONTHS[view.month]} ${view.year}`;
 
+  const header = (
+    <View style={styles.header}>
+      <View style={styles.monthRow}>
+        <View style={styles.monthTitleWrap}>
+          <Text style={[styles.kicker, kicker(colors.accent)]}>Your calendar</Text>
+          <Text style={styles.monthTitle} numberOfLines={1}>
+            {monthTitle}
+          </Text>
+        </View>
+        {mode === 'grid' ? (
+          <View style={styles.chevrons}>
+            <Pressable onPress={() => shiftMonth(-1)} style={styles.chevronButton} hitSlop={6}>
+              <Ionicons name="chevron-back" size={18} color={colors.text} />
+            </Pressable>
+            <Pressable onPress={() => shiftMonth(1)} style={styles.chevronButton} hitSlop={6}>
+              <Ionicons name="chevron-forward" size={18} color={colors.text} />
+            </Pressable>
+          </View>
+        ) : null}
+      </View>
+      <View style={styles.headerActions}>
+        {mode === 'grid' ? (
+          <Pressable onPress={goToToday} style={styles.todayPill} hitSlop={4}>
+            <Text style={styles.todayPillText}>Today</Text>
+          </Pressable>
+        ) : null}
+        <Pressable
+          onPress={() => setMode((m) => (m === 'grid' ? 'list' : 'grid'))}
+          style={styles.toggleButton}
+          hitSlop={4}
+        >
+          <Ionicons
+            name={mode === 'grid' ? 'list-outline' : 'calendar-outline'}
+            size={20}
+            color={colors.text}
+          />
+        </Pressable>
+      </View>
+    </View>
+  );
+
+  // Grid mode fills the screen exactly: the header + month grid take their
+  // natural height at the top and the "Today" panel flexes to fill the rest,
+  // so its CTA is always fully in view without scrolling (the panel scrolls
+  // internally only when a day holds more events than fit). List mode keeps a
+  // plain ScrollView since it can grow arbitrarily long.
+  if (mode === 'grid') {
+    return (
+      <SafeAreaView edges={['top']} style={styles.safe}>
+        <View style={styles.gridContent}>
+          {header}
+
+          <View style={styles.weekdayRow}>
+            {WEEKDAYS_SHORT.map((d) => (
+              <Text key={d} style={styles.weekdayLabel}>
+                {d}
+              </Text>
+            ))}
+          </View>
+
+          <View style={styles.grid}>
+            {weeks.map((week, wi) => (
+              <View key={wi} style={styles.weekRow}>
+                {week.map((date, di) => {
+                  if (!date) return <View key={di} style={styles.dayCell} />;
+                  const key = date.toDateString();
+                  const dayEvents = eventsByDay.get(key);
+                  const isToday = key === todayKey;
+                  const isSelected = key === selectedKey;
+                  return (
+                    <Pressable key={di} style={styles.dayCell} onPress={() => setSelected(date)}>
+                      <View
+                        style={[
+                          styles.dayCircle,
+                          isToday && styles.dayCircleToday,
+                          isSelected && styles.dayCircleSelected,
+                        ]}
+                      >
+                        {dayEvents?.length ? (
+                          dayEvents[0].coverImage ? (
+                            <Image
+                              source={{ uri: mediaUrl(dayEvents[0].coverImage) }}
+                              style={styles.dayThumb}
+                            />
+                          ) : (
+                            <Text style={styles.dayEmoji}>
+                              {COVERS[dayEvents[0].coverTheme].emoji}
+                            </Text>
+                          )
+                        ) : (
+                          <Text style={[styles.dayNumber, isSelected && styles.dayNumberSelected]}>
+                            {date.getDate()}
+                          </Text>
+                        )}
+                      </View>
+                    </Pressable>
+                  );
+                })}
+              </View>
+            ))}
+          </View>
+
+          <View style={styles.panel}>
+            <View style={styles.panelHandle} />
+            <Text style={styles.panelTitle}>
+              {selectedIsToday ? <Text style={styles.panelStrong}>Today </Text> : null}
+              <Text style={selectedIsToday ? styles.panelMuted : styles.panelStrong}>
+                {WEEKDAYS_LONG[selected.getDay()]} · {MONTHS[selected.getMonth()]}{' '}
+                {selected.getDate()}
+              </Text>
+            </Text>
+
+            {selectedEvents.length === 0 ? (
+              <View style={styles.emptyState}>
+                <Text style={styles.emptyEmoji}>🕊️</Text>
+                <Text style={styles.emptyTitle}>Free as a bird</Text>
+                <Text style={styles.emptySubtitle}>
+                  No commitments today. Do whatever you want
+                </Text>
+                <Button
+                  title="Plan something"
+                  variant="primary"
+                  onPress={() => router.push('/new-event')}
+                  style={styles.planButton}
+                />
+              </View>
+            ) : (
+              <ScrollView
+                style={styles.panelScroll}
+                contentContainerStyle={styles.panelEvents}
+                showsVerticalScrollIndicator={false}
+              >
+                {selectedEvents.map((ev) => (
+                  <EventCard key={ev.id} event={ev} />
+                ))}
+              </ScrollView>
+            )}
+          </View>
+        </View>
+      </SafeAreaView>
+    );
+  }
+
   return (
     <SafeAreaView edges={['top']} style={styles.safe}>
       <ScrollView contentContainerStyle={styles.content}>
-        <View style={styles.header}>
-          <View style={styles.monthRow}>
-            <View style={styles.monthTitleWrap}>
-              <Text style={[styles.kicker, kicker(colors.accent)]}>Your calendar</Text>
-              <Text style={styles.monthTitle} numberOfLines={1}>
-                {monthTitle}
-              </Text>
-            </View>
-            {mode === 'grid' ? (
-              <View style={styles.chevrons}>
-                <Pressable onPress={() => shiftMonth(-1)} style={styles.chevronButton} hitSlop={6}>
-                  <Ionicons name="chevron-back" size={18} color={colors.text} />
-                </Pressable>
-                <Pressable onPress={() => shiftMonth(1)} style={styles.chevronButton} hitSlop={6}>
-                  <Ionicons name="chevron-forward" size={18} color={colors.text} />
-                </Pressable>
-              </View>
-            ) : null}
+        {header}
+
+        <View style={styles.listSections}>
+          <View style={styles.sectionHead}>
+            <Text style={styles.sectionTitle}>
+              <Text style={styles.sectionTitleItalic}>Upcoming</Text>
+            </Text>
           </View>
-          <View style={styles.headerActions}>
-            {mode === 'grid' ? (
-              <Pressable onPress={goToToday} style={styles.todayPill} hitSlop={4}>
-                <Text style={styles.todayPillText}>Today</Text>
-              </Pressable>
-            ) : null}
-            <Pressable
-              onPress={() => setMode((m) => (m === 'grid' ? 'list' : 'grid'))}
-              style={styles.toggleButton}
-              hitSlop={4}
-            >
-              <Ionicons
-                name={mode === 'grid' ? 'list-outline' : 'calendar-outline'}
-                size={20}
-                color={colors.text}
-              />
-            </Pressable>
-          </View>
+          {upcoming.length === 0 ? (
+            <Text style={styles.sectionEmpty}>Nothing planned — yet 👀</Text>
+          ) : (
+            upcoming.map((ev) => <EventCard key={ev.id} event={ev} />)
+          )}
+
+          {past.length > 0 ? (
+            <>
+              <Text style={[styles.sectionTitle, { marginTop: spacing.lg }]}>Past</Text>
+              {past.map((ev) => (
+                <EventCard key={ev.id} event={ev} />
+              ))}
+            </>
+          ) : null}
         </View>
-
-        {mode === 'grid' ? (
-          <>
-            <View style={styles.weekdayRow}>
-              {WEEKDAYS_SHORT.map((d) => (
-                <Text key={d} style={styles.weekdayLabel}>
-                  {d}
-                </Text>
-              ))}
-            </View>
-
-            <View style={styles.grid}>
-              {weeks.map((week, wi) => (
-                <View key={wi} style={styles.weekRow}>
-                  {week.map((date, di) => {
-                    if (!date) return <View key={di} style={styles.dayCell} />;
-                    const key = date.toDateString();
-                    const dayEvents = eventsByDay.get(key);
-                    const isToday = key === todayKey;
-                    const isSelected = key === selectedKey;
-                    return (
-                      <Pressable
-                        key={di}
-                        style={styles.dayCell}
-                        onPress={() => setSelected(date)}
-                      >
-                        <View
-                          style={[
-                            styles.dayCircle,
-                            isToday && styles.dayCircleToday,
-                            isSelected && styles.dayCircleSelected,
-                          ]}
-                        >
-                          {dayEvents?.length ? (
-                            dayEvents[0].coverImage ? (
-                              <Image
-                                source={{ uri: mediaUrl(dayEvents[0].coverImage) }}
-                                style={styles.dayThumb}
-                              />
-                            ) : (
-                              <Text style={styles.dayEmoji}>
-                                {COVERS[dayEvents[0].coverTheme].emoji}
-                              </Text>
-                            )
-                          ) : (
-                            <Text
-                              style={[styles.dayNumber, isSelected && styles.dayNumberSelected]}
-                            >
-                              {date.getDate()}
-                            </Text>
-                          )}
-                        </View>
-                      </Pressable>
-                    );
-                  })}
-                </View>
-              ))}
-            </View>
-
-            <View style={styles.panel}>
-              <View style={styles.panelHandle} />
-              <Text style={styles.panelTitle}>
-                {selectedIsToday ? <Text style={styles.panelStrong}>Today </Text> : null}
-                <Text style={selectedIsToday ? styles.panelMuted : styles.panelStrong}>
-                  {WEEKDAYS_LONG[selected.getDay()]} · {MONTHS[selected.getMonth()]}{' '}
-                  {selected.getDate()}
-                </Text>
-              </Text>
-
-              {selectedEvents.length === 0 ? (
-                <View style={styles.emptyState}>
-                  <Text style={styles.emptyEmoji}>🕊️</Text>
-                  <Text style={styles.emptyTitle}>Free as a bird</Text>
-                  <Text style={styles.emptySubtitle}>
-                    No commitments today. Do whatever you want
-                  </Text>
-                  <Button
-                    title="Plan something"
-                    variant="vibrant"
-                    onPress={() => router.push('/new-event')}
-                    style={styles.planButton}
-                  />
-                </View>
-              ) : (
-                <View style={styles.panelEvents}>
-                  {selectedEvents.map((ev) => (
-                    <EventCard key={ev.id} event={ev} />
-                  ))}
-                </View>
-              )}
-            </View>
-          </>
-        ) : (
-          <View style={styles.listSections}>
-            <View style={styles.sectionHead}>
-              <Text style={styles.sectionTitle}>Upcoming</Text>
-              <Burst size={30} color={colors.helio} rotate={12} style={styles.sectionBurst} />
-            </View>
-            {upcoming.length === 0 ? (
-              <Text style={styles.sectionEmpty}>Nothing planned — yet 👀</Text>
-            ) : (
-              upcoming.map((ev) => <EventCard key={ev.id} event={ev} />)
-            )}
-
-            {past.length > 0 ? (
-              <>
-                <Text style={[styles.sectionTitle, { marginTop: spacing.lg }]}>Past</Text>
-                {past.map((ev) => (
-                  <EventCard key={ev.id} event={ev} />
-                ))}
-              </>
-            ) : null}
-          </View>
-        )}
       </ScrollView>
     </SafeAreaView>
   );
@@ -364,6 +377,13 @@ const styles = StyleSheet.create({
     padding: spacing.md,
     paddingBottom: spacing.xl * 2,
     gap: spacing.lg,
+  },
+  // Grid mode fills the screen so the panel below the calendar is always fully
+  // visible; children take their natural height and the panel flexes to fill.
+  gridContent: {
+    flex: 1,
+    padding: spacing.md,
+    gap: spacing.md,
   },
   header: {
     flexDirection: 'row',
@@ -399,8 +419,8 @@ const styles = StyleSheet.create({
     height: 32,
     borderRadius: 16,
     backgroundColor: colors.card,
-    borderWidth: 2,
-    borderColor: colors.ink,
+    borderWidth: 1,
+    borderColor: colors.cardBorder,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -411,8 +431,8 @@ const styles = StyleSheet.create({
     marginBottom: spacing.xs,
   },
   todayPill: {
-    borderWidth: 2,
-    borderColor: colors.ink,
+    borderWidth: 1,
+    borderColor: colors.cardBorder,
     backgroundColor: colors.card,
     borderRadius: radius.pill,
     paddingHorizontal: spacing.md,
@@ -427,8 +447,8 @@ const styles = StyleSheet.create({
     height: 40,
     borderRadius: 20,
     backgroundColor: colors.card,
-    borderWidth: 2,
-    borderColor: colors.ink,
+    borderWidth: 1,
+    borderColor: colors.cardBorder,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -485,9 +505,10 @@ const styles = StyleSheet.create({
     borderRadius: 18,
   },
   panel: {
+    flex: 1,
     backgroundColor: colors.card,
-    borderWidth: 2,
-    borderColor: colors.ink,
+    borderWidth: 1,
+    borderColor: colors.cardBorder,
     borderRadius: radius.lg,
     padding: spacing.lg,
     gap: spacing.md,
@@ -512,13 +533,18 @@ const styles = StyleSheet.create({
     ...uiText(17, '600'),
     color: colors.muted,
   },
+  panelScroll: {
+    flex: 1,
+  },
   panelEvents: {
     gap: spacing.md,
+    paddingBottom: spacing.xs,
   },
   emptyState: {
+    flex: 1,
     alignItems: 'center',
+    justifyContent: 'center',
     gap: spacing.sm,
-    paddingVertical: spacing.lg,
   },
   emptyEmoji: {
     fontSize: 48,
@@ -548,8 +574,10 @@ const styles = StyleSheet.create({
     ...display(30),
     color: colors.text,
   },
-  sectionBurst: {
-    marginBottom: spacing.xs,
+  sectionTitleItalic: {
+    ...display(30),
+    color: colors.text,
+    fontStyle: 'italic',
   },
   sectionEmpty: {
     ...uiText(15),

@@ -10,7 +10,6 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import { LinearGradient } from 'expo-linear-gradient';
 import type { CardEntry, MyProfile } from '../../shared/types';
 import { api } from '../../lib/api';
 import { useAuth } from '../../lib/auth';
@@ -21,7 +20,6 @@ import { display, kicker, uiText } from '../../lib/fonts';
 import { Avatar } from '../../components/Avatar';
 import { CoverGradient } from '../../components/CoverGradient';
 import { Button } from '../../components/ui';
-import { Burst, Seal } from '../../components/partiful';
 import { withScreenBackground } from '../../components/ScreenBackground';
 
 function joinedLabel(iso: string): string {
@@ -164,17 +162,7 @@ function ProfileScreen() {
 
         <View style={styles.hero}>
           <View style={styles.avatarStack}>
-            <LinearGradient
-              colors={['rgba(124,92,255,0.35)', 'rgba(180,140,255,0.12)', 'rgba(14,11,22,0)']}
-              start={{ x: 0.5, y: 0 }}
-              end={{ x: 0.5, y: 1 }}
-              style={styles.heroGlow}
-            >
-              <Seal size={148} color={colors.violet} rotate={-6} style={styles.avatarSeal}>
-                <Avatar emoji={profile.avatarEmoji} size={120} />
-              </Seal>
-            </LinearGradient>
-            <Burst size={44} color={colors.helio} rotate={14} style={styles.heroBurst} />
+            <Avatar emoji={profile.avatarEmoji} size={120} />
           </View>
           <Text style={styles.bigName}>{profile.name}</Text>
         </View>
@@ -207,23 +195,10 @@ function ProfileScreen() {
               showsHorizontalScrollIndicator={false}
               contentContainerStyle={styles.badgeRow}
             >
-              {profile.badges.map((badge, i) => (
-                <View
-                  key={badge.key}
-                  style={[
-                    styles.badgeChip,
-                    { borderColor: i % 2 === 0 ? colors.accent : colors.success },
-                  ]}
-                >
+              {profile.badges.map((badge) => (
+                <View key={badge.key} style={styles.badgeChip}>
                   <Text style={styles.badgeEmoji}>{badge.emoji}</Text>
-                  <Text
-                    style={[
-                      styles.badgeValue,
-                      { color: i % 2 === 0 ? colors.accent : colors.success },
-                    ]}
-                  >
-                    {badge.value}
-                  </Text>
+                  <Text style={styles.badgeValue}>{badge.value}</Text>
                   <Text style={styles.badgeLabel}>{badge.label}</Text>
                 </View>
               ))}
@@ -232,8 +207,10 @@ function ProfileScreen() {
         </View>
 
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Mutuals</Text>
-          <Text style={styles.sectionSubtitle}>Everyone you've ever partied with 🥳</Text>
+          <Text style={styles.sectionTitle}>
+            <Text style={styles.sectionTitleItalic}>Mutuals</Text>
+          </Text>
+          <Text style={styles.sectionSubtitle}>Everyone you've ever partied with</Text>
           {profile.mutuals.length === 0 ? (
             <Text style={styles.emptyText}>Party with someone to make your first mutual 🫂</Text>
           ) : (
@@ -334,8 +311,8 @@ const styles = StyleSheet.create({
     height: 40,
     borderRadius: 20,
     backgroundColor: colors.card,
-    borderWidth: 2,
-    borderColor: colors.ink,
+    borderWidth: 1,
+    borderColor: colors.cardBorder,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -344,27 +321,12 @@ const styles = StyleSheet.create({
   },
   hero: {
     alignItems: 'center',
-    marginTop: spacing.lg,
-    gap: spacing.md,
+    marginTop: spacing.xl,
+    gap: spacing.lg,
   },
   avatarStack: {
     alignItems: 'center',
     justifyContent: 'center',
-  },
-  heroGlow: {
-    width: 200,
-    height: 200,
-    borderRadius: 100,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  avatarSeal: {
-    ...shadow.float,
-  },
-  heroBurst: {
-    position: 'absolute',
-    top: 6,
-    right: 18,
   },
   bigName: {
     ...display(48),
@@ -396,6 +358,11 @@ const styles = StyleSheet.create({
     color: colors.text,
     paddingHorizontal: spacing.md,
   },
+  sectionTitleItalic: {
+    ...display(28),
+    color: colors.text,
+    fontStyle: 'italic',
+  },
   sectionSubtitle: {
     ...uiText(14),
     color: colors.muted,
@@ -413,7 +380,8 @@ const styles = StyleSheet.create({
   },
   badgeChip: {
     backgroundColor: colors.card,
-    borderWidth: 2,
+    borderWidth: 1,
+    borderColor: colors.cardBorder,
     borderRadius: radius.lg,
     paddingVertical: spacing.md,
     paddingHorizontal: spacing.lg,
@@ -427,6 +395,7 @@ const styles = StyleSheet.create({
   },
   badgeValue: {
     ...display(26),
+    color: colors.accent,
   },
   badgeLabel: {
     ...uiText(12),
@@ -463,8 +432,8 @@ const styles = StyleSheet.create({
     height: 36,
     borderRadius: 18,
     backgroundColor: colors.card,
-    borderWidth: 2,
-    borderColor: colors.ink,
+    borderWidth: 1,
+    borderColor: colors.cardBorder,
     alignItems: 'center',
     justifyContent: 'center',
   },
