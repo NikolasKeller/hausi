@@ -15,7 +15,7 @@ import { LIMITS, type EventDetail, type RsvpStatus } from '../../../shared/types
 import { api } from '../../../lib/api';
 import { useAuth } from '../../../lib/auth';
 import { confirmDialog, notify } from '../../../lib/dialogs';
-import { recordRecentEvent } from '../../../lib/recents';
+import { recordRecentEvent, removeRecentEvent } from '../../../lib/recents';
 import { shareText } from '../../../lib/share';
 import { colors, radius, rsvp, spacing } from '../../../lib/theme';
 import { titleFontStyle, display, kicker, uiText } from '../../../lib/fonts';
@@ -134,6 +134,7 @@ export default function EventScreen() {
     if (!ok) return;
     try {
       await api.deleteEvent(event.id);
+      removeRecentEvent(event.slug);
       router.replace('/');
     } catch (e) {
       notify('Delete failed', e instanceof Error ? e.message : 'Try again');
