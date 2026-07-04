@@ -107,7 +107,8 @@ authRoutes.post('/phone/request', async (c) => {
       await startVerification(phone);
     } catch (e) {
       console.error('Verify start failed:', e);
-      return c.json({ error: 'Could not send the code — check the number and try again' }, 502);
+      const detail = e instanceof Error ? e.message : 'unknown error';
+      return c.json({ error: `Could not send the code — ${detail}` }, 502);
     }
     return c.json({ sent: true });
   }
@@ -150,7 +151,8 @@ authRoutes.post('/phone/verify', async (c) => {
       approved = await checkVerification(phone, code);
     } catch (e) {
       console.error('Verify check failed:', e);
-      return c.json({ error: 'Could not verify the code — try again' }, 502);
+      const detail = e instanceof Error ? e.message : 'unknown error';
+      return c.json({ error: `Could not verify the code — ${detail}` }, 502);
     }
     if (!approved) return c.json({ error: 'Wrong or expired code — try again' }, 401);
     const user = await db.user.upsert({ where: { phone }, create: { phone }, update: {} });
