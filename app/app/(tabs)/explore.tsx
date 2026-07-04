@@ -17,9 +17,10 @@ import { api } from '../../lib/api';
 import { citySuggestions } from '../../lib/cities';
 import { shareText } from '../../lib/share';
 import { colors, radius, spacing } from '../../lib/theme';
-import { titleFontStyle, displayTitle } from '../../lib/fonts';
+import { titleFontStyle, display, uiText, kicker } from '../../lib/fonts';
 import { CoverGradient } from '../../components/CoverGradient';
 import { Button } from '../../components/ui';
+import { Burst } from '../../components/partiful';
 import { withScreenBackground } from '../../components/ScreenBackground';
 import { formatEventDate } from '../../components/EventCard';
 
@@ -158,7 +159,10 @@ function ExploreScreen() {
     <SafeAreaView edges={['top']} style={styles.safe}>
       <View style={{ flex: 1 }}>
         <View style={styles.headerRow}>
-          <Text style={styles.headerTitle}>Explore</Text>
+          <View style={styles.headerTitleWrap}>
+            <Text style={styles.headerKicker}>Discover</Text>
+            <Text style={styles.headerTitle}>Explore</Text>
+          </View>
           <Pressable
             onPress={() => setCityMenuOpen((open) => !open)}
             style={({ pressed }) => [styles.cityPill, pressed && { opacity: 0.8 }]}
@@ -178,7 +182,7 @@ function ExploreScreen() {
           <View style={styles.center}>
             <Text style={styles.errorEmoji}>🫠</Text>
             <Text style={styles.errorText}>{error}</Text>
-            <Button title="Try again" variant="ghost" onPress={() => load(() => true)} />
+            <Button title="Try again" variant="ghost" tone="paper" onPress={() => load(() => true)} />
           </View>
         ) : city === null ? (
           <View style={styles.center}>
@@ -209,19 +213,22 @@ function ExploreScreen() {
             </ScrollView>
 
             <CoverGradient theme="midnight" style={styles.hero} emojiOpacity={0.2}>
+              <Burst size={44} rays={8} color={colors.accent} rotate={12} style={styles.heroBurst} />
+              <Text style={styles.heroKicker}>Get out there</Text>
               <Text style={styles.heroTitle}>The streets are calling</Text>
               <Text style={styles.heroSubtitle}>
                 {city ? `See what's happening in ${city}` : "See what's happening everywhere"}
               </Text>
             </CoverGradient>
 
+            <Text style={styles.sectionKicker}>New faces</Text>
             <Text style={styles.sectionTitle}>Meet new people! 👋</Text>
 
             {error ? (
               <View style={styles.inlineState}>
                 <Text style={styles.errorEmoji}>🫠</Text>
                 <Text style={styles.errorText}>{error}</Text>
-                <Button title="Try again" variant="ghost" onPress={() => load(() => true)} />
+                <Button title="Try again" variant="ghost" tone="paper" onPress={() => load(() => true)} />
               </View>
             ) : events === null ? (
               <View style={styles.inlineState}>
@@ -326,41 +333,44 @@ const styles = StyleSheet.create({
     fontSize: 44,
   },
   errorText: {
+    ...uiText(16),
     color: colors.text,
-    fontSize: 16,
     textAlign: 'center',
   },
   headerRow: {
     flexDirection: 'row',
-    alignItems: 'center',
+    alignItems: 'flex-end',
     justifyContent: 'space-between',
     paddingHorizontal: spacing.md,
     paddingTop: spacing.sm,
     paddingBottom: spacing.sm,
     gap: spacing.sm,
   },
+  headerTitleWrap: {
+    gap: spacing.xs,
+  },
+  headerKicker: {
+    ...kicker(colors.accent),
+  },
   headerTitle: {
-    ...displayTitle,
+    ...display(44),
     color: colors.text,
-    fontSize: 32,
-    letterSpacing: -1,
   },
   cityPill: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing.xs,
     backgroundColor: colors.card,
-    borderWidth: 1,
-    borderColor: colors.cardBorder,
+    borderWidth: 2,
+    borderColor: colors.ink,
     borderRadius: radius.pill,
     paddingHorizontal: spacing.md,
     paddingVertical: 8,
     maxWidth: 200,
   },
   cityPillText: {
+    ...uiText(14, '700'),
     color: colors.text,
-    fontSize: 14,
-    fontWeight: '700',
     flexShrink: 1,
   },
   menuBackdrop: {
@@ -373,13 +383,13 @@ const styles = StyleSheet.create({
   },
   cityMenu: {
     position: 'absolute',
-    top: 58,
+    top: 78,
     right: spacing.md,
     left: spacing.md,
     maxHeight: 340,
     backgroundColor: colors.card,
-    borderWidth: 1,
-    borderColor: colors.cardBorder,
+    borderWidth: 2,
+    borderColor: colors.ink,
     borderRadius: radius.md,
     overflow: 'hidden',
     zIndex: 20,
@@ -414,12 +424,12 @@ const styles = StyleSheet.create({
     borderBottomColor: colors.cardBorder,
   },
   menuItemText: {
+    ...uiText(15),
     color: colors.text,
-    fontSize: 15,
   },
   menuItemTextActive: {
+    ...uiText(15, '700'),
     color: colors.accent,
-    fontWeight: '700',
   },
   content: {
     paddingBottom: spacing.xl * 2,
@@ -435,7 +445,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: spacing.xs,
     backgroundColor: colors.card,
-    borderWidth: 1,
+    borderWidth: 2,
     borderColor: colors.cardBorder,
     borderRadius: radius.pill,
     paddingHorizontal: spacing.md,
@@ -443,46 +453,61 @@ const styles = StyleSheet.create({
   },
   chipActive: {
     borderColor: colors.accent,
-    backgroundColor: 'rgba(255,122,224,0.12)',
+    backgroundColor: colors.accent,
   },
   chipEmoji: {
     fontSize: 14,
   },
   chipLabel: {
+    ...uiText(14, '700'),
     color: colors.muted,
-    fontSize: 14,
-    fontWeight: '700',
   },
   chipLabelActive: {
-    color: colors.text,
+    color: colors.onAccent,
   },
   hero: {
-    minHeight: 160,
+    minHeight: 200,
     justifyContent: 'flex-end',
     padding: spacing.lg,
     gap: spacing.xs,
     marginTop: spacing.sm,
+    marginHorizontal: spacing.md,
+    borderRadius: radius.lg,
+    borderWidth: 2,
+    borderColor: colors.ink,
+    overflow: 'hidden',
+  },
+  heroBurst: {
+    position: 'absolute',
+    top: spacing.md,
+    right: spacing.md,
+  },
+  heroKicker: {
+    ...kicker('#fff'),
+    opacity: 0.9,
   },
   heroTitle: {
+    ...display(38),
     color: '#fff',
-    fontSize: 30,
-    fontWeight: '800',
-    letterSpacing: -1,
     textShadowColor: 'rgba(0,0,0,0.4)',
     textShadowOffset: { width: 0, height: 2 },
     textShadowRadius: 8,
   },
   heroSubtitle: {
-    color: colors.muted,
-    fontSize: 15,
+    ...uiText(15),
+    color: '#fff',
+    opacity: 0.85,
+  },
+  sectionKicker: {
+    ...kicker(colors.accent),
+    marginHorizontal: spacing.md,
+    marginTop: spacing.xl,
   },
   sectionTitle: {
+    ...display(28),
     color: colors.text,
-    fontSize: 22,
-    fontWeight: '800',
-    letterSpacing: -0.5,
     marginHorizontal: spacing.md,
-    marginTop: spacing.lg,
+    marginTop: spacing.xs,
     marginBottom: spacing.md,
   },
   inlineState: {
@@ -491,10 +516,9 @@ const styles = StyleSheet.create({
     padding: spacing.xl,
   },
   emptyText: {
+    ...uiText(15),
     color: colors.muted,
-    fontSize: 15,
     textAlign: 'center',
-    lineHeight: 21,
   },
   grid: {
     flexDirection: 'row',
@@ -507,8 +531,8 @@ const styles = StyleSheet.create({
     width: '48%',
     backgroundColor: colors.card,
     borderRadius: radius.lg,
-    borderWidth: 1,
-    borderColor: colors.cardBorder,
+    borderWidth: 2,
+    borderColor: colors.ink,
     overflow: 'hidden',
   },
   poster: {
@@ -533,28 +557,24 @@ const styles = StyleSheet.create({
     gap: spacing.xs,
   },
   friendStrip: {
+    ...uiText(12),
     color: colors.muted,
-    fontSize: 12,
   },
   friendName: {
     color: colors.text,
     fontWeight: '700',
   },
   cardTitle: {
+    ...uiText(15, '800'),
     color: colors.text,
-    fontSize: 15,
-    fontWeight: '800',
-    letterSpacing: -0.3,
   },
   cardMeta: {
+    ...uiText(13, '700'),
     color: colors.accent,
-    fontSize: 13,
-    fontWeight: '700',
   },
   cardDescription: {
+    ...uiText(13),
     color: colors.muted,
-    fontSize: 13,
-    lineHeight: 18,
   },
   cardFooter: {
     flexDirection: 'row',
@@ -563,8 +583,7 @@ const styles = StyleSheet.create({
     marginTop: spacing.xs,
   },
   interested: {
+    ...uiText(13, '700'),
     color: colors.text,
-    fontSize: 13,
-    fontWeight: '700',
   },
 });

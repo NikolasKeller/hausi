@@ -3,6 +3,7 @@ import { ActivityIndicator, Platform, Pressable, StyleSheet, Text, View } from '
 import { Stack, usePathname, useRouter, useSegments } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useFonts } from 'expo-font';
+import { LinearGradient } from 'expo-linear-gradient';
 import { enableScreens } from 'react-native-screens';
 import { AuthProvider, useAuth } from '../lib/auth';
 import { FONTS_TO_LOAD } from '../lib/fonts';
@@ -16,23 +17,29 @@ if (Platform.OS === 'web') {
   enableScreens(true);
 }
 
-// ✕ in modal headers so nothing forces the user to complete a flow.
+// ✕ in modal headers so nothing forces the user to complete a flow. A filled
+// ink circle with a heavy border gives it the Partiful "physical button" weight.
 function ModalClose() {
   const router = useRouter();
   return (
     <Pressable
       onPress={() => router.back()}
       hitSlop={12}
-      style={{
-        width: 30,
-        height: 30,
-        borderRadius: 15,
-        backgroundColor: colors.card,
-        alignItems: 'center',
-        justifyContent: 'center',
-      }}
+      style={({ pressed }) => [
+        {
+          width: 34,
+          height: 34,
+          borderRadius: 17,
+          backgroundColor: colors.ink,
+          borderWidth: 2,
+          borderColor: colors.text,
+          alignItems: 'center',
+          justifyContent: 'center',
+        },
+        pressed && { opacity: 0.7, transform: [{ scale: 0.94 }] },
+      ]}
     >
-      <Text style={{ color: colors.text, fontSize: 15, fontWeight: '700' }}>✕</Text>
+      <Text style={{ color: colors.text, fontSize: 15, fontWeight: '800' }}>✕</Text>
     </Pressable>
   );
 }
@@ -169,6 +176,16 @@ function WebFrame({ children }: { children: React.ReactNode }) {
   if (Platform.OS !== 'web') return <>{children}</>;
   return (
     <View style={frameStyles.page}>
+      {/* Subtle party-gradient wash behind the phone column so the desktop
+          surround reads as part of the poster, not a dead void. */}
+      <LinearGradient
+        colors={['#1A0F2E', '#2A1550', '#0B0714']}
+        locations={[0, 0.5, 1]}
+        start={{ x: 0.2, y: 0 }}
+        end={{ x: 0.8, y: 1 }}
+        style={StyleSheet.absoluteFill}
+        pointerEvents="none"
+      />
       <View style={frameStyles.phone}>{children}</View>
     </View>
   );
@@ -185,7 +202,9 @@ const frameStyles = StyleSheet.create({
     width: '100%',
     maxWidth: 430,
     backgroundColor: colors.bg,
-    ...(Platform.OS === 'web' ? { boxShadow: '0 0 48px rgba(0,0,0,0.6)' } : null),
+    ...(Platform.OS === 'web'
+      ? { boxShadow: '0 0 64px rgba(210,65,250,0.22), 0 0 24px rgba(0,0,0,0.5)' }
+      : null),
   },
 });
 

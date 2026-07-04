@@ -12,13 +12,13 @@ export function ScreenBackground({ children }: { children?: React.ReactNode }) {
   return (
     <View style={styles.fill}>
       <LinearGradient
-        colors={['rgba(124,92,255,0.40)', 'rgba(96,62,186,0.18)', 'rgba(14,11,22,0)']}
+        colors={['rgba(210,65,250,0.38)', 'rgba(123,79,255,0.16)', 'rgba(14,11,22,0)']}
         locations={[0, 0.4, 1]}
         style={styles.sky}
         pointerEvents="none"
       />
       <LinearGradient
-        colors={['rgba(255,79,216,0.24)', 'rgba(255,79,216,0)']}
+        colors={['rgba(75,123,255,0.26)', 'rgba(75,123,255,0)']}
         start={{ x: 1, y: 0 }}
         end={{ x: 0.1, y: 0.7 }}
         style={styles.aurora}

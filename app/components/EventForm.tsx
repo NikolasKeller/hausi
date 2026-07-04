@@ -24,10 +24,11 @@ import {
 } from '../shared/types';
 import { colors, radius, spacing } from '../lib/theme';
 import { COVER_LIST } from '../lib/covers';
-import { TITLE_FONT_LABELS, titleFontStyle } from '../lib/fonts';
+import { TITLE_FONT_LABELS, titleFontStyle, display, kicker, uiText } from '../lib/fonts';
 import { CoverGradient } from './CoverGradient';
 import { EffectOverlay } from './EffectOverlay';
 import { Button, ErrorText, Field } from './ui';
+import { Burst } from './partiful';
 import { formatEventDate, formatEventTime } from './EventCard';
 import { pickCoverImage } from '../lib/imageUpload';
 
@@ -188,7 +189,9 @@ export function EventForm({ initial, submitLabel, onSubmit, footer }: Props) {
         </Pressable>
 
         <CoverGradient theme={coverTheme} image={coverImage} style={styles.preview}>
-          <EffectOverlay effect={effect} height={140} />
+          <EffectOverlay effect={effect} height={210} />
+          <Burst size={44} rays={8} color={colors.helio} rotate={-12} style={styles.previewBurst} />
+          <Text style={styles.previewKicker}>Live preview</Text>
           <Text style={[styles.previewTitle, titleFontStyle(titleFont)]} numberOfLines={3}>
             {title.trim() || 'Untitled Event'}
           </Text>
@@ -211,24 +214,35 @@ export function EventForm({ initial, submitLabel, onSubmit, footer }: Props) {
           ) : null}
         </View>
 
-        <View style={styles.fontRow}>
-          {TITLE_FONTS.map((f) => (
-            <Pressable
-              key={f}
-              onPress={() => setTitleFont(f)}
-              style={[styles.fontChip, titleFont === f && styles.chipActive]}
-            >
-              <Text style={[styles.fontChipSample, titleFontStyle(f)]}>Aa</Text>
-              <Text style={styles.chipLabel}>{TITLE_FONT_LABELS[f]}</Text>
-            </Pressable>
-          ))}
+        <View style={{ gap: spacing.xs }}>
+          <Text style={styles.label}>Title font</Text>
+          <View style={styles.fontRow}>
+            {TITLE_FONTS.map((f, i) => (
+              <Pressable
+                key={f}
+                onPress={() => setTitleFont(f)}
+                style={[
+                  styles.fontChip,
+                  { transform: [{ rotate: `${(i % 2 === 0 ? -1 : 1) * 3}deg` }] },
+                  titleFont === f && styles.chipActive,
+                ]}
+              >
+                <Text style={[styles.fontChipSample, titleFontStyle(f)]}>Aa</Text>
+                <Text style={styles.chipLabel}>{TITLE_FONT_LABELS[f]}</Text>
+              </Pressable>
+            ))}
+          </View>
         </View>
 
         <View style={{ gap: spacing.xs }}>
           <Text style={styles.label}>Cover theme</Text>
           <View style={styles.themeRow}>
-            {COVER_LIST.map((c) => (
-              <Pressable key={c.key} onPress={() => setCoverTheme(c.key)}>
+            {COVER_LIST.map((c, i) => (
+              <Pressable
+                key={c.key}
+                onPress={() => setCoverTheme(c.key)}
+                style={{ transform: [{ rotate: `${(i % 2 === 0 ? -1 : 1) * 4}deg` }] }}
+              >
                 <CoverGradient
                   theme={c.key}
                   emojiOpacity={0}
@@ -401,7 +415,7 @@ export function EventForm({ initial, submitLabel, onSubmit, footer }: Props) {
         </View>
 
         <ErrorText message={error} />
-        <Button title={submitLabel} onPress={submit} loading={saving} />
+        <Button title={submitLabel} onPress={submit} loading={saving} variant="vibrant" />
         {footer}
       </ScrollView>
     </KeyboardAvoidingView>
@@ -414,15 +428,28 @@ const styles = StyleSheet.create({
     backgroundColor: colors.bg,
   },
   content: {
-    padding: spacing.md,
-    gap: spacing.md,
-    paddingBottom: spacing.xl * 2,
+    padding: spacing.lg,
+    gap: spacing.lg,
+    paddingBottom: spacing.section,
   },
   preview: {
     borderRadius: radius.lg,
-    minHeight: 210,
+    minHeight: 230,
     padding: spacing.md,
     justifyContent: 'flex-end',
+    overflow: 'hidden',
+    borderWidth: 2,
+    borderColor: colors.ink,
+  },
+  previewBurst: {
+    position: 'absolute',
+    top: 16,
+    right: 16,
+  },
+  previewKicker: {
+    ...kicker(),
+    color: 'rgba(255,255,255,0.9)',
+    marginBottom: spacing.xs,
   },
   photoRow: {
     flexDirection: 'row',
@@ -432,7 +459,7 @@ const styles = StyleSheet.create({
   photoBtn: {
     flex: 1,
     backgroundColor: colors.inputBg,
-    borderWidth: 1,
+    borderWidth: 2,
     borderColor: colors.cardBorder,
     borderRadius: radius.md,
     paddingVertical: 12,
@@ -440,8 +467,7 @@ const styles = StyleSheet.create({
   },
   photoBtnText: {
     color: colors.text,
-    fontSize: 14,
-    fontWeight: '600',
+    ...uiText(14, '600'),
   },
   photoRemove: {
     paddingHorizontal: spacing.md,
@@ -449,33 +475,26 @@ const styles = StyleSheet.create({
   },
   photoRemoveText: {
     color: colors.danger,
-    fontSize: 14,
-    fontWeight: '700',
+    ...uiText(14, '700'),
   },
   previewTitle: {
     color: '#fff',
-    fontSize: 34,
-    fontWeight: '800',
-    letterSpacing: -0.5,
+    ...display(38),
     textShadowColor: 'rgba(0,0,0,0.35)',
     textShadowOffset: { width: 0, height: 2 },
     textShadowRadius: 6,
   },
   label: {
-    color: colors.muted,
-    fontSize: 13,
-    fontWeight: '600',
-    textTransform: 'uppercase',
-    letterSpacing: 1,
+    ...kicker(colors.muted),
   },
   themeRow: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: spacing.sm,
+    gap: spacing.md,
   },
   themeChip: {
-    width: 48,
-    height: 48,
+    width: 52,
+    height: 52,
     borderRadius: radius.md,
     alignItems: 'center',
     justifyContent: 'center',
@@ -486,7 +505,7 @@ const styles = StyleSheet.create({
     borderColor: '#fff',
   },
   themeEmoji: {
-    fontSize: 22,
+    fontSize: 24,
   },
   dateRow: {
     flexDirection: 'row',
@@ -495,7 +514,7 @@ const styles = StyleSheet.create({
   dateButton: {
     flex: 1,
     backgroundColor: colors.inputBg,
-    borderWidth: 1,
+    borderWidth: 2,
     borderColor: colors.cardBorder,
     borderRadius: radius.md,
     paddingVertical: 12,
@@ -503,8 +522,7 @@ const styles = StyleSheet.create({
   },
   dateText: {
     color: colors.text,
-    fontSize: 16,
-    fontWeight: '600',
+    ...uiText(16, '600'),
   },
   fontRow: {
     flexDirection: 'row',
@@ -515,22 +533,20 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     backgroundColor: colors.inputBg,
-    borderWidth: 1,
+    borderWidth: 2,
     borderColor: colors.cardBorder,
     borderRadius: radius.pill,
-    paddingVertical: 10,
+    paddingVertical: 12,
     paddingHorizontal: spacing.md,
   },
   publicPillText: {
     color: colors.text,
-    fontSize: 13,
-    fontWeight: '600',
+    ...uiText(13, '600'),
     flexShrink: 1,
   },
   publicPillAction: {
     color: colors.accent,
-    fontSize: 13,
-    fontWeight: '700',
+    ...uiText(13, '700'),
   },
   fontChip: {
     flex: 1,
@@ -544,7 +560,7 @@ const styles = StyleSheet.create({
   },
   fontChipSample: {
     color: colors.text,
-    fontSize: 20,
+    fontSize: 22,
   },
   effectChip: {
     backgroundColor: colors.inputBg,
@@ -559,15 +575,14 @@ const styles = StyleSheet.create({
   },
   chipLabel: {
     color: colors.text,
-    fontSize: 13,
-    fontWeight: '600',
+    ...uiText(13, '600'),
   },
   plusOneRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     backgroundColor: colors.inputBg,
-    borderWidth: 1,
+    borderWidth: 2,
     borderColor: colors.cardBorder,
     borderRadius: radius.md,
     padding: spacing.sm,
@@ -575,8 +590,7 @@ const styles = StyleSheet.create({
   },
   plusOneLabel: {
     color: colors.text,
-    fontSize: 15,
-    fontWeight: '600',
+    ...uiText(15, '600'),
   },
   stepper: {
     flexDirection: 'row',
@@ -584,11 +598,11 @@ const styles = StyleSheet.create({
     gap: spacing.md,
   },
   stepButton: {
-    width: 34,
-    height: 34,
-    borderRadius: 17,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
     backgroundColor: colors.card,
-    borderWidth: 1,
+    borderWidth: 2,
     borderColor: colors.cardBorder,
     alignItems: 'center',
     justifyContent: 'center',
@@ -600,8 +614,7 @@ const styles = StyleSheet.create({
   },
   plusOneValue: {
     color: colors.accent,
-    fontSize: 16,
-    fontWeight: '800',
+    ...uiText(16, '800'),
     minWidth: 44,
     textAlign: 'center',
   },
