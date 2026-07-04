@@ -100,7 +100,7 @@ export function Seal({
 // Wraps content at a slight asymmetric angle with a physical drop shadow, so
 // cards read like scattered paper stickers on a party surface.
 export function TiltCard({
-  rotate = -3,
+  rotate = 0,
   float,
   style,
   children,
@@ -200,35 +200,16 @@ export function PaperBackground({
   children?: React.ReactNode;
   decor?: boolean;
 }) {
+  // Known aesthetic: a calm, flat warm-linen canvas with one very soft warm
+  // bloom from the top — no pastel washes, no starburst stickers.
   return (
     <View style={styles.paperFill}>
       <LinearGradient
-        colors={[...brand.periwinkle]}
+        colors={['rgba(196,149,106,0.10)', 'rgba(238,234,228,0)']}
         locations={[0, 1]}
         style={styles.washTop}
         pointerEvents="none"
       />
-      <LinearGradient
-        colors={['rgba(248,196,255,0.55)', 'rgba(248,196,255,0)']}
-        start={{ x: 1, y: 0 }}
-        end={{ x: 0.15, y: 0.6 }}
-        style={styles.washCorner}
-        pointerEvents="none"
-      />
-      {decor ? (
-        <View style={StyleSheet.absoluteFill} pointerEvents="none">
-          {DECOR.map((d, i) => (
-            <Burst
-              key={i}
-              size={d.size}
-              rays={d.rays}
-              color={d.color}
-              rotate={d.rotate}
-              style={{ position: 'absolute', top: d.top as `${number}%`, left: d.left as `${number}%`, opacity: 0.9 }}
-            />
-          ))}
-        </View>
-      ) : null}
       {children}
     </View>
   );
@@ -257,9 +238,9 @@ const styles = StyleSheet.create({
   },
   paperCard: {
     backgroundColor: light.paper,
-    borderWidth: 2,
-    borderColor: light.ink,
-    borderRadius: radius.md,
+    borderWidth: 1,
+    borderColor: light.hairline,
+    borderRadius: radius.lg,
     padding: spacing.lg,
     ...shadow.card,
   },

@@ -18,7 +18,6 @@ import { colors, radius, shadow, spacing } from '../../lib/theme';
 import { COVERS } from '../../lib/covers';
 import { EventCard } from '../../components/EventCard';
 import { Button } from '../../components/ui';
-import { Burst } from '../../components/partiful';
 import { withScreenBackground } from '../../components/ScreenBackground';
 
 const MONTHS = [
@@ -299,7 +298,7 @@ function CalendarScreen() {
                   </Text>
                   <Button
                     title="Plan something"
-                    variant="vibrant"
+                    variant="primary"
                     onPress={() => router.push('/new-event')}
                     style={styles.planButton}
                   />
@@ -316,8 +315,9 @@ function CalendarScreen() {
         ) : (
           <View style={styles.listSections}>
             <View style={styles.sectionHead}>
-              <Text style={styles.sectionTitle}>Upcoming</Text>
-              <Burst size={30} color={colors.helio} rotate={12} style={styles.sectionBurst} />
+              <Text style={styles.sectionTitle}>
+                <Text style={styles.sectionTitleItalic}>Upcoming</Text>
+              </Text>
             </View>
             {upcoming.length === 0 ? (
               <Text style={styles.sectionEmpty}>Nothing planned — yet 👀</Text>
@@ -399,8 +399,8 @@ const styles = StyleSheet.create({
     height: 32,
     borderRadius: 16,
     backgroundColor: colors.card,
-    borderWidth: 2,
-    borderColor: colors.ink,
+    borderWidth: 1,
+    borderColor: colors.cardBorder,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -411,8 +411,8 @@ const styles = StyleSheet.create({
     marginBottom: spacing.xs,
   },
   todayPill: {
-    borderWidth: 2,
-    borderColor: colors.ink,
+    borderWidth: 1,
+    borderColor: colors.cardBorder,
     backgroundColor: colors.card,
     borderRadius: radius.pill,
     paddingHorizontal: spacing.md,
@@ -427,8 +427,8 @@ const styles = StyleSheet.create({
     height: 40,
     borderRadius: 20,
     backgroundColor: colors.card,
-    borderWidth: 2,
-    borderColor: colors.ink,
+    borderWidth: 1,
+    borderColor: colors.cardBorder,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -486,8 +486,8 @@ const styles = StyleSheet.create({
   },
   panel: {
     backgroundColor: colors.card,
-    borderWidth: 2,
-    borderColor: colors.ink,
+    borderWidth: 1,
+    borderColor: colors.cardBorder,
     borderRadius: radius.lg,
     padding: spacing.lg,
     gap: spacing.md,
@@ -548,8 +548,10 @@ const styles = StyleSheet.create({
     ...display(30),
     color: colors.text,
   },
-  sectionBurst: {
-    marginBottom: spacing.xs,
+  sectionTitleItalic: {
+    ...display(30),
+    color: colors.text,
+    fontStyle: 'italic',
   },
   sectionEmpty: {
     ...uiText(15),

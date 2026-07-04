@@ -11,10 +11,9 @@ import {
 import { useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { api } from '../../lib/api';
-import { light, radius, spacing } from '../../lib/theme';
+import { colors, radius, shadow, spacing } from '../../lib/theme';
 import { display, kicker, uiText } from '../../lib/fonts';
 import { AuroraBackground } from '../../components/AuroraBackground';
-import { PaperCard } from '../../components/partiful';
 import { Button, ErrorText } from '../../components/ui';
 
 const COUNTRY_CODES = [
@@ -78,10 +77,12 @@ export default function PhoneScreen() {
             keyboardShouldPersistTaps="handled"
           >
             <Text style={styles.kicker}>Step 1 of 2</Text>
-            <Text style={styles.title}>Join the{'\n'}party</Text>
-            <Text style={styles.subtitle}>Just for event updates. No spam 🤙</Text>
+            <Text style={styles.title}>
+              Join the <Text style={styles.titleAccent}>party</Text>
+            </Text>
+            <Text style={styles.subtitle}>Just for event updates. No spam.</Text>
 
-            <PaperCard rotate={-1.5} style={styles.card}>
+            <View style={styles.card}>
               <View style={styles.phoneRow}>
                 <Pressable style={styles.countryPill} onPress={() => setPickerOpen(!pickerOpen)}>
                   <Text style={styles.countryText}>
@@ -93,7 +94,7 @@ export default function PhoneScreen() {
                   value={digits}
                   onChangeText={(t) => setDigits(t.replace(/[^0-9 ]/g, ''))}
                   placeholder="Phone number"
-                  placeholderTextColor={light.muted}
+                  placeholderTextColor={colors.muted}
                   keyboardType="phone-pad"
                   autoFocus
                   style={styles.phoneInput}
@@ -125,13 +126,13 @@ export default function PhoneScreen() {
                   value={invite}
                   onChangeText={setInvite}
                   placeholder="Invite code"
-                  placeholderTextColor={light.muted}
+                  placeholderTextColor={colors.muted}
                   autoCapitalize="none"
                   autoCorrect={false}
                   style={styles.phoneInput}
                 />
               ) : null}
-            </PaperCard>
+            </View>
 
             <ErrorText message={error} />
             <View style={{ flex: 1 }} />
@@ -165,22 +166,32 @@ const styles = StyleSheet.create({
     gap: spacing.md,
   },
   kicker: {
-    ...kicker(light.text2),
+    ...kicker(colors.muted),
     textAlign: 'center',
   },
   title: {
-    color: light.text,
+    color: colors.text,
     ...display(56),
     textAlign: 'center',
   },
+  titleAccent: {
+    ...display(56),
+    fontStyle: 'italic',
+  },
   subtitle: {
-    color: light.text2,
-    ...uiText(16, '500'),
+    color: colors.muted,
+    ...uiText(16, '400'),
     textAlign: 'center',
-    marginBottom: spacing.md,
+    marginBottom: spacing.lg,
   },
   card: {
+    backgroundColor: colors.card,
+    borderWidth: 1,
+    borderColor: colors.cardBorder,
+    borderRadius: radius.lg,
+    padding: spacing.lg,
     gap: spacing.md,
+    ...shadow.card,
   },
   phoneRow: {
     flexDirection: 'row',
@@ -190,36 +201,36 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
-    backgroundColor: light.paper,
-    borderWidth: 2,
-    borderColor: light.ink,
+    backgroundColor: colors.inputBg,
+    borderWidth: 1,
+    borderColor: colors.cardBorder,
     borderRadius: radius.sm,
     paddingHorizontal: spacing.md,
     paddingVertical: 13,
   },
   countryText: {
-    color: light.text,
-    ...uiText(16, '700'),
+    color: colors.text,
+    ...uiText(16, '600'),
   },
   countryCaret: {
-    color: light.text3,
+    color: colors.muted,
     fontSize: 12,
   },
   phoneInput: {
     flex: 1,
-    backgroundColor: light.paper,
-    borderWidth: 2,
-    borderColor: light.ink,
+    backgroundColor: colors.inputBg,
+    borderWidth: 1,
+    borderColor: colors.cardBorder,
     borderRadius: radius.sm,
-    color: light.text,
+    color: colors.text,
     paddingHorizontal: spacing.md,
     fontSize: 18,
     paddingVertical: 12,
   },
   picker: {
-    backgroundColor: light.paper,
-    borderWidth: 2,
-    borderColor: light.ink,
+    backgroundColor: colors.inputBg,
+    borderWidth: 1,
+    borderColor: colors.cardBorder,
     borderRadius: radius.sm,
     overflow: 'hidden',
   },
@@ -228,15 +239,15 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.md,
   },
   pickerItemActive: {
-    backgroundColor: 'rgba(0,0,0,0.06)',
+    backgroundColor: 'rgba(0,0,0,0.05)',
   },
   pickerText: {
-    color: light.text,
-    ...uiText(15, '600'),
+    color: colors.text,
+    ...uiText(15, '500'),
   },
   smallPrint: {
-    color: light.text3,
-    ...uiText(12, '500', { lineHeight: 1.4 }),
+    color: colors.muted,
+    ...uiText(12, '400', { lineHeight: 1.4 }),
     textAlign: 'center',
   },
   buttonDisabled: {

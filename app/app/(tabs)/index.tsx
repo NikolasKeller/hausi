@@ -11,17 +11,15 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import { LinearGradient } from 'expo-linear-gradient';
 import type { ExploreEvent, HomeFeed } from '../../shared/types';
 import { api } from '../../lib/api';
 import { useAuth } from '../../lib/auth';
 import { getRecentEvents, type RecentEvent } from '../../lib/recents';
 import { EVENT_TEMPLATES, type EventTemplate } from '../../lib/eventTemplates';
-import { colors, radius, spacing } from '../../lib/theme';
+import { colors, radius, spacing, shadow } from '../../lib/theme';
 import { titleFontStyle, display, uiText, kicker } from '../../lib/fonts';
 import { CoverGradient } from '../../components/CoverGradient';
 import { Button } from '../../components/ui';
-import { Burst, Seal } from '../../components/partiful';
 import { formatEventDate, formatEventTime } from '../../components/EventCard';
 import { withScreenBackground } from '../../components/ScreenBackground';
 
@@ -30,14 +28,12 @@ const PROMOS: {
   title: string;
   subtitle: string;
   route: string;
-  gradient: [string, string];
 }[] = [
   {
     emoji: '💌',
     title: 'Send a card',
     subtitle: "Make someone's day",
     route: '/send-card',
-    gradient: ['#8A5A3A', '#241B3A'],
   },
 ];
 
@@ -108,7 +104,6 @@ function HomeScreen() {
   const header = (
     <View style={styles.headerRow}>
       <View style={styles.wordmarkWrap}>
-        <Burst size={26} rays={8} color={colors.helio} rotate={12} style={styles.wordmarkBurst} />
         <Text style={styles.wordmark}>Hausi</Text>
       </View>
       <Pressable
@@ -168,20 +163,18 @@ function HomeScreen() {
 
         {welcome ? (
           <Pressable onPress={() => setWelcome(null)} style={styles.sectionGroup}>
-            <LinearGradient
-              colors={[colors.accentDark, '#C13FFF']}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 1 }}
-              style={styles.welcomeBanner}
-            >
-              <Text style={styles.welcomeText}>👋 Welcome back — let&apos;s party, {welcome}! 🎉</Text>
-            </LinearGradient>
+            <View style={styles.welcomeBanner}>
+              <Text style={styles.welcomeText}>Welcome back, {welcome}.</Text>
+              <Text style={styles.welcomeSubtext}>Good to see you again.</Text>
+            </View>
           </Pressable>
         ) : null}
 
         <View style={styles.sectionGroup}>
           <Text style={styles.kicker}>Hot right now</Text>
-          <Text style={styles.sectionTitle}>Trending in {home.city} 🔥</Text>
+          <Text style={styles.sectionTitle}>
+            Trending in <Text style={styles.sectionTitleItalic}>{home.city}</Text>
+          </Text>
           {home.trendingNearby.length === 0 ? (
             <Text style={styles.emptyNote}>Nothing trending nearby yet — start something.</Text>
           ) : (
@@ -220,21 +213,14 @@ function HomeScreen() {
             <Pressable
               key={promo.route}
               onPress={() => router.push(promo.route)}
-              style={({ pressed }) => [pressed && { opacity: 0.8 }]}
+              style={({ pressed }) => [styles.promo, pressed && { opacity: 0.8 }]}
             >
-              <LinearGradient
-                colors={promo.gradient}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 1 }}
-                style={styles.promo}
-              >
-                <Text style={styles.promoEmoji}>{promo.emoji}</Text>
-                <View style={{ flex: 1, gap: 2 }}>
-                  <Text style={styles.promoTitle}>{promo.title}</Text>
-                  <Text style={styles.promoSubtitle}>{promo.subtitle}</Text>
-                </View>
-                <Ionicons name="chevron-forward" size={20} color={colors.muted} />
-              </LinearGradient>
+              <Text style={styles.promoEmoji}>{promo.emoji}</Text>
+              <View style={{ flex: 1, gap: 2 }}>
+                <Text style={styles.promoTitle}>{promo.title}</Text>
+                <Text style={styles.promoSubtitle}>{promo.subtitle}</Text>
+              </View>
+              <Ionicons name="chevron-forward" size={20} color={colors.muted} />
             </Pressable>
           ))}
         </View>
@@ -242,7 +228,9 @@ function HomeScreen() {
         {home.palsGoing.length > 0 ? (
           <View style={styles.sectionGroup}>
             <Text style={styles.kicker}>Your crew</Text>
-            <Text style={styles.sectionTitle}>Where your pals are going 🕺</Text>
+            <Text style={styles.sectionTitle}>
+              Where your <Text style={styles.sectionTitleItalic}>pals</Text> are going
+            </Text>
             <View style={styles.rowList}>
               {home.palsGoing.map((event) => (
                 <CompactRow
@@ -257,7 +245,9 @@ function HomeScreen() {
 
         <View style={styles.sectionGroup}>
           <Text style={styles.kicker}>Need a plan?</Text>
-          <Text style={styles.sectionTitle}>Party starters ✨</Text>
+          <Text style={styles.sectionTitle}>
+            Party <Text style={styles.sectionTitleItalic}>starters</Text>
+          </Text>
           <Text style={styles.sectionBlurb}>Tap an idea to spin up an event in seconds.</Text>
           <ScrollView
             horizontal
@@ -272,14 +262,13 @@ function HomeScreen() {
         </View>
 
         <View style={[styles.sectionGroup, styles.ctaGroup]}>
-          <Seal size={54} color={colors.helio} rotate={-10} style={styles.ctaSeal}>
-            <Text style={styles.ctaSealEmoji}>🎉</Text>
-          </Seal>
           <Text style={styles.ctaKicker}>Your move</Text>
-          <Text style={styles.ctaTitle}>Throw{'\n'}something</Text>
+          <Text style={styles.ctaTitle}>
+            Throw{'\n'}<Text style={styles.ctaTitleItalic}>something</Text>
+          </Text>
           <Button
-            title="Create an event 🎉"
-            variant="vibrant"
+            title="Create an event"
+            variant="primary"
             style={styles.ctaButton}
             onPress={() => router.push('/new-event')}
           />
@@ -421,11 +410,6 @@ const styles = StyleSheet.create({
     ...display(38),
     color: colors.text,
   },
-  wordmarkBurst: {
-    position: 'absolute',
-    top: -10,
-    right: -18,
-  },
   bellButton: {
     padding: spacing.xs,
   },
@@ -458,6 +442,9 @@ const styles = StyleSheet.create({
     ...display(30),
     color: colors.text,
   },
+  sectionTitleItalic: {
+    fontStyle: 'italic',
+  },
   emptyNote: {
     ...uiText(14),
     color: colors.muted,
@@ -468,36 +455,41 @@ const styles = StyleSheet.create({
     marginTop: -spacing.xs,
   },
   ctaGroup: {
-    marginTop: spacing.sm,
+    marginTop: spacing.lg,
     alignItems: 'flex-start',
-  },
-  ctaSeal: {
-    marginBottom: -spacing.xs,
-  },
-  ctaSealEmoji: {
-    fontSize: 24,
   },
   ctaKicker: {
     ...kicker(colors.accent),
+    marginBottom: spacing.xs,
   },
   ctaTitle: {
     ...display(52),
     color: colors.text,
-    marginBottom: spacing.sm,
+    marginBottom: spacing.md,
+  },
+  ctaTitleItalic: {
+    fontStyle: 'italic',
   },
   ctaButton: {
     alignSelf: 'stretch',
   },
   welcomeBanner: {
+    backgroundColor: colors.card,
     borderRadius: radius.lg,
-    borderWidth: 2,
-    borderColor: colors.ink,
+    borderWidth: 1,
+    borderColor: colors.cardBorder,
     paddingVertical: spacing.md,
     paddingHorizontal: spacing.md,
+    gap: spacing.xs,
+    ...shadow.card,
   },
   welcomeText: {
-    ...uiText(16, '800'),
-    color: '#fff',
+    ...display(22),
+    color: colors.text,
+  },
+  welcomeSubtext: {
+    ...uiText(14),
+    color: colors.muted,
   },
   horizontalScroll: {
     marginHorizontal: -spacing.md,
@@ -510,9 +502,10 @@ const styles = StyleSheet.create({
     width: 300,
     backgroundColor: colors.card,
     borderRadius: radius.lg,
-    borderWidth: 2,
-    borderColor: colors.ink,
+    borderWidth: 1,
+    borderColor: colors.cardBorder,
     overflow: 'hidden',
+    ...shadow.card,
   },
   trendingCover: {
     height: 220,
@@ -538,7 +531,7 @@ const styles = StyleSheet.create({
   },
   trendingInterested: {
     ...uiText(13, '700'),
-    color: colors.warning,
+    color: colors.accent,
   },
   trendingFriend: {
     ...uiText(13),
@@ -548,9 +541,10 @@ const styles = StyleSheet.create({
     width: 150,
     backgroundColor: colors.card,
     borderRadius: radius.md,
-    borderWidth: 2,
-    borderColor: colors.ink,
+    borderWidth: 1,
+    borderColor: colors.cardBorder,
     overflow: 'hidden',
+    ...shadow.card,
   },
   recentCover: {
     height: 96,
@@ -576,10 +570,12 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing.md,
+    backgroundColor: colors.card,
     borderRadius: radius.lg,
-    borderWidth: 2,
-    borderColor: colors.ink,
+    borderWidth: 1,
+    borderColor: colors.cardBorder,
     padding: spacing.md,
+    ...shadow.card,
   },
   promoEmoji: {
     fontSize: 30,
@@ -600,10 +596,11 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: spacing.md,
     backgroundColor: colors.card,
-    borderWidth: 2,
-    borderColor: colors.ink,
+    borderWidth: 1,
+    borderColor: colors.cardBorder,
     borderRadius: radius.md,
     padding: spacing.sm,
+    ...shadow.card,
   },
   compactCover: {
     width: 56,
@@ -626,9 +623,10 @@ const styles = StyleSheet.create({
     width: 172,
     backgroundColor: colors.card,
     borderRadius: radius.lg,
-    borderWidth: 2,
-    borderColor: colors.ink,
+    borderWidth: 1,
+    borderColor: colors.cardBorder,
     overflow: 'hidden',
+    ...shadow.card,
   },
   templateCover: {
     height: 96,

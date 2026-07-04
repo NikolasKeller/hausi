@@ -4,7 +4,7 @@ import { useRouter } from 'expo-router';
 import { useAuth } from '../../lib/auth';
 import { AuroraBackground } from '../../components/AuroraBackground';
 import { uiText } from '../../lib/fonts';
-import { light } from '../../lib/theme';
+import { colors } from '../../lib/theme';
 
 // Dev-only: hausi://dev-login signs in as the Preview account so the app
 // can be toured while the real SMS flow is under construction. In release
@@ -36,7 +36,7 @@ export default function DevLoginScreen() {
           <Text style={styles.text}>{error}</Text>
         ) : (
           <>
-            <ActivityIndicator color={light.ink} size="large" />
+            <ActivityIndicator color={colors.text} size="large" />
             <Text style={styles.text}>Signing in as Preview…</Text>
           </>
         )}
@@ -53,8 +53,8 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   text: {
-    color: light.text2,
-    ...uiText(15, '600'),
+    color: colors.muted,
+    ...uiText(15, '500'),
     textAlign: 'center',
     paddingHorizontal: 24,
   },

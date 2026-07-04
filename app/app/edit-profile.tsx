@@ -88,8 +88,10 @@ export default function EditProfileScreen() {
     >
       <ScrollView contentContainerStyle={styles.container} keyboardShouldPersistTaps="handled">
         <View style={styles.header}>
-          <Text style={styles.kicker}>YOUR PROFILE</Text>
-          <Text style={styles.title}>Edit profile</Text>
+          <Text style={styles.kicker}>Your profile</Text>
+          <Text style={styles.title}>
+            Edit <Text style={styles.titleItalic}>profile</Text>
+          </Text>
         </View>
 
         <Field
@@ -124,7 +126,7 @@ export default function EditProfileScreen() {
         />
 
         <ErrorText message={error} />
-        <Button title="Save" onPress={save} loading={saving} variant="vibrant" />
+        <Button title="Save" onPress={save} loading={saving} variant="primary" />
       </ScrollView>
     </KeyboardAvoidingView>
   );
@@ -143,19 +145,22 @@ const styles = StyleSheet.create({
   },
   container: {
     padding: spacing.lg,
-    gap: spacing.md,
+    gap: spacing.lg,
   },
   header: {
-    marginTop: spacing.sm,
-    marginBottom: spacing.sm,
+    marginTop: spacing.md,
+    marginBottom: spacing.md,
     gap: spacing.xs,
   },
   kicker: {
-    ...kicker(colors.accent),
+    ...kicker(colors.muted),
   },
   title: {
     ...display(44),
     color: colors.text,
+  },
+  titleItalic: {
+    fontStyle: 'italic',
   },
   label: {
     ...uiText(13, '700'),
@@ -173,14 +178,13 @@ const styles = StyleSheet.create({
     height: 48,
     borderRadius: radius.md,
     backgroundColor: colors.inputBg,
-    borderWidth: 2,
+    borderWidth: 1,
     borderColor: colors.cardBorder,
     alignItems: 'center',
     justifyContent: 'center',
   },
   avatarChipActive: {
     borderColor: colors.accent,
-    backgroundColor: 'rgba(255,122,224,0.14)',
-    transform: [{ scale: 1.08 }],
+    backgroundColor: colors.card,
   },
 });

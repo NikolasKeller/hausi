@@ -6,6 +6,7 @@ import {
   ScrollView,
   StyleSheet,
   Text,
+  TextInput,
   View,
 } from 'react-native';
 import { useFocusEffect, useRouter } from 'expo-router';
@@ -14,13 +15,12 @@ import { CARD_THEMES, type CardEntry, type CardTheme, type MyProfile } from '../
 import { api } from '../lib/api';
 import { CARD_META } from '../lib/cards';
 import { copyLink, shareText } from '../lib/share';
-import { light, radius, shadow, spacing } from '../lib/theme';
+import { colors, radius, shadow, spacing } from '../lib/theme';
 import { display, kicker, titleFontStyle, uiText } from '../lib/fonts';
 import { CoverGradient } from '../components/CoverGradient';
 import { Avatar } from '../components/Avatar';
 import { Button, ErrorText } from '../components/ui';
-import { Burst, Seal, TiltCard } from '../components/partiful';
-import { AmbientBackground, Glass, GlassField, GlassPill } from '../components/glass';
+import { PaperBackground } from '../components/partiful';
 
 const MESSAGE_LIMIT = 500;
 
@@ -112,25 +112,23 @@ export default function SendCardScreen() {
 
   if (loadError && !profile) {
     return (
-      <AmbientBackground variant="iridescent">
+      <PaperBackground>
         <View style={styles.center}>
-          <Seal size={92} color={light.sand} rotate={-8}>
-            <Text style={styles.errorEmoji}>🫠</Text>
-          </Seal>
+          <Text style={styles.errorEmoji}>🫠</Text>
           <Text style={styles.centerText}>{loadError}</Text>
           <Button title="Close" variant="ghost" onPress={() => router.back()} />
         </View>
-      </AmbientBackground>
+      </PaperBackground>
     );
   }
 
   if (!profile) {
     return (
-      <AmbientBackground variant="iridescent">
+      <PaperBackground>
         <View style={styles.center}>
-          <ActivityIndicator color={light.ink} size="large" />
+          <ActivityIndicator color={colors.text} size="large" />
         </View>
-      </AmbientBackground>
+      </PaperBackground>
     );
   }
 
@@ -138,12 +136,14 @@ export default function SendCardScreen() {
   const recipient = profile.mutuals.find((m) => m.user.id === toUserId)?.user ?? null;
 
   return (
-    <AmbientBackground variant="iridescent">
+    <PaperBackground>
       <KeyboardAvoidingView style={styles.flex} behavior="padding">
         <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
           <View style={styles.header}>
-            <Text style={[styles.kicker, kicker('rgba(0,0,0,0.5)')]}>Send a card</Text>
-            <Text style={[styles.headline, display(48)]}>Make it special</Text>
+            <Text style={styles.kicker}>Send a card</Text>
+            <Text style={styles.headline}>
+              Make it <Text style={styles.headlineAccent}>special</Text>
+            </Text>
           </View>
 
           <Text style={styles.sectionLabel}>Card</Text>
@@ -157,7 +157,7 @@ export default function SendCardScreen() {
               const tMeta = CARD_META[t];
               return (
                 <Pressable key={t} onPress={() => setTheme(t)}>
-                  <GlassPill active={selected} style={styles.themeChip}>
+                  <View style={[styles.themeChip, selected && styles.themeChipSelected]}>
                     <View style={styles.themeChipInner}>
                       <CoverGradient theme={tMeta.cover} style={styles.themeArt} emojiOpacity={0.2}>
                         <Text style={styles.themeEmoji}>{tMeta.emoji}</Text>
@@ -166,47 +166,39 @@ export default function SendCardScreen() {
                         {tMeta.label}
                       </Text>
                     </View>
-                  </GlassPill>
+                  </View>
                 </Pressable>
               );
             })}
           </ScrollView>
 
-          <GlassField
-            label="Message"
-            value={message}
-            onChangeText={setMessage}
-            placeholder="Say something nice…"
-            multiline
-            maxLength={MESSAGE_LIMIT}
-            containerStyle={styles.messageWrap}
-            style={styles.messageInput}
-          />
+          <View style={{ gap: spacing.xs }}>
+            <Text style={styles.sectionLabel}>Message</Text>
+            <TextInput
+              value={message}
+              onChangeText={setMessage}
+              placeholder="Say something nice…"
+              placeholderTextColor={colors.muted}
+              multiline
+              maxLength={MESSAGE_LIMIT}
+              style={styles.messageInput}
+            />
+          </View>
 
           <Text style={styles.sectionLabel}>Preview</Text>
-          <View style={styles.previewStage}>
-            {/* Decorative envelope peeking out behind the card — the "card in an
-                envelope" metaphor. Purely cosmetic; never intercepts touches. */}
-            <View pointerEvents="none" style={styles.envelope}>
-              <View style={styles.envelopeFlap} />
-            </View>
-            <TiltCard rotate={-2} float style={styles.previewWrap}>
-              <Glass intensity={30} tint="light" radius={radius.lg} style={styles.previewPaper}>
-                <Burst size={44} color={light.sand} rotate={14} style={styles.previewBurst} />
-                <CoverGradient theme={meta.cover} style={styles.preview} emojiOpacity={0.2}>
-                  <Text style={styles.previewEmoji}>{meta.emoji}</Text>
-                  <Text
-                    style={[
-                      styles.previewMessage,
-                      titleFontStyle('fancy'),
-                      !message.trim() && styles.previewPlaceholder,
-                    ]}
-                  >
-                    {message.trim() || 'Your message here…'}
-                  </Text>
-                </CoverGradient>
-              </Glass>
-            </TiltCard>
+          <View style={styles.previewWrap}>
+            <CoverGradient theme={meta.cover} style={styles.preview} emojiOpacity={0.2}>
+              <Text style={styles.previewEmoji}>{meta.emoji}</Text>
+              <Text
+                style={[
+                  styles.previewMessage,
+                  titleFontStyle('fancy'),
+                  !message.trim() && styles.previewPlaceholder,
+                ]}
+              >
+                {message.trim() || 'Your message here…'}
+              </Text>
+            </CoverGradient>
           </View>
 
           {profile.mutuals.length > 0 ? (
@@ -243,13 +235,13 @@ export default function SendCardScreen() {
 
           {recipient ? (
             <Text style={styles.recipientNote}>
-              💌 {recipient.name} also gets this card in Hausi.
+              {recipient.name} also gets this card in Hausi.
             </Text>
           ) : null}
 
           <ErrorText message={error} />
           <Button
-            title="Send on Messages 💌"
+            title="Send on Messages"
             variant="primary"
             onPress={onShare}
             loading={busy === 'share'}
@@ -262,7 +254,7 @@ export default function SendCardScreen() {
           />
         </ScrollView>
       </KeyboardAvoidingView>
-    </AmbientBackground>
+    </PaperBackground>
   );
 }
 
@@ -278,12 +270,12 @@ const styles = StyleSheet.create({
     padding: spacing.lg,
   },
   errorEmoji: {
-    fontSize: 40,
+    fontSize: 48,
   },
   centerText: {
-    color: light.text2,
+    color: colors.muted,
     textAlign: 'center',
-    ...uiText(17, '500'),
+    ...uiText(17, '400'),
   },
   content: {
     padding: spacing.lg,
@@ -295,17 +287,18 @@ const styles = StyleSheet.create({
     marginBottom: spacing.xs,
   },
   kicker: {
-    color: 'rgba(0,0,0,0.5)',
+    ...kicker(colors.muted),
   },
   headline: {
-    color: light.ink,
+    color: colors.text,
+    ...display(48),
+  },
+  headlineAccent: {
+    ...display(48),
+    fontStyle: 'italic',
   },
   sectionLabel: {
-    color: 'rgba(0,0,0,0.5)',
-    fontSize: 12,
-    fontWeight: '700',
-    letterSpacing: -0.2,
-    textTransform: 'uppercase',
+    ...kicker(colors.muted),
   },
   mutualsRow: {
     gap: spacing.md,
@@ -317,34 +310,42 @@ const styles = StyleSheet.create({
     width: 72,
   },
   avatarRing: {
-    borderWidth: 2,
+    borderWidth: 1,
     borderColor: 'transparent',
     borderRadius: 30,
     padding: 2,
   },
   avatarRingSelected: {
-    borderColor: light.ink,
+    borderColor: colors.accent,
+    borderWidth: 2,
   },
   mutualName: {
-    color: light.text2,
+    color: colors.muted,
     maxWidth: 72,
-    ...uiText(12, '600'),
+    ...uiText(12, '500'),
   },
   mutualNameSelected: {
-    color: light.ink,
+    color: colors.text,
     fontWeight: '700',
   },
   recipientNote: {
-    color: light.text2,
-    ...uiText(13, '500'),
+    color: colors.muted,
+    ...uiText(13, '400'),
   },
   themesRow: {
     gap: spacing.sm,
     paddingVertical: spacing.xs,
   },
   themeChip: {
-    paddingHorizontal: spacing.xs,
-    paddingVertical: spacing.xs,
+    backgroundColor: colors.card,
+    borderWidth: 1,
+    borderColor: colors.cardBorder,
+    borderRadius: radius.md,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: spacing.sm,
+  },
+  themeChipSelected: {
+    borderColor: colors.accent,
   },
   themeChipInner: {
     alignItems: 'center',
@@ -361,56 +362,33 @@ const styles = StyleSheet.create({
     fontSize: 32,
   },
   themeLabel: {
-    color: light.text2,
-    ...uiText(12, '600'),
+    color: colors.muted,
+    ...uiText(12, '500'),
   },
   themeLabelSelected: {
-    color: light.ink,
+    color: colors.text,
     fontWeight: '700',
   },
-  messageWrap: {
-    alignItems: 'flex-start',
-  },
   messageInput: {
+    backgroundColor: colors.inputBg,
+    borderWidth: 1,
+    borderColor: colors.cardBorder,
+    borderRadius: radius.md,
+    color: colors.text,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.md,
+    fontSize: 16,
     minHeight: 90,
     textAlignVertical: 'top',
   },
-  previewStage: {
-    alignSelf: 'stretch',
-    justifyContent: 'center',
-  },
   previewWrap: {
     alignSelf: 'stretch',
-  },
-  previewPaper: {
+    backgroundColor: colors.card,
+    borderWidth: 1,
+    borderColor: colors.cardBorder,
+    borderRadius: radius.lg,
     padding: spacing.sm,
-  },
-  envelope: {
-    position: 'absolute',
-    left: spacing.lg,
-    right: spacing.lg,
-    top: 14,
-    bottom: -14,
-    backgroundColor: '#F2E9D6',
-    borderRadius: radius.md,
-    transform: [{ rotate: '3deg' }],
     ...shadow.card,
-  },
-  envelopeFlap: {
-    position: 'absolute',
-    top: 0,
-    left: '18%',
-    right: '18%',
-    height: 46,
-    backgroundColor: '#E8DCC2',
-    borderBottomLeftRadius: 60,
-    borderBottomRightRadius: 60,
-  },
-  previewBurst: {
-    position: 'absolute',
-    top: -18,
-    right: -12,
-    zIndex: 2,
   },
   preview: {
     minHeight: 160,
@@ -423,6 +401,7 @@ const styles = StyleSheet.create({
   previewEmoji: {
     fontSize: 52,
   },
+  // White is intentional here: this text sits on the colorful CoverGradient art.
   previewMessage: {
     color: '#fff',
     fontSize: 24,

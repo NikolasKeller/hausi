@@ -3,94 +3,12 @@ import { Animated, Easing, Platform, StyleSheet, Text, View } from 'react-native
 import { useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { AuroraBackground } from '../../components/AuroraBackground';
-import { Seal } from '../../components/partiful';
 import { Button } from '../../components/ui';
 import { display, kicker, uiText } from '../../lib/fonts';
-import { brand, light, radius, shadow, spacing } from '../../lib/theme';
+import { colors, spacing } from '../../lib/theme';
 
 // react-native-web has no native driver; silence its fallback warning.
 const useNativeDriver = Platform.OS !== 'web';
-
-interface BubbleSpec {
-  text: string;
-  left: number; // percent within the bubble layer
-  top: number; // percent within the bubble layer
-  rotate: string;
-  delay: number;
-  duration: number;
-  drift: number;
-  variant: 'chat' | 'tag';
-  tail?: 'left' | 'right';
-}
-
-// Deterministic, percent-based layout tuned for a ~390x844 screen so the
-// bubbles read as a lively group chat without piling on top of each other.
-const BUBBLES: BubbleSpec[] = [
-  { text: 'you coming tonight? 👀', left: 5, top: 9, rotate: '-8deg', delay: 0, duration: 2800, drift: 12, variant: 'chat', tail: 'left' },
-  { text: 'so excited 🥳', left: 60, top: 5, rotate: '10deg', delay: 500, duration: 3400, drift: 10, variant: 'chat', tail: 'right' },
-  { text: 'omw!!', left: 38, top: 21, rotate: '-12deg', delay: 1100, duration: 2600, drift: 14, variant: 'chat', tail: 'left' },
-  { text: 'Happy Hour', left: 73, top: 22, rotate: '14deg', delay: 300, duration: 3800, drift: 8, variant: 'tag' },
-  { text: "look who's on the guest list", left: 4, top: 36, rotate: '5deg', delay: 800, duration: 3200, drift: 11, variant: 'chat', tail: 'left' },
-  { text: 'bring your +1 💅', left: 55, top: 45, rotate: '-7deg', delay: 1400, duration: 3000, drift: 13, variant: 'chat', tail: 'right' },
-  { text: 'Dinner Party', left: 8, top: 52, rotate: '-10deg', delay: 1700, duration: 3600, drift: 9, variant: 'tag' },
-  { text: 'House Party', left: 70, top: 60, rotate: '6deg', delay: 900, duration: 4200, drift: 8, variant: 'tag' },
-  { text: 'party wall is popping 🔥', left: 10, top: 64, rotate: '3deg', delay: 200, duration: 3300, drift: 10, variant: 'chat', tail: 'left' },
-  { text: "who's bringing the aux? 🎧", left: 45, top: 78, rotate: '9deg', delay: 600, duration: 2900, drift: 12, variant: 'chat', tail: 'right' },
-];
-
-function FloatingBubble({ spec }: { spec: BubbleSpec }) {
-  const progress = useRef(new Animated.Value(0)).current;
-
-  useEffect(() => {
-    const loop = Animated.loop(
-      Animated.sequence([
-        Animated.delay(spec.delay),
-        Animated.timing(progress, {
-          toValue: 1,
-          duration: spec.duration,
-          easing: Easing.inOut(Easing.sin),
-          useNativeDriver,
-        }),
-        Animated.timing(progress, {
-          toValue: 0,
-          duration: spec.duration,
-          easing: Easing.inOut(Easing.sin),
-          useNativeDriver,
-        }),
-      ])
-    );
-    loop.start();
-    return () => loop.stop();
-  }, [progress, spec.delay, spec.duration]);
-
-  const isChat = spec.variant === 'chat';
-  return (
-    <Animated.View
-      pointerEvents="none"
-      style={[
-        styles.bubble,
-        isChat ? styles.chatBubble : styles.tagBubble,
-        isChat && spec.tail === 'left' && styles.tailLeft,
-        isChat && spec.tail === 'right' && styles.tailRight,
-        {
-          left: `${spec.left}%`,
-          top: `${spec.top}%`,
-          transform: [
-            {
-              translateY: progress.interpolate({
-                inputRange: [0, 1],
-                outputRange: [0, -spec.drift],
-              }),
-            },
-            { rotate: spec.rotate },
-          ],
-        },
-      ]}
-    >
-      <Text style={isChat ? styles.chatText : styles.tagText}>{spec.text}</Text>
-    </Animated.View>
-  );
-}
 
 export default function WelcomeScreen() {
   const router = useRouter();
@@ -107,12 +25,6 @@ export default function WelcomeScreen() {
 
   return (
     <AuroraBackground>
-      <View pointerEvents="none" style={styles.bubbleLayer}>
-        {BUBBLES.map((spec) => (
-          <FloatingBubble key={spec.text} spec={spec} />
-        ))}
-      </View>
-
       <SafeAreaView style={styles.safe}>
         <View style={{ flex: 1 }} />
 
@@ -132,21 +44,18 @@ export default function WelcomeScreen() {
             },
           ]}
         >
-          <Seal size={72} color={brand.party[1]} rotate={-10} style={styles.seal}>
-            <Text style={styles.house}>🏠</Text>
-          </Seal>
           <Text style={styles.kicker}>You're invited</Text>
           <Text style={styles.wordmark}>Hausi</Text>
           <Text style={styles.tagline}>Parties worth showing up for</Text>
         </Animated.View>
 
-        <View style={{ height: spacing.xl + spacing.sm }} />
+        <View style={{ flex: 1 }} />
 
         <Button title="Get started" variant="primary" onPress={() => router.push('/phone')} />
-        <Text style={styles.footnote}>Takes 30 seconds. No email needed ✨</Text>
+        <Text style={styles.footnote}>Takes 30 seconds. No email needed.</Text>
         {__DEV__ ? (
           <Text style={styles.devLink} onPress={() => router.push('/dev-login')}>
-            🛠 Skip auth — continue as Preview (dev only)
+            Skip auth — continue as Preview (dev only)
           </Text>
         ) : null}
       </SafeAreaView>
@@ -158,85 +67,35 @@ const styles = StyleSheet.create({
   safe: {
     flex: 1,
     paddingHorizontal: spacing.lg,
-    paddingBottom: spacing.sm,
-  },
-  bubbleLayer: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    height: '58%',
-  },
-  bubble: {
-    position: 'absolute',
-  },
-  chatBubble: {
-    backgroundColor: light.paper,
-    borderRadius: 18,
-    borderWidth: 2,
-    borderColor: light.ink,
-    paddingHorizontal: 14,
-    paddingVertical: 9,
-    ...shadow.card,
-  },
-  tailLeft: {
-    borderBottomLeftRadius: 4,
-  },
-  tailRight: {
-    borderBottomRightRadius: 4,
-  },
-  chatText: {
-    color: light.text,
-    ...uiText(13, '700'),
-  },
-  tagBubble: {
-    backgroundColor: light.paper,
-    borderWidth: 2,
-    borderColor: light.ink,
-    borderRadius: radius.pill,
-    paddingHorizontal: 14,
-    paddingVertical: 7,
-    ...shadow.card,
-  },
-  tagText: {
-    color: light.text,
-    fontSize: 12,
-    fontWeight: '700',
-    letterSpacing: 0.4,
-    textTransform: 'uppercase',
+    paddingBottom: spacing.lg,
   },
   brand: {
     alignItems: 'center',
-    gap: spacing.sm,
-  },
-  seal: {
-    marginBottom: spacing.xs,
-  },
-  house: {
-    fontSize: 34,
+    gap: spacing.md,
   },
   kicker: {
-    ...kicker(light.text2),
+    ...kicker(colors.muted),
   },
   wordmark: {
-    color: light.text,
+    color: colors.text,
     ...display(96),
   },
   tagline: {
-    color: light.text2,
-    ...uiText(18, '500'),
+    color: colors.muted,
+    ...uiText(18, '400'),
+    textAlign: 'center',
   },
   footnote: {
-    color: light.text3,
-    ...uiText(12, '500'),
-    textAlign: 'center',
-    marginTop: spacing.sm + 2,
-  },
-  devLink: {
-    color: light.muted,
-    ...uiText(12, '500'),
+    color: colors.muted,
+    ...uiText(13, '400'),
     textAlign: 'center',
     marginTop: spacing.md,
+  },
+  devLink: {
+    color: colors.muted,
+    ...uiText(12, '400'),
+    textAlign: 'center',
+    marginTop: spacing.lg,
     textDecorationLine: 'underline',
   },
 });
