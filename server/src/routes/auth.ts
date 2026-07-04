@@ -4,6 +4,7 @@ import { randomInt } from 'node:crypto';
 import { z } from 'zod';
 import { db } from '../lib/db.js';
 import { createToken } from '../lib/auth.js';
+import { sendSms, smsEnabled } from '../lib/sms.js';
 import type { AuthResponse } from '../../../app/shared/types.js';
 
 const CODE_TTL_MS = 10 * 60 * 1000;
@@ -80,9 +81,9 @@ authRoutes.use('/phone/*', async (c, next) => {
 // Unset (the default) keeps signup fully open, which is fine for a private link.
 export const INVITE_CODE = process.env.INVITE_CODE?.trim() || null;
 
-// Step 1: request an SMS code. Without an SMS provider configured (local
-// dev / until the Supabase Auth migration), the code is returned in the
-// response so the app can show it as a simulated text message.
+// Step 1: request an SMS code. When Twilio is configured (TWILIO_* env vars),
+// the code is texted and NOT returned. Otherwise — local dev, or a deploy
+// without Twilio — it's returned so the app can show it as a mock text.
 authRoutes.post('/phone/request', async (c) => {
   const body = await c.req.json().catch(() => null);
   if (INVITE_CODE && (body as { invite?: string } | null)?.invite?.trim() !== INVITE_CODE) {
@@ -101,10 +102,14 @@ authRoutes.post('/phone/request', async (c) => {
     update: { phoneCode: code, phoneCodeExpiresAt: expiresAt },
   });
 
-  if (process.env.SMS_PROVIDER) {
-    // No sender is implemented yet — fail loudly rather than swallowing every
-    // code and making signup impossible. Leave SMS_PROVIDER unset.
-    throw new Error('SMS_PROVIDER is set but no SMS sender is implemented');
+  if (smsEnabled) {
+    try {
+      await sendSms(phone, `${code} is your Hausi verification code`);
+    } catch (e) {
+      console.error('SMS send failed:', e);
+      return c.json({ error: 'Could not send the code — check the number and try again' }, 502);
+    }
+    return c.json({ sent: true });
   }
   return c.json({ sent: true, devCode: code });
 });
