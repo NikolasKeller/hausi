@@ -11,12 +11,16 @@ import {
 } from 'react-native';
 import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import * as Linking from 'expo-linking';
+import { LinearGradient } from 'expo-linear-gradient';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LIMITS, type Mutual } from '../shared/types';
 import { api } from '../lib/api';
 import { shareText } from '../lib/share';
-import { colors, radius, spacing } from '../lib/theme';
+import { brandGradient, colors, radius, spacing } from '../lib/theme';
+import { displayTitle } from '../lib/fonts';
 import { Avatar } from '../components/Avatar';
 import { Button, ErrorText, Field } from '../components/ui';
+import { ScreenBackground } from '../components/ScreenBackground';
 
 type Mode = 'browse' | 'manual';
 
@@ -25,6 +29,7 @@ type Mode = 'browse' | 'manual';
 // name + phone. The event screen refetches on focus, so we just router.back().
 export default function AddPlusOneScreen() {
   const router = useRouter();
+  const insets = useSafeAreaInsets();
   const { eventId, slug, exclude } = useLocalSearchParams<{
     eventId: string;
     slug?: string;
@@ -125,121 +130,157 @@ export default function AddPlusOneScreen() {
     submit({ name: n, phone: p });
   }
 
+  const selectedName = mutuals?.find((m) => m.user.id === selectedId)?.user.name;
+
   return (
-    <KeyboardAvoidingView style={{ flex: 1, backgroundColor: colors.bg }} behavior="padding">
-      <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
-        <Text style={styles.subtitle}>You can bring one plus one 🎟️</Text>
+    <ScreenBackground>
+      <KeyboardAvoidingView style={{ flex: 1 }} behavior="padding">
+        <ScrollView
+          contentContainerStyle={[styles.content, { paddingTop: insets.top + 52 }]}
+          keyboardShouldPersistTaps="handled"
+        >
+          <Text style={styles.kicker}>YOUR PLUS ONE 🎟️</Text>
+          <Text style={styles.title}>Who are you bringing?</Text>
+          <Text style={styles.subtitle}>
+            One guest — someone you've partied with, or a brand-new face.
+          </Text>
 
-        <View style={styles.segment}>
-          {(['browse', 'manual'] as Mode[]).map((m) => (
-            <Pressable
-              key={m}
-              onPress={() => {
-                setMode(m);
-                setError(null);
-              }}
-              style={[styles.segmentButton, mode === m && styles.segmentButtonActive]}
-            >
-              <Text style={[styles.segmentText, mode === m && styles.segmentTextActive]}>
-                {m === 'browse' ? 'People you know' : 'Add manually'}
-              </Text>
-            </Pressable>
-          ))}
-        </View>
+          <View style={styles.segment}>
+            {(['browse', 'manual'] as Mode[]).map((m) => {
+              const active = mode === m;
+              return (
+                <Pressable
+                  key={m}
+                  onPress={() => {
+                    setMode(m);
+                    setError(null);
+                  }}
+                  style={styles.segmentButton}
+                >
+                  {active ? (
+                    <LinearGradient
+                      colors={[...brandGradient]}
+                      start={{ x: 0, y: 0 }}
+                      end={{ x: 1, y: 1 }}
+                      style={styles.segmentFill}
+                    />
+                  ) : null}
+                  <Text style={[styles.segmentText, active && styles.segmentTextActive]}>
+                    {m === 'browse' ? 'People you know' : 'Someone new'}
+                  </Text>
+                </Pressable>
+              );
+            })}
+          </View>
 
-        {mode === 'browse' ? (
-          <View style={{ gap: spacing.sm }}>
-            <TextInput
-              value={query}
-              onChangeText={setQuery}
-              placeholder="Search people you've partied with"
-              placeholderTextColor={colors.muted}
-              style={styles.search}
-              autoCapitalize="none"
-            />
-            {mutuals == null && !loadError ? (
-              <ActivityIndicator color={colors.accent} style={{ marginTop: spacing.lg }} />
-            ) : loadError ? (
-              <Text style={styles.empty}>{loadError}</Text>
-            ) : filtered.length === 0 ? (
-              <Text style={styles.empty}>
-                {query.trim()
-                  ? 'No one by that name.'
-                  : "You haven't partied with anyone yet — add your plus one manually."}
-              </Text>
-            ) : (
-              filtered.map((m) => {
-                const selected = m.user.id === selectedId;
-                return (
-                  <Pressable
-                    key={m.user.id}
-                    onPress={() => {
-                      setSelectedId(m.user.id);
-                      setError(null);
-                    }}
-                    style={[styles.personRow, selected && styles.personRowSelected]}
-                  >
-                    <Avatar emoji={m.user.avatarEmoji} size={40} />
-                    <View style={{ flex: 1 }}>
-                      <Text style={styles.personName} numberOfLines={1}>
-                        {m.user.name}
-                      </Text>
-                      {m.sharedEventTitle ? (
-                        <Text style={styles.personMeta} numberOfLines={1}>
-                          via {m.sharedEventTitle}
+          {mode === 'browse' ? (
+            <View style={styles.block}>
+              <TextInput
+                value={query}
+                onChangeText={setQuery}
+                placeholder="Search people you've partied with"
+                placeholderTextColor={colors.muted}
+                style={styles.search}
+                autoCapitalize="none"
+              />
+              {mutuals == null && !loadError ? (
+                <ActivityIndicator color={colors.accent} style={{ marginTop: spacing.lg }} />
+              ) : loadError ? (
+                <Text style={styles.empty}>{loadError}</Text>
+              ) : filtered.length === 0 ? (
+                <Text style={styles.empty}>
+                  {query.trim()
+                    ? 'No one by that name.'
+                    : 'No one to show yet — add your plus one under “Someone new.”'}
+                </Text>
+              ) : (
+                filtered.map((m) => {
+                  const selected = m.user.id === selectedId;
+                  return (
+                    <Pressable
+                      key={m.user.id}
+                      onPress={() => {
+                        setSelectedId(m.user.id);
+                        setError(null);
+                      }}
+                      style={[styles.personRow, selected && styles.personRowSelected]}
+                    >
+                      <Avatar emoji={m.user.avatarEmoji} size={44} />
+                      <View style={{ flex: 1 }}>
+                        <Text style={styles.personName} numberOfLines={1}>
+                          {m.user.name}
                         </Text>
-                      ) : null}
-                    </View>
-                    {selected ? <Text style={styles.check}>✓</Text> : null}
-                  </Pressable>
-                );
-              })
-            )}
-            <ErrorText message={error} />
-            <Button
-              title={busy ? 'Adding…' : 'Add plus one'}
-              onPress={addSelected}
-              loading={busy}
-              style={!selectedId ? styles.disabled : undefined}
-            />
-          </View>
-        ) : (
-          <View style={{ gap: spacing.md }}>
-            <Field
-              label="Name"
-              value={name}
-              onChangeText={setName}
-              placeholder="Their name"
-              maxLength={LIMITS.name}
-              autoCapitalize="words"
-            />
-            <Field
-              label="Phone number"
-              value={phone}
-              onChangeText={setPhone}
-              placeholder="+1 555 123 4567"
-              keyboardType="phone-pad"
-              maxLength={30}
-            />
-            <ErrorText message={error} />
-            <Button title={busy ? 'Adding…' : 'Add plus one'} onPress={addManual} loading={busy} />
-          </View>
-        )}
-      </ScrollView>
-    </KeyboardAvoidingView>
+                        {m.sharedEventTitle ? (
+                          <Text style={styles.personMeta} numberOfLines={1}>
+                            via {m.sharedEventTitle}
+                          </Text>
+                        ) : null}
+                      </View>
+                    </Pressable>
+                  );
+                })
+              )}
+              <ErrorText message={error} />
+              <Button
+                title={busy ? 'Adding…' : selectedName ? `Bring ${selectedName}` : 'Bring them'}
+                onPress={addSelected}
+                loading={busy}
+                variant={selectedId ? 'primary' : 'ghost'}
+              />
+            </View>
+          ) : (
+            <View style={styles.block}>
+              <Field
+                label="Name"
+                value={name}
+                onChangeText={setName}
+                placeholder="Their name"
+                maxLength={LIMITS.name}
+                autoCapitalize="words"
+              />
+              <Field
+                label="Phone number"
+                value={phone}
+                onChangeText={setPhone}
+                placeholder="+1 555 123 4567"
+                keyboardType="phone-pad"
+                maxLength={30}
+              />
+              <Text style={styles.hint}>We only use this so the host can reach your guest.</Text>
+              <ErrorText message={error} />
+              <Button title={busy ? 'Adding…' : 'Add plus one'} onPress={addManual} loading={busy} />
+            </View>
+          )}
+        </ScrollView>
+      </KeyboardAvoidingView>
+    </ScreenBackground>
   );
 }
 
 const styles = StyleSheet.create({
   content: {
-    padding: spacing.md,
+    paddingHorizontal: spacing.lg,
     paddingBottom: spacing.xl * 2,
-    gap: spacing.md,
+  },
+  kicker: {
+    color: colors.accent,
+    fontSize: 12,
+    fontWeight: '800',
+    letterSpacing: 2,
+    marginBottom: spacing.xs,
+  },
+  title: {
+    ...displayTitle,
+    color: colors.text,
+    fontSize: 48,
+    lineHeight: 48,
+    letterSpacing: -1.5,
+    marginBottom: spacing.xs,
   },
   subtitle: {
     color: colors.muted,
     fontSize: 15,
-    textAlign: 'center',
+    lineHeight: 21,
   },
   segment: {
     flexDirection: 'row',
@@ -249,15 +290,20 @@ const styles = StyleSheet.create({
     borderRadius: radius.pill,
     padding: 4,
     gap: 4,
+    marginTop: spacing.lg,
+    marginBottom: spacing.md,
   },
   segmentButton: {
     flex: 1,
     alignItems: 'center',
-    paddingVertical: 10,
+    justifyContent: 'center',
+    paddingVertical: 12,
     borderRadius: radius.pill,
+    overflow: 'hidden',
   },
-  segmentButtonActive: {
-    backgroundColor: colors.accentDark,
+  segmentFill: {
+    ...StyleSheet.absoluteFillObject,
+    borderRadius: radius.pill,
   },
   segmentText: {
     color: colors.muted,
@@ -265,7 +311,10 @@ const styles = StyleSheet.create({
     fontSize: 14,
   },
   segmentTextActive: {
-    color: '#fff',
+    color: colors.onAccent,
+  },
+  block: {
+    gap: spacing.sm,
   },
   search: {
     backgroundColor: colors.inputBg,
@@ -287,12 +336,11 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing.sm,
-    backgroundColor: colors.card,
-    borderWidth: 2,
-    borderColor: colors.cardBorder,
+    borderWidth: 1.5,
+    borderColor: 'transparent',
     borderRadius: radius.md,
-    padding: spacing.sm,
-    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+    paddingHorizontal: spacing.sm,
   },
   personRowSelected: {
     borderColor: colors.accent,
@@ -301,18 +349,15 @@ const styles = StyleSheet.create({
   personName: {
     color: colors.text,
     fontSize: 16,
-    fontWeight: '600',
+    fontWeight: '700',
   },
   personMeta: {
     color: colors.muted,
     fontSize: 13,
   },
-  check: {
-    color: colors.accent,
-    fontSize: 18,
-    fontWeight: '800',
-  },
-  disabled: {
-    opacity: 0.5,
+  hint: {
+    color: colors.muted,
+    fontSize: 13,
+    lineHeight: 18,
   },
 });

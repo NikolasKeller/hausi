@@ -198,7 +198,8 @@ export interface Badge {
 export interface CardEntry {
   id: string;
   from: PublicUser;
-  to: PublicUser;
+  // null for cards shared by link (no in-app recipient).
+  to: PublicUser | null;
   theme: CardTheme;
   message: string;
   createdAt: string;

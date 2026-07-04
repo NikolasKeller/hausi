@@ -34,7 +34,7 @@ function cardDate(iso: string): string {
 }
 
 function cardDirection(card: CardEntry, myId: string | undefined): string {
-  if (myId && card.from.id === myId) return `to ${card.to.name}`;
+  if (myId && card.from.id === myId) return card.to ? `to ${card.to.name}` : 'shared by link 🔗';
   return `${card.from.avatarEmoji} from ${card.from.name}`;
 }
 
