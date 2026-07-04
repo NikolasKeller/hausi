@@ -178,10 +178,10 @@ function WebFrame({ children }: { children: React.ReactNode }) {
   if (Platform.OS !== 'web') return <>{children}</>;
   return (
     <View style={frameStyles.page}>
-      {/* Subtle party-gradient wash behind the phone column so the desktop
-          surround reads as part of the poster, not a dead void. */}
+      {/* Warm neutral surround (no purple) so the phone column reads as a card
+          on a soft linen desk. */}
       <LinearGradient
-        colors={['#1A0F2E', '#2A1550', '#0B0714']}
+        colors={['#3A3531', '#2B2723', '#221F1B']}
         locations={[0, 0.5, 1]}
         start={{ x: 0.2, y: 0 }}
         end={{ x: 0.8, y: 1 }}
@@ -196,7 +196,7 @@ function WebFrame({ children }: { children: React.ReactNode }) {
 const frameStyles = StyleSheet.create({
   page: {
     flex: 1,
-    backgroundColor: '#070510',
+    backgroundColor: '#221F1B',
     alignItems: 'center',
   },
   phone: {
