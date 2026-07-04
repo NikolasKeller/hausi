@@ -11,15 +11,13 @@ import {
 } from 'react-native';
 import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import * as Linking from 'expo-linking';
-import { LinearGradient } from 'expo-linear-gradient';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LIMITS, type Mutual } from '../shared/types';
 import { api } from '../lib/api';
 import { textInvite } from '../lib/share';
-import { brand, colors, radius, shadow, spacing } from '../lib/theme';
+import { colors, radius, shadow, spacing } from '../lib/theme';
 import { display, kicker, uiText } from '../lib/fonts';
 import { Avatar } from '../components/Avatar';
-import { Burst } from '../components/partiful';
 import { Button, ErrorText, Field } from '../components/ui';
 import { ScreenBackground } from '../components/ScreenBackground';
 
@@ -147,9 +145,10 @@ export default function AddPlusOneScreen() {
           contentContainerStyle={[styles.content, { paddingTop: insets.top + 52 }]}
           keyboardShouldPersistTaps="handled"
         >
-          <Burst size={72} rays={8} color={colors.helio} rotate={12} style={styles.decor} />
-          <Text style={styles.kicker}>YOUR PLUS ONE 🎟️</Text>
-          <Text style={styles.title}>Who are you bringing?</Text>
+          <Text style={styles.kicker}>Your plus one</Text>
+          <Text style={styles.title}>
+            Who are you <Text style={styles.titleItalic}>bringing?</Text>
+          </Text>
           <Text style={styles.subtitle}>
             One guest — someone you've partied with, or a brand-new face.
           </Text>
@@ -164,16 +163,8 @@ export default function AddPlusOneScreen() {
                     setMode(m);
                     setError(null);
                   }}
-                  style={styles.segmentButton}
+                  style={[styles.segmentButton, active && styles.segmentButtonActive]}
                 >
-                  {active ? (
-                    <LinearGradient
-                      colors={[...brand.party]}
-                      start={{ x: 0, y: 0 }}
-                      end={{ x: 1, y: 1 }}
-                      style={styles.segmentFill}
-                    />
-                  ) : null}
                   <Text style={[styles.segmentText, active && styles.segmentTextActive]}>
                     {m === 'browse' ? 'People you know' : 'Someone new'}
                   </Text>
@@ -234,8 +225,7 @@ export default function AddPlusOneScreen() {
                 title={busy ? 'Adding…' : selectedName ? `Bring ${selectedName}` : 'Bring them'}
                 onPress={addSelected}
                 loading={busy}
-                variant={selectedId ? 'vibrant' : 'ghost'}
-                tone="paper"
+                variant={selectedId ? 'primary' : 'ghost'}
               />
             </View>
           ) : (
@@ -262,7 +252,7 @@ export default function AddPlusOneScreen() {
                 title={busy ? 'Adding…' : 'Add plus one'}
                 onPress={addManual}
                 loading={busy}
-                variant="vibrant"
+                variant="primary"
               />
             </View>
           )}
@@ -277,20 +267,17 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.lg,
     paddingBottom: spacing.xl * 2,
   },
-  decor: {
-    position: 'absolute',
-    top: -8,
-    right: -12,
-    opacity: 0.9,
-  },
   kicker: {
-    ...kicker(colors.accent),
+    ...kicker(colors.muted),
     marginBottom: spacing.sm,
   },
   title: {
-    ...display(60),
+    ...display(56),
     color: colors.text,
     marginBottom: spacing.sm,
+  },
+  titleItalic: {
+    fontStyle: 'italic',
   },
   subtitle: {
     ...uiText(15),
@@ -298,12 +285,8 @@ const styles = StyleSheet.create({
   },
   segment: {
     flexDirection: 'row',
-    backgroundColor: colors.card,
-    borderWidth: 2,
-    borderColor: colors.ink,
-    borderRadius: radius.pill,
-    padding: 4,
-    gap: 4,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.cardBorder,
     marginTop: spacing.xl,
     marginBottom: spacing.lg,
   },
@@ -311,27 +294,28 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 13,
-    borderRadius: radius.pill,
-    overflow: 'hidden',
+    paddingVertical: 12,
+    borderBottomWidth: 2,
+    borderBottomColor: 'transparent',
+    marginBottom: -1,
   },
-  segmentFill: {
-    ...StyleSheet.absoluteFillObject,
-    borderRadius: radius.pill,
+  segmentButtonActive: {
+    borderBottomColor: colors.ink,
   },
   segmentText: {
-    ...uiText(14, '700'),
+    ...uiText(14, '600'),
     color: colors.muted,
   },
   segmentTextActive: {
-    color: '#fff',
+    color: colors.text,
+    ...uiText(14, '700'),
   },
   block: {
     gap: spacing.md,
   },
   search: {
     backgroundColor: colors.inputBg,
-    borderWidth: 2,
+    borderWidth: 1,
     borderColor: colors.cardBorder,
     borderRadius: radius.md,
     color: colors.text,
@@ -350,16 +334,15 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: spacing.md,
     backgroundColor: colors.card,
-    borderWidth: 2,
+    borderWidth: 1,
     borderColor: colors.cardBorder,
-    borderRadius: radius.md,
+    borderRadius: radius.lg,
     paddingVertical: spacing.sm,
     paddingHorizontal: spacing.md,
     ...shadow.card,
   },
   personRowSelected: {
     borderColor: colors.accent,
-    backgroundColor: 'rgba(255,122,224,0.14)',
   },
   personName: {
     ...uiText(16, '700'),

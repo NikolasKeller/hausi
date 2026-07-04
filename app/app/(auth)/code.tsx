@@ -13,10 +13,9 @@ import { useLocalSearchParams } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { api } from '../../lib/api';
 import { useAuth } from '../../lib/auth';
-import { light, radius, shadow, spacing } from '../../lib/theme';
+import { colors, radius, shadow, spacing } from '../../lib/theme';
 import { display, kicker, uiText } from '../../lib/fonts';
 import { AuroraBackground } from '../../components/AuroraBackground';
-import { PaperCard } from '../../components/partiful';
 import { Button, ErrorText } from '../../components/ui';
 
 const RESEND_SECONDS = 30;
@@ -97,10 +96,12 @@ export default function CodeScreen() {
         <KeyboardAvoidingView style={{ flex: 1 }} behavior="padding">
           <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
             <Text style={styles.kicker}>Step 2 of 2</Text>
-            <Text style={styles.title}>Verify your{'\n'}phone</Text>
+            <Text style={styles.title}>
+              Verify your <Text style={styles.titleAccent}>phone</Text>
+            </Text>
             <Text style={styles.subtitle}>We sent {phone} a code via SMS</Text>
 
-            <PaperCard rotate={1.5} style={styles.card}>
+            <View style={styles.card}>
               <TextInput
                 value={code}
                 onChangeText={(t) => {
@@ -109,7 +110,7 @@ export default function CodeScreen() {
                   if (clean.length === 6) submit(clean);
                 }}
                 placeholder="000000"
-                placeholderTextColor={light.muted}
+                placeholderTextColor={colors.muted}
                 keyboardType="number-pad"
                 autoFocus
                 style={styles.codeInput}
@@ -117,7 +118,7 @@ export default function CodeScreen() {
                 textContentType="oneTimeCode"
                 autoComplete="one-time-code"
               />
-            </PaperCard>
+            </View>
 
             <Text style={styles.resend} onPress={resend}>
               {resendIn > 0
@@ -151,32 +152,34 @@ const styles = StyleSheet.create({
     gap: spacing.sm,
     marginHorizontal: spacing.md,
     marginTop: spacing.sm,
-    backgroundColor: light.paper,
-    borderWidth: 2,
-    borderColor: light.ink,
+    backgroundColor: colors.card,
+    borderWidth: 1,
+    borderColor: colors.cardBorder,
     borderRadius: radius.lg,
     padding: spacing.md,
-    ...shadow.float,
+    ...shadow.card,
   },
   bannerIcon: {
     width: 34,
     height: 34,
     borderRadius: 8,
-    backgroundColor: '#34C759',
+    backgroundColor: colors.inputBg,
+    borderWidth: 1,
+    borderColor: colors.cardBorder,
     alignItems: 'center',
     justifyContent: 'center',
   },
   bannerFrom: {
-    color: light.text3,
+    color: colors.muted,
     ...uiText(12, '700'),
   },
   bannerText: {
-    color: light.text,
-    ...uiText(14, '600'),
+    color: colors.text,
+    ...uiText(14, '500'),
   },
   bannerNow: {
-    color: light.muted,
-    ...uiText(12, '500'),
+    color: colors.muted,
+    ...uiText(12, '400'),
   },
   content: {
     flexGrow: 1,
@@ -185,34 +188,43 @@ const styles = StyleSheet.create({
     gap: spacing.md,
   },
   kicker: {
-    ...kicker(light.text2),
+    ...kicker(colors.muted),
     textAlign: 'center',
   },
   title: {
-    color: light.text,
+    color: colors.text,
     ...display(56),
     textAlign: 'center',
   },
+  titleAccent: {
+    ...display(56),
+    fontStyle: 'italic',
+  },
   subtitle: {
-    color: light.text2,
-    ...uiText(16, '500'),
+    color: colors.muted,
+    ...uiText(16, '400'),
     textAlign: 'center',
-    marginBottom: spacing.md,
+    marginBottom: spacing.lg,
   },
   card: {
+    backgroundColor: colors.card,
+    borderWidth: 1,
+    borderColor: colors.cardBorder,
+    borderRadius: radius.lg,
     paddingVertical: spacing.md,
+    ...shadow.card,
   },
   codeInput: {
-    color: light.text,
+    color: colors.text,
     paddingVertical: spacing.sm,
     fontSize: 36,
     letterSpacing: 14,
     textAlign: 'center',
-    fontWeight: '800',
+    fontWeight: '700',
   },
   resend: {
-    color: light.text3,
-    ...uiText(14, '600'),
+    color: colors.muted,
+    ...uiText(14, '500'),
     textAlign: 'center',
   },
   buttonDisabled: {

@@ -16,13 +16,11 @@ import { CATEGORIES, CATEGORY_META, type Category, type ExploreEvent } from '../
 import { api } from '../../lib/api';
 import { citySuggestions } from '../../lib/cities';
 import { shareText } from '../../lib/share';
-import { colors, radius, spacing } from '../../lib/theme';
+import { colors, radius, spacing, shadow } from '../../lib/theme';
 import { titleFontStyle, display, uiText, kicker } from '../../lib/fonts';
 import { CoverGradient } from '../../components/CoverGradient';
 import { Button } from '../../components/ui';
-import { Burst } from '../../components/partiful';
 import { withScreenBackground } from '../../components/ScreenBackground';
-import { GlassPill } from '../../components/glass';
 import { formatEventDate } from '../../components/EventCard';
 
 const CATEGORY_CHIPS: { key: Category | 'all'; emoji: string; label: string }[] = [
@@ -199,29 +197,38 @@ function ExploreScreen() {
               {CATEGORY_CHIPS.map((chip) => {
                 const active = category === chip.key;
                 return (
-                  <Pressable key={chip.key} onPress={() => selectCategory(chip.key)}>
-                    <GlassPill active={active} tint="dark" style={styles.chip}>
-                      <Text style={styles.chipEmoji}>{chip.emoji}</Text>
-                      <Text style={[styles.chipLabel, active && styles.chipLabelActive]}>
-                        {chip.label}
-                      </Text>
-                    </GlassPill>
+                  <Pressable
+                    key={chip.key}
+                    onPress={() => selectCategory(chip.key)}
+                    style={({ pressed }) => [
+                      styles.chip,
+                      active && styles.chipActive,
+                      pressed && { opacity: 0.8 },
+                    ]}
+                  >
+                    <Text style={styles.chipEmoji}>{chip.emoji}</Text>
+                    <Text style={[styles.chipLabel, active && styles.chipLabelActive]}>
+                      {chip.label}
+                    </Text>
                   </Pressable>
                 );
               })}
             </ScrollView>
 
             <CoverGradient theme="midnight" style={styles.hero} emojiOpacity={0.2}>
-              <Burst size={44} rays={8} color={colors.accent} rotate={12} style={styles.heroBurst} />
               <Text style={styles.heroKicker}>Get out there</Text>
-              <Text style={styles.heroTitle}>The streets are calling</Text>
+              <Text style={styles.heroTitle}>
+                The streets are <Text style={styles.heroTitleItalic}>calling</Text>
+              </Text>
               <Text style={styles.heroSubtitle}>
                 {city ? `See what's happening in ${city}` : "See what's happening everywhere"}
               </Text>
             </CoverGradient>
 
             <Text style={styles.sectionKicker}>New faces</Text>
-            <Text style={styles.sectionTitle}>Meet new people! 👋</Text>
+            <Text style={styles.sectionTitle}>
+              Meet new <Text style={styles.sectionTitleItalic}>people</Text>
+            </Text>
 
             {error ? (
               <View style={styles.inlineState}>
@@ -360,12 +367,13 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: spacing.xs,
     backgroundColor: colors.card,
-    borderWidth: 2,
-    borderColor: colors.ink,
+    borderWidth: 1,
+    borderColor: colors.cardBorder,
     borderRadius: radius.pill,
     paddingHorizontal: spacing.md,
     paddingVertical: 8,
     maxWidth: 200,
+    ...shadow.card,
   },
   cityPillText: {
     ...uiText(14, '700'),
@@ -387,12 +395,12 @@ const styles = StyleSheet.create({
     left: spacing.md,
     maxHeight: 340,
     backgroundColor: colors.card,
-    borderWidth: 2,
-    borderColor: colors.ink,
+    borderWidth: 1,
+    borderColor: colors.cardBorder,
     borderRadius: radius.md,
     overflow: 'hidden',
     zIndex: 20,
-    elevation: 8,
+    ...shadow.float,
   },
   citySearchRow: {
     flexDirection: 'row',
@@ -440,17 +448,30 @@ const styles = StyleSheet.create({
     paddingVertical: spacing.sm,
   },
   chip: {
+    flexDirection: 'row',
+    alignItems: 'center',
     gap: spacing.xs,
+    backgroundColor: colors.card,
+    borderWidth: 1,
+    borderColor: colors.cardBorder,
+    borderRadius: radius.pill,
+    paddingHorizontal: spacing.md,
+    paddingVertical: 8,
+  },
+  chipActive: {
+    backgroundColor: colors.ink,
+    borderColor: colors.ink,
   },
   chipEmoji: {
     fontSize: 14,
   },
   chipLabel: {
     ...uiText(14, '700'),
-    color: 'rgba(255,255,255,0.82)',
+    color: colors.text,
   },
   chipLabelActive: {
-    color: '#fff',
+    // Sits on the black active pill — white is intentional here.
+    color: colors.onAccent,
   },
   hero: {
     minHeight: 200,
@@ -460,15 +481,12 @@ const styles = StyleSheet.create({
     marginTop: spacing.sm,
     marginHorizontal: spacing.md,
     borderRadius: radius.lg,
-    borderWidth: 2,
-    borderColor: colors.ink,
+    borderWidth: 1,
+    borderColor: colors.cardBorder,
     overflow: 'hidden',
+    ...shadow.card,
   },
-  heroBurst: {
-    position: 'absolute',
-    top: spacing.md,
-    right: spacing.md,
-  },
+  // White text below sits ON the dark "midnight" photo hero — intentional.
   heroKicker: {
     ...kicker('#fff'),
     opacity: 0.9,
@@ -479,6 +497,9 @@ const styles = StyleSheet.create({
     textShadowColor: 'rgba(0,0,0,0.4)',
     textShadowOffset: { width: 0, height: 2 },
     textShadowRadius: 8,
+  },
+  heroTitleItalic: {
+    fontStyle: 'italic',
   },
   heroSubtitle: {
     ...uiText(15),
@@ -496,6 +517,9 @@ const styles = StyleSheet.create({
     marginHorizontal: spacing.md,
     marginTop: spacing.xs,
     marginBottom: spacing.md,
+  },
+  sectionTitleItalic: {
+    fontStyle: 'italic',
   },
   inlineState: {
     alignItems: 'center',
@@ -518,9 +542,10 @@ const styles = StyleSheet.create({
     width: '48%',
     backgroundColor: colors.card,
     borderRadius: radius.lg,
-    borderWidth: 2,
-    borderColor: colors.ink,
+    borderWidth: 1,
+    borderColor: colors.cardBorder,
     overflow: 'hidden',
+    ...shadow.card,
   },
   poster: {
     height: 240,

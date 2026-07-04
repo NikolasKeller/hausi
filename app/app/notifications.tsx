@@ -5,7 +5,6 @@ import type { NotificationEntry } from '../shared/types';
 import { api } from '../lib/api';
 import { colors, radius, shadow, spacing } from '../lib/theme';
 import { display, kicker, uiText } from '../lib/fonts';
-import { Seal } from '../components/partiful';
 
 const TYPE_ICONS: Record<string, string> = {
   RSVP: '🙋',
@@ -64,10 +63,8 @@ export default function NotificationsScreen() {
       data={items}
       keyExtractor={(n) => n.id}
       contentContainerStyle={styles.list}
-      ItemSeparatorComponent={() => <View style={{ height: spacing.md }} />}
-      renderItem={({ item, index }) => {
-        // Deterministic alternating tilt so rows read like scattered stickers.
-        const tilt = index % 2 === 0 ? -1.5 : 1.5;
+      ItemSeparatorComponent={() => <View style={{ height: spacing.sm }} />}
+      renderItem={({ item }) => {
         return (
           <Pressable
             onPress={() => {
@@ -75,29 +72,29 @@ export default function NotificationsScreen() {
             }}
             style={({ pressed }) => [
               styles.item,
-              { transform: [{ rotate: `${tilt}deg` }] },
               !item.read && styles.itemUnread,
               pressed && { opacity: 0.85 },
             ]}
           >
-            <Seal size={48} color={item.read ? colors.cardBorder : colors.accent} rotate={tilt * 2}>
+            <View style={styles.iconChip}>
               <Text style={styles.icon}>{TYPE_ICONS[item.type] ?? '🔔'}</Text>
-            </Seal>
+            </View>
             <View style={{ flex: 1, gap: 3 }}>
               <Text style={[styles.text, !item.read && styles.textUnread]}>{item.text}</Text>
               <Text style={styles.time}>{timeAgo(item.createdAt)}</Text>
             </View>
+            {!item.read ? <View style={styles.unreadDot} /> : null}
           </Pressable>
         );
       }}
       ListEmptyComponent={
         loading ? null : (
           <View style={styles.empty}>
-            <Seal size={112} color={colors.accent} rotate={-8}>
-              <Text style={styles.emptyEmoji}>🔕</Text>
-            </Seal>
-            <Text style={styles.emptyKicker}>ALL QUIET</Text>
-            <Text style={styles.emptyTitle}>Nothing yet</Text>
+            <Text style={styles.emptyEmoji}>🔕</Text>
+            <Text style={styles.emptyKicker}>All quiet</Text>
+            <Text style={styles.emptyTitle}>
+              Nothing <Text style={styles.emptyTitleItalic}>yet</Text>
+            </Text>
             <Text style={styles.emptyText}>Go throw a party!</Text>
           </View>
         )
@@ -112,8 +109,8 @@ const styles = StyleSheet.create({
     backgroundColor: colors.bg,
   },
   list: {
-    padding: spacing.md,
-    paddingTop: spacing.lg,
+    padding: spacing.lg,
+    paddingTop: spacing.xl,
     flexGrow: 1,
   },
   item: {
@@ -121,29 +118,45 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: spacing.md,
     backgroundColor: colors.card,
-    borderWidth: 2,
-    borderColor: colors.ink,
-    borderRadius: radius.md,
+    borderWidth: 1,
+    borderColor: colors.cardBorder,
+    borderRadius: radius.lg,
     padding: spacing.md,
     ...shadow.card,
   },
   itemUnread: {
     borderColor: colors.accent,
   },
+  iconChip: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: colors.inputBg,
+    borderWidth: 1,
+    borderColor: colors.cardBorder,
+  },
   icon: {
-    fontSize: 22,
+    fontSize: 20,
   },
   text: {
     ...uiText(14),
     color: colors.muted,
   },
   textUnread: {
-    ...uiText(15, '700'),
+    ...uiText(15, '600'),
     color: colors.text,
   },
   time: {
     ...uiText(12, '600'),
     color: colors.muted,
+  },
+  unreadDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: colors.accent,
   },
   empty: {
     flex: 1,
@@ -153,16 +166,19 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.xl,
   },
   emptyEmoji: {
-    fontSize: 52,
+    fontSize: 44,
+    marginBottom: spacing.sm,
   },
   emptyKicker: {
-    ...kicker(colors.accent),
-    marginTop: spacing.md,
+    ...kicker(colors.muted),
   },
   emptyTitle: {
-    ...display(40),
+    ...display(44),
     color: colors.text,
     textAlign: 'center',
+  },
+  emptyTitleItalic: {
+    fontStyle: 'italic',
   },
   emptyText: {
     ...uiText(16),

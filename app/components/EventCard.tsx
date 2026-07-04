@@ -2,7 +2,7 @@ import React from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import type { EventSummary } from '../shared/types';
-import { colors, radius, rsvp, spacing } from '../lib/theme';
+import { colors, radius, shadow, spacing } from '../lib/theme';
 import { titleFontStyle, uiText, kicker } from '../lib/fonts';
 import { CoverGradient } from './CoverGradient';
 import { Avatar } from './Avatar';
@@ -73,15 +73,17 @@ const styles = StyleSheet.create({
   card: {
     backgroundColor: colors.card,
     borderRadius: radius.lg,
-    borderWidth: 2,
-    borderColor: colors.ink,
+    borderWidth: 1,
+    borderColor: colors.cardBorder,
     overflow: 'hidden',
+    ...shadow.card,
   },
   cover: {
     minHeight: 150,
     padding: spacing.lg,
     justifyContent: 'flex-end',
   },
+  // The title sits on the colorful/dark CoverGradient hero, so white stays here.
   title: {
     color: '#fff',
     fontSize: 38,
@@ -90,6 +92,7 @@ const styles = StyleSheet.create({
     textShadowOffset: { width: 0, height: 2 },
     textShadowRadius: 6,
   },
+  // CANCELED badge also sits on the cover hero — keep it legible on dark imagery.
   canceledBadge: {
     position: 'absolute',
     top: spacing.md,
@@ -110,7 +113,7 @@ const styles = StyleSheet.create({
     gap: spacing.md,
   },
   date: {
-    ...uiText(14, '700'),
+    ...uiText(14, '600'),
     color: colors.accent,
   },
   hostRow: {
@@ -127,15 +130,19 @@ const styles = StyleSheet.create({
     alignItems: 'flex-end',
     gap: spacing.xs,
   },
+  // Soft, quiet pill on the warm-white card — subtle success text on a hairline
+  // chip instead of the loud bright-green fill.
   goingPill: {
-    backgroundColor: rsvp.going.bg,
+    backgroundColor: colors.card,
     borderRadius: radius.pill,
+    borderWidth: 1,
+    borderColor: colors.cardBorder,
     paddingHorizontal: spacing.sm,
     paddingVertical: 4,
   },
   going: {
-    ...uiText(13, '700'),
-    color: rsvp.going.text,
+    ...uiText(13, '600'),
+    color: colors.success,
   },
   myStatus: {
     ...uiText(12, '600'),

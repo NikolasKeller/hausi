@@ -2,10 +2,9 @@ import React from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
+import { Ionicons } from '@expo/vector-icons';
 import { colors, radius, shadow, spacing } from '../../lib/theme';
 import { display, kicker, uiText } from '../../lib/fonts';
-import { CoverGradient } from '../../components/CoverGradient';
-import { Burst, Seal } from '../../components/partiful';
 import { withScreenBackground } from '../../components/ScreenBackground';
 
 export default withScreenBackground(CreateScreen);
@@ -17,11 +16,11 @@ function CreateScreen() {
     <SafeAreaView style={styles.safe} edges={['top']}>
       <View style={styles.content}>
         <View style={styles.heading}>
-          <Text style={[styles.kicker, kicker(colors.accent)]}>Start something</Text>
+          <Text style={[styles.kicker, kicker(colors.muted)]}>Start something</Text>
           <Text style={styles.title}>
-            Make something{'\n'}happen
+            Make something{'\n'}
+            <Text style={styles.titleItalic}>happen</Text>
           </Text>
-          <Burst size={40} color={colors.helio} rotate={12} style={styles.headingBurst} />
         </View>
 
         <View style={styles.rows}>
@@ -29,32 +28,28 @@ function CreateScreen() {
             onPress={() => router.push('/new-event')}
             style={({ pressed }) => [styles.row, pressed && styles.pressed]}
           >
-            <Seal size={52} color={colors.accent} rotate={-8}>
-              <Text style={styles.plus}>＋</Text>
-            </Seal>
+            <View style={styles.rowIcon}>
+              <Ionicons name="add" size={24} color={colors.accent} />
+            </View>
             <View style={styles.rowText}>
               <Text style={styles.rowTitle}>New event</Text>
               <Text style={styles.rowSubtitle}>Collect RSVPs</Text>
             </View>
-            <CoverGradient theme="sunset" style={styles.art} emojiOpacity={0.25}>
-              <Text style={styles.artEmoji}>🎉</Text>
-            </CoverGradient>
+            <Ionicons name="chevron-forward" size={20} color={colors.muted} />
           </Pressable>
 
           <Pressable
             onPress={() => router.push('/send-card')}
             style={({ pressed }) => [styles.row, pressed && styles.pressed]}
           >
-            <Seal size={52} color={colors.violet} rotate={7}>
-              <Text style={styles.plus}>＋</Text>
-            </Seal>
+            <View style={styles.rowIcon}>
+              <Ionicons name="mail-outline" size={22} color={colors.accent} />
+            </View>
             <View style={styles.rowText}>
               <Text style={styles.rowTitle}>Send a card</Text>
               <Text style={styles.rowSubtitle}>Brighten someone's day</Text>
             </View>
-            <CoverGradient theme="candy" style={styles.art} emojiOpacity={0.25}>
-              <Text style={styles.artEmoji}>💌</Text>
-            </CoverGradient>
+            <Ionicons name="chevron-forward" size={20} color={colors.muted} />
           </Pressable>
         </View>
 
@@ -79,19 +74,17 @@ const styles = StyleSheet.create({
     paddingBottom: spacing.xl * 2,
   },
   heading: {
-    gap: spacing.sm,
+    gap: spacing.md,
   },
   kicker: {
-    color: colors.accent,
+    color: colors.muted,
   },
   title: {
     ...display(52),
     color: colors.text,
   },
-  headingBurst: {
-    position: 'absolute',
-    top: -8,
-    right: spacing.xs,
+  titleItalic: {
+    fontStyle: 'italic',
   },
   rows: {
     gap: spacing.md,
@@ -101,42 +94,36 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: spacing.md,
     backgroundColor: colors.card,
-    borderWidth: 2,
-    borderColor: colors.ink,
+    borderWidth: 1,
+    borderColor: colors.cardBorder,
     borderRadius: radius.lg,
     padding: spacing.lg,
     ...shadow.card,
   },
   pressed: {
     opacity: 0.75,
-    transform: [{ scale: 0.99 }],
   },
-  plus: {
-    color: colors.onAccent,
-    fontSize: 26,
-    fontWeight: '400',
+  rowIcon: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: colors.inputBg,
+    borderWidth: 1,
+    borderColor: colors.cardBorder,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   rowText: {
     flex: 1,
     gap: 2,
   },
   rowTitle: {
-    ...display(22, { weight: 'heavy' }),
+    ...display(22),
     color: colors.text,
   },
   rowSubtitle: {
     ...uiText(14),
     color: colors.muted,
-  },
-  art: {
-    width: 64,
-    height: 64,
-    borderRadius: radius.md,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  artEmoji: {
-    fontSize: 30,
   },
   hint: {
     ...uiText(13),

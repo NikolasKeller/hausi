@@ -29,9 +29,9 @@ export const colors = {
 
 // ── LIGHT public palette (the Partiful "paper" surface) ──────────────────────
 export const light = {
-  // Surfaces
-  bg: '#FDFBF7', // warm paper canvas
-  paper: '#FFFFFF', // cards / panels
+  // Surfaces (aligned to the warm "linen" app palette)
+  bg: '#EEEAE4', // warm linen canvas
+  paper: '#F9F6F1', // warm white cards / panels
   // Ink & type ramp (Midnight Ink → Ash)
   ink: '#000000',
   text: '#000000',
