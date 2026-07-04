@@ -732,7 +732,12 @@ export default function EventScreen() {
             onPress={() => setMenuOpen(false)}
           />
           <View style={[styles.menuSheetWrap, { paddingBottom: insets.bottom + spacing.lg }]}>
-            <Glass tint={ink.dark ? 'dark' : 'light'} radius={radius.lg} style={styles.menuSheet}>
+            <Glass
+              tint={ink.dark ? 'dark' : 'light'}
+              radius={radius.lg}
+              fill={ink.dark ? 'rgba(20,18,16,0.92)' : 'rgba(249,246,241,0.94)'}
+              style={styles.menuSheet}
+            >
               <Text style={[styles.menuTitle, { color: ink.subtext }]}>Manage event</Text>
               <ActionRow
                 icon="create-outline"
