@@ -2,9 +2,13 @@ generator client {
   provider = "prisma-client-js"
 }
 
+// Local dev runs on SQLite. To go live on Postgres (e.g. Supabase):
+// change provider to "postgresql", point DATABASE_URL in server/.env at the
+// connection string, and run `npx prisma db push`. Nothing else changes —
+// mutuals, badges, trending etc. are all computed from these tables.
 datasource db {
   provider = "sqlite"
-  url      = "file:./dev.db"
+  url      = env("DATABASE_URL")
 }
 
 model User {

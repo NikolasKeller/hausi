@@ -6,6 +6,7 @@ import {
   Share,
   StyleSheet,
   Text,
+  TextInput,
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -14,6 +15,7 @@ import * as Linking from 'expo-linking';
 import { Ionicons } from '@expo/vector-icons';
 import { CATEGORIES, CATEGORY_META, type Category, type ExploreEvent } from '../../shared/types';
 import { api } from '../../lib/api';
+import { citySuggestions } from '../../lib/cities';
 import { colors, radius, spacing } from '../../lib/theme';
 import { titleFontStyle } from '../../lib/fonts';
 import { CoverGradient } from '../../components/CoverGradient';
@@ -85,6 +87,7 @@ export default function ExploreScreen() {
   const [cities, setCities] = useState<string[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [cityMenuOpen, setCityMenuOpen] = useState(false);
+  const [citySearch, setCitySearch] = useState('');
 
   const load = useCallback(
     async (isActive: () => boolean) => {
@@ -125,6 +128,7 @@ export default function ExploreScreen() {
 
   function selectCity(next: string) {
     setCityMenuOpen(false);
+    setCitySearch('');
     if (next !== city) {
       setEvents(null);
       setCity(next);
@@ -139,7 +143,12 @@ export default function ExploreScreen() {
   }
 
   const cityLabel = city === null ? '…' : city === '' ? 'All cities' : city;
-  const cityOptions = ['', ...cities];
+  // Search across every known city plus the common-cities list; free text works too.
+  const suggestions = citySuggestions(cities, citySearch);
+  const cityOptions = citySearch.trim() ? suggestions : ['', ...suggestions];
+  const exactMatch = suggestions.some(
+    (s) => s.toLowerCase() === citySearch.trim().toLowerCase()
+  );
 
   return (
     <SafeAreaView edges={['top']} style={styles.safe}>
@@ -234,9 +243,40 @@ export default function ExploreScreen() {
 
         {cityMenuOpen ? (
           <>
-            <Pressable style={styles.menuBackdrop} onPress={() => setCityMenuOpen(false)} />
+            <Pressable
+              style={styles.menuBackdrop}
+              onPress={() => {
+                setCityMenuOpen(false);
+                setCitySearch('');
+              }}
+            />
             <View style={styles.cityMenu}>
-              <ScrollView>
+              <View style={styles.citySearchRow}>
+                <Ionicons name="search" size={16} color={colors.muted} />
+                <TextInput
+                  value={citySearch}
+                  onChangeText={setCitySearch}
+                  placeholder="Search any city…"
+                  placeholderTextColor={colors.muted}
+                  style={styles.citySearchInput}
+                  autoFocus
+                  autoCorrect={false}
+                  returnKeyType="search"
+                  onSubmitEditing={() => {
+                    const q = citySearch.trim();
+                    if (q) selectCity(suggestions[0] ?? q);
+                  }}
+                />
+              </View>
+              <ScrollView keyboardShouldPersistTaps="handled">
+                {citySearch.trim() && !exactMatch ? (
+                  <Pressable
+                    onPress={() => selectCity(citySearch.trim())}
+                    style={[styles.menuItem, styles.menuItemBorder]}
+                  >
+                    <Text style={styles.menuItemText}>🔎 Search “{citySearch.trim()}”</Text>
+                  </Pressable>
+                ) : null}
                 {cityOptions.map((option, index) => {
                   const active = option === city;
                   return (
@@ -331,8 +371,8 @@ const styles = StyleSheet.create({
     position: 'absolute',
     top: 58,
     right: spacing.md,
-    minWidth: 190,
-    maxHeight: 300,
+    left: spacing.md,
+    maxHeight: 340,
     backgroundColor: colors.card,
     borderWidth: 1,
     borderColor: colors.cardBorder,
@@ -340,6 +380,22 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
     zIndex: 20,
     elevation: 8,
+  },
+  citySearchRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    paddingHorizontal: spacing.md,
+    paddingVertical: 10,
+    borderBottomWidth: 1,
+    borderColor: colors.cardBorder,
+    backgroundColor: colors.inputBg,
+  },
+  citySearchInput: {
+    flex: 1,
+    color: colors.text,
+    fontSize: 15,
+    paddingVertical: 0,
   },
   menuItem: {
     flexDirection: 'row',

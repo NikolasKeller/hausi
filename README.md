@@ -82,6 +82,20 @@ EXPO_PUBLIC_API_URL=http://192.168.x.x:3001 npx expo start
 | GET | `/notifications` | Your notifications + unread count |
 | POST | `/notifications/read-all` | Mark all read |
 
+## Going live with a real database (e.g. Supabase)
+
+Local dev runs on SQLite with seeded demo data. The social layer is fully
+computed from live tables — mutuals derive from shared guest lists, badges
+from real counts, trending from real RSVPs — so swapping in a real database
+requires no application changes:
+
+1. In `server/prisma/schema.prisma` change `provider = "sqlite"` to `"postgresql"`.
+2. In `server/.env` set `DATABASE_URL` to the Supabase pooled connection string (see `.env.example`).
+3. `npx prisma db push` to create the tables, and set a strong `JWT_SECRET`.
+
+`npm run seed` **refuses to run against a non-SQLite database**, so demo
+users/events never reach production — real signups populate everything.
+
 ## Rolling it out
 
 The repo ships with `app/eas.json` and bundle identifiers (`com.hausi.app`) so device builds are one command away:

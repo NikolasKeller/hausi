@@ -1,11 +1,32 @@
 import React, { useEffect, useRef } from 'react';
-import { ActivityIndicator, View } from 'react-native';
+import { ActivityIndicator, Pressable, Text, View } from 'react-native';
 import { Stack, usePathname, useRouter, useSegments } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useFonts } from 'expo-font';
 import { AuthProvider, useAuth } from '../lib/auth';
 import { FONTS_TO_LOAD } from '../lib/fonts';
 import { colors } from '../lib/theme';
+
+// ✕ in modal headers so nothing forces the user to complete a flow.
+function ModalClose() {
+  const router = useRouter();
+  return (
+    <Pressable
+      onPress={() => router.back()}
+      hitSlop={12}
+      style={{
+        width: 30,
+        height: 30,
+        borderRadius: 15,
+        backgroundColor: colors.card,
+        alignItems: 'center',
+        justifyContent: 'center',
+      }}
+    >
+      <Text style={{ color: colors.text, fontSize: 15, fontWeight: '700' }}>✕</Text>
+    </Pressable>
+  );
+}
 
 function RootNavigator() {
   const { user, initializing } = useAuth();
@@ -53,15 +74,44 @@ function RootNavigator() {
     >
       <Stack.Screen name="(auth)" options={{ headerShown: false }} />
       <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-      <Stack.Screen name="new-event" options={{ title: 'New Event', presentation: 'modal' }} />
-      <Stack.Screen name="send-card" options={{ title: 'Send a Card', presentation: 'modal' }} />
+      <Stack.Screen
+        name="new-event"
+        options={{
+          title: 'New Event',
+          presentation: 'modal',
+          gestureEnabled: true,
+          headerLeft: () => <ModalClose />,
+        }}
+      />
+      <Stack.Screen
+        name="send-card"
+        options={{
+          title: 'Send a Card',
+          presentation: 'modal',
+          gestureEnabled: true,
+          headerLeft: () => <ModalClose />,
+        }}
+      />
       <Stack.Screen
         name="edit-profile"
-        options={{ title: 'Edit Profile', presentation: 'modal' }}
+        options={{
+          title: 'Edit Profile',
+          presentation: 'modal',
+          gestureEnabled: true,
+          headerLeft: () => <ModalClose />,
+        }}
       />
       <Stack.Screen name="notifications" options={{ title: 'Notifications' }} />
       <Stack.Screen name="event/[slug]/index" options={{ title: '', headerTransparent: true }} />
-      <Stack.Screen name="event/[slug]/edit" options={{ title: 'Edit Event', presentation: 'modal' }} />
+      <Stack.Screen
+        name="event/[slug]/edit"
+        options={{
+          title: 'Edit Event',
+          presentation: 'modal',
+          gestureEnabled: true,
+          headerLeft: () => <ModalClose />,
+        }}
+      />
       <Stack.Screen name="e/[slug]" options={{ headerShown: false }} />
     </Stack>
   );
