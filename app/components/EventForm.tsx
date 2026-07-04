@@ -128,18 +128,23 @@ function toTimeInputValue(d: Date): string {
 }
 
 // @react-native-community/datetimepicker throws when rendered on web, so web
-// gets the browser's native pickers styled to match the paper form fields.
-const webPickerStyle = {
-  backgroundColor: '#FFFFFF',
-  color: colors.text,
-  colorScheme: 'light',
-  border: `1px solid ${colors.cardBorder}`,
-  borderRadius: '12px',
-  padding: '12px',
-  fontSize: '16px',
-  fontFamily: 'inherit',
+// gets the browser's native pickers. Rather than revealing a separate inline
+// input (which pushes the rest of the form down), an invisible native input is
+// laid directly over each date/time button — tapping it opens the browser's
+// floating calendar/clock popup, so the form layout never shifts.
+const webPickerOverlayStyle = {
+  position: 'absolute',
+  top: 0,
+  left: 0,
   width: '100%',
-  boxSizing: 'border-box',
+  height: '100%',
+  margin: 0,
+  padding: 0,
+  border: 'none',
+  background: 'transparent',
+  opacity: 0,
+  cursor: 'pointer',
+  colorScheme: 'light',
 } as const;
 
 export function EventForm({ initial, submitLabel, onSubmit, footer }: Props) {
@@ -209,6 +214,54 @@ export function EventForm({ initial, submitLabel, onSubmit, footer }: Props) {
     if (selected) setDate(selected);
   }
 
+  // Web: apply a value from the native <input type="date|time"> overlay.
+  function updateDate(kind: 'date' | 'time', value: string) {
+    if (!value) return;
+    const next = new Date(date);
+    if (kind === 'date') {
+      const [y, m, d] = value.split('-').map(Number);
+      next.setFullYear(y, m - 1, d);
+    } else {
+      const [h, min] = value.split(':').map(Number);
+      next.setHours(h, min);
+    }
+    setDate(next);
+  }
+
+  // One WHEN button. On web the button is a plain view with an invisible native
+  // picker overlaid on top (opens a floating popup — no layout shift). On native
+  // it's a Pressable that toggles the inline DateTimePicker below.
+  function renderPickerField(kind: 'date' | 'time') {
+    const labelText =
+      kind === 'date' ? formatEventDate(date.toISOString()) : formatEventTime(date.toISOString());
+    if (Platform.OS === 'web') {
+      return (
+        <View style={styles.dateButtonWrap}>
+          <View style={[styles.card, styles.dateButton]}>
+            <Text style={styles.dateText}>{labelText}</Text>
+          </View>
+          {React.createElement('input', {
+            type: kind,
+            value: kind === 'date' ? toDateInputValue(date) : toTimeInputValue(date),
+            onChange: (e: { target: { value: string } }) => updateDate(kind, e.target.value),
+            onClick: (e: { currentTarget: { showPicker?: () => void } }) =>
+              e.currentTarget.showPicker?.(),
+            'aria-label': kind === 'date' ? 'Event date' : 'Event time',
+            style: webPickerOverlayStyle,
+          })}
+        </View>
+      );
+    }
+    return (
+      <PaperPressable
+        style={styles.dateButton}
+        onPress={() => setPicker(picker === kind ? null : kind)}
+      >
+        <Text style={styles.dateText}>{labelText}</Text>
+      </PaperPressable>
+    );
+  }
+
   async function onPickPhoto() {
     if (uploadingCover) return;
     setUploadingCover(true);
@@ -260,7 +313,10 @@ export function EventForm({ initial, submitLabel, onSubmit, footer }: Props) {
           onChangeText={setTitle}
           placeholder="Untitled Event"
           maxLength={LIMITS.title}
-          style={titleFontStyle(titleFont)}
+          // Pin the line box so switching fonts only swaps the glyphs — the
+          // field keeps the same height instead of growing for tall faces
+          // (Pacifico/Bungee) and shrinking for compact ones.
+          style={[titleFontStyle(titleFont), styles.titleFieldInput]}
         />
 
         <View style={styles.fontBar}>
@@ -326,48 +382,17 @@ export function EventForm({ initial, submitLabel, onSubmit, footer }: Props) {
         <View style={{ gap: spacing.xs }}>
           <SectionLabel>When</SectionLabel>
           <View style={styles.dateRow}>
-            <PaperPressable
-              style={styles.dateButton}
-              onPress={() => setPicker(picker === 'date' ? null : 'date')}
-            >
-              <Text style={styles.dateText}>{formatEventDate(date.toISOString())}</Text>
-            </PaperPressable>
-            <PaperPressable
-              style={styles.dateButton}
-              onPress={() => setPicker(picker === 'time' ? null : 'time')}
-            >
-              <Text style={styles.dateText}>{formatEventTime(date.toISOString())}</Text>
-            </PaperPressable>
+            {renderPickerField('date')}
+            {renderPickerField('time')}
           </View>
-          {picker ? (
-            Platform.OS === 'web' ? (
-              React.createElement('input', {
-                type: picker,
-                value: picker === 'date' ? toDateInputValue(date) : toTimeInputValue(date),
-                onChange: (e: { target: { value: string } }) => {
-                  const value = e.target.value;
-                  if (!value) return;
-                  const next = new Date(date);
-                  if (picker === 'date') {
-                    const [y, m, d] = value.split('-').map(Number);
-                    next.setFullYear(y, m - 1, d);
-                  } else {
-                    const [h, min] = value.split(':').map(Number);
-                    next.setHours(h, min);
-                  }
-                  setDate(next);
-                },
-                style: webPickerStyle,
-              })
-            ) : (
-              <DateTimePicker
-                value={date}
-                mode={picker}
-                display={Platform.OS === 'ios' ? 'spinner' : 'default'}
-                onChange={onPickerChange}
-                themeVariant="light"
-              />
-            )
+          {Platform.OS !== 'web' && picker ? (
+            <DateTimePicker
+              value={date}
+              mode={picker}
+              display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+              onChange={onPickerChange}
+              themeVariant="light"
+            />
           ) : null}
         </View>
 
@@ -567,6 +592,10 @@ const styles = StyleSheet.create({
     paddingVertical: 14,
     fontSize: 16,
   },
+  // Fixed line box so the title field height stays constant across title fonts.
+  titleFieldInput: {
+    lineHeight: 24,
+  },
   sectionLabel: {
     ...kicker(light.text3),
   },
@@ -678,6 +707,12 @@ const styles = StyleSheet.create({
   dateRow: {
     flexDirection: 'row',
     gap: spacing.sm,
+  },
+  // Web wraps each date button so the invisible native <input> overlay can be
+  // absolutely positioned over it (opens the picker without shifting the form).
+  dateButtonWrap: {
+    flex: 1,
+    position: 'relative',
   },
   dateButton: {
     flex: 1,
