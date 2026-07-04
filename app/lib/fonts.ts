@@ -13,25 +13,25 @@ export const FONTS_TO_LOAD = {
   Archivo_900Black,
 };
 
-// The app's display voice — a serif (PlayfairDisplay) for editorial headlines,
-// giving the "Known"-style warm, quiet-luxury feel. Archivo Black is still used
-// for cover event titles where a poster-grade weight is needed.
-export const DISPLAY_FONT = 'PlayfairDisplay_700Bold';
-export const DISPLAY_FONT_HEAVY = 'Archivo_800ExtraBold'; // poster/cover weight
+// The app's display voice — a clean grotesque sans (Archivo), for the calm
+// "Known" quiet-luxury feel. NOTE: do NOT use Playfair as the default display
+// face — it reads as dated/"1800s" here; serif is kept only as the opt-in
+// `literary` event-title choice below.
+export const DISPLAY_FONT = 'Archivo_800ExtraBold';
+export const DISPLAY_FONT_HEAVY = 'Archivo_900Black'; // poster/cover weight
+export const SERIF_FONT = 'PlayfairDisplay_700Bold'; // opt-in literary title only
 export const displayTitle: TextStyle = { fontFamily: DISPLAY_FONT, fontWeight: 'normal' };
 
-// Partiful statement type: massive Archivo Black at very tight negative tracking
-// (~-0.03em) and compressed line-height (~0.9), the way Partiful Display reads.
-// letterSpacing is absolute px in RN, so it scales with the font size.
+// Statement type: clean Archivo grotesque at tight negative tracking. Pass
+// weight:'heavy'/'black' for poster/cover-grade Archivo Black. letterSpacing is
+// absolute px in RN, so it scales with the font size.
 export function display(
   size: number,
-  opts?: { weight?: 'black' | 'heavy' | 'serif'; lineHeight?: number; tracking?: number }
+  opts?: { weight?: 'black' | 'heavy'; lineHeight?: number; tracking?: number }
 ): TextStyle {
-  // 'serif' or default = PlayfairDisplay (editorial), 'black'/'heavy' = Archivo (poster)
-  const isSerif = !opts?.weight || opts.weight === 'serif';
-  const family = isSerif ? DISPLAY_FONT : DISPLAY_FONT_HEAVY;
-  const tracking = opts?.tracking ?? (isSerif ? -0.02 : -0.03);
-  const lh = opts?.lineHeight ?? (size >= 56 ? 0.92 : size >= 32 ? 1.0 : 1.1);
+  const family = opts?.weight ? DISPLAY_FONT_HEAVY : DISPLAY_FONT;
+  const tracking = opts?.tracking ?? -0.03;
+  const lh = opts?.lineHeight ?? (size >= 56 ? 0.94 : size >= 32 ? 1.02 : 1.12);
   return {
     fontFamily: family,
     fontWeight: 'normal',
