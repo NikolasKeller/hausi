@@ -5,7 +5,7 @@ import { serveStatic } from '@hono/node-server/serve-static';
 import { Hono } from 'hono';
 import { cors } from 'hono/cors';
 import { logger } from 'hono/logger';
-import { authRoutes } from './routes/auth.js';
+import { authRoutes, INVITE_CODE } from './routes/auth.js';
 import { eventRoutes } from './routes/events.js';
 import { notificationRoutes } from './routes/notifications.js';
 import { discoverRoutes } from './routes/discover.js';
@@ -20,6 +20,8 @@ app.use('/api/*', cors());
 // routes (the SPA has a /notifications page, the API a /notifications feed).
 const api = new Hono();
 api.get('/health', (c) => c.json({ name: 'Hausi API', ok: true }));
+// Public client config — lets the app know whether to ask for an invite code.
+api.get('/config', (c) => c.json({ inviteRequired: INVITE_CODE != null }));
 api.route('/auth', authRoutes);
 api.route('/events', eventRoutes);
 api.route('/notifications', notificationRoutes);

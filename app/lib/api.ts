@@ -88,10 +88,13 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
 }
 
 export const api = {
-  requestPhoneCode(phone: string) {
+  config() {
+    return request<{ inviteRequired: boolean }>('/config');
+  },
+  requestPhoneCode(phone: string, invite?: string) {
     return request<PhoneRequestResponse>('/auth/phone/request', {
       method: 'POST',
-      body: JSON.stringify({ phone }),
+      body: JSON.stringify(invite ? { phone, invite } : { phone }),
     });
   },
   verifyPhoneCode(phone: string, code: string) {

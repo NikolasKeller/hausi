@@ -113,8 +113,18 @@ screen, installable via "Add to Home Screen") alongside the API under `/api`.
 3. Set the **`JWT_SECRET`** variable (e.g. `openssl rand -hex 32`); the server
    refuses to boot in production without it. `DATABASE_URL` defaults to
    `file:/data/hausi.db` — override only if you mount the volume elsewhere.
-4. Generate a public domain (service → Settings → Networking) and share
+4. *(Recommended for a public link)* set **`INVITE_CODE`** to a shared passcode.
+   Because there is no SMS provider, the login code is shown on screen, so
+   without a gate anyone with the URL could sign in as any phone number. With
+   `INVITE_CODE` set, the app asks friends for the passcode before sending a
+   code — share it with them out-of-band. Leave it unset for open signup.
+5. Generate a public domain (service → Settings → Networking) and share
    `https://<your-domain>/` — invite links (`/e/<slug>`) work directly.
+
+> **How login works here:** there's no SMS gateway wired up, so after entering
+> a phone number the 6-digit code appears on screen (as a mock text message)
+> and you type it in. That's enough for friends to make accounts; wiring a real
+> SMS provider is a later step.
 
 On iPhones: open the link in Safari → Share → **Add to Home Screen** to get the
 full-screen app. Android/Chrome offers "Install app" automatically.
