@@ -55,9 +55,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           // cookie is HttpOnly so we can't read the token; same-origin requests
           // carry it automatically, so no Bearer token is needed.
           try {
-            const { user: cookieUser } = await api.sessionFromCookie();
+            const { token: cookieToken, user: cookieUser } = await api.sessionFromCookie();
+            // Re-hydrate the Bearer token too, so it's sent on future calls and
+            // a later 401 (cookie expired / user gone) still triggers sign-out
+            // instead of stranding the session on a dead cookie.
+            setAuthToken(cookieToken);
             setUser(cookieUser);
-            await storage.setItemAsync(USER_KEY, JSON.stringify(cookieUser));
+            await Promise.all([
+              storage.setItemAsync(TOKEN_KEY, cookieToken),
+              storage.setItemAsync(USER_KEY, JSON.stringify(cookieUser)),
+            ]);
             if (cookieUser.name?.trim()) setWelcomeBack(cookieUser.name.trim().split(' ')[0]);
           } catch {
             // No valid cookie session — stay signed out.
