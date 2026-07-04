@@ -42,6 +42,35 @@ const STATUS_SECTIONS: { status: RsvpStatus; title: string }[] = [
   { status: 'CANT', title: "Can't go" },
 ];
 
+// One tappable row in the host "More" menu.
+function ActionRow({
+  icon,
+  label,
+  color,
+  divider,
+  onPress,
+}: {
+  icon: React.ComponentProps<typeof Ionicons>['name'];
+  label: string;
+  color: string;
+  divider?: string;
+  onPress: () => void;
+}) {
+  return (
+    <Pressable
+      onPress={onPress}
+      style={({ pressed }) => [
+        styles.menuRow,
+        divider ? { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: divider } : null,
+        pressed && { opacity: 0.55 },
+      ]}
+    >
+      <Ionicons name={icon} size={20} color={color} />
+      <Text style={[styles.menuRowText, { color }]}>{label}</Text>
+    </Pressable>
+  );
+}
+
 export default function EventScreen() {
   const { slug } = useLocalSearchParams<{ slug: string }>();
   const router = useRouter();
@@ -53,6 +82,7 @@ export default function EventScreen() {
   const [commentText, setCommentText] = useState('');
   const [sendingComment, setSendingComment] = useState(false);
   const [showAllGuests, setShowAllGuests] = useState(false);
+  const [menuOpen, setMenuOpen] = useState(false);
 
   const load = useCallback(async () => {
     if (!slug) return;
@@ -466,47 +496,6 @@ export default function EventScreen() {
               </Glass>
             ) : null}
 
-            {event.canManage ? (
-              <View style={{ gap: spacing.sm }}>
-                {!isCanceled ? (
-                  <View style={styles.hostActions}>
-                    <Button
-                      title="Edit event"
-                      variant="ghost"
-                      tone={ink.dark ? 'paper' : 'ink'}
-                      onPress={() => router.push(`/event/${event.slug}/edit`)}
-                      style={{ flex: 1 }}
-                    />
-                    <Button
-                      title={event.rsvpsOpen ? 'Close RSVPs' : 'Open RSVPs'}
-                      variant="ghost"
-                      tone={ink.dark ? 'paper' : 'ink'}
-                      onPress={toggleRsvpsOpen}
-                      style={{ flex: 1 }}
-                    />
-                  </View>
-                ) : null}
-                {event.isHost ? (
-                  <View style={styles.hostActions}>
-                    {!isCanceled ? (
-                      <Button
-                        title="Cancel event"
-                        variant="danger"
-                        onPress={confirmCancel}
-                        style={{ flex: 1 }}
-                      />
-                    ) : null}
-                    <Button
-                      title="Delete"
-                      variant="danger"
-                      onPress={confirmDelete}
-                      style={{ flex: 1 }}
-                    />
-                  </View>
-                ) : null}
-              </View>
-            ) : null}
-
             {showAllGuests ? (
             <>
             <View style={[styles.divider, { backgroundColor: ink.hairline }]} />
@@ -651,10 +640,83 @@ export default function EventScreen() {
         hitSlop={10}
         style={[styles.backFab, { top: insets.top + spacing.sm }]}
       >
-        <Glass tint={ink.glassTint} radius={999} style={styles.backFabInner}>
+        <Glass tint={ink.glassTint} radius={999} style={styles.fabInner}>
           <Ionicons name="chevron-back" size={24} color={ink.text} />
         </Glass>
       </Pressable>
+
+      {/* Host controls live behind this "⋯ More" menu instead of a stack of
+          inline buttons in the body. */}
+      {event.canManage ? (
+        <Pressable
+          onPress={() => setMenuOpen(true)}
+          hitSlop={10}
+          style={[styles.moreFab, { top: insets.top + spacing.sm }]}
+        >
+          <Glass tint={ink.glassTint} radius={999} style={styles.fabInner}>
+            <Ionicons name="ellipsis-horizontal" size={22} color={ink.text} />
+          </Glass>
+        </Pressable>
+      ) : null}
+
+      {menuOpen ? (
+        <View style={styles.menuOverlay}>
+          <Pressable
+            style={[StyleSheet.absoluteFill, styles.menuBackdrop]}
+            onPress={() => setMenuOpen(false)}
+          />
+          <View style={[styles.menuSheetWrap, { paddingBottom: insets.bottom + spacing.lg }]}>
+            <Glass tint={ink.dark ? 'dark' : 'light'} radius={radius.lg} style={styles.menuSheet}>
+              <Text style={[styles.menuTitle, { color: ink.subtext }]}>Manage event</Text>
+              <ActionRow
+                icon="create-outline"
+                label="Event settings"
+                color={ink.text}
+                onPress={() => {
+                  setMenuOpen(false);
+                  router.push(`/event/${event.slug}/edit`);
+                }}
+              />
+              {!isCanceled ? (
+                <ActionRow
+                  icon={event.rsvpsOpen ? 'lock-closed-outline' : 'lock-open-outline'}
+                  label={event.rsvpsOpen ? 'Close RSVPs' : 'Open RSVPs'}
+                  color={ink.text}
+                  divider={ink.hairline}
+                  onPress={() => {
+                    setMenuOpen(false);
+                    toggleRsvpsOpen();
+                  }}
+                />
+              ) : null}
+              {event.isHost && !isCanceled ? (
+                <ActionRow
+                  icon="close-circle-outline"
+                  label="Cancel event"
+                  color={colors.danger}
+                  divider={ink.hairline}
+                  onPress={() => {
+                    setMenuOpen(false);
+                    confirmCancel();
+                  }}
+                />
+              ) : null}
+              {event.isHost ? (
+                <ActionRow
+                  icon="trash-outline"
+                  label="Delete event"
+                  color={colors.danger}
+                  divider={ink.hairline}
+                  onPress={() => {
+                    setMenuOpen(false);
+                    confirmDelete();
+                  }}
+                />
+              ) : null}
+            </Glass>
+          </View>
+        </View>
+      ) : null}
     </ThemeBackground>
   );
 }
@@ -673,11 +735,47 @@ const styles = StyleSheet.create({
     left: spacing.lg,
     zIndex: 20,
   },
-  backFabInner: {
+  moreFab: {
+    position: 'absolute',
+    right: spacing.lg,
+    zIndex: 20,
+  },
+  fabInner: {
     width: 40,
     height: 40,
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  menuOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    zIndex: 30,
+    justifyContent: 'flex-end',
+  },
+  menuBackdrop: {
+    backgroundColor: 'rgba(0,0,0,0.35)',
+  },
+  menuSheetWrap: {
+    paddingHorizontal: spacing.lg,
+  },
+  menuSheet: {
+    padding: spacing.xs,
+    overflow: 'hidden',
+  },
+  menuTitle: {
+    ...kicker(),
+    paddingHorizontal: spacing.md,
+    paddingTop: spacing.sm,
+    paddingBottom: spacing.xs,
+  },
+  menuRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.md,
+    paddingVertical: 14,
+    paddingHorizontal: spacing.md,
+  },
+  menuRowText: {
+    ...uiText(16, '600'),
   },
   errorEmoji: { fontSize: 48 },
   errorText: { color: colors.text, ...uiText(17, '500'), textAlign: 'center' },
@@ -898,10 +996,6 @@ const styles = StyleSheet.create({
   plusOneTag: {
     fontSize: 12,
     fontStyle: 'italic',
-  },
-  hostActions: {
-    flexDirection: 'row',
-    gap: spacing.sm,
   },
   divider: {
     height: 2,
