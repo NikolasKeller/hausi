@@ -15,7 +15,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import type { ExploreEvent, HomeFeed } from '../../shared/types';
 import { api } from '../../lib/api';
 import { useAuth } from '../../lib/auth';
-import { getRecentEvents, type RecentEvent } from '../../lib/recents';
+import { getRecentEvents, reconcileRecents, type RecentEvent } from '../../lib/recents';
 import { EVENT_TEMPLATES, type EventTemplate } from '../../lib/eventTemplates';
 import { colors, radius, spacing } from '../../lib/theme';
 import { titleFontStyle, display, uiText, kicker } from '../../lib/fonts';
@@ -62,11 +62,22 @@ function HomeScreen() {
   }, [welcomeBack, dismissWelcome]);
 
   const fetchAll = useCallback(async () => {
-    const [homeRes, recentList, notifRes] = await Promise.all([
+    const [homeRes, storedRecents, notifRes] = await Promise.all([
       api.home(),
       getRecentEvents(),
       api.notifications(),
     ]);
+    // Recents are cached locally per device, so prune any whose event has since
+    // been deleted server-side. Keep the cached list on a network hiccup.
+    let recentList = storedRecents;
+    if (storedRecents.length > 0) {
+      try {
+        const { slugs } = await api.existingEvents(storedRecents.map((r) => r.slug));
+        recentList = await reconcileRecents(slugs);
+      } catch {
+        // Leave recents as-is rather than blanking the section.
+      }
+    }
     return { homeRes, recentList, unread: notifRes.unread };
   }, []);
 

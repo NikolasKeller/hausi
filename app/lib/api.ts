@@ -140,6 +140,14 @@ export const api = {
   eventBySlug(slug: string) {
     return request<{ event: EventDetail }>(`/events/by-slug/${encodeURIComponent(slug)}`);
   },
+  // Returns the subset of the given slugs whose event still exists, so the
+  // client can prune deleted events from its local "recently viewed" cache.
+  existingEvents(slugs: string[]) {
+    return request<{ slugs: string[] }>('/events/exists', {
+      method: 'POST',
+      body: JSON.stringify({ slugs }),
+    });
+  },
   updateEvent(id: string, data: Partial<EventInput>) {
     return request<{ event: EventDetail }>(`/events/${id}`, {
       method: 'PATCH',

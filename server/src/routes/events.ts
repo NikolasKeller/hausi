@@ -237,6 +237,23 @@ eventRoutes.get('/by-slug/:slug', async (c) => {
   return c.json({ event: toEventDetail(event, c.get('userId')) });
 });
 
+// Given a list of slugs, return the subset that still exists. The app caches
+// "recently viewed" events locally per device, so this lets it prune entries
+// whose event has since been deleted (by any host, on any device).
+const existsSchema = z.object({
+  slugs: z.array(z.string().trim().min(1)).max(50),
+});
+eventRoutes.post('/exists', async (c) => {
+  const parsed = existsSchema.safeParse(await c.req.json().catch(() => ({})));
+  if (!parsed.success) return c.json({ error: 'Invalid request' }, 400);
+  if (parsed.data.slugs.length === 0) return c.json({ slugs: [] });
+  const rows = await db.event.findMany({
+    where: { slug: { in: parsed.data.slugs } },
+    select: { slug: true },
+  });
+  return c.json({ slugs: rows.map((r) => r.slug) });
+});
+
 eventRoutes.get('/:id', async (c) => {
   const event = await db.event.findUnique({
     where: { id: c.req.param('id') },
