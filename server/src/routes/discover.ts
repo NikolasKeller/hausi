@@ -34,7 +34,7 @@ discoverRoutes.get('/home', async (c) => {
 
   const explore = events.map((e) => toExploreEvent(e, userId, friendIds));
   const trendingNearby = explore
-    .filter((e) => e.city.toLowerCase() === me.city.toLowerCase())
+    .filter((e) => e.city.trim().toLowerCase() === me.city.trim().toLowerCase())
     .sort(byInterest)
     .slice(0, 10);
   const palsGoing = explore
@@ -54,35 +54,47 @@ discoverRoutes.get('/home', async (c) => {
 // Public events filtered by city and category.
 discoverRoutes.get('/explore', async (c) => {
   const userId = c.get('userId');
-  const city = c.req.query('city')?.trim();
+  const wantedCity = c.req.query('city')?.trim().toLowerCase();
   const categoryParam = c.req.query('category')?.trim();
   const category = CATEGORIES.includes(categoryParam as Category)
     ? (categoryParam as Category)
     : null;
 
+  // Category is a controlled enum so it filters in the DB; city is matched in
+  // JS below so casing/whitespace differences ("san francisco" vs "San
+  // Francisco") still line up — SQLite equality is case-sensitive.
   const events = await db.event.findMany({
     where: {
       isPublic: true,
       canceledAt: null,
       date: { gte: new Date() },
-      ...(city ? { city: { equals: city } } : {}),
       ...(category ? { category } : {}),
     },
     include: exploreInclude,
     orderBy: { date: 'asc' },
-    take: 100,
+    take: 200,
   });
 
   const mutuals = await findMutuals(db, userId);
   const friendIds = new Set(mutuals.keys());
-  const results = events.map((e) => toExploreEvent(e, userId, friendIds)).sort(byInterest);
+  const results = events
+    .map((e) => toExploreEvent(e, userId, friendIds))
+    .filter((e) => !wantedCity || e.city.trim().toLowerCase() === wantedCity)
+    .sort(byInterest);
 
-  // Distinct cities that currently have public events, for the city picker.
+  // Cities with public events, for the picker. Deduped case-insensitively
+  // (keeping the first display casing seen) so one city isn't listed twice.
   const cityRows = await db.event.findMany({
     where: { isPublic: true, canceledAt: null, date: { gte: new Date() }, city: { not: '' } },
     select: { city: true },
-    distinct: ['city'],
   });
+  const cityByKey = new Map<string, string>();
+  for (const { city } of cityRows) {
+    const label = city.trim();
+    const key = label.toLowerCase();
+    if (label && !cityByKey.has(key)) cityByKey.set(key, label);
+  }
+  const cities = [...cityByKey.values()].sort();
 
-  return c.json({ events: results, cities: cityRows.map((r) => r.city).sort() });
+  return c.json({ events: results, cities });
 });
