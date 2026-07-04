@@ -5,6 +5,7 @@ import type {
   EventDetail,
   EventInput,
   EventSummary,
+  NotificationEntry,
   RsvpStatus,
 } from '../shared/types';
 
@@ -87,6 +88,27 @@ export const api = {
   },
   deleteEvent(id: string) {
     return request<{ ok: boolean }>(`/events/${id}`, { method: 'DELETE' });
+  },
+  cancelEvent(id: string) {
+    return request<{ event: EventDetail }>(`/events/${id}/cancel`, { method: 'POST' });
+  },
+  addCohost(eventId: string, email: string) {
+    return request<{ event: EventDetail }>(`/events/${eventId}/cohosts`, {
+      method: 'POST',
+      body: JSON.stringify({ email }),
+    });
+  },
+  removeCohost(eventId: string, userId: string) {
+    return request<{ event: EventDetail }>(
+      `/events/${eventId}/cohosts/${encodeURIComponent(userId)}`,
+      { method: 'DELETE' }
+    );
+  },
+  notifications() {
+    return request<{ notifications: NotificationEntry[]; unread: number }>('/notifications');
+  },
+  markNotificationsRead() {
+    return request<{ ok: boolean }>('/notifications/read-all', { method: 'POST' });
   },
   rsvp(eventId: string, status: RsvpStatus, plusOnes = 0) {
     return request<{ event: EventDetail }>(`/events/${eventId}/rsvp`, {

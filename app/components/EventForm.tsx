@@ -10,26 +10,47 @@ import {
 } from 'react-native';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { useHeaderHeight } from 'expo-router/react-navigation';
-import { LIMITS, type CoverTheme, type EventInput } from '../shared/types';
+import {
+  EFFECTS,
+  LIMITS,
+  TITLE_FONTS,
+  type CoverTheme,
+  type Effect,
+  type EventInput,
+  type TitleFont,
+} from '../shared/types';
 import { colors, radius, spacing } from '../lib/theme';
 import { COVER_LIST } from '../lib/covers';
+import { TITLE_FONT_LABELS, titleFontStyle } from '../lib/fonts';
 import { CoverGradient } from './CoverGradient';
+import { EffectOverlay } from './EffectOverlay';
 import { Button, ErrorText, Field } from './ui';
 import { formatEventDate, formatEventTime } from './EventCard';
+
+const EFFECT_LABELS: Record<Effect, string> = {
+  none: '✖️ None',
+  confetti: '🎊 Confetti',
+  sparkles: '✨ Sparkles',
+  balloons: '🎈 Balloons',
+};
 
 export interface EventFormValues {
   title: string;
   description: string;
   location: string;
   coverTheme: CoverTheme;
+  titleFont: TitleFont;
+  effect: Effect;
   date: Date;
   maxGuests: number | null;
+  plusOneLimit: number;
 }
 
 interface Props {
   initial?: Partial<EventFormValues>;
   submitLabel: string;
   onSubmit: (data: EventInput) => Promise<void>;
+  footer?: React.ReactNode;
 }
 
 function defaultDate(): Date {
@@ -39,16 +60,19 @@ function defaultDate(): Date {
   return d;
 }
 
-export function EventForm({ initial, submitLabel, onSubmit }: Props) {
+export function EventForm({ initial, submitLabel, onSubmit, footer }: Props) {
   const headerHeight = useHeaderHeight();
   const [title, setTitle] = useState(initial?.title ?? '');
   const [description, setDescription] = useState(initial?.description ?? '');
   const [location, setLocation] = useState(initial?.location ?? '');
   const [coverTheme, setCoverTheme] = useState<CoverTheme>(initial?.coverTheme ?? 'sunset');
+  const [titleFont, setTitleFont] = useState<TitleFont>(initial?.titleFont ?? 'classic');
+  const [effect, setEffect] = useState<Effect>(initial?.effect ?? 'none');
   const [date, setDate] = useState<Date>(initial?.date ?? defaultDate());
   const [maxGuests, setMaxGuests] = useState(
     initial?.maxGuests != null ? String(initial.maxGuests) : ''
   );
+  const [plusOneLimit, setPlusOneLimit] = useState<number>(initial?.plusOneLimit ?? 1);
   const [picker, setPicker] = useState<'date' | 'time' | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
@@ -71,8 +95,11 @@ export function EventForm({ initial, submitLabel, onSubmit }: Props) {
         description: description.trim(),
         location: location.trim(),
         coverTheme,
+        titleFont,
+        effect,
         date: date.toISOString(),
         maxGuests: guests,
+        plusOneLimit,
       });
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Something went wrong');
@@ -97,10 +124,24 @@ export function EventForm({ initial, submitLabel, onSubmit }: Props) {
         keyboardShouldPersistTaps="handled"
       >
         <CoverGradient theme={coverTheme} style={styles.preview}>
-          <Text style={styles.previewTitle} numberOfLines={3}>
+          <EffectOverlay effect={effect} height={140} />
+          <Text style={[styles.previewTitle, titleFontStyle(titleFont)]} numberOfLines={3}>
             {title.trim() || 'Untitled Event'}
           </Text>
         </CoverGradient>
+
+        <View style={styles.fontRow}>
+          {TITLE_FONTS.map((f) => (
+            <Pressable
+              key={f}
+              onPress={() => setTitleFont(f)}
+              style={[styles.fontChip, titleFont === f && styles.chipActive]}
+            >
+              <Text style={[styles.fontChipSample, titleFontStyle(f)]}>Aa</Text>
+              <Text style={styles.chipLabel}>{TITLE_FONT_LABELS[f]}</Text>
+            </Pressable>
+          ))}
+        </View>
 
         <View style={{ gap: spacing.xs }}>
           <Text style={styles.label}>Cover theme</Text>
@@ -117,6 +158,21 @@ export function EventForm({ initial, submitLabel, onSubmit }: Props) {
                 >
                   <Text style={styles.themeEmoji}>{c.emoji}</Text>
                 </CoverGradient>
+              </Pressable>
+            ))}
+          </View>
+        </View>
+
+        <View style={{ gap: spacing.xs }}>
+          <Text style={styles.label}>Effect</Text>
+          <View style={styles.themeRow}>
+            {EFFECTS.map((e) => (
+              <Pressable
+                key={e}
+                onPress={() => setEffect(e)}
+                style={[styles.effectChip, effect === e && styles.chipActive]}
+              >
+                <Text style={styles.chipLabel}>{EFFECT_LABELS[e]}</Text>
               </Pressable>
             ))}
           </View>
@@ -182,8 +238,30 @@ export function EventForm({ initial, submitLabel, onSubmit }: Props) {
           keyboardType="number-pad"
         />
 
+        <View style={styles.plusOneRow}>
+          <Text style={styles.plusOneLabel}>Plus ones per guest</Text>
+          <View style={styles.stepper}>
+            <Pressable
+              onPress={() => setPlusOneLimit(Math.max(0, plusOneLimit - 1))}
+              style={styles.stepButton}
+            >
+              <Text style={styles.stepText}>−</Text>
+            </Pressable>
+            <Text style={styles.plusOneValue}>
+              {plusOneLimit === 0 ? 'None' : `+${plusOneLimit}`}
+            </Text>
+            <Pressable
+              onPress={() => setPlusOneLimit(Math.min(LIMITS.plusOnes, plusOneLimit + 1))}
+              style={styles.stepButton}
+            >
+              <Text style={styles.stepText}>＋</Text>
+            </Pressable>
+          </View>
+        </View>
+
         <ErrorText message={error} />
         <Button title={submitLabel} onPress={submit} loading={saving} />
+        {footer}
       </ScrollView>
     </KeyboardAvoidingView>
   );
@@ -258,5 +336,82 @@ const styles = StyleSheet.create({
     color: colors.text,
     fontSize: 16,
     fontWeight: '600',
+  },
+  fontRow: {
+    flexDirection: 'row',
+    gap: spacing.sm,
+  },
+  fontChip: {
+    flex: 1,
+    alignItems: 'center',
+    gap: 2,
+    backgroundColor: colors.inputBg,
+    borderWidth: 2,
+    borderColor: colors.cardBorder,
+    borderRadius: radius.md,
+    paddingVertical: spacing.sm,
+  },
+  fontChipSample: {
+    color: colors.text,
+    fontSize: 20,
+  },
+  effectChip: {
+    backgroundColor: colors.inputBg,
+    borderWidth: 2,
+    borderColor: colors.cardBorder,
+    borderRadius: radius.pill,
+    paddingHorizontal: spacing.md,
+    paddingVertical: 8,
+  },
+  chipActive: {
+    borderColor: colors.accent,
+  },
+  chipLabel: {
+    color: colors.text,
+    fontSize: 13,
+    fontWeight: '600',
+  },
+  plusOneRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: colors.inputBg,
+    borderWidth: 1,
+    borderColor: colors.cardBorder,
+    borderRadius: radius.md,
+    padding: spacing.sm,
+    paddingHorizontal: spacing.md,
+  },
+  plusOneLabel: {
+    color: colors.text,
+    fontSize: 15,
+    fontWeight: '600',
+  },
+  stepper: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.md,
+  },
+  stepButton: {
+    width: 34,
+    height: 34,
+    borderRadius: 17,
+    backgroundColor: colors.card,
+    borderWidth: 1,
+    borderColor: colors.cardBorder,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  stepText: {
+    color: colors.text,
+    fontSize: 18,
+    fontWeight: '700',
+  },
+  plusOneValue: {
+    color: colors.accent,
+    fontSize: 16,
+    fontWeight: '800',
+    minWidth: 44,
+    textAlign: 'center',
   },
 });

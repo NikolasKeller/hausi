@@ -8,34 +8,69 @@ datasource db {
 }
 
 model User {
-  id           String    @id @default(cuid())
-  name         String
-  email        String    @unique
-  passwordHash String
-  avatarEmoji  String    @default("🙂")
-  createdAt    DateTime  @default(now())
-  events       Event[]   @relation("HostEvents")
+  id            String         @id @default(cuid())
+  name          String
+  email         String         @unique
+  passwordHash  String
+  avatarEmoji   String         @default("🙂")
+  createdAt     DateTime       @default(now())
+  events        Event[]        @relation("HostEvents")
+  rsvps         Rsvp[]
+  comments      Comment[]
+  cohosting     EventCohost[]
+  notifications Notification[]
+}
+
+// titleFont: classic | literary | fancy | eclectic
+// effect: none | confetti | sparkles | balloons
+model Event {
+  id           String        @id @default(cuid())
+  slug         String        @unique
+  title        String
+  description  String        @default("")
+  coverTheme   String        @default("sunset")
+  titleFont    String        @default("classic")
+  effect       String        @default("none")
+  date         DateTime
+  location     String        @default("")
+  maxGuests    Int?
+  plusOneLimit Int           @default(1)
+  rsvpsOpen    Boolean       @default(true)
+  canceledAt   DateTime?
+  hostId       String
+  host         User          @relation("HostEvents", fields: [hostId], references: [id], onDelete: Cascade)
+  createdAt    DateTime      @default(now())
   rsvps        Rsvp[]
   comments     Comment[]
+  cohosts      EventCohost[]
 }
 
-model Event {
-  id          String    @id @default(cuid())
-  slug        String    @unique
-  title       String
-  description String    @default("")
-  coverTheme  String    @default("sunset")
-  date        DateTime
-  location    String    @default("")
-  maxGuests   Int?
-  hostId      String
-  host        User      @relation("HostEvents", fields: [hostId], references: [id], onDelete: Cascade)
-  createdAt   DateTime  @default(now())
-  rsvps       Rsvp[]
-  comments    Comment[]
+model EventCohost {
+  id        String   @id @default(cuid())
+  eventId   String
+  event     Event    @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+
+  @@unique([eventId, userId])
 }
 
-// status: GOING | MAYBE | CANT (SQLite has no enums)
+// type: RSVP | COMMENT | EVENT_UPDATED | EVENT_CANCELED | WAITLIST_PROMOTED | COHOST_ADDED
+model Notification {
+  id        String    @id @default(cuid())
+  userId    String
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  type      String
+  text      String
+  eventSlug String?
+  readAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  @@index([userId, createdAt])
+}
+
+// status: GOING | MAYBE | CANT | WAITLIST (SQLite has no enums)
 model Rsvp {
   id        String   @id @default(cuid())
   eventId   String

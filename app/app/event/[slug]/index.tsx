@@ -17,7 +17,9 @@ import { LIMITS, type EventDetail, type RsvpStatus } from '../../../shared/types
 import { api } from '../../../lib/api';
 import { useAuth } from '../../../lib/auth';
 import { colors, radius, spacing } from '../../../lib/theme';
+import { titleFontStyle } from '../../../lib/fonts';
 import { CoverGradient } from '../../../components/CoverGradient';
+import { EffectOverlay } from '../../../components/EffectOverlay';
 import { Avatar } from '../../../components/Avatar';
 import { Button } from '../../../components/ui';
 import { formatEventDate, formatEventTime } from '../../../components/EventCard';
@@ -30,6 +32,7 @@ const RSVP_OPTIONS: { status: RsvpStatus; label: string; emoji: string }[] = [
 
 const STATUS_SECTIONS: { status: RsvpStatus; title: string }[] = [
   { status: 'GOING', title: 'Going' },
+  { status: 'WAITLIST', title: 'Waitlist' },
   { status: 'MAYBE', title: 'Maybe' },
   { status: 'CANT', title: "Can't go" },
 ];
@@ -120,6 +123,35 @@ export default function EventScreen() {
     ]);
   }
 
+  function confirmCancel() {
+    if (!event) return;
+    Alert.alert('Cancel event?', 'All guests will be notified. The page stays visible.', [
+      { text: 'Keep event', style: 'cancel' },
+      {
+        text: 'Cancel event',
+        style: 'destructive',
+        onPress: async () => {
+          try {
+            const res = await api.cancelEvent(event.id);
+            setEvent(res.event);
+          } catch (e) {
+            Alert.alert('Cancel failed', e instanceof Error ? e.message : 'Try again');
+          }
+        },
+      },
+    ]);
+  }
+
+  async function toggleRsvpsOpen() {
+    if (!event) return;
+    try {
+      const res = await api.updateEvent(event.id, { rsvpsOpen: !event.rsvpsOpen });
+      setEvent(res.event);
+    } catch (e) {
+      Alert.alert('Update failed', e instanceof Error ? e.message : 'Try again');
+    }
+  }
+
   async function sendComment() {
     if (!event || !commentText.trim() || sendingComment) return;
     setSendingComment(true);
@@ -155,13 +187,24 @@ export default function EventScreen() {
   const myRsvp = event.rsvps.find((r) => r.user.id === user?.id);
   const spotsLeft =
     event.maxGuests != null ? Math.max(0, event.maxGuests - event.counts.going) : null;
+  const isCanceled = event.canceledAt != null;
+  const rsvpLocked = isCanceled || (!event.rsvpsOpen && !event.canManage);
 
   return (
     <KeyboardAvoidingView style={{ flex: 1, backgroundColor: colors.bg }} behavior="padding">
       <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
         <CoverGradient theme={event.coverTheme} style={styles.hero}>
-          <Text style={styles.heroTitle}>{event.title}</Text>
+          <EffectOverlay effect={event.effect} height={260} />
+          <Text style={[styles.heroTitle, titleFontStyle(event.titleFont)]}>{event.title}</Text>
         </CoverGradient>
+
+        {isCanceled ? (
+          <View style={styles.canceledBanner}>
+            <Text style={styles.canceledBannerText}>
+              😢 This event was canceled by the host
+            </Text>
+          </View>
+        ) : null}
 
         <View style={styles.section}>
           <View style={styles.hostRow}>
@@ -170,6 +213,9 @@ export default function EventScreen() {
               <Text style={styles.hostedBy}>Hosted by</Text>
               <Text style={styles.hostName}>
                 {event.isHost ? `${event.host.name} (you)` : event.host.name}
+                {event.cohosts.length
+                  ? ` + ${event.cohosts.map((ch) => ch.name).join(', ')}`
+                  : ''}
               </Text>
             </View>
             <Pressable onPress={share} style={styles.shareButton}>
@@ -191,26 +237,50 @@ export default function EventScreen() {
 
           {event.description ? <Text style={styles.description}>{event.description}</Text> : null}
 
-          <View style={styles.rsvpRow}>
-            {RSVP_OPTIONS.map((opt) => {
-              const active = myRsvp?.status === opt.status;
-              return (
-                <Pressable
-                  key={opt.status}
-                  onPress={() => setRsvp(opt.status, active ? (myRsvp?.plusOnes ?? 0) : 0)}
-                  disabled={rsvpBusy}
-                  style={[styles.rsvpButton, active && styles.rsvpButtonActive]}
-                >
-                  <Text style={styles.rsvpEmoji}>{opt.emoji}</Text>
-                  <Text style={[styles.rsvpLabel, active && styles.rsvpLabelActive]}>
-                    {opt.label}
-                  </Text>
-                </Pressable>
-              );
-            })}
-          </View>
+          {rsvpLocked ? (
+            !isCanceled ? (
+              <View style={styles.lockedNote}>
+                <Text style={styles.lockedNoteText}>🔒 RSVPs are closed for this event</Text>
+              </View>
+            ) : null
+          ) : (
+            <View style={styles.rsvpRow}>
+              {RSVP_OPTIONS.map((opt) => {
+                const active =
+                  myRsvp?.status === opt.status ||
+                  (opt.status === 'GOING' && myRsvp?.status === 'WAITLIST');
+                return (
+                  <Pressable
+                    key={opt.status}
+                    onPress={() => setRsvp(opt.status, active ? (myRsvp?.plusOnes ?? 0) : 0)}
+                    disabled={rsvpBusy}
+                    style={[styles.rsvpButton, active && styles.rsvpButtonActive]}
+                  >
+                    <Text style={styles.rsvpEmoji}>{opt.emoji}</Text>
+                    <Text style={[styles.rsvpLabel, active && styles.rsvpLabelActive]}>
+                      {opt.status === 'GOING' && myRsvp?.status === 'WAITLIST'
+                        ? 'Waitlist'
+                        : opt.label}
+                    </Text>
+                  </Pressable>
+                );
+              })}
+            </View>
+          )}
 
-          {myRsvp?.status === 'GOING' ? (
+          {myRsvp?.status === 'WAITLIST' ? (
+            <View style={styles.lockedNote}>
+              <Text style={styles.lockedNoteText}>
+                ⏳ The event is full — you're #
+                {event.rsvps.filter((r) => r.status === 'WAITLIST').findIndex(
+                  (r) => r.user.id === user?.id
+                ) + 1}{' '}
+                on the waitlist
+              </Text>
+            </View>
+          ) : null}
+
+          {!rsvpLocked && myRsvp?.status === 'GOING' && event.plusOneLimit > 0 ? (
             <View style={styles.plusOnesRow}>
               <Text style={styles.plusOnesLabel}>Plus ones</Text>
               <View style={styles.stepper}>
@@ -224,13 +294,13 @@ export default function EventScreen() {
                 <Text style={styles.plusOnesValue}>+{myRsvp.plusOnes}</Text>
                 <Pressable
                   onPress={() =>
-                    setRsvp('GOING', Math.min(LIMITS.plusOnes, (myRsvp.plusOnes ?? 0) + 1))
+                    setRsvp('GOING', Math.min(event.plusOneLimit, (myRsvp.plusOnes ?? 0) + 1))
                   }
                   style={[
                     styles.stepButton,
-                    myRsvp.plusOnes >= LIMITS.plusOnes && { opacity: 0.4 },
+                    myRsvp.plusOnes >= event.plusOneLimit && { opacity: 0.4 },
                   ]}
-                  disabled={rsvpBusy || myRsvp.plusOnes >= LIMITS.plusOnes}
+                  disabled={rsvpBusy || myRsvp.plusOnes >= event.plusOneLimit}
                 >
                   <Text style={styles.stepText}>＋</Text>
                 </Pressable>
@@ -238,15 +308,42 @@ export default function EventScreen() {
             </View>
           ) : null}
 
-          {event.isHost ? (
-            <View style={styles.hostActions}>
-              <Button
-                title="Edit event"
-                variant="ghost"
-                onPress={() => router.push(`/event/${event.slug}/edit`)}
-                style={{ flex: 1 }}
-              />
-              <Button title="Delete" variant="danger" onPress={confirmDelete} style={{ flex: 1 }} />
+          {event.canManage ? (
+            <View style={{ gap: spacing.sm }}>
+              <View style={styles.hostActions}>
+                <Button
+                  title="Edit event"
+                  variant="ghost"
+                  onPress={() => router.push(`/event/${event.slug}/edit`)}
+                  style={{ flex: 1 }}
+                />
+                {!isCanceled ? (
+                  <Button
+                    title={event.rsvpsOpen ? 'Close RSVPs' : 'Open RSVPs'}
+                    variant="ghost"
+                    onPress={toggleRsvpsOpen}
+                    style={{ flex: 1 }}
+                  />
+                ) : null}
+              </View>
+              {event.isHost ? (
+                <View style={styles.hostActions}>
+                  {!isCanceled ? (
+                    <Button
+                      title="Cancel event"
+                      variant="danger"
+                      onPress={confirmCancel}
+                      style={{ flex: 1 }}
+                    />
+                  ) : null}
+                  <Button
+                    title="Delete"
+                    variant="danger"
+                    onPress={confirmDelete}
+                    style={{ flex: 1 }}
+                  />
+                </View>
+              ) : null}
             </View>
           ) : null}
 
@@ -256,6 +353,7 @@ export default function EventScreen() {
             Guest list{' '}
             <Text style={styles.sectionCount}>
               {event.counts.going} going · {event.counts.maybe} maybe
+              {event.counts.waitlist > 0 ? ` · ${event.counts.waitlist} waitlist` : ''}
             </Text>
           </Text>
           {STATUS_SECTIONS.map(({ status, title }) => {
@@ -264,25 +362,28 @@ export default function EventScreen() {
             return (
               <View key={status} style={{ gap: spacing.sm }}>
                 <Text style={styles.guestGroupTitle}>{title}</Text>
-                {guests.map((r) => (
-                  <View key={r.user.id} style={styles.guestRow}>
-                    <Avatar emoji={r.user.avatarEmoji} size={32} />
-                    <Text style={[styles.guestName, { flex: 1 }]}>
-                      {r.user.name}
-                      {r.plusOnes > 0 ? ` +${r.plusOnes}` : ''}
-                      {r.user.id === event.host.id ? '  👑' : ''}
-                    </Text>
-                    {event.isHost && r.user.id !== event.host.id ? (
-                      <Pressable
-                        onPress={() => confirmRemoveGuest(r.user.id, r.user.name)}
-                        style={styles.removeGuest}
-                        hitSlop={8}
-                      >
-                        <Text style={styles.removeGuestText}>✕</Text>
-                      </Pressable>
-                    ) : null}
-                  </View>
-                ))}
+                {guests.map((r) => {
+                  const isCohost = event.cohosts.some((ch) => ch.id === r.user.id);
+                  return (
+                    <View key={r.user.id} style={styles.guestRow}>
+                      <Avatar emoji={r.user.avatarEmoji} size={32} />
+                      <Text style={[styles.guestName, { flex: 1 }]}>
+                        {r.user.name}
+                        {r.plusOnes > 0 ? ` +${r.plusOnes}` : ''}
+                        {r.user.id === event.host.id ? '  👑' : isCohost ? '  🤝' : ''}
+                      </Text>
+                      {event.canManage && r.user.id !== event.host.id ? (
+                        <Pressable
+                          onPress={() => confirmRemoveGuest(r.user.id, r.user.name)}
+                          style={styles.removeGuest}
+                          hitSlop={8}
+                        >
+                          <Text style={styles.removeGuestText}>✕</Text>
+                        </Pressable>
+                      ) : null}
+                    </View>
+                  );
+                })}
               </View>
             );
           })}
@@ -365,6 +466,30 @@ const styles = StyleSheet.create({
     textShadowColor: 'rgba(0,0,0,0.4)',
     textShadowOffset: { width: 0, height: 2 },
     textShadowRadius: 8,
+  },
+  canceledBanner: {
+    backgroundColor: '#3A1B2A',
+    borderBottomWidth: 1,
+    borderColor: colors.danger,
+    padding: spacing.md,
+  },
+  canceledBannerText: {
+    color: colors.danger,
+    fontSize: 15,
+    fontWeight: '700',
+    textAlign: 'center',
+  },
+  lockedNote: {
+    backgroundColor: colors.card,
+    borderWidth: 1,
+    borderColor: colors.cardBorder,
+    borderRadius: radius.md,
+    padding: spacing.md,
+  },
+  lockedNoteText: {
+    color: colors.muted,
+    fontSize: 14,
+    textAlign: 'center',
   },
   section: {
     padding: spacing.md,

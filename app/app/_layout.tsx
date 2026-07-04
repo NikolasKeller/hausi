@@ -2,11 +2,14 @@ import React, { useEffect, useRef } from 'react';
 import { ActivityIndicator, View } from 'react-native';
 import { Stack, usePathname, useRouter, useSegments } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
+import { useFonts } from 'expo-font';
 import { AuthProvider, useAuth } from '../lib/auth';
+import { FONTS_TO_LOAD } from '../lib/fonts';
 import { colors } from '../lib/theme';
 
 function RootNavigator() {
   const { user, initializing } = useAuth();
+  const [fontsLoaded] = useFonts(FONTS_TO_LOAD);
   const segments = useSegments();
   const pathname = usePathname();
   const router = useRouter();
@@ -28,7 +31,7 @@ function RootNavigator() {
     }
   }, [user, initializing, segments, pathname, router]);
 
-  if (initializing) {
+  if (initializing || !fontsLoaded) {
     return (
       <View style={{ flex: 1, backgroundColor: colors.bg, alignItems: 'center', justifyContent: 'center' }}>
         <ActivityIndicator color={colors.accent} size="large" />
@@ -49,6 +52,7 @@ function RootNavigator() {
       <Stack.Screen name="(auth)" options={{ headerShown: false }} />
       <Stack.Screen name="index" options={{ headerShown: false }} />
       <Stack.Screen name="create" options={{ title: 'New Event', presentation: 'modal' }} />
+      <Stack.Screen name="notifications" options={{ title: 'Notifications' }} />
       <Stack.Screen name="event/[slug]/index" options={{ title: '', headerTransparent: true }} />
       <Stack.Screen name="event/[slug]/edit" options={{ title: 'Edit Event', presentation: 'modal' }} />
       <Stack.Screen name="e/[slug]" options={{ headerShown: false }} />

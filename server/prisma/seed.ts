@@ -10,8 +10,10 @@ function daysFromNow(days: number, hour = 19): Date {
 }
 
 async function main() {
+  await db.notification.deleteMany();
   await db.comment.deleteMany();
   await db.rsvp.deleteMany();
+  await db.eventCohost.deleteMany();
   await db.event.deleteMany();
   await db.user.deleteMany();
 
@@ -33,10 +35,14 @@ async function main() {
       description:
         'Golden hour, good people, better playlists. Bring a bottle and your best summer energy. 🌇',
       coverTheme: 'sunset',
+      titleFont: 'literary',
+      effect: 'sparkles',
       date: daysFromNow(5, 18),
       location: 'Dachterrasse, Müllerstraße 12',
       hostId: demo.id,
       maxGuests: 30,
+      plusOneLimit: 2,
+      cohosts: { create: [{ userId: mia.id }] },
       rsvps: {
         create: [
           { userId: demo.id, status: 'GOING' },
@@ -64,6 +70,8 @@ async function main() {
       title: 'Midnight Disco 🪩',
       description: 'Strictly disco. Dress code: something that sparkles.',
       coverTheme: 'disco',
+      titleFont: 'eclectic',
+      effect: 'confetti',
       date: daysFromNow(12, 23),
       location: 'Kellerbar, Hinterhof links',
       hostId: mia.id,
@@ -90,18 +98,25 @@ async function main() {
       title: 'Pasta Night 🍝',
       description: 'Handmade pasta, three sauces, zero rules. Vegetarian friendly.',
       coverTheme: 'forest',
+      titleFont: 'fancy',
       date: daysFromNow(2, 19),
       location: 'Bei Leo, Gartenstraße 4',
       hostId: leo.id,
-      maxGuests: 8,
+      maxGuests: 2,
+      plusOneLimit: 0,
       rsvps: {
         create: [
           { userId: leo.id, status: 'GOING' },
-          { userId: demo.id, status: 'MAYBE' },
+          { userId: demo.id, status: 'GOING' },
+          { userId: mia.id, status: 'WAITLIST' },
         ],
       },
       comments: {
-        create: [{ userId: leo.id, text: 'Send allergies my way before Friday!' }],
+        create: [
+          { userId: demo.id, text: 'is going 🎉', type: 'system' },
+          { userId: mia.id, text: 'joined the waitlist ⏳', type: 'system' },
+          { userId: leo.id, text: 'Send allergies my way before Friday!' },
+        ],
       },
     },
   });

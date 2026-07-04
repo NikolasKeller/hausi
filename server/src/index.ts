@@ -4,6 +4,7 @@ import { cors } from 'hono/cors';
 import { logger } from 'hono/logger';
 import { authRoutes } from './routes/auth.js';
 import { eventRoutes } from './routes/events.js';
+import { notificationRoutes } from './routes/notifications.js';
 
 const app = new Hono();
 
@@ -13,6 +14,7 @@ app.use('*', cors());
 app.get('/', (c) => c.json({ name: 'Hausi API', ok: true }));
 app.route('/auth', authRoutes);
 app.route('/events', eventRoutes);
+app.route('/notifications', notificationRoutes);
 
 app.onError((err, c) => {
   console.error(err);

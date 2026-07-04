@@ -23,6 +23,7 @@ export default function HomeScreen() {
   const [events, setEvents] = useState<EventSummary[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [unread, setUnread] = useState(0);
   const [error, setError] = useState<string | null>(null);
 
   const load = useCallback(async () => {
@@ -35,6 +36,10 @@ export default function HomeScreen() {
     } finally {
       setLoading(false);
     }
+    api
+      .notifications()
+      .then((res) => setUnread(res.unread))
+      .catch(() => {});
   }, []);
 
   const refresh = useCallback(async () => {
@@ -72,10 +77,20 @@ export default function HomeScreen() {
           <Text style={styles.greeting}>Hey {user?.name?.split(' ')[0]} 👋</Text>
           <Text style={styles.headerTitle}>Your Events</Text>
         </View>
-        <Pressable onPress={logout} style={styles.profile}>
-          <Avatar emoji={user?.avatarEmoji ?? '🙂'} size={40} />
-          <Text style={styles.logoutHint}>Log out</Text>
-        </Pressable>
+        <View style={styles.headerActions}>
+          <Pressable onPress={() => router.push('/notifications')} style={styles.bell} hitSlop={8}>
+            <Text style={styles.bellIcon}>🔔</Text>
+            {unread > 0 ? (
+              <View style={styles.badge}>
+                <Text style={styles.badgeText}>{unread > 9 ? '9+' : unread}</Text>
+              </View>
+            ) : null}
+          </Pressable>
+          <Pressable onPress={logout} style={styles.profile}>
+            <Avatar emoji={user?.avatarEmoji ?? '🙂'} size={40} />
+            <Text style={styles.logoutHint}>Log out</Text>
+          </Pressable>
+        </View>
       </View>
 
       {error && events.length > 0 ? (
@@ -153,6 +168,34 @@ const styles = StyleSheet.create({
     fontSize: 32,
     fontWeight: '800',
     letterSpacing: -1,
+  },
+  headerActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.md,
+  },
+  bell: {
+    padding: 4,
+  },
+  bellIcon: {
+    fontSize: 24,
+  },
+  badge: {
+    position: 'absolute',
+    top: 0,
+    right: -2,
+    backgroundColor: colors.danger,
+    borderRadius: 9,
+    minWidth: 18,
+    height: 18,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 3,
+  },
+  badgeText: {
+    color: '#fff',
+    fontSize: 11,
+    fontWeight: '800',
   },
   profile: {
     alignItems: 'center',

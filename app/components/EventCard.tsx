@@ -3,6 +3,7 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import type { EventSummary } from '../shared/types';
 import { colors, radius, spacing } from '../lib/theme';
+import { titleFontStyle } from '../lib/fonts';
 import { CoverGradient } from './CoverGradient';
 import { Avatar } from './Avatar';
 
@@ -23,6 +24,7 @@ const STATUS_LABEL: Record<string, string> = {
   GOING: 'Going',
   MAYBE: 'Maybe',
   CANT: "Can't go",
+  WAITLIST: 'Waitlist',
 };
 
 export function EventCard({ event }: { event: EventSummary }) {
@@ -33,7 +35,12 @@ export function EventCard({ event }: { event: EventSummary }) {
       style={({ pressed }) => [styles.card, pressed && { opacity: 0.85 }]}
     >
       <CoverGradient theme={event.coverTheme} style={styles.cover} emojiOpacity={0.3}>
-        <Text style={styles.title} numberOfLines={2}>
+        {event.canceledAt ? (
+          <View style={styles.canceledBadge}>
+            <Text style={styles.canceledText}>CANCELED</Text>
+          </View>
+        ) : null}
+        <Text style={[styles.title, titleFontStyle(event.titleFont)]} numberOfLines={2}>
           {event.title}
         </Text>
       </CoverGradient>
@@ -81,6 +88,21 @@ const styles = StyleSheet.create({
     textShadowColor: 'rgba(0,0,0,0.35)',
     textShadowOffset: { width: 0, height: 2 },
     textShadowRadius: 6,
+  },
+  canceledBadge: {
+    position: 'absolute',
+    top: spacing.sm,
+    right: spacing.sm,
+    backgroundColor: 'rgba(0,0,0,0.55)',
+    borderRadius: radius.pill,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: 4,
+  },
+  canceledText: {
+    color: colors.danger,
+    fontSize: 11,
+    fontWeight: '800',
+    letterSpacing: 1,
   },
   body: {
     flexDirection: 'row',
