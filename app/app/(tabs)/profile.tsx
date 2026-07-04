@@ -20,6 +20,7 @@ import { colors, radius, spacing } from '../../lib/theme';
 import { Avatar } from '../../components/Avatar';
 import { CoverGradient } from '../../components/CoverGradient';
 import { Button } from '../../components/ui';
+import { withScreenBackground } from '../../components/ScreenBackground';
 
 function joinedLabel(iso: string): string {
   const date = new Date(iso);
@@ -36,7 +37,9 @@ function cardDirection(card: CardEntry, myId: string | undefined): string {
   return `${card.from.avatarEmoji} from ${card.from.name}`;
 }
 
-export default function ProfileScreen() {
+export default withScreenBackground(ProfileScreen);
+
+function ProfileScreen() {
   const router = useRouter();
   const { user, logout } = useAuth();
   const [profile, setProfile] = useState<MyProfile | null>(null);

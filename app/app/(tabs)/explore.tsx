@@ -20,6 +20,7 @@ import { colors, radius, spacing } from '../../lib/theme';
 import { titleFontStyle } from '../../lib/fonts';
 import { CoverGradient } from '../../components/CoverGradient';
 import { Button } from '../../components/ui';
+import { withScreenBackground } from '../../components/ScreenBackground';
 import { formatEventDate } from '../../components/EventCard';
 
 const CATEGORY_CHIPS: { key: Category | 'all'; emoji: string; label: string }[] = [
@@ -80,7 +81,9 @@ function ExploreCard({ event }: { event: ExploreEvent }) {
   );
 }
 
-export default function ExploreScreen() {
+export default withScreenBackground(ExploreScreen);
+
+function ExploreScreen() {
   // city: null = not resolved yet, '' = all cities, otherwise a city name.
   const [city, setCity] = useState<string | null>(null);
   const [category, setCategory] = useState<Category | 'all'>('all');
