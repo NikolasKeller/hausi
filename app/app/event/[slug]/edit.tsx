@@ -80,6 +80,9 @@ export default function EditEventScreen() {
   if (!event) {
     return (
       <PaperBackground>
+        <Pressable onPress={() => router.back()} hitSlop={10} style={styles.loadingClose}>
+          <Text style={styles.loadingCloseText}>✕</Text>
+        </Pressable>
         <View style={styles.center}>
           {error ? (
             <Text style={[styles.errorText, { color: colors.danger }]}>{error}</Text>
@@ -185,6 +188,26 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     padding: spacing.lg,
+  },
+  loadingClose: {
+    position: 'absolute',
+    top: spacing.lg,
+    left: spacing.md,
+    zIndex: 1,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: colors.card,
+    borderWidth: 1,
+    borderColor: colors.cardBorder,
+    ...shadow.card,
+  },
+  loadingCloseText: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: colors.text,
   },
   errorText: {
     color: colors.danger,

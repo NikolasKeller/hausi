@@ -159,10 +159,9 @@ function RootNavigator() {
       <Stack.Screen
         name="event/[slug]/edit"
         options={{
-          title: 'Edit Event',
+          headerShown: false,
           presentation: 'modal',
           gestureEnabled: true,
-          headerLeft: () => <ModalClose />,
         }}
       />
       <Stack.Screen name="e/[slug]" options={{ headerShown: false }} />
