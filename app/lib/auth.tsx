@@ -1,108 +1,113 @@
-import React, { createContext, useContext, useEffect, useMemo, useState } from 'react';
-import { storage } from './storage';
+import React, { createContext, useContext, useEffect, useMemo, useRef, useState } from 'react';
+import type { Session } from '@supabase/supabase-js';
 import type { AuthResponse } from '../shared/types';
-import { api, setAuthToken, setOnUnauthorized } from './api';
-
-const TOKEN_KEY = 'hausi.token';
-const USER_KEY = 'hausi.user';
+import { supabase } from './supabase';
+import { api, loadSessionUser } from './api';
 
 type SessionUser = AuthResponse['user'];
 
 interface AuthContextValue {
   user: SessionUser | null;
   initializing: boolean;
-  // Phone OTP flow: request a code, then verify it. Returns isNew so the
-  // app can run profile setup for first-timers.
+  // Phone OTP flow: request a code (via api.requestPhoneCode), then verify it
+  // here. Returns isNew so the app can run profile setup for first-timers.
   verifyPhone: (phone: string, code: string) => Promise<{ isNew: boolean }>;
-  // Dev-only shortcut past auth while the SMS flow is under construction.
-  // Works only while the server runs without a real SMS provider.
+  // Dev shortcut past the SMS flow — signs in the demo account.
   devSignIn: () => Promise<void>;
   logout: () => Promise<void>;
   // Refresh the cached session user after a profile edit.
   updateUser: (user: SessionUser) => void;
 }
 
-const DEV_PHONE = '+10000000001';
+// The seeded demo account (email/password) used for the dev shortcut and the
+// hausi://dev-login deep link. Kept working so the app can be toured without SMS.
+const DEMO_EMAIL = 'demo@hausi.app';
+const DEMO_PASSWORD = 'hausidemo';
 
 const AuthContext = createContext<AuthContextValue | null>(null);
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<SessionUser | null>(null);
   const [initializing, setInitializing] = useState(true);
+  // Guards a stale profile load from overwriting a newer session's user.
+  const loadSeq = useRef(0);
 
   useEffect(() => {
-    (async () => {
-      try {
-        const [token, storedUser] = await Promise.all([
-          storage.getItemAsync(TOKEN_KEY),
-          storage.getItemAsync(USER_KEY),
-        ]);
-        if (token && storedUser) {
-          setAuthToken(token);
-          setUser(JSON.parse(storedUser) as SessionUser);
-        }
-      } catch {
-        // Corrupt session — start signed out.
-      } finally {
-        setInitializing(false);
+    let mounted = true;
+
+    // Hydrate the current user from a session. Deferred out of the
+    // onAuthStateChange callback (supabase-js warns against awaiting other
+    // supabase calls synchronously inside it — it can deadlock the client).
+    async function hydrate(session: Session | null) {
+      const seq = ++loadSeq.current;
+      if (!session) {
+        if (mounted) setUser(null);
+        return;
       }
-    })();
-  }, []);
-
-  useEffect(() => {
-    // A 401 on an authenticated call means the stored token is dead — sign out.
-    setOnUnauthorized(() => {
-      setAuthToken(null);
-      setUser(null);
-      storage.deleteItemAsync(TOKEN_KEY).catch(() => {});
-      storage.deleteItemAsync(USER_KEY).catch(() => {});
-    });
-    return () => setOnUnauthorized(null);
-  }, []);
-
-  const value = useMemo<AuthContextValue>(() => {
-    async function persist(res: AuthResponse) {
-      setAuthToken(res.token);
-      setUser(res.user);
-      await Promise.all([
-        storage.setItemAsync(TOKEN_KEY, res.token),
-        storage.setItemAsync(USER_KEY, JSON.stringify(res.user)),
-      ]);
+      try {
+        const nextUser = await loadSessionUser();
+        // Ignore if a newer session/sign-out landed while we were loading.
+        if (mounted && seq === loadSeq.current) setUser(nextUser);
+      } catch {
+        // Profile fetch failed (e.g. transient) — treat as signed out so the
+        // guard can recover rather than hanging on a half-session.
+        if (mounted && seq === loadSeq.current) setUser(null);
+      }
     }
-    return {
+
+    // Initial session load, then flip initializing off once resolved.
+    (async () => {
+      const { data } = await supabase.auth.getSession();
+      await hydrate(data.session);
+      if (mounted) setInitializing(false);
+    })();
+
+    // React to sign-in / sign-out / token refresh for the app's lifetime.
+    const { data: sub } = supabase.auth.onAuthStateChange((_event, session) => {
+      // Defer so we never await inside the callback.
+      setTimeout(() => {
+        if (mounted) void hydrate(session);
+      }, 0);
+    });
+
+    return () => {
+      mounted = false;
+      sub.subscription.unsubscribe();
+    };
+  }, []);
+
+  const value = useMemo<AuthContextValue>(
+    () => ({
       user,
       initializing,
       verifyPhone: async (phone, code) => {
+        // Sets the supabase session; onAuthStateChange will also hydrate, but we
+        // set the user eagerly so the guard routes without an extra round-trip.
         const res = await api.verifyPhoneCode(phone, code);
-        await persist(res);
+        setUser(res.user);
         return { isNew: res.isNew };
       },
       devSignIn: async () => {
-        const req = await api.requestPhoneCode(DEV_PHONE);
-        if (!req.devCode) throw new Error('Dev sign-in is only available in local dev');
-        const res = await api.verifyPhoneCode(DEV_PHONE, req.devCode);
-        setAuthToken(res.token);
+        const res = await api.login({ email: DEMO_EMAIL, password: DEMO_PASSWORD });
         let sessionUser = res.user;
+        // Seed a name for a brand-new demo profile so it doesn't get bounced to
+        // /setup on every dev sign-in.
         if (!sessionUser.name.trim()) {
-          const upd = await api.updateProfile({ name: 'Preview', avatarEmoji: '🛠️' });
+          const upd = await api.updateProfile({ name: 'Demo', avatarEmoji: '🎈' });
           sessionUser = { ...sessionUser, name: upd.user.name, avatarEmoji: upd.user.avatarEmoji };
         }
-        await persist({ token: res.token, user: sessionUser });
+        setUser(sessionUser);
       },
       logout: async () => {
-        setAuthToken(null);
         setUser(null);
-        await Promise.all([
-          storage.deleteItemAsync(TOKEN_KEY),
-          storage.deleteItemAsync(USER_KEY),
-        ]);
+        await supabase.auth.signOut();
       },
       updateUser: (updated) => {
         setUser(updated);
-        storage.setItemAsync(USER_KEY, JSON.stringify(updated)).catch(() => {});
       },
-    };
-  }, [user, initializing]);
+    }),
+    [user, initializing]
+  );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
