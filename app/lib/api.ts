@@ -117,6 +117,14 @@ export const api = {
       body: JSON.stringify({ phone, code }),
     });
   },
+  // Restore a session from the durable server cookie (web) when local storage
+  // was cleared — the cookie rides along automatically on same-origin requests.
+  sessionFromCookie() {
+    return request<{ token: string; user: AuthResponse['user'] }>('/auth/session');
+  },
+  serverLogout() {
+    return request<{ ok: boolean }>('/auth/logout', { method: 'POST' });
+  },
   login(data: { email: string; password: string }) {
     return request<AuthResponse>('/auth/login', { method: 'POST', body: JSON.stringify(data) });
   },
