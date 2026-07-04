@@ -181,7 +181,7 @@ function ExploreScreen() {
           <View style={styles.center}>
             <Text style={styles.errorEmoji}>🫠</Text>
             <Text style={styles.errorText}>{error}</Text>
-            <Button title="Try again" variant="ghost" tone="paper" onPress={() => load(() => true)} />
+            <Button title="Try again" variant="ghost" tone="ink" onPress={() => load(() => true)} />
           </View>
         ) : city === null ? (
           <View style={styles.center}>
@@ -234,7 +234,7 @@ function ExploreScreen() {
               <View style={styles.inlineState}>
                 <Text style={styles.errorEmoji}>🫠</Text>
                 <Text style={styles.errorText}>{error}</Text>
-                <Button title="Try again" variant="ghost" tone="paper" onPress={() => load(() => true)} />
+                <Button title="Try again" variant="ghost" tone="ink" onPress={() => load(() => true)} />
               </View>
             ) : events === null ? (
               <View style={styles.inlineState}>
