@@ -19,7 +19,7 @@ import type { ExploreEvent, HomeFeed } from '../../shared/types';
 import { api } from '../../lib/api';
 import { getRecentEvents, type RecentEvent } from '../../lib/recents';
 import { colors, radius, spacing } from '../../lib/theme';
-import { titleFontStyle } from '../../lib/fonts';
+import { titleFontStyle, displayTitle } from '../../lib/fonts';
 import { CoverGradient } from '../../components/CoverGradient';
 import { Button } from '../../components/ui';
 import { formatEventDate, formatEventTime } from '../../components/EventCard';
@@ -370,9 +370,9 @@ const styles = StyleSheet.create({
     paddingTop: spacing.sm,
   },
   wordmark: {
+    ...displayTitle,
     color: colors.text,
     fontSize: 28,
-    fontWeight: '900',
     letterSpacing: -1.2,
   },
   bellButton: {
@@ -400,9 +400,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.md,
   },
   sectionTitle: {
+    ...displayTitle,
     color: colors.text,
     fontSize: 27,
-    fontWeight: '900',
     letterSpacing: -1,
   },
   emptyNote: {
@@ -425,7 +425,7 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
   },
   trendingCover: {
-    height: 140,
+    height: 220,
     padding: spacing.md,
     justifyContent: 'flex-end',
   },
@@ -465,7 +465,7 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
   },
   recentCover: {
-    height: 84,
+    height: 96,
     padding: spacing.sm,
     justifyContent: 'flex-end',
   },

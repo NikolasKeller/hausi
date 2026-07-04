@@ -190,7 +190,7 @@ export default function EventScreen() {
     <KeyboardAvoidingView style={{ flex: 1, backgroundColor: colors.bg }} behavior="padding">
       <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
         <CoverGradient theme={event.coverTheme} image={event.coverImage} style={styles.hero}>
-          <EffectOverlay effect={event.effect} height={260} />
+          <EffectOverlay effect={event.effect} height={360} />
           <Text style={[styles.heroTitle, titleFontStyle(event.titleFont)]}>{event.title}</Text>
         </CoverGradient>
 
@@ -469,14 +469,14 @@ const styles = StyleSheet.create({
     paddingBottom: spacing.xl * 2,
   },
   hero: {
-    minHeight: 260,
+    minHeight: 360,
     justifyContent: 'flex-end',
     padding: spacing.lg,
     paddingTop: 100,
   },
   heroTitle: {
     color: '#fff',
-    fontSize: 42,
+    fontSize: 50,
     fontWeight: '800',
     letterSpacing: -1,
     textShadowColor: 'rgba(0,0,0,0.4)',

@@ -420,7 +420,7 @@ const styles = StyleSheet.create({
   },
   preview: {
     borderRadius: radius.lg,
-    minHeight: 140,
+    minHeight: 210,
     padding: spacing.md,
     justifyContent: 'flex-end',
   },
