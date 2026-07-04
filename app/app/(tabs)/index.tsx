@@ -16,6 +16,7 @@ import type { ExploreEvent, HomeFeed } from '../../shared/types';
 import { api } from '../../lib/api';
 import { useAuth } from '../../lib/auth';
 import { getRecentEvents, type RecentEvent } from '../../lib/recents';
+import { EVENT_TEMPLATES, type EventTemplate } from '../../lib/eventTemplates';
 import { colors, radius, spacing } from '../../lib/theme';
 import { titleFontStyle, display, uiText, kicker } from '../../lib/fonts';
 import { CoverGradient } from '../../components/CoverGradient';
@@ -269,21 +270,19 @@ function HomeScreen() {
         ) : null}
 
         <View style={styles.sectionGroup}>
-          <Text style={styles.kicker}>Around the world</Text>
-          <Text style={styles.sectionTitle}>Trending now 🌍</Text>
-          {home.trendingNow.length === 0 ? (
-            <Text style={styles.emptyNote}>The world is quiet right now.</Text>
-          ) : (
-            <View style={styles.rowList}>
-              {home.trendingNow.map((event) => (
-                <CompactRow
-                  key={event.id}
-                  event={event}
-                  subtitle={`${event.city} · ⭐ ${event.interested} interested`}
-                />
-              ))}
-            </View>
-          )}
+          <Text style={styles.kicker}>Need a plan?</Text>
+          <Text style={styles.sectionTitle}>Party starters ✨</Text>
+          <Text style={styles.sectionBlurb}>Tap an idea to spin up an event in seconds.</Text>
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.horizontalList}
+            style={styles.horizontalScroll}
+          >
+            {EVENT_TEMPLATES.map((template) => (
+              <TemplateCard key={template.id} template={template} />
+            ))}
+          </ScrollView>
         </View>
 
         <View style={[styles.sectionGroup, styles.ctaGroup]}>
@@ -374,6 +373,29 @@ function CompactRow({ event, subtitle }: { event: ExploreEvent; subtitle: string
   );
 }
 
+function TemplateCard({ template }: { template: EventTemplate }) {
+  const router = useRouter();
+  return (
+    <Pressable
+      onPress={() => router.push({ pathname: '/new-event', params: { template: template.id } })}
+      style={({ pressed }) => [styles.templateCard, pressed && { opacity: 0.85 }]}
+    >
+      <CoverGradient theme={template.coverTheme} style={styles.templateCover} emojiOpacity={0.22}>
+        <Text style={styles.templateEmoji}>{template.emoji}</Text>
+      </CoverGradient>
+      <View style={styles.templateBody}>
+        <Text style={styles.templateName} numberOfLines={1}>
+          {template.name}
+        </Text>
+        <Text style={styles.templateVibe} numberOfLines={2}>
+          {template.vibe}
+        </Text>
+        <Text style={styles.templateStart}>+ Start from this</Text>
+      </View>
+    </Pressable>
+  );
+}
+
 const styles = StyleSheet.create({
   screen: {
     flex: 1,
@@ -453,6 +475,11 @@ const styles = StyleSheet.create({
   emptyNote: {
     ...uiText(14),
     color: colors.muted,
+  },
+  sectionBlurb: {
+    ...uiText(14),
+    color: colors.muted,
+    marginTop: -spacing.xs,
   },
   ctaGroup: {
     marginTop: spacing.sm,
@@ -608,5 +635,43 @@ const styles = StyleSheet.create({
   compactSubtitle: {
     ...uiText(12),
     color: colors.muted,
+  },
+  templateCard: {
+    width: 172,
+    backgroundColor: colors.card,
+    borderRadius: radius.lg,
+    borderWidth: 2,
+    borderColor: colors.ink,
+    overflow: 'hidden',
+  },
+  templateCover: {
+    height: 96,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  templateEmoji: {
+    fontSize: 46,
+    textShadowColor: 'rgba(0,0,0,0.3)',
+    textShadowOffset: { width: 0, height: 2 },
+    textShadowRadius: 6,
+  },
+  templateBody: {
+    padding: spacing.sm,
+    gap: 2,
+    minHeight: 96,
+  },
+  templateName: {
+    ...uiText(15, '800'),
+    color: colors.text,
+  },
+  templateVibe: {
+    ...uiText(12),
+    color: colors.muted,
+    flex: 1,
+  },
+  templateStart: {
+    ...uiText(12, '700'),
+    color: colors.accent,
+    marginTop: spacing.xs,
   },
 });
