@@ -177,11 +177,15 @@ export const api = {
       body: JSON.stringify(data),
     });
   },
-  sendCard(toUserId: string, theme: CardTheme, message: string) {
+  // Omit toUserId for a share-by-link card; pass it to also deliver in-app to a mutual.
+  sendCard(theme: CardTheme, message: string, toUserId?: string) {
     return request<{ card: CardEntry }>('/me/cards', {
       method: 'POST',
-      body: JSON.stringify({ toUserId, theme, message }),
+      body: JSON.stringify(toUserId ? { toUserId, theme, message } : { theme, message }),
     });
+  },
+  cardById(id: string) {
+    return request<{ card: CardEntry }>(`/cards/${encodeURIComponent(id)}`);
   },
   toggleCrush(userId: string) {
     return request<{ crushed: boolean; matched: boolean }>(

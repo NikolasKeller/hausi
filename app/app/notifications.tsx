@@ -12,6 +12,8 @@ const TYPE_ICONS: Record<string, string> = {
   EVENT_CANCELED: '😢',
   WAITLIST_PROMOTED: '🎉',
   COHOST_ADDED: '🤝',
+  CARD_RECEIVED: '💌',
+  CRUSH_MATCH: '💘',
 };
 
 function timeAgo(iso: string): string {

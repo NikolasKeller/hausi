@@ -1,4 +1,4 @@
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import {
   ActivityIndicator,
   KeyboardAvoidingView,
@@ -9,14 +9,11 @@ import {
   View,
 } from 'react-native';
 import { useFocusEffect, useRouter } from 'expo-router';
-import {
-  CARD_THEMES,
-  type CardTheme,
-  type CoverTheme,
-  type MyProfile,
-} from '../shared/types';
+import * as Linking from 'expo-linking';
+import { CARD_THEMES, type CardEntry, type CardTheme, type MyProfile } from '../shared/types';
 import { api } from '../lib/api';
-import { notify } from '../lib/dialogs';
+import { CARD_META } from '../lib/cards';
+import { copyLink, shareText } from '../lib/share';
 import { colors, radius, spacing } from '../lib/theme';
 import { titleFontStyle } from '../lib/fonts';
 import { CoverGradient } from '../components/CoverGradient';
@@ -25,13 +22,9 @@ import { Button, ErrorText, Field } from '../components/ui';
 
 const MESSAGE_LIMIT = 500;
 
-const CARD_META: Record<CardTheme, { cover: CoverTheme; emoji: string; label: string }> = {
-  confetti: { cover: 'disco', emoji: '🎊', label: 'Confetti' },
-  birthday: { cover: 'candy', emoji: '🎂', label: 'Birthday' },
-  thanks: { cover: 'sunset', emoji: '🙏', label: 'Thanks' },
-  'miss-you': { cover: 'ocean', emoji: '🥺', label: 'Miss you' },
-  congrats: { cover: 'forest', emoji: '🏆', label: 'Congrats' },
-};
+function cardLink(id: string): string {
+  return Linking.createURL(`c/${id}`);
+}
 
 export default function SendCardScreen() {
   const router = useRouter();
@@ -40,8 +33,16 @@ export default function SendCardScreen() {
   const [toUserId, setToUserId] = useState<string | null>(null);
   const [theme, setTheme] = useState<CardTheme>('confetti');
   const [message, setMessage] = useState('');
-  const [sending, setSending] = useState(false);
+  // The last card created for the current design; reused across share/copy so
+  // tapping both buttons doesn't create duplicates. Cleared whenever the design
+  // changes so a shared link always matches what's on screen.
+  const [card, setCard] = useState<CardEntry | null>(null);
+  const [busy, setBusy] = useState<'share' | 'copy' | null>(null);
   const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    setCard(null);
+  }, [theme, message, toUserId]);
 
   useFocusEffect(
     useCallback(() => {
@@ -55,7 +56,7 @@ export default function SendCardScreen() {
         })
         .catch((e) => {
           if (!active) return;
-          setLoadError(e instanceof Error ? e.message : 'Could not load your mutuals');
+          setLoadError(e instanceof Error ? e.message : 'Could not load your card');
         });
       return () => {
         active = false;
@@ -63,27 +64,47 @@ export default function SendCardScreen() {
     }, [])
   );
 
-  async function send() {
-    if (sending) return;
-    if (!toUserId) {
-      setError('Pick someone to send the card to.');
-      return;
-    }
+  // Create the card once for the current design (or reuse the last one), then
+  // return its shareable link.
+  async function ensureLink(): Promise<string | null> {
+    if (card) return cardLink(card.id);
     const text = message.trim();
     if (!text) {
       setError('Write a little message first.');
-      return;
+      return null;
     }
-    setSending(true);
     setError(null);
+    const res = await api.sendCard(theme, text, toUserId ?? undefined);
+    setCard(res.card);
+    return cardLink(res.card.id);
+  }
+
+  async function onShare() {
+    if (busy) return;
+    setBusy('share');
     try {
-      await api.sendCard(toUserId, theme, text);
-      notify('Card sent 💌', 'Your card is on its way.');
-      router.back();
+      const link = await ensureLink();
+      if (!link) return;
+      const meta = CARD_META[theme];
+      await shareText(`${meta.emoji} ${message.trim()}\n\nOpen your card in Hausi: ${link}`, link);
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Could not send the card');
+      setError(e instanceof Error ? e.message : 'Could not create the card');
     } finally {
-      setSending(false);
+      setBusy(null);
+    }
+  }
+
+  async function onCopy() {
+    if (busy) return;
+    setBusy('copy');
+    try {
+      const link = await ensureLink();
+      if (!link) return;
+      await copyLink(link);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Could not create the card');
+    } finally {
+      setBusy(null);
     }
   }
 
@@ -106,42 +127,11 @@ export default function SendCardScreen() {
   }
 
   const meta = CARD_META[theme];
+  const recipient = profile.mutuals.find((m) => m.user.id === toUserId)?.user ?? null;
 
   return (
     <KeyboardAvoidingView style={{ flex: 1, backgroundColor: colors.bg }} behavior="padding">
       <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
-        <Text style={styles.sectionLabel}>To</Text>
-        {profile.mutuals.length === 0 ? (
-          <Text style={styles.emptyText}>No mutuals yet — party with someone first 🥳</Text>
-        ) : (
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            contentContainerStyle={styles.mutualsRow}
-          >
-            {profile.mutuals.map((m) => {
-              const selected = m.user.id === toUserId;
-              return (
-                <Pressable
-                  key={m.user.id}
-                  onPress={() => setToUserId(m.user.id)}
-                  style={styles.mutual}
-                >
-                  <View style={[styles.avatarRing, selected && styles.avatarRingSelected]}>
-                    <Avatar emoji={m.user.avatarEmoji} size={52} />
-                  </View>
-                  <Text
-                    style={[styles.mutualName, selected && styles.mutualNameSelected]}
-                    numberOfLines={1}
-                  >
-                    {m.user.name}
-                  </Text>
-                </Pressable>
-              );
-            })}
-          </ScrollView>
-        )}
-
         <Text style={styles.sectionLabel}>Card</Text>
         <ScrollView
           horizontal
@@ -192,8 +182,56 @@ export default function SendCardScreen() {
           </Text>
         </CoverGradient>
 
+        {profile.mutuals.length > 0 ? (
+          <>
+            <Text style={styles.sectionLabel}>Also send in-app (optional)</Text>
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={styles.mutualsRow}
+            >
+              {profile.mutuals.map((m) => {
+                const selected = m.user.id === toUserId;
+                return (
+                  <Pressable
+                    key={m.user.id}
+                    onPress={() => setToUserId(selected ? null : m.user.id)}
+                    style={styles.mutual}
+                  >
+                    <View style={[styles.avatarRing, selected && styles.avatarRingSelected]}>
+                      <Avatar emoji={m.user.avatarEmoji} size={52} />
+                    </View>
+                    <Text
+                      style={[styles.mutualName, selected && styles.mutualNameSelected]}
+                      numberOfLines={1}
+                    >
+                      {m.user.name}
+                    </Text>
+                  </Pressable>
+                );
+              })}
+            </ScrollView>
+          </>
+        ) : null}
+
+        {recipient ? (
+          <Text style={styles.recipientNote}>
+            💌 {recipient.name} also gets this card in Hausi.
+          </Text>
+        ) : null}
+
         <ErrorText message={error} />
-        <Button title="Send card 💌" onPress={send} loading={sending} />
+        <Button
+          title="Send on Messages 💌"
+          onPress={onShare}
+          loading={busy === 'share'}
+        />
+        <Button
+          title="Copy link"
+          variant="ghost"
+          onPress={onCopy}
+          loading={busy === 'copy'}
+        />
       </ScrollView>
     </KeyboardAvoidingView>
   );
@@ -228,10 +266,6 @@ const styles = StyleSheet.create({
     textTransform: 'uppercase',
     letterSpacing: 1,
   },
-  emptyText: {
-    color: colors.muted,
-    fontSize: 15,
-  },
   mutualsRow: {
     gap: spacing.md,
     paddingVertical: spacing.xs,
@@ -258,6 +292,10 @@ const styles = StyleSheet.create({
   },
   mutualNameSelected: {
     color: colors.text,
+  },
+  recipientNote: {
+    color: colors.muted,
+    fontSize: 13,
   },
   themesRow: {
     gap: spacing.sm,

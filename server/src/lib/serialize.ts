@@ -1,4 +1,6 @@
 import type {
+  CardEntry,
+  CardTheme,
   Category,
   CommentEntry,
   CoverTheme,
@@ -51,6 +53,24 @@ type EventRow = {
 
 export function toPublicUser(u: UserRow): PublicUser {
   return { id: u.id, name: u.name, avatarEmoji: u.avatarEmoji };
+}
+
+export function toCardEntry(card: {
+  id: string;
+  theme: string;
+  message: string;
+  createdAt: Date;
+  from: UserRow;
+  to: UserRow | null;
+}): CardEntry {
+  return {
+    id: card.id,
+    from: toPublicUser(card.from),
+    to: card.to ? toPublicUser(card.to) : null,
+    theme: card.theme as CardTheme,
+    message: card.message,
+    createdAt: card.createdAt.toISOString(),
+  };
 }
 
 export function countRsvps(rsvps: { status: string; plusOnes: number }[]): RsvpCounts {
