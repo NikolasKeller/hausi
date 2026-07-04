@@ -11,9 +11,12 @@ import {
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { useHeaderHeight } from 'expo-router/react-navigation';
 import {
+  CATEGORIES,
+  CATEGORY_META,
   EFFECTS,
   LIMITS,
   TITLE_FONTS,
+  type Category,
   type CoverTheme,
   type Effect,
   type EventInput,
@@ -38,6 +41,11 @@ export interface EventFormValues {
   title: string;
   description: string;
   location: string;
+  city: string;
+  category: Category;
+  isPublic: boolean;
+  costPerPerson: string;
+  dressCode: string;
   coverTheme: CoverTheme;
   titleFont: TitleFont;
   effect: Effect;
@@ -65,6 +73,11 @@ export function EventForm({ initial, submitLabel, onSubmit, footer }: Props) {
   const [title, setTitle] = useState(initial?.title ?? '');
   const [description, setDescription] = useState(initial?.description ?? '');
   const [location, setLocation] = useState(initial?.location ?? '');
+  const [city, setCity] = useState(initial?.city ?? '');
+  const [category, setCategory] = useState<Category>(initial?.category ?? 'community');
+  const [isPublic, setIsPublic] = useState(initial?.isPublic ?? false);
+  const [costPerPerson, setCostPerPerson] = useState(initial?.costPerPerson ?? '');
+  const [dressCode, setDressCode] = useState(initial?.dressCode ?? '');
   const [coverTheme, setCoverTheme] = useState<CoverTheme>(initial?.coverTheme ?? 'sunset');
   const [titleFont, setTitleFont] = useState<TitleFont>(initial?.titleFont ?? 'classic');
   const [effect, setEffect] = useState<Effect>(initial?.effect ?? 'none');
@@ -94,6 +107,11 @@ export function EventForm({ initial, submitLabel, onSubmit, footer }: Props) {
         title: title.trim(),
         description: description.trim(),
         location: location.trim(),
+        city: city.trim(),
+        category,
+        isPublic,
+        costPerPerson: costPerPerson.trim(),
+        dressCode: dressCode.trim(),
         coverTheme,
         titleFont,
         effect,
@@ -123,6 +141,13 @@ export function EventForm({ initial, submitLabel, onSubmit, footer }: Props) {
         contentContainerStyle={styles.content}
         keyboardShouldPersistTaps="handled"
       >
+        <Pressable onPress={() => setIsPublic(!isPublic)} style={styles.publicPill}>
+          <Text style={styles.publicPillText}>
+            {isPublic ? '🌐 Public — anyone can find it' : '🔒 Private — invite only'}
+          </Text>
+          <Text style={styles.publicPillAction}>{isPublic ? 'Make private' : 'Make it public'}</Text>
+        </Pressable>
+
         <CoverGradient theme={coverTheme} style={styles.preview}>
           <EffectOverlay effect={effect} height={140} />
           <Text style={[styles.previewTitle, titleFontStyle(titleFont)]} numberOfLines={3}>
@@ -219,6 +244,45 @@ export function EventForm({ initial, submitLabel, onSubmit, footer }: Props) {
           onChangeText={setLocation}
           placeholder="Location"
           maxLength={LIMITS.location}
+        />
+        <Field
+          label="City"
+          value={city}
+          onChangeText={setCity}
+          placeholder="e.g. San Francisco"
+          maxLength={80}
+        />
+
+        <View style={{ gap: spacing.xs }}>
+          <Text style={styles.label}>Category</Text>
+          <View style={styles.themeRow}>
+            {CATEGORIES.map((cat) => (
+              <Pressable
+                key={cat}
+                onPress={() => setCategory(cat)}
+                style={[styles.effectChip, category === cat && styles.chipActive]}
+              >
+                <Text style={styles.chipLabel}>
+                  {CATEGORY_META[cat].emoji} {CATEGORY_META[cat].label}
+                </Text>
+              </Pressable>
+            ))}
+          </View>
+        </View>
+
+        <Field
+          label="Cost per person (optional)"
+          value={costPerPerson}
+          onChangeText={setCostPerPerson}
+          placeholder="Free"
+          maxLength={60}
+        />
+        <Field
+          label="Dress code (optional)"
+          value={dressCode}
+          onChangeText={setDressCode}
+          placeholder="Come as you are"
+          maxLength={120}
         />
         <Field
           label="Description"
@@ -340,6 +404,28 @@ const styles = StyleSheet.create({
   fontRow: {
     flexDirection: 'row',
     gap: spacing.sm,
+  },
+  publicPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: colors.inputBg,
+    borderWidth: 1,
+    borderColor: colors.cardBorder,
+    borderRadius: radius.pill,
+    paddingVertical: 10,
+    paddingHorizontal: spacing.md,
+  },
+  publicPillText: {
+    color: colors.text,
+    fontSize: 13,
+    fontWeight: '600',
+    flexShrink: 1,
+  },
+  publicPillAction: {
+    color: colors.accent,
+    fontSize: 13,
+    fontWeight: '700',
   },
   fontChip: {
     flex: 1,

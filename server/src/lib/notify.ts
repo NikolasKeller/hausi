@@ -9,7 +9,9 @@ export interface NotificationInput {
     | 'EVENT_UPDATED'
     | 'EVENT_CANCELED'
     | 'WAITLIST_PROMOTED'
-    | 'COHOST_ADDED';
+    | 'COHOST_ADDED'
+    | 'CARD_RECEIVED'
+    | 'CRUSH_MATCH';
   text: string;
   eventSlug?: string;
 }

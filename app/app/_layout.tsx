@@ -52,8 +52,13 @@ function RootNavigator() {
       }}
     >
       <Stack.Screen name="(auth)" options={{ headerShown: false }} />
-      <Stack.Screen name="index" options={{ headerShown: false }} />
-      <Stack.Screen name="create" options={{ title: 'New Event', presentation: 'modal' }} />
+      <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+      <Stack.Screen name="new-event" options={{ title: 'New Event', presentation: 'modal' }} />
+      <Stack.Screen name="send-card" options={{ title: 'Send a Card', presentation: 'modal' }} />
+      <Stack.Screen
+        name="edit-profile"
+        options={{ title: 'Edit Profile', presentation: 'modal' }}
+      />
       <Stack.Screen name="notifications" options={{ title: 'Notifications' }} />
       <Stack.Screen name="event/[slug]/index" options={{ title: '', headerTransparent: true }} />
       <Stack.Screen name="event/[slug]/edit" options={{ title: 'Edit Event', presentation: 'modal' }} />

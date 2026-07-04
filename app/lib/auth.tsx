@@ -19,6 +19,8 @@ interface AuthContextValue {
   }) => Promise<void>;
   login: (data: { email: string; password: string }) => Promise<void>;
   logout: () => Promise<void>;
+  // Refresh the cached session user after a profile edit.
+  updateUser: (user: SessionUser) => void;
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null);
@@ -78,6 +80,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           SecureStore.deleteItemAsync(TOKEN_KEY),
           SecureStore.deleteItemAsync(USER_KEY),
         ]);
+      },
+      updateUser: (updated) => {
+        setUser(updated);
+        SecureStore.setItemAsync(USER_KEY, JSON.stringify(updated)).catch(() => {});
       },
     };
   }, [user, initializing]);

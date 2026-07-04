@@ -14,21 +14,38 @@ async function main() {
   await db.comment.deleteMany();
   await db.rsvp.deleteMany();
   await db.eventCohost.deleteMany();
+  await db.card.deleteMany();
+  await db.crush.deleteMany();
   await db.event.deleteMany();
   await db.user.deleteMany();
 
   const passwordHash = await bcrypt.hash('hausi123', 10);
+  const SF = 'San Francisco';
 
-  const [demo, mia, leo, zoe] = await Promise.all(
-    [
-      { name: 'Demo Host', email: 'demo@hausi.app', avatarEmoji: '🎉' },
-      { name: 'Mia', email: 'mia@hausi.app', avatarEmoji: '🦄' },
-      { name: 'Leo', email: 'leo@hausi.app', avatarEmoji: '🕺' },
-      { name: 'Zoe', email: 'zoe@hausi.app', avatarEmoji: '🌸' },
-    ].map((u) => db.user.create({ data: { ...u, passwordHash } }))
-  );
+  const userSpecs = [
+    { name: 'Demo Host', email: 'demo@hausi.app', avatarEmoji: '🎉', city: SF },
+    { name: 'Mia', email: 'mia@hausi.app', avatarEmoji: '🦄', city: SF },
+    { name: 'Leo', email: 'leo@hausi.app', avatarEmoji: '🕺', city: SF },
+    { name: 'Zoe', email: 'zoe@hausi.app', avatarEmoji: '🌸', city: SF },
+    { name: 'Noah', email: 'noah@hausi.app', avatarEmoji: '🛹', city: SF },
+    { name: 'Ava', email: 'ava@hausi.app', avatarEmoji: '🎷', city: SF },
+    { name: 'Kai', email: 'kai@hausi.app', avatarEmoji: '🌊', city: SF },
+    { name: 'Luna', email: 'luna@hausi.app', avatarEmoji: '🌙', city: 'Berlin' },
+    { name: 'Max', email: 'max@hausi.app', avatarEmoji: '🍕', city: 'Berlin' },
+    { name: 'Iris', email: 'iris@hausi.app', avatarEmoji: '🎨', city: 'New York' },
+  ];
+  const users = [] as Awaited<ReturnType<typeof db.user.create>>[];
+  for (const u of userSpecs) {
+    users.push(await db.user.create({ data: { ...u, passwordHash } }));
+  }
+  const [demo, mia, leo, zoe, noah, ava, kai, luna, max, iris] = users;
 
-  const rooftop = await db.event.create({
+  const going = (userIds: string[], plusOnes: Record<string, number> = {}) =>
+    userIds.map((userId) => ({ userId, status: 'GOING', plusOnes: plusOnes[userId] ?? 0 }));
+  const maybe = (userIds: string[]) => userIds.map((userId) => ({ userId, status: 'MAYBE' }));
+
+  // ——— Private events for the demo user (calendar / my events) ———
+  await db.event.create({
     data: {
       slug: makeSlug('Rooftop Sunset Sessions'),
       title: 'Rooftop Sunset Sessions',
@@ -38,17 +55,17 @@ async function main() {
       titleFont: 'literary',
       effect: 'sparkles',
       date: daysFromNow(5, 18),
-      location: 'Dachterrasse, Müllerstraße 12',
+      location: 'Rooftop, 12 Miller St',
+      city: SF,
+      category: 'community',
       hostId: demo.id,
       maxGuests: 30,
       plusOneLimit: 2,
       cohosts: { create: [{ userId: mia.id }] },
       rsvps: {
         create: [
-          { userId: demo.id, status: 'GOING' },
-          { userId: mia.id, status: 'GOING', plusOnes: 1 },
-          { userId: leo.id, status: 'MAYBE' },
-          { userId: zoe.id, status: 'GOING' },
+          ...going([demo.id, mia.id, zoe.id, noah.id], { [mia.id]: 1 }),
+          ...maybe([leo.id]),
         ],
       },
       comments: {
@@ -56,37 +73,8 @@ async function main() {
           { userId: mia.id, text: 'is going with +1 🎉', type: 'system' },
           { userId: mia.id, text: 'Bringing my famous sangria 🍹' },
           { userId: leo.id, text: 'might come 🤔', type: 'system' },
-          { userId: leo.id, text: 'Might be late, save me a spot on the couch!' },
           { userId: zoe.id, text: 'is going 🎉', type: 'system' },
           { userId: demo.id, text: 'Doors open at 6 — sunset is at 7:30 sharp 🌅' },
-        ],
-      },
-    },
-  });
-
-  await db.event.create({
-    data: {
-      slug: makeSlug('Midnight Disco'),
-      title: 'Midnight Disco 🪩',
-      description: 'Strictly disco. Dress code: something that sparkles.',
-      coverTheme: 'disco',
-      titleFont: 'eclectic',
-      effect: 'confetti',
-      date: daysFromNow(12, 23),
-      location: 'Kellerbar, Hinterhof links',
-      hostId: mia.id,
-      rsvps: {
-        create: [
-          { userId: mia.id, status: 'GOING' },
-          { userId: demo.id, status: 'GOING' },
-          { userId: zoe.id, status: 'MAYBE' },
-          { userId: leo.id, status: 'CANT' },
-        ],
-      },
-      comments: {
-        create: [
-          { userId: demo.id, text: 'Already picked out my sequin shirt ✨' },
-          { userId: zoe.id, text: 'What time does the DJ start?' },
         ],
       },
     },
@@ -100,15 +88,16 @@ async function main() {
       coverTheme: 'forest',
       titleFont: 'fancy',
       date: daysFromNow(2, 19),
-      location: 'Bei Leo, Gartenstraße 4',
+      location: "Leo's place, 4 Garden St",
+      city: SF,
+      category: 'food',
       hostId: leo.id,
       maxGuests: 2,
       plusOneLimit: 0,
       rsvps: {
         create: [
-          { userId: leo.id, status: 'GOING' },
-          { userId: demo.id, status: 'GOING' },
-          { userId: mia.id, status: 'WAITLIST' },
+          ...going([leo.id, demo.id]),
+          { userId: mia.id, status: 'WAITLIST', waitlistedAt: new Date() },
         ],
       },
       comments: {
@@ -128,28 +117,182 @@ async function main() {
       description: 'Spritz o’clock. Thanks for coming everyone!',
       coverTheme: 'ocean',
       date: daysFromNow(-9, 18),
-      location: 'Bei Zoe, Sonnenallee 21',
+      location: "Zoe's balcony, 21 Sun Alley",
+      city: SF,
+      category: 'food',
       hostId: zoe.id,
-      rsvps: {
-        create: [
-          { userId: zoe.id, status: 'GOING' },
-          { userId: demo.id, status: 'GOING' },
-          { userId: mia.id, status: 'CANT' },
-        ],
-      },
+      rsvps: { create: [...going([zoe.id, demo.id, kai.id])] },
       comments: {
-        create: [
-          { userId: demo.id, text: 'is going 🎉', type: 'system' },
-          { userId: mia.id, text: "can't make it 😢", type: 'system' },
-          { userId: demo.id, text: 'That was such a good evening 🧡' },
-        ],
+        create: [{ userId: demo.id, text: 'That was such a good evening 🧡' }],
       },
     },
   });
 
-  console.log('Seeded 4 users and 4 events (incl. one past).');
+  // ——— Public events: trending in SF ———
+  await db.event.create({
+    data: {
+      slug: makeSlug('Midnight Disco'),
+      title: 'MIDNIGHT DISCO 🪩',
+      description:
+        'Strictly disco. Dress code: something that sparkles. Free entry before midnight.',
+      coverTheme: 'disco',
+      titleFont: 'eclectic',
+      effect: 'confetti',
+      date: daysFromNow(12, 23),
+      location: 'Basement Bar, backyard left',
+      city: SF,
+      category: 'music',
+      isPublic: true,
+      dressCode: 'Something that sparkles ✨',
+      hostId: mia.id,
+      rsvps: {
+        create: [
+          ...going([mia.id, demo.id, noah.id, ava.id, kai.id], { [ava.id]: 1 }),
+          ...maybe([zoe.id, leo.id]),
+        ],
+      },
+      comments: {
+        create: [{ userId: demo.id, text: 'Already picked out my sequin shirt ✨' }],
+      },
+    },
+  });
+
+  await db.event.create({
+    data: {
+      slug: makeSlug('Sunrise Run Club'),
+      title: 'Sunrise Run Club 🏃',
+      description: '5k along the water, coffee after. All paces welcome.',
+      coverTheme: 'ocean',
+      date: daysFromNow(3, 7),
+      location: 'Marina Green',
+      city: SF,
+      category: 'sports',
+      isPublic: true,
+      hostId: kai.id,
+      rsvps: { create: [...going([kai.id, noah.id, zoe.id]), ...maybe([ava.id])] },
+    },
+  });
+
+  await db.event.create({
+    data: {
+      slug: makeSlug('Open Decks Night'),
+      title: 'Open Decks Night 🎧',
+      description: 'Bring a USB, play 20 minutes. Warm crowd, warmer subwoofer.',
+      coverTheme: 'midnight',
+      titleFont: 'eclectic',
+      effect: 'sparkles',
+      date: daysFromNow(7, 21),
+      location: 'The Loft, 3rd floor',
+      city: SF,
+      category: 'music',
+      isPublic: true,
+      costPerPerson: '$5 at the door',
+      hostId: ava.id,
+      rsvps: {
+        create: [...going([ava.id, mia.id, noah.id, kai.id, leo.id]), ...maybe([demo.id])],
+      },
+    },
+  });
+
+  await db.event.create({
+    data: {
+      slug: makeSlug('Gallery Crawl'),
+      title: 'Gallery Crawl 🖼️',
+      description: 'Three tiny galleries, one great evening. Meet at the first one.',
+      coverTheme: 'candy',
+      titleFont: 'literary',
+      date: daysFromNow(9, 18),
+      location: 'Mission District',
+      city: SF,
+      category: 'arts',
+      isPublic: true,
+      hostId: iris.id,
+      rsvps: { create: [...going([iris.id, zoe.id, ava.id]), ...maybe([mia.id])] },
+    },
+  });
+
+  await db.event.create({
+    data: {
+      slug: makeSlug('Dumpling Marathon'),
+      title: 'Dumpling Marathon 🥟',
+      description: 'We fold until we can’t. Then we eat until we can’t. BYO rolling pin.',
+      coverTheme: 'forest',
+      titleFont: 'fancy',
+      date: daysFromNow(6, 17),
+      location: 'Community Kitchen, Pier 9',
+      city: SF,
+      category: 'food',
+      isPublic: true,
+      hostId: noah.id,
+      rsvps: { create: [...going([noah.id, kai.id, demo.id, mia.id])] },
+    },
+  });
+
+  // ——— Public events elsewhere (Explore city picker) ———
+  await db.event.create({
+    data: {
+      slug: makeSlug('Warehouse Rave'),
+      title: 'WAREHOUSE RAVE',
+      description: 'Concrete, lasers, sunrise. You know the drill.',
+      coverTheme: 'midnight',
+      titleFont: 'eclectic',
+      effect: 'sparkles',
+      date: daysFromNow(8, 23),
+      location: 'Ostbahnhof area',
+      city: 'Berlin',
+      category: 'music',
+      isPublic: true,
+      hostId: luna.id,
+      rsvps: { create: [...going([luna.id, max.id])] },
+    },
+  });
+
+  await db.event.create({
+    data: {
+      slug: makeSlug('Pizza & Chess'),
+      title: 'Pizza & Chess ♟️',
+      description: 'Blitz rounds, grandma slices. Winner takes the last slice.',
+      coverTheme: 'candy',
+      date: daysFromNow(4, 19),
+      location: 'Kreuzberg',
+      city: 'Berlin',
+      category: 'community',
+      isPublic: true,
+      hostId: max.id,
+      rsvps: { create: [...going([max.id, luna.id])] },
+    },
+  });
+
+  await db.event.create({
+    data: {
+      slug: makeSlug('Poetry Basement'),
+      title: 'Poetry Basement 📖',
+      description: 'Open mic, dim lights, loud hearts.',
+      coverTheme: 'sunset',
+      titleFont: 'literary',
+      date: daysFromNow(10, 20),
+      location: 'Lower East Side',
+      city: 'New York',
+      category: 'arts',
+      isPublic: true,
+      hostId: iris.id,
+      rsvps: { create: [...going([iris.id])] },
+    },
+  });
+
+  // ——— Cards & crushes ———
+  await db.card.create({
+    data: {
+      fromId: mia.id,
+      toId: demo.id,
+      theme: 'thanks',
+      message: 'Thanks for hosting the rooftop night — best evening of the summer! 🌇',
+    },
+  });
+  await db.crush.create({ data: { fromId: zoe.id, toId: demo.id } });
+
+  console.log(`Seeded ${users.length} users and 11 events (7 public, 3 cities).`);
   console.log('Login: demo@hausi.app / hausi123');
-  console.log(`Example invite slug: ${rooftop.slug}`);
 }
 
 main()

@@ -12,6 +12,7 @@ import {
 import { makeSlug } from '../lib/slug.js';
 import { notify } from '../lib/notify.js';
 import {
+  CATEGORIES,
   COVER_THEMES,
   EFFECTS,
   LIMITS,
@@ -37,6 +38,11 @@ const eventInputSchema = z.object({
     .refine((s) => !Number.isNaN(Date.parse(s)), 'Invalid date')
     .transform((s) => new Date(s)),
   location: z.string().trim().max(LIMITS.location).optional(),
+  city: z.string().trim().max(80).optional(),
+  category: z.enum(CATEGORIES).optional(),
+  isPublic: z.boolean().optional(),
+  costPerPerson: z.string().trim().max(60).optional(),
+  dressCode: z.string().trim().max(120).optional(),
   maxGuests: z.number().int().min(1).max(LIMITS.maxGuests).nullable().optional(),
   plusOneLimit: z.number().int().min(0).max(LIMITS.plusOnes).optional(),
   rsvpsOpen: z.boolean().optional(),
@@ -166,6 +172,7 @@ eventRoutes.post('/', async (c) => {
   if (!parsed.success) return c.json({ error: 'Invalid event data' }, 400);
   const data = parsed.data;
 
+  const me = await db.user.findUniqueOrThrow({ where: { id: userId } });
   const event = await db.event.create({
     data: {
       slug: makeSlug(data.title),
@@ -176,6 +183,11 @@ eventRoutes.post('/', async (c) => {
       effect: data.effect ?? 'none',
       date: data.date,
       location: data.location ?? '',
+      city: data.city ?? me.city,
+      category: data.category ?? 'community',
+      isPublic: data.isPublic ?? false,
+      costPerPerson: data.costPerPerson ?? '',
+      dressCode: data.dressCode ?? '',
       maxGuests: data.maxGuests ?? null,
       plusOneLimit: data.plusOneLimit ?? 1,
       rsvpsOpen: data.rsvpsOpen ?? true,

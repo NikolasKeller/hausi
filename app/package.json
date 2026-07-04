@@ -6,6 +6,7 @@
     "@expo-google-fonts/bungee": "^0.4.1",
     "@expo-google-fonts/pacifico": "^0.4.1",
     "@expo-google-fonts/playfair-display": "^0.4.2",
+    "@expo/vector-icons": "^15.1.1",
     "@react-native-community/datetimepicker": "9.1.0",
     "expo": "~57.0.2",
     "expo-constants": "~57.0.3",

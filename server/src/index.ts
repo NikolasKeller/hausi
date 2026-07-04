@@ -5,6 +5,8 @@ import { logger } from 'hono/logger';
 import { authRoutes } from './routes/auth.js';
 import { eventRoutes } from './routes/events.js';
 import { notificationRoutes } from './routes/notifications.js';
+import { discoverRoutes } from './routes/discover.js';
+import { meRoutes } from './routes/me.js';
 
 const app = new Hono();
 
@@ -15,6 +17,8 @@ app.get('/', (c) => c.json({ name: 'Hausi API', ok: true }));
 app.route('/auth', authRoutes);
 app.route('/events', eventRoutes);
 app.route('/notifications', notificationRoutes);
+app.route('/discover', discoverRoutes);
+app.route('/me', meRoutes);
 
 app.onError((err, c) => {
   console.error(err);
