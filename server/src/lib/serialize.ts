@@ -29,6 +29,7 @@ type EventRow = {
   title: string;
   description: string;
   coverTheme: string;
+  coverImage: string;
   titleFont: string;
   effect: string;
   date: Date;
@@ -77,6 +78,7 @@ export function toEventSummary(event: EventRow, viewerId: string): EventSummary 
     slug: event.slug,
     title: event.title,
     coverTheme: event.coverTheme as CoverTheme,
+    coverImage: event.coverImage,
     titleFont: event.titleFont as TitleFont,
     effect: event.effect as Effect,
     date: event.date.toISOString(),

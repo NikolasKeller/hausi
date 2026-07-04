@@ -31,6 +31,8 @@ const eventInputSchema = z.object({
   title: z.string().trim().min(1).max(LIMITS.title),
   description: z.string().trim().max(LIMITS.description).optional(),
   coverTheme: z.enum(COVER_THEMES).optional(),
+  // Path to an uploaded cover image (from POST /api/uploads), e.g. /uploads/x.jpg.
+  coverImage: z.string().trim().max(500).optional(),
   titleFont: z.enum(TITLE_FONTS).optional(),
   effect: z.enum(EFFECTS).optional(),
   date: z
@@ -179,6 +181,7 @@ eventRoutes.post('/', async (c) => {
       title: data.title,
       description: data.description ?? '',
       coverTheme: data.coverTheme ?? 'sunset',
+      coverImage: data.coverImage ?? '',
       titleFont: data.titleFont ?? 'classic',
       effect: data.effect ?? 'none',
       date: data.date,

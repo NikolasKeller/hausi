@@ -7,6 +7,7 @@ export interface RecentEvent {
   slug: string;
   title: string;
   coverTheme: string;
+  coverImage: string;
   titleFont: string;
   date: string;
 }

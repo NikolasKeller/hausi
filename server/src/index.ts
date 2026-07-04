@@ -1,4 +1,5 @@
 import { existsSync } from 'node:fs';
+import { readFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { serve } from '@hono/node-server';
 import { serveStatic } from '@hono/node-server/serve-static';
@@ -10,6 +11,8 @@ import { eventRoutes } from './routes/events.js';
 import { notificationRoutes } from './routes/notifications.js';
 import { discoverRoutes } from './routes/discover.js';
 import { meRoutes } from './routes/me.js';
+import { uploadRoutes } from './routes/uploads.js';
+import { MIME_BY_EXT, UPLOAD_DIR } from './lib/uploads.js';
 
 const app = new Hono();
 
@@ -27,8 +30,25 @@ api.route('/events', eventRoutes);
 api.route('/notifications', notificationRoutes);
 api.route('/discover', discoverRoutes);
 api.route('/me', meRoutes);
+api.route('/uploads', uploadRoutes);
 app.route('/api', api);
 app.all('/api/*', (c) => c.json({ error: 'Not found' }, 404));
+
+// Serve uploaded images from the volume. The strict filename pattern blocks
+// path traversal; registered before the SPA fallback so it isn't shadowed.
+app.get('/uploads/:name', async (c) => {
+  const name = c.req.param('name');
+  if (!/^[a-zA-Z0-9_-]+\.(jpg|jpeg|png|webp)$/.test(name)) return c.notFound();
+  try {
+    const buffer = await readFile(join(UPLOAD_DIR, name));
+    const ext = name.split('.').pop()!.toLowerCase();
+    c.header('Content-Type', MIME_BY_EXT[ext] ?? 'application/octet-stream');
+    c.header('Cache-Control', 'public, max-age=31536000, immutable');
+    return c.body(new Uint8Array(buffer));
+  } catch {
+    return c.notFound();
+  }
+});
 
 // In production the container copies the Expo web export next to the server
 // and serves it from here; in dev the folder doesn't exist and the server is
