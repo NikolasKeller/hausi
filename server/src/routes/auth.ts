@@ -4,6 +4,7 @@ import { randomInt } from 'node:crypto';
 import { z } from 'zod';
 import { db } from '../lib/db.js';
 import { createToken } from '../lib/auth.js';
+import { normalizePhone } from '../lib/phone.js';
 import {
   checkVerification,
   sendSms,
@@ -97,7 +98,8 @@ authRoutes.post('/phone/request', async (c) => {
   }
   const parsed = phoneSchema.safeParse(body);
   if (!parsed.success) return c.json({ error: 'Enter a valid phone number' }, 400);
-  const { phone } = parsed.data;
+  // Canonicalize to E.164 so "+49 0176…" and "+49 176…" resolve to one account.
+  const phone = normalizePhone(parsed.data.phone);
 
   // Twilio Verify owns the code end-to-end — we only make sure a profile row
   // exists for this phone and let Twilio send. Nothing is stored on our side.
@@ -141,7 +143,9 @@ authRoutes.post('/phone/request', async (c) => {
 authRoutes.post('/phone/verify', async (c) => {
   const parsed = verifySchema.safeParse(await c.req.json().catch(() => null));
   if (!parsed.success) return c.json({ error: 'Enter the 6-digit code' }, 400);
-  const { phone, code } = parsed.data;
+  const { code } = parsed.data;
+  // Must match the canonicalization used when the code was requested.
+  const phone = normalizePhone(parsed.data.phone);
 
   // Twilio Verify checks the code; on approval we upsert the profile (the
   // request step created it, but be safe) and mint the session.

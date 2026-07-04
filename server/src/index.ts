@@ -11,6 +11,8 @@ import { eventRoutes } from './routes/events.js';
 import { notificationRoutes } from './routes/notifications.js';
 import { discoverRoutes } from './routes/discover.js';
 import { meRoutes } from './routes/me.js';
+import { dedupeUsersByPhone } from './lib/dedupeUsers.js';
+import { db } from './lib/db.js';
 import { uploadRoutes } from './routes/uploads.js';
 import { MIME_BY_EXT, UPLOAD_DIR } from './lib/uploads.js';
 
@@ -75,6 +77,24 @@ app.onError((err, c) => {
   console.error(err);
   return c.json({ error: 'Internal server error' }, 500);
 });
+
+// Collapse any pre-canonicalization duplicate accounts on boot. Best-effort:
+// a failure here must never stop the server from coming up.
+try {
+  await dedupeUsersByPhone();
+} catch (e) {
+  console.error('User dedupe skipped:', e);
+}
+
+// Persistence check: if this count keeps resetting after a redeploy, the
+// SQLite DB at DATABASE_URL is NOT on a persistent volume — that (not the app)
+// is why logins don't stick, since every deploy drops all accounts and
+// invalidates their tokens. On Railway, mount a volume at /data.
+try {
+  console.log(`Accounts in DB at boot: ${await db.user.count()}`);
+} catch (e) {
+  console.error('Account count failed:', e);
+}
 
 const port = Number(process.env.PORT ?? 3001);
 serve({ fetch: app.fetch, port }, (info) => {
