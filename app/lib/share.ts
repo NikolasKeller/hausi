@@ -1,4 +1,5 @@
 import { Platform, Share } from 'react-native';
+import * as Clipboard from 'expo-clipboard';
 import { notify } from './dialogs';
 
 // Native share sheet; on web the Web Share API with a clipboard fallback
@@ -18,5 +19,16 @@ export async function shareText(message: string, url?: string) {
     }
   } catch {
     // Share sheet dismissed or clipboard blocked — nothing to report.
+  }
+}
+
+// Copy a link to the clipboard (expo-clipboard works on web too). Falls back to
+// the share sheet if the clipboard is unavailable (e.g. an insecure context).
+export async function copyLink(url: string) {
+  try {
+    await Clipboard.setStringAsync(url);
+    notify('Link copied', url);
+  } catch {
+    await shareText(url, url);
   }
 }

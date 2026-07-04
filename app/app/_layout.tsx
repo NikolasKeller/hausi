@@ -150,6 +150,8 @@ function RootNavigator() {
         }}
       />
       <Stack.Screen name="e/[slug]" options={{ headerShown: false }} />
+      <Stack.Screen name="card/[id]" options={{ title: '', headerTransparent: true }} />
+      <Stack.Screen name="c/[id]" options={{ headerShown: false }} />
     </Stack>
   );
 }

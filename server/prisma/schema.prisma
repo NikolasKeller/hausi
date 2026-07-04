@@ -36,13 +36,14 @@ model User {
   plusOneAppearances PlusOne[]  @relation("PlusOneGuest")
 }
 
-// A digital greeting card sent between users.
+// A digital greeting card. `toId` is set when delivered in-app to a mutual;
+// left null for cards shared by link (the card's id is its shareable handle).
 model Card {
   id        String   @id @default(cuid())
   fromId    String
   from      User     @relation("CardsSent", fields: [fromId], references: [id], onDelete: Cascade)
-  toId      String
-  to        User     @relation("CardsReceived", fields: [toId], references: [id], onDelete: Cascade)
+  toId      String?
+  to        User?    @relation("CardsReceived", fields: [toId], references: [id], onDelete: Cascade)
   theme     String   @default("confetti")
   message   String
   createdAt DateTime @default(now())
