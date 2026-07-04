@@ -23,19 +23,15 @@ interface BubbleSpec {
   tail?: 'left' | 'right';
 }
 
-// Deterministic, percent-based layout tuned for a ~390x844 screen so the
-// bubbles read as a lively group chat without piling on top of each other.
+// A few floating chat bubbles kept in the top third of the screen — just enough
+// to hint at the group-chat energy without crowding. Deterministic percents
+// (tuned for ~390x844) chosen so nothing overlaps a neighbour or the wordmark
+// below.
 const BUBBLES: BubbleSpec[] = [
-  { text: 'you coming tonight? 👀', left: 5, top: 9, rotate: '-8deg', delay: 0, duration: 2800, drift: 12, variant: 'chat', tail: 'left' },
-  { text: 'so excited 🥳', left: 60, top: 5, rotate: '10deg', delay: 500, duration: 3400, drift: 10, variant: 'chat', tail: 'right' },
-  { text: 'omw!!', left: 38, top: 21, rotate: '-12deg', delay: 1100, duration: 2600, drift: 14, variant: 'chat', tail: 'left' },
-  { text: 'Happy Hour', left: 73, top: 22, rotate: '14deg', delay: 300, duration: 3800, drift: 8, variant: 'tag' },
-  { text: "look who's on the guest list", left: 4, top: 36, rotate: '5deg', delay: 800, duration: 3200, drift: 11, variant: 'chat', tail: 'left' },
-  { text: 'bring your +1 💅', left: 55, top: 45, rotate: '-7deg', delay: 1400, duration: 3000, drift: 13, variant: 'chat', tail: 'right' },
-  { text: 'Dinner Party', left: 8, top: 52, rotate: '-10deg', delay: 1700, duration: 3600, drift: 9, variant: 'tag' },
-  { text: 'House Party', left: 70, top: 60, rotate: '6deg', delay: 900, duration: 4200, drift: 8, variant: 'tag' },
-  { text: 'party wall is popping 🔥', left: 10, top: 64, rotate: '3deg', delay: 200, duration: 3300, drift: 10, variant: 'chat', tail: 'left' },
-  { text: "who's bringing the aux? 🎧", left: 45, top: 78, rotate: '9deg', delay: 600, duration: 2900, drift: 12, variant: 'chat', tail: 'right' },
+  { text: 'you coming tonight? 👀', left: 5, top: 14, rotate: '-6deg', delay: 0, duration: 3200, drift: 10, variant: 'chat', tail: 'left' },
+  { text: 'so excited 🥳', left: 58, top: 11, rotate: '8deg', delay: 500, duration: 3600, drift: 9, variant: 'chat', tail: 'right' },
+  { text: 'House Party', left: 62, top: 42, rotate: '7deg', delay: 900, duration: 4000, drift: 8, variant: 'tag' },
+  { text: "who's bringing the aux? 🎧", left: 6, top: 52, rotate: '-4deg', delay: 300, duration: 3000, drift: 10, variant: 'chat', tail: 'left' },
 ];
 
 function FloatingBubble({ spec }: { spec: BubbleSpec }) {
@@ -165,7 +161,7 @@ const styles = StyleSheet.create({
     top: 0,
     left: 0,
     right: 0,
-    height: '58%',
+    height: '48%',
   },
   bubble: {
     position: 'absolute',

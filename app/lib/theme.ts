@@ -1,4 +1,4 @@
-// Hausi design system — warm cream + black ink, editorial serif.
+// Hausi design system — warm cream + black ink, clean grotesque sans (Archivo).
 // Inspired by the "Known" aesthetic: off-white linen backgrounds, near-black
 // text, warm caramel accent, no purple or neon. Clean and quiet-luxury.
 

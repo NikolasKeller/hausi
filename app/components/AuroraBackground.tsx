@@ -19,15 +19,12 @@ interface OrbSpec {
   rays: number;
 }
 
-// Scattered starburst stickers that drift gently — the "physical party surface"
-// read for the light paper backdrop. (Layout/motion seeds preserved.)
+// A few small starburst accents that drift gently — kept in the top corners,
+// clear of where any screen's headline or content sits, so nothing collides
+// with the text. Restraint over confetti-storm: a couple of sparkles, not a mess.
 const ORBS: OrbSpec[] = [
-  { size: 90, left: 12, top: 12, color: brand.party[0], duration: 9000, delay: 0, drift: 26, rotate: -14, rays: 8 },
-  { size: 46, left: 74, top: 8, color: brand.party[1], duration: 7000, delay: 800, drift: 18, rotate: 10, rays: 6 },
-  { size: 26, left: 52, top: 22, color: light.midnight, duration: 6000, delay: 1600, drift: 14, rotate: 18, rays: 6 },
-  { size: 64, left: 84, top: 38, color: brand.party[2], duration: 10000, delay: 400, drift: 22, rotate: -8, rays: 8 },
-  { size: 34, left: 6, top: 46, color: brand.party[1], duration: 8000, delay: 2000, drift: 16, rotate: 12, rays: 6 },
-  { size: 120, left: 66, top: 62, color: brand.party[0], duration: 12000, delay: 1000, drift: 30, rotate: -12, rays: 8 },
+  { size: 36, left: 4, top: 4, color: brand.party[0], duration: 9000, delay: 0, drift: 14, rotate: -14, rays: 8 },
+  { size: 26, left: 86, top: 3, color: brand.party[2], duration: 10000, delay: 600, drift: 12, rotate: 10, rays: 6 },
 ];
 
 function Orb({ spec }: { spec: OrbSpec }) {
@@ -155,7 +152,7 @@ function ConfettiPiece({ index, height }: { index: number; height: number }) {
 // falling confetti.
 export function AuroraBackground({
   children,
-  confetti = true,
+  confetti = false,
 }: {
   children?: React.ReactNode;
   confetti?: boolean;
