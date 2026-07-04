@@ -1,12 +1,11 @@
 import React, { useEffect, useRef } from 'react';
 import { Animated, Easing, Platform, StyleSheet, View, useWindowDimensions } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
+import { Burst } from './partiful';
+import { brand, light } from '../lib/theme';
 
 // react-native-web has no native driver; silence its fallback warning.
 const useNativeDriver = Platform.OS !== 'web';
-
-// Dusk-over-water palette: peach horizon → violet dusk → deep plum water.
-const DUSK = ['#E8927C', '#B76E9B', '#6E4E8E', '#3B2E5E', '#241B3A'] as const;
 
 interface OrbSpec {
   size: number;
@@ -16,15 +15,19 @@ interface OrbSpec {
   duration: number;
   delay: number;
   drift: number;
+  rotate: number;
+  rays: number;
 }
 
+// Scattered starburst stickers that drift gently — the "physical party surface"
+// read for the light paper backdrop. (Layout/motion seeds preserved.)
 const ORBS: OrbSpec[] = [
-  { size: 90, left: 12, top: 12, color: '#FF4FD8', duration: 9000, delay: 0, drift: 26 },
-  { size: 46, left: 74, top: 8, color: '#FF7AE0', duration: 7000, delay: 800, drift: 18 },
-  { size: 26, left: 52, top: 22, color: '#B48CFF', duration: 6000, delay: 1600, drift: 14 },
-  { size: 64, left: 84, top: 38, color: '#3D2E6B', duration: 10000, delay: 400, drift: 22 },
-  { size: 34, left: 6, top: 46, color: '#FF4FD8', duration: 8000, delay: 2000, drift: 16 },
-  { size: 120, left: 66, top: 62, color: '#2E2352', duration: 12000, delay: 1000, drift: 30 },
+  { size: 90, left: 12, top: 12, color: brand.party[0], duration: 9000, delay: 0, drift: 26, rotate: -14, rays: 8 },
+  { size: 46, left: 74, top: 8, color: brand.party[1], duration: 7000, delay: 800, drift: 18, rotate: 10, rays: 6 },
+  { size: 26, left: 52, top: 22, color: light.midnight, duration: 6000, delay: 1600, drift: 14, rotate: 18, rays: 6 },
+  { size: 64, left: 84, top: 38, color: brand.party[2], duration: 10000, delay: 400, drift: 22, rotate: -8, rays: 8 },
+  { size: 34, left: 6, top: 46, color: brand.party[1], duration: 8000, delay: 2000, drift: 16, rotate: 12, rays: 6 },
+  { size: 120, left: 66, top: 62, color: brand.party[0], duration: 12000, delay: 1000, drift: 30, rotate: -12, rays: 8 },
 ];
 
 function Orb({ spec }: { spec: OrbSpec }) {
@@ -59,11 +62,7 @@ function Orb({ spec }: { spec: OrbSpec }) {
         position: 'absolute',
         left: `${spec.left}%`,
         top: `${spec.top}%`,
-        width: spec.size,
-        height: spec.size,
-        borderRadius: spec.size / 2,
-        backgroundColor: spec.color,
-        opacity: 0.5,
+        opacity: 0.85,
         transform: [
           {
             translateY: progress.interpolate({
@@ -80,11 +79,13 @@ function Orb({ spec }: { spec: OrbSpec }) {
           { scale: progress.interpolate({ inputRange: [0, 1], outputRange: [1, 1.12] }) },
         ],
       }}
-    />
+    >
+      <Burst size={spec.size} rays={spec.rays} color={spec.color} rotate={spec.rotate} />
+    </Animated.View>
   );
 }
 
-const CONFETTI_COLORS = ['#FF7AE0', '#8BD3FF', '#C6FF8B', '#FFE38B', '#B48CFF'];
+const CONFETTI_COLORS = ['#FF4FD8', '#4B7BFF', '#D241FA', '#001666', '#F0B6E0'];
 
 function ConfettiPiece({ index, height }: { index: number; height: number }) {
   const progress = useRef(new Animated.Value(0)).current;
@@ -122,7 +123,7 @@ function ConfettiPiece({ index, height }: { index: number; height: number }) {
         backgroundColor: CONFETTI_COLORS[index % CONFETTI_COLORS.length],
         opacity: progress.interpolate({
           inputRange: [0, 0.08, 0.85, 1],
-          outputRange: [0, 0.85, 0.85, 0],
+          outputRange: [0, 0.9, 0.9, 0],
         }),
         transform: [
           {
@@ -149,7 +150,9 @@ function ConfettiPiece({ index, height }: { index: number; height: number }) {
   );
 }
 
-// Full-screen animated dusk backdrop for the onboarding flow.
+// Full-screen light festive backdrop for the onboarding flow: a warm paper
+// canvas with pastel party washes, drifting starburst stickers, and optional
+// falling confetti.
 export function AuroraBackground({
   children,
   confetti = true,
@@ -161,9 +164,24 @@ export function AuroraBackground({
   return (
     <View style={styles.fill}>
       <LinearGradient
-        colors={[...DUSK]}
-        locations={[0, 0.28, 0.55, 0.78, 1]}
-        style={styles.gradient}
+        colors={[...brand.periwinkle]}
+        locations={[0, 1]}
+        style={styles.washTop}
+        pointerEvents="none"
+      />
+      <LinearGradient
+        colors={['rgba(248,196,255,0.6)', 'rgba(248,196,255,0)']}
+        start={{ x: 1, y: 0 }}
+        end={{ x: 0.15, y: 0.6 }}
+        style={styles.washCorner}
+        pointerEvents="none"
+      />
+      <LinearGradient
+        colors={['rgba(133,218,220,0)', 'rgba(133,218,220,0.4)']}
+        start={{ x: 0, y: 1 }}
+        end={{ x: 0.6, y: 0.4 }}
+        style={styles.washBottom}
+        pointerEvents="none"
       />
       {ORBS.map((spec, i) => (
         <Orb key={i} spec={spec} />
@@ -182,13 +200,27 @@ const styles = StyleSheet.create({
   fill: {
     flex: 1,
     overflow: 'hidden',
-    backgroundColor: '#241B3A',
+    backgroundColor: light.bg,
   },
-  gradient: {
+  washTop: {
     position: 'absolute',
     top: 0,
     left: 0,
     right: 0,
+    height: 560,
+  },
+  washCorner: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    height: 380,
+  },
+  washBottom: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
     bottom: 0,
+    height: 320,
   },
 });

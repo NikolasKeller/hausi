@@ -13,11 +13,60 @@ export const FONTS_TO_LOAD = {
   Archivo_900Black,
 };
 
-// The app's display voice — a heavy grotesque for poster-style headers and
-// event titles (screen titles, profile name, the "Classic" event font). Weight
-// is baked into the family, so reset fontWeight to avoid a synthesized bold.
+// The app's display voice — a heavy grotesque standing in for "Partiful Display"
+// for poster-style headers and event titles. Weight is baked into the family,
+// so reset fontWeight to avoid a synthesized bold. Two weights are loaded:
+// 900 (black) for statement headlines, 800 (extra-bold) for softer display.
 export const DISPLAY_FONT = 'Archivo_900Black';
+export const DISPLAY_FONT_HEAVY = 'Archivo_800ExtraBold';
 export const displayTitle: TextStyle = { fontFamily: DISPLAY_FONT, fontWeight: 'normal' };
+
+// Partiful statement type: massive Archivo Black at very tight negative tracking
+// (~-0.03em) and compressed line-height (~0.9), the way Partiful Display reads.
+// letterSpacing is absolute px in RN, so it scales with the font size.
+export function display(
+  size: number,
+  opts?: { weight?: 'black' | 'heavy'; lineHeight?: number; tracking?: number }
+): TextStyle {
+  const tracking = opts?.tracking ?? -0.03;
+  const lh = opts?.lineHeight ?? (size >= 56 ? 0.9 : size >= 32 ? 0.96 : 1.05);
+  return {
+    fontFamily: opts?.weight === 'heavy' ? DISPLAY_FONT_HEAVY : DISPLAY_FONT,
+    fontWeight: 'normal',
+    fontSize: size,
+    letterSpacing: Math.round(size * tracking * 100) / 100,
+    lineHeight: Math.round(size * lh),
+    includeFontPadding: false,
+  } as TextStyle;
+}
+
+// Interface text — the clean neo-grotesque voice (system font ≈ TWK Lausanne /
+// SF Pro / Neue Haas Grotesk). Slight negative tracking, generous line-height.
+export function uiText(
+  size: number,
+  weight: TextStyle['fontWeight'] = '400',
+  opts?: { tracking?: number; lineHeight?: number }
+): TextStyle {
+  const tracking = opts?.tracking ?? -0.02;
+  return {
+    fontSize: size,
+    fontWeight: weight,
+    letterSpacing: Math.round(size * tracking * 100) / 100,
+    lineHeight: Math.round(size * (opts?.lineHeight ?? 1.4)),
+  };
+}
+
+// A small kicker/eyebrow label — uppercase, tracked out, bold. Sits above
+// display headlines the way Partiful labels its sections.
+export function kicker(color?: string): TextStyle {
+  return {
+    fontSize: 12,
+    fontWeight: '700',
+    letterSpacing: 1.5,
+    textTransform: 'uppercase',
+    ...(color ? { color } : null),
+  };
+}
 
 export const TITLE_FONT_LABELS: Record<TitleFont, string> = {
   classic: 'Classic',

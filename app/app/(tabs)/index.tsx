@@ -17,9 +17,10 @@ import { api } from '../../lib/api';
 import { useAuth } from '../../lib/auth';
 import { getRecentEvents, type RecentEvent } from '../../lib/recents';
 import { colors, radius, spacing } from '../../lib/theme';
-import { titleFontStyle, displayTitle } from '../../lib/fonts';
+import { titleFontStyle, display, uiText, kicker } from '../../lib/fonts';
 import { CoverGradient } from '../../components/CoverGradient';
 import { Button } from '../../components/ui';
+import { Burst, Seal } from '../../components/partiful';
 import { formatEventDate, formatEventTime } from '../../components/EventCard';
 import { withScreenBackground } from '../../components/ScreenBackground';
 
@@ -30,20 +31,6 @@ const PROMOS: {
   route: string;
   gradient: [string, string];
 }[] = [
-  {
-    emoji: '📅',
-    title: 'Introducing Calendars',
-    subtitle: 'All your parties, one grid',
-    route: '/calendar',
-    gradient: ['#4A3580', '#241B3A'],
-  },
-  {
-    emoji: '💘',
-    title: 'Have a crush?',
-    subtitle: 'Tell them. Anonymously-ish.',
-    route: '/profile',
-    gradient: ['#7A2E63', '#241B3A'],
-  },
   {
     emoji: '💌',
     title: 'Send a card',
@@ -119,7 +106,10 @@ function HomeScreen() {
 
   const header = (
     <View style={styles.headerRow}>
-      <Text style={styles.wordmark}>Hausi</Text>
+      <View style={styles.wordmarkWrap}>
+        <Burst size={26} rays={8} color={colors.helio} rotate={12} style={styles.wordmarkBurst} />
+        <Text style={styles.wordmark}>Hausi</Text>
+      </View>
       <Pressable
         onPress={() => router.push('/notifications')}
         hitSlop={8}
@@ -143,7 +133,7 @@ function HomeScreen() {
         <View style={styles.center}>
           <Text style={styles.errorEmoji}>🫠</Text>
           <Text style={styles.errorText}>{error}</Text>
-          <Button title="Try again" variant="ghost" onPress={onRefresh} loading={refreshing} />
+          <Button title="Try again" variant="ghost" tone="paper" onPress={onRefresh} loading={refreshing} />
         </View>
       </SafeAreaView>
     );
@@ -189,6 +179,7 @@ function HomeScreen() {
         ) : null}
 
         <View style={styles.sectionGroup}>
+          <Text style={styles.kicker}>Hot right now</Text>
           <Text style={styles.sectionTitle}>Trending in {home.city} 🔥</Text>
           {home.trendingNearby.length === 0 ? (
             <Text style={styles.emptyNote}>Nothing trending nearby yet — start something.</Text>
@@ -208,6 +199,7 @@ function HomeScreen() {
 
         {recents.length > 0 ? (
           <View style={styles.sectionGroup}>
+            <Text style={styles.kicker}>Back to it</Text>
             <Text style={styles.sectionTitle}>Recently viewed</Text>
             <ScrollView
               horizontal
@@ -248,6 +240,7 @@ function HomeScreen() {
 
         {home.palsGoing.length > 0 ? (
           <View style={styles.sectionGroup}>
+            <Text style={styles.kicker}>Your crew</Text>
             <Text style={styles.sectionTitle}>Where your pals are going 🕺</Text>
             <View style={styles.rowList}>
               {home.palsGoing.map((event) => (
@@ -262,6 +255,7 @@ function HomeScreen() {
         ) : null}
 
         <View style={styles.sectionGroup}>
+          <Text style={styles.kicker}>Around the world</Text>
           <Text style={styles.sectionTitle}>Trending now 🌍</Text>
           {home.trendingNow.length === 0 ? (
             <Text style={styles.emptyNote}>The world is quiet right now.</Text>
@@ -278,8 +272,18 @@ function HomeScreen() {
           )}
         </View>
 
-        <View style={styles.sectionGroup}>
-          <Button title="Create an event 🎉" onPress={() => router.push('/new-event')} />
+        <View style={[styles.sectionGroup, styles.ctaGroup]}>
+          <Seal size={54} color={colors.helio} rotate={-10} style={styles.ctaSeal}>
+            <Text style={styles.ctaSealEmoji}>🎉</Text>
+          </Seal>
+          <Text style={styles.ctaKicker}>Your move</Text>
+          <Text style={styles.ctaTitle}>Throw{'\n'}something</Text>
+          <Button
+            title="Create an event 🎉"
+            variant="vibrant"
+            style={styles.ctaButton}
+            onPress={() => router.push('/new-event')}
+          />
         </View>
       </ScrollView>
     </SafeAreaView>
@@ -372,13 +376,14 @@ const styles = StyleSheet.create({
     fontSize: 48,
   },
   errorText: {
+    ...uiText(17),
     color: colors.text,
-    fontSize: 17,
     textAlign: 'center',
   },
   content: {
-    gap: spacing.lg,
-    paddingBottom: 40,
+    gap: spacing.xl,
+    paddingTop: spacing.sm,
+    paddingBottom: spacing.xxl,
   },
   headerRow: {
     flexDirection: 'row',
@@ -387,11 +392,17 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.md,
     paddingTop: spacing.sm,
   },
+  wordmarkWrap: {
+    position: 'relative',
+  },
   wordmark: {
-    ...displayTitle,
+    ...display(38),
     color: colors.text,
-    fontSize: 28,
-    letterSpacing: -1.2,
+  },
+  wordmarkBurst: {
+    position: 'absolute',
+    top: -10,
+    right: -18,
   },
   bellButton: {
     padding: spacing.xs,
@@ -414,29 +425,52 @@ const styles = StyleSheet.create({
     fontWeight: '800',
   },
   sectionGroup: {
-    gap: spacing.sm,
+    gap: spacing.md,
     paddingHorizontal: spacing.md,
   },
+  kicker: {
+    ...kicker(colors.accent),
+    marginBottom: -spacing.xs,
+  },
   sectionTitle: {
-    ...displayTitle,
+    ...display(30),
     color: colors.text,
-    fontSize: 27,
-    letterSpacing: -1,
   },
   emptyNote: {
+    ...uiText(14),
     color: colors.muted,
-    fontSize: 14,
+  },
+  ctaGroup: {
+    marginTop: spacing.sm,
+    alignItems: 'flex-start',
+  },
+  ctaSeal: {
+    marginBottom: -spacing.xs,
+  },
+  ctaSealEmoji: {
+    fontSize: 24,
+  },
+  ctaKicker: {
+    ...kicker(colors.accent),
+  },
+  ctaTitle: {
+    ...display(52),
+    color: colors.text,
+    marginBottom: spacing.sm,
+  },
+  ctaButton: {
+    alignSelf: 'stretch',
   },
   welcomeBanner: {
     borderRadius: radius.lg,
-    paddingVertical: 14,
+    borderWidth: 2,
+    borderColor: colors.ink,
+    paddingVertical: spacing.md,
     paddingHorizontal: spacing.md,
   },
   welcomeText: {
+    ...uiText(16, '800'),
     color: '#fff',
-    fontSize: 16,
-    fontWeight: '800',
-    letterSpacing: -0.3,
   },
   horizontalScroll: {
     marginHorizontal: -spacing.md,
@@ -449,8 +483,8 @@ const styles = StyleSheet.create({
     width: 300,
     backgroundColor: colors.card,
     borderRadius: radius.lg,
-    borderWidth: 1,
-    borderColor: colors.cardBorder,
+    borderWidth: 2,
+    borderColor: colors.ink,
     overflow: 'hidden',
   },
   trendingCover: {
@@ -472,25 +506,23 @@ const styles = StyleSheet.create({
     gap: spacing.xs,
   },
   trendingMeta: {
+    ...uiText(13, '700'),
     color: colors.accent,
-    fontWeight: '700',
-    fontSize: 13,
   },
   trendingInterested: {
+    ...uiText(13, '700'),
     color: colors.warning,
-    fontWeight: '700',
-    fontSize: 13,
   },
   trendingFriend: {
+    ...uiText(13),
     color: colors.muted,
-    fontSize: 13,
   },
   recentCard: {
     width: 150,
     backgroundColor: colors.card,
     borderRadius: radius.md,
-    borderWidth: 1,
-    borderColor: colors.cardBorder,
+    borderWidth: 2,
+    borderColor: colors.ink,
     overflow: 'hidden',
   },
   recentCover: {
@@ -508,9 +540,8 @@ const styles = StyleSheet.create({
     textShadowRadius: 4,
   },
   recentDate: {
+    ...uiText(12, '700'),
     color: colors.accent,
-    fontSize: 12,
-    fontWeight: '700',
     padding: spacing.sm,
     paddingTop: 6,
   },
@@ -519,21 +550,20 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: spacing.md,
     borderRadius: radius.lg,
-    borderWidth: 1,
-    borderColor: colors.cardBorder,
+    borderWidth: 2,
+    borderColor: colors.ink,
     padding: spacing.md,
   },
   promoEmoji: {
-    fontSize: 28,
+    fontSize: 30,
   },
   promoTitle: {
+    ...uiText(16, '700'),
     color: colors.text,
-    fontSize: 16,
-    fontWeight: '700',
   },
   promoSubtitle: {
+    ...uiText(13),
     color: colors.muted,
-    fontSize: 13,
   },
   rowList: {
     gap: spacing.sm,
@@ -541,10 +571,10 @@ const styles = StyleSheet.create({
   compactRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: spacing.sm,
+    gap: spacing.md,
     backgroundColor: colors.card,
-    borderWidth: 1,
-    borderColor: colors.cardBorder,
+    borderWidth: 2,
+    borderColor: colors.ink,
     borderRadius: radius.md,
     padding: spacing.sm,
   },
@@ -554,17 +584,15 @@ const styles = StyleSheet.create({
     borderRadius: radius.sm,
   },
   compactTitle: {
+    ...uiText(15, '700'),
     color: colors.text,
-    fontSize: 15,
-    fontWeight: '700',
   },
   compactDate: {
+    ...uiText(12, '700'),
     color: colors.accent,
-    fontSize: 12,
-    fontWeight: '700',
   },
   compactSubtitle: {
+    ...uiText(12),
     color: colors.muted,
-    fontSize: 12,
   },
 });

@@ -3,6 +3,8 @@ import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useAuth } from '../../lib/auth';
 import { AuroraBackground } from '../../components/AuroraBackground';
+import { uiText } from '../../lib/fonts';
+import { light } from '../../lib/theme';
 
 // Dev-only: hausi://dev-login signs in as the Preview account so the app
 // can be toured while the real SMS flow is under construction. In release
@@ -34,7 +36,7 @@ export default function DevLoginScreen() {
           <Text style={styles.text}>{error}</Text>
         ) : (
           <>
-            <ActivityIndicator color="#fff" size="large" />
+            <ActivityIndicator color={light.ink} size="large" />
             <Text style={styles.text}>Signing in as Preview…</Text>
           </>
         )}
@@ -51,8 +53,8 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   text: {
-    color: 'rgba(247,245,255,0.85)',
-    fontSize: 15,
+    color: light.text2,
+    ...uiText(15, '600'),
     textAlign: 'center',
     paddingHorizontal: 24,
   },

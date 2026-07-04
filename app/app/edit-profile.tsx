@@ -14,6 +14,7 @@ import { LIMITS } from '../shared/types';
 import { api } from '../lib/api';
 import { useAuth } from '../lib/auth';
 import { colors, radius, spacing } from '../lib/theme';
+import { display, kicker, uiText } from '../lib/fonts';
 import { Button, ErrorText, Field } from '../components/ui';
 
 const AVATARS = ['🎉', '🦄', '🕺', '🌸', '🐙', '🪩', '🌈', '🍕', '👽', '🔥', '🐸', '💫'];
@@ -86,6 +87,11 @@ export default function EditProfileScreen() {
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
     >
       <ScrollView contentContainerStyle={styles.container} keyboardShouldPersistTaps="handled">
+        <View style={styles.header}>
+          <Text style={styles.kicker}>YOUR PROFILE</Text>
+          <Text style={styles.title}>Edit profile</Text>
+        </View>
+
         <Field
           label="Name"
           value={name}
@@ -94,7 +100,7 @@ export default function EditProfileScreen() {
           maxLength={LIMITS.name}
         />
 
-        <View style={{ gap: spacing.xs }}>
+        <View style={{ gap: spacing.sm }}>
           <Text style={styles.label}>Avatar</Text>
           <View style={styles.avatarGrid}>
             {AVATARS.map((emoji) => (
@@ -103,7 +109,7 @@ export default function EditProfileScreen() {
                 onPress={() => setAvatarEmoji(emoji)}
                 style={[styles.avatarChip, avatarEmoji === emoji && styles.avatarChipActive]}
               >
-                <Text style={{ fontSize: 24 }}>{emoji}</Text>
+                <Text style={{ fontSize: 26 }}>{emoji}</Text>
               </Pressable>
             ))}
           </View>
@@ -118,7 +124,7 @@ export default function EditProfileScreen() {
         />
 
         <ErrorText message={error} />
-        <Button title="Save" onPress={save} loading={saving} />
+        <Button title="Save" onPress={save} loading={saving} variant="vibrant" />
       </ScrollView>
     </KeyboardAvoidingView>
   );
@@ -139,10 +145,21 @@ const styles = StyleSheet.create({
     padding: spacing.lg,
     gap: spacing.md,
   },
+  header: {
+    marginTop: spacing.sm,
+    marginBottom: spacing.sm,
+    gap: spacing.xs,
+  },
+  kicker: {
+    ...kicker(colors.accent),
+  },
+  title: {
+    ...display(44),
+    color: colors.text,
+  },
   label: {
+    ...uiText(13, '700'),
     color: colors.muted,
-    fontSize: 13,
-    fontWeight: '600',
     textTransform: 'uppercase',
     letterSpacing: 1,
   },
@@ -152,8 +169,8 @@ const styles = StyleSheet.create({
     gap: spacing.sm,
   },
   avatarChip: {
-    width: 44,
-    height: 44,
+    width: 48,
+    height: 48,
     borderRadius: radius.md,
     backgroundColor: colors.inputBg,
     borderWidth: 2,
@@ -163,5 +180,7 @@ const styles = StyleSheet.create({
   },
   avatarChipActive: {
     borderColor: colors.accent,
+    backgroundColor: 'rgba(255,122,224,0.14)',
+    transform: [{ scale: 1.08 }],
   },
 });

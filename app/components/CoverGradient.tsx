@@ -6,12 +6,12 @@ import { mediaUrl } from '../lib/api';
 
 // Deterministic scatter pattern so covers look identical everywhere.
 const SCATTER: { top: string; left: string; size: number; rotate: string }[] = [
-  { top: '8%', left: '6%', size: 34, rotate: '-15deg' },
-  { top: '18%', left: '74%', size: 44, rotate: '12deg' },
-  { top: '46%', left: '14%', size: 28, rotate: '8deg' },
-  { top: '58%', left: '82%', size: 30, rotate: '-10deg' },
-  { top: '72%', left: '38%', size: 40, rotate: '18deg' },
-  { top: '30%', left: '44%', size: 24, rotate: '-6deg' },
+  { top: '8%', left: '6%', size: 44, rotate: '-15deg' },
+  { top: '18%', left: '74%', size: 56, rotate: '12deg' },
+  { top: '46%', left: '14%', size: 36, rotate: '8deg' },
+  { top: '58%', left: '82%', size: 40, rotate: '-10deg' },
+  { top: '72%', left: '38%', size: 52, rotate: '18deg' },
+  { top: '30%', left: '44%', size: 32, rotate: '-6deg' },
 ];
 
 interface Props {
@@ -25,7 +25,7 @@ interface Props {
   image?: string | null;
 }
 
-export function CoverGradient({ theme, style, children, emojiOpacity = 0.35, image }: Props) {
+export function CoverGradient({ theme, style, children, emojiOpacity = 0.45, image }: Props) {
   const cover = coverFor(theme);
   const uri = mediaUrl(image);
   return (

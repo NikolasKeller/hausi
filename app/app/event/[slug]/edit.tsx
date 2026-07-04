@@ -12,6 +12,7 @@ import type { EventDetail } from '../../../shared/types';
 import { api } from '../../../lib/api';
 import { confirmDialog, notify } from '../../../lib/dialogs';
 import { colors, radius, spacing } from '../../../lib/theme';
+import { kicker, uiText } from '../../../lib/fonts';
 import { EventForm } from '../../../components/EventForm';
 import { Avatar } from '../../../components/Avatar';
 
@@ -113,6 +114,7 @@ export default function EditEventScreen() {
       footer={
         event.isHost ? (
           <View style={styles.cohostSection}>
+            <Text style={styles.cohostKicker}>Share the load</Text>
             <Text style={styles.cohostTitle}>Co-hosts 🤝</Text>
             {event.cohosts.length === 0 ? (
               <Text style={styles.cohostEmpty}>
@@ -172,23 +174,26 @@ const styles = StyleSheet.create({
   },
   errorText: {
     color: colors.danger,
-    fontSize: 16,
+    ...uiText(16, '600'),
     textAlign: 'center',
   },
   cohostSection: {
     gap: spacing.sm,
-    borderTopWidth: 1,
+    borderTopWidth: 2,
     borderColor: colors.cardBorder,
-    paddingTop: spacing.md,
+    paddingTop: spacing.lg,
+    marginTop: spacing.sm,
+  },
+  cohostKicker: {
+    ...kicker(colors.accent),
   },
   cohostTitle: {
     color: colors.text,
-    fontSize: 18,
-    fontWeight: '800',
+    ...uiText(20, '800'),
   },
   cohostEmpty: {
     color: colors.muted,
-    fontSize: 13,
+    ...uiText(13, '400'),
   },
   cohostRow: {
     flexDirection: 'row',
@@ -197,7 +202,7 @@ const styles = StyleSheet.create({
   },
   cohostName: {
     color: colors.text,
-    fontSize: 15,
+    ...uiText(15, '500'),
     flex: 1,
   },
   cohostRemove: {
@@ -205,7 +210,7 @@ const styles = StyleSheet.create({
     height: 26,
     borderRadius: 13,
     backgroundColor: colors.inputBg,
-    borderWidth: 1,
+    borderWidth: 2,
     borderColor: colors.cardBorder,
     alignItems: 'center',
     justifyContent: 'center',
@@ -222,7 +227,7 @@ const styles = StyleSheet.create({
   cohostInput: {
     flex: 1,
     backgroundColor: colors.inputBg,
-    borderWidth: 1,
+    borderWidth: 2,
     borderColor: colors.cardBorder,
     borderRadius: radius.md,
     color: colors.text,
@@ -233,11 +238,11 @@ const styles = StyleSheet.create({
   cohostAdd: {
     backgroundColor: colors.accentDark,
     borderRadius: radius.pill,
-    paddingHorizontal: spacing.md,
+    paddingHorizontal: spacing.lg,
     justifyContent: 'center',
   },
   cohostAddText: {
     color: '#fff',
-    fontWeight: '700',
+    ...uiText(15, '700'),
   },
 });

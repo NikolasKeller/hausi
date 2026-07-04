@@ -16,9 +16,10 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LIMITS, type Mutual } from '../shared/types';
 import { api } from '../lib/api';
 import { textInvite } from '../lib/share';
-import { brandGradient, colors, radius, spacing } from '../lib/theme';
-import { displayTitle } from '../lib/fonts';
+import { brand, colors, radius, shadow, spacing } from '../lib/theme';
+import { display, kicker, uiText } from '../lib/fonts';
 import { Avatar } from '../components/Avatar';
+import { Burst } from '../components/partiful';
 import { Button, ErrorText, Field } from '../components/ui';
 import { ScreenBackground } from '../components/ScreenBackground';
 
@@ -146,6 +147,7 @@ export default function AddPlusOneScreen() {
           contentContainerStyle={[styles.content, { paddingTop: insets.top + 52 }]}
           keyboardShouldPersistTaps="handled"
         >
+          <Burst size={72} rays={8} color={colors.helio} rotate={12} style={styles.decor} />
           <Text style={styles.kicker}>YOUR PLUS ONE 🎟️</Text>
           <Text style={styles.title}>Who are you bringing?</Text>
           <Text style={styles.subtitle}>
@@ -166,7 +168,7 @@ export default function AddPlusOneScreen() {
                 >
                   {active ? (
                     <LinearGradient
-                      colors={[...brandGradient]}
+                      colors={[...brand.party]}
                       start={{ x: 0, y: 0 }}
                       end={{ x: 1, y: 1 }}
                       style={styles.segmentFill}
@@ -232,7 +234,8 @@ export default function AddPlusOneScreen() {
                 title={busy ? 'Adding…' : selectedName ? `Bring ${selectedName}` : 'Bring them'}
                 onPress={addSelected}
                 loading={busy}
-                variant={selectedId ? 'primary' : 'ghost'}
+                variant={selectedId ? 'vibrant' : 'ghost'}
+                tone="paper"
               />
             </View>
           ) : (
@@ -255,7 +258,12 @@ export default function AddPlusOneScreen() {
               />
               <Text style={styles.hint}>We only use this so the host can reach your guest.</Text>
               <ErrorText message={error} />
-              <Button title={busy ? 'Adding…' : 'Add plus one'} onPress={addManual} loading={busy} />
+              <Button
+                title={busy ? 'Adding…' : 'Add plus one'}
+                onPress={addManual}
+                loading={busy}
+                variant="vibrant"
+              />
             </View>
           )}
         </ScrollView>
@@ -269,42 +277,41 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.lg,
     paddingBottom: spacing.xl * 2,
   },
+  decor: {
+    position: 'absolute',
+    top: -8,
+    right: -12,
+    opacity: 0.9,
+  },
   kicker: {
-    color: colors.accent,
-    fontSize: 12,
-    fontWeight: '800',
-    letterSpacing: 2,
-    marginBottom: spacing.xs,
+    ...kicker(colors.accent),
+    marginBottom: spacing.sm,
   },
   title: {
-    ...displayTitle,
+    ...display(60),
     color: colors.text,
-    fontSize: 48,
-    lineHeight: 48,
-    letterSpacing: -1.5,
-    marginBottom: spacing.xs,
+    marginBottom: spacing.sm,
   },
   subtitle: {
+    ...uiText(15),
     color: colors.muted,
-    fontSize: 15,
-    lineHeight: 21,
   },
   segment: {
     flexDirection: 'row',
     backgroundColor: colors.card,
-    borderWidth: 1,
-    borderColor: colors.cardBorder,
+    borderWidth: 2,
+    borderColor: colors.ink,
     borderRadius: radius.pill,
     padding: 4,
     gap: 4,
-    marginTop: spacing.lg,
-    marginBottom: spacing.md,
+    marginTop: spacing.xl,
+    marginBottom: spacing.lg,
   },
   segmentButton: {
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 12,
+    paddingVertical: 13,
     borderRadius: radius.pill,
     overflow: 'hidden',
   },
@@ -313,58 +320,57 @@ const styles = StyleSheet.create({
     borderRadius: radius.pill,
   },
   segmentText: {
+    ...uiText(14, '700'),
     color: colors.muted,
-    fontWeight: '700',
-    fontSize: 14,
   },
   segmentTextActive: {
-    color: colors.onAccent,
+    color: '#fff',
   },
   block: {
-    gap: spacing.sm,
+    gap: spacing.md,
   },
   search: {
     backgroundColor: colors.inputBg,
-    borderWidth: 1,
+    borderWidth: 2,
     borderColor: colors.cardBorder,
     borderRadius: radius.md,
     color: colors.text,
     paddingHorizontal: spacing.md,
-    paddingVertical: 12,
-    fontSize: 16,
+    paddingVertical: 13,
+    ...uiText(16),
   },
   empty: {
+    ...uiText(15),
     color: colors.muted,
-    fontSize: 15,
     textAlign: 'center',
     paddingVertical: spacing.lg,
   },
   personRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: spacing.sm,
-    borderWidth: 1.5,
-    borderColor: 'transparent',
+    gap: spacing.md,
+    backgroundColor: colors.card,
+    borderWidth: 2,
+    borderColor: colors.cardBorder,
     borderRadius: radius.md,
     paddingVertical: spacing.sm,
-    paddingHorizontal: spacing.sm,
+    paddingHorizontal: spacing.md,
+    ...shadow.card,
   },
   personRowSelected: {
     borderColor: colors.accent,
-    backgroundColor: 'rgba(255,122,224,0.12)',
+    backgroundColor: 'rgba(255,122,224,0.14)',
   },
   personName: {
+    ...uiText(16, '700'),
     color: colors.text,
-    fontSize: 16,
-    fontWeight: '700',
   },
   personMeta: {
+    ...uiText(13),
     color: colors.muted,
-    fontSize: 13,
   },
   hint: {
+    ...uiText(13),
     color: colors.muted,
-    fontSize: 13,
-    lineHeight: 18,
   },
 });
