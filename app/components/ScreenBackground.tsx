@@ -3,21 +3,27 @@ import { StyleSheet, View } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { colors } from '../lib/theme';
 
-// The app-wide backdrop: deep plum with a faint dusk glow bleeding in from
-// the top and two soft brand orbs. Static (no animation) so scroll
-// performance stays flat; the animated version lives in AuroraBackground
-// for the onboarding flow.
+// The app-wide backdrop: a violet "night sky" bleeding down from the top into
+// the near-black base, with a magenta aurora leaning in from the top-right for
+// depth — the moody, nightlife feel of the reference design. Static (no
+// animation) so scroll performance stays flat; the animated version lives in
+// AuroraBackground for the onboarding flow.
 export function ScreenBackground({ children }: { children?: React.ReactNode }) {
   return (
     <View style={styles.fill}>
       <LinearGradient
-        colors={['rgba(232,146,124,0.16)', 'rgba(183,110,155,0.10)', 'rgba(23,17,41,0)']}
-        locations={[0, 0.45, 1]}
-        style={styles.glow}
+        colors={['rgba(124,92,255,0.40)', 'rgba(96,62,186,0.18)', 'rgba(14,11,22,0)']}
+        locations={[0, 0.4, 1]}
+        style={styles.sky}
         pointerEvents="none"
       />
-      <View style={[styles.orb, styles.orbPink]} pointerEvents="none" />
-      <View style={[styles.orb, styles.orbViolet]} pointerEvents="none" />
+      <LinearGradient
+        colors={['rgba(255,79,216,0.24)', 'rgba(255,79,216,0)']}
+        start={{ x: 1, y: 0 }}
+        end={{ x: 0.1, y: 0.7 }}
+        style={styles.aurora}
+        pointerEvents="none"
+      />
       {children}
     </View>
   );
@@ -51,30 +57,18 @@ const styles = StyleSheet.create({
     backgroundColor: colors.bg,
     overflow: 'hidden',
   },
-  glow: {
+  sky: {
     position: 'absolute',
     top: 0,
     left: 0,
     right: 0,
-    height: 320,
+    height: 460,
   },
-  orb: {
+  aurora: {
     position: 'absolute',
-    borderRadius: 999,
-    opacity: 0.14,
-  },
-  orbPink: {
-    width: 220,
-    height: 220,
-    right: -70,
-    top: -60,
-    backgroundColor: '#FF4FD8',
-  },
-  orbViolet: {
-    width: 180,
-    height: 180,
-    left: -60,
-    top: 180,
-    backgroundColor: '#8B5CF6',
+    top: 0,
+    left: 0,
+    right: 0,
+    height: 300,
   },
 });

@@ -17,7 +17,7 @@ import { api } from '../../lib/api';
 import { citySuggestions } from '../../lib/cities';
 import { shareText } from '../../lib/share';
 import { colors, radius, spacing } from '../../lib/theme';
-import { titleFontStyle } from '../../lib/fonts';
+import { titleFontStyle, displayTitle } from '../../lib/fonts';
 import { CoverGradient } from '../../components/CoverGradient';
 import { Button } from '../../components/ui';
 import { withScreenBackground } from '../../components/ScreenBackground';
@@ -340,9 +340,9 @@ const styles = StyleSheet.create({
     gap: spacing.sm,
   },
   headerTitle: {
+    ...displayTitle,
     color: colors.text,
-    fontSize: 34,
-    fontWeight: '800',
+    fontSize: 32,
     letterSpacing: -1,
   },
   cityPill: {
@@ -512,7 +512,7 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
   },
   poster: {
-    height: 180,
+    height: 240,
     alignItems: 'center',
     justifyContent: 'center',
     padding: spacing.sm,

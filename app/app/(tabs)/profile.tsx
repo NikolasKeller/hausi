@@ -17,6 +17,7 @@ import { useAuth } from '../../lib/auth';
 import { confirmDialog, notify } from '../../lib/dialogs';
 import { shareText } from '../../lib/share';
 import { colors, radius, spacing } from '../../lib/theme';
+import { displayTitle } from '../../lib/fonts';
 import { Avatar } from '../../components/Avatar';
 import { CoverGradient } from '../../components/CoverGradient';
 import { Button } from '../../components/ui';
@@ -143,7 +144,7 @@ function ProfileScreen() {
     <SafeAreaView style={styles.safe} edges={['top']}>
       <ScrollView contentContainerStyle={styles.container}>
         <View style={styles.header}>
-          <Text style={styles.headerName} numberOfLines={1}>
+          <Text style={[styles.headerName, displayTitle]} numberOfLines={1}>
             {profile.name}
           </Text>
           <View style={styles.headerActions}>
@@ -171,7 +172,7 @@ function ProfileScreen() {
           >
             <Avatar emoji={profile.avatarEmoji} size={120} />
           </LinearGradient>
-          <Text style={styles.bigName}>{profile.name}</Text>
+          <Text style={[styles.bigName, displayTitle]}>{profile.name}</Text>
         </View>
 
         <View style={styles.actionRow}>
@@ -352,9 +353,9 @@ const styles = StyleSheet.create({
   },
   bigName: {
     color: colors.text,
-    fontSize: 30,
+    fontSize: 40,
     fontWeight: '800',
-    letterSpacing: -0.5,
+    letterSpacing: -1.5,
     textAlign: 'center',
     paddingHorizontal: spacing.lg,
   },

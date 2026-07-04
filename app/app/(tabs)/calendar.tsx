@@ -1,6 +1,7 @@
 import React, { useCallback, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
+  Image,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -11,7 +12,8 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import type { EventSummary } from '../../shared/types';
-import { api } from '../../lib/api';
+import { api, mediaUrl } from '../../lib/api';
+import { displayTitle } from '../../lib/fonts';
 import { colors, radius, spacing } from '../../lib/theme';
 import { COVERS } from '../../lib/covers';
 import { EventCard } from '../../components/EventCard';
@@ -249,9 +251,16 @@ function CalendarScreen() {
                           ]}
                         >
                           {dayEvents?.length ? (
-                            <Text style={styles.dayEmoji}>
-                              {COVERS[dayEvents[0].coverTheme].emoji}
-                            </Text>
+                            dayEvents[0].coverImage ? (
+                              <Image
+                                source={{ uri: mediaUrl(dayEvents[0].coverImage) }}
+                                style={styles.dayThumb}
+                              />
+                            ) : (
+                              <Text style={styles.dayEmoji}>
+                                {COVERS[dayEvents[0].coverTheme].emoji}
+                              </Text>
+                            )
                           ) : (
                             <Text
                               style={[styles.dayNumber, isSelected && styles.dayNumberSelected]}
@@ -362,9 +371,9 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   monthTitle: {
+    ...displayTitle,
     color: colors.text,
     fontSize: 34,
-    fontWeight: '800',
     letterSpacing: -1,
     flexShrink: 1,
   },
@@ -457,6 +466,11 @@ const styles = StyleSheet.create({
   },
   dayEmoji: {
     fontSize: 20,
+  },
+  dayThumb: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
   },
   panel: {
     backgroundColor: colors.card,
