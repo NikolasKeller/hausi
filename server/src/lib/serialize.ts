@@ -172,7 +172,9 @@ export function toEventDetail(
         guests: (r.plusOneGuests ?? []).map(
           (g): PlusOneGuest => ({
             id: g.id,
-            name: g.name,
+            // Once the invitee claims the spot, their own profile wins over
+            // whatever the inviter typed.
+            name: g.user?.name.trim() ? g.user.name : g.name,
             avatarEmoji: g.user?.avatarEmoji ?? '🎟️',
             userId: g.userId,
           })

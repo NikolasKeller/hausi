@@ -10,6 +10,7 @@ import {
   toEventSummary,
 } from '../lib/serialize.js';
 import { makeSlug } from '../lib/slug.js';
+import { normalizePhone } from '../lib/phone.js';
 import { unlinkImage } from '../lib/uploads.js';
 import { notify } from '../lib/notify.js';
 import { findMutuals } from '../lib/mutuals.js';
@@ -592,8 +593,27 @@ eventRoutes.post('/:id/plus-one', async (c) => {
         linkedUserId = guest.id;
       } else {
         name = input.name;
-        phone = input.phone;
+        // Canonicalize so the spot links up when this number signs in later,
+        // and so the same person can't be added twice under different spellings.
+        phone = normalizePhone(input.phone);
+        if (!/^\+[0-9]{7,15}$/.test(phone)) {
+          throw new HttpError('Enter a valid phone number, like +14155551234', 400);
+        }
         linkedUserId = null;
+        const holder = await tx.user.findUnique({ where: { phone } });
+        if (holder && event.rsvps.some((r) => r.userId === holder.id && r.status !== 'CANT')) {
+          throw new HttpError(
+            `${holder.name.trim() || 'That person'} is already on the guest list`,
+            409
+          );
+        }
+        if (
+          event.rsvps.some((r) =>
+            r.plusOneGuests.some((g) => g.phone === phone || (holder && g.userId === holder.id))
+          )
+        ) {
+          throw new HttpError("That number is already someone's plus one", 409);
+        }
       }
 
       await tx.plusOne.create({ data: { rsvpId: mine.id, name, phone, userId: linkedUserId } });

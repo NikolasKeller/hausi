@@ -37,6 +37,14 @@ function ModalClose() {
   );
 }
 
+// Where a signed-out user was heading (e.g. an invite deep link) — restored
+// after auth. Module scope, NOT a ref: the navigator remounts on web after
+// the first redirect, and refs don't survive that.
+let pendingPath: string | null = null;
+// Distinguishes "just pressed log out" (had a session) from "arrived signed
+// out via a link" — logout should land on the intro, not the phone screen.
+let hadSession = false;
+
 function RootNavigator() {
   const { user, initializing, devSignIn } = useAuth();
   // On font failure, proceed anyway — titles fall back to the system font.
@@ -45,11 +53,6 @@ function RootNavigator() {
   const segments = useSegments();
   const pathname = usePathname();
   const router = useRouter();
-  // Where a signed-out user was heading (e.g. an invite deep link) — restored after auth.
-  const pendingPath = useRef<string | null>(null);
-  // Distinguishes "just pressed log out" (had a session) from "arrived signed
-  // out via a link" — logout should land on the intro, not the phone screen.
-  const hadSession = useRef(false);
 
   const devAutoTried = useRef(false);
   useEffect(() => {
@@ -65,20 +68,22 @@ function RootNavigator() {
     if (initializing) return;
     const inAuthGroup = segments[0] === '(auth)';
     if (!user && !inAuthGroup) {
-      const arrivedViaLink = !hadSession.current && pathname && pathname !== '/';
-      if (arrivedViaLink) pendingPath.current = pathname;
+      const arrivedViaLink = !hadSession && pathname && pathname !== '/';
+      if (arrivedViaLink) pendingPath = pathname;
       // Invitees jump straight to phone entry; everyone else gets the intro.
       router.replace(arrivedViaLink ? '/phone' : '/welcome');
     } else if (user && !user.name.trim()) {
       // Onboarding is mandatory: until a name is saved, every route —
       // including a reload or a typed URL — funnels back to profile setup.
       if (segments[0] !== 'setup') router.replace('/setup');
-    } else if (user && inAuthGroup) {
-      const target = pendingPath.current ?? '/';
-      pendingPath.current = null;
-      router.replace(target as never);
+    } else if (user && (inAuthGroup || pendingPath)) {
+      // Restore where the user was heading (e.g. an invite link) — also for
+      // first-timers, who finish profile setup before this fires.
+      const target = pendingPath ?? '/';
+      pendingPath = null;
+      if (pathname !== target) router.replace(target as never);
     }
-    hadSession.current = !!user;
+    hadSession = !!user;
   }, [user, initializing, segments, pathname, router]);
 
   if (initializing || !fontsReady) {
