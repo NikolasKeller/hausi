@@ -15,6 +15,8 @@ export const colors = {
   accent: '#FF7AE0',
   accentDark: '#C13FA8',
   violet: '#8B5CF6',
+  // Ink for text/icons sitting on the pink accent fill.
+  onAccent: '#1A1022',
   // Semantics
   danger: '#FF6B81',
   success: '#5EE6A8',

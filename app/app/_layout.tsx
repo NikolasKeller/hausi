@@ -132,9 +132,11 @@ function RootNavigator() {
       <Stack.Screen
         name="add-plus-one"
         options={{
-          title: 'Add a plus one',
+          title: '',
           presentation: 'modal',
           gestureEnabled: true,
+          headerTransparent: true,
+          headerStyle: { backgroundColor: 'transparent' },
           headerLeft: () => <ModalClose />,
         }}
       />
