@@ -7,7 +7,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { enableScreens } from 'react-native-screens';
 import { AuthProvider, useAuth } from '../lib/auth';
 import { FONTS_TO_LOAD } from '../lib/fonts';
-import { colors } from '../lib/theme';
+import { colors, spacing } from '../lib/theme';
 
 // react-native-screens disables itself on web, which drops the tab navigator
 // into a fallback that keeps every tab mounted and painted behind the focused
@@ -27,6 +27,9 @@ function ModalClose() {
       hitSlop={12}
       style={({ pressed }) => [
         {
+          // Leading margin keeps the circle off the screen edge — native-stack
+          // ignores headerLeftContainerStyle, so the spacing lives on the button.
+          marginLeft: spacing.md,
           width: 34,
           height: 34,
           borderRadius: 17,
