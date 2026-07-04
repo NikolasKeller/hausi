@@ -1,4 +1,5 @@
 import { Platform, Share } from 'react-native';
+import * as Linking from 'expo-linking';
 import * as Clipboard from 'expo-clipboard';
 import { notify } from './dialogs';
 
@@ -19,6 +20,27 @@ export async function shareText(message: string, url?: string) {
     }
   } catch {
     // Share sheet dismissed or clipboard blocked — nothing to report.
+  }
+}
+
+// Open the Messages app straight to a draft to `phone`, with the invite body
+// pre-filled, so the host fires off the +1 invite with a single tap. (iOS/
+// Android can't send an SMS silently, by design — the user still taps Send.)
+// iOS and Android disagree on the sms: separator (& vs ?); web has no Messages
+// app, so fall back to the share sheet there.
+export async function textInvite(phone: string, message: string, url?: string) {
+  if (Platform.OS === 'web') {
+    await shareText(message, url);
+    return;
+  }
+  const to = phone.replace(/[^\d+]/g, '');
+  const sep = Platform.OS === 'ios' ? '&' : '?';
+  const smsUrl = `sms:${to}${sep}body=${encodeURIComponent(message)}`;
+  try {
+    await Linking.openURL(smsUrl);
+  } catch {
+    // No Messages app or the OS refused the scheme — hand over the share sheet.
+    await shareText(message, url).catch(() => {});
   }
 }
 
