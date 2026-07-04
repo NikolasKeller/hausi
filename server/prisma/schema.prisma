@@ -33,6 +33,7 @@ model User {
   cardsReceived  Card[]         @relation("CardsReceived")
   crushesSent    Crush[]        @relation("CrushesSent")
   crushesGotten  Crush[]        @relation("CrushesGotten")
+  plusOneAppearances PlusOne[]  @relation("PlusOneGuest")
 }
 
 // A digital greeting card sent between users.
@@ -125,12 +126,34 @@ model Rsvp {
   userId       String
   user         User      @relation(fields: [userId], references: [id], onDelete: Cascade)
   status       String
+  // Denormalized count of plusOneGuests, kept in sync on every write so the
+  // capacity/waitlist/count math (countRsvps, promoteWaitlist) stays cheap.
   plusOnes     Int       @default(0)
   waitlistedAt DateTime?
   createdAt    DateTime  @default(now())
   updatedAt    DateTime  @updatedAt
+  plusOneGuests PlusOne[]
 
   @@unique([eventId, userId])
+}
+
+// A named guest an attendee brings along ("+1"). Attached to the host's Rsvp;
+// counts as one extra head via Rsvp.plusOnes. userId links it to a Hausi user
+// when the +1 was picked from mutuals; a manually-added +1 stores name + phone
+// only (no account, no login). We cap it at one per Rsvp in the route layer.
+model PlusOne {
+  id        String   @id @default(cuid())
+  rsvpId    String
+  rsvp      Rsvp     @relation(fields: [rsvpId], references: [id], onDelete: Cascade)
+  name      String
+  phone     String?
+  userId    String?
+  user      User?    @relation("PlusOneGuest", fields: [userId], references: [id], onDelete: SetNull)
+  createdAt DateTime @default(now())
+
+  // One +1 per RSVP — enforced at the DB so a double-submit race can't create
+  // two (the route also checks, but that check-then-act isn't atomic).
+  @@unique([rsvpId])
 }
 
 // type: "comment" (user-written) | "system" (activity entries like "X is going")

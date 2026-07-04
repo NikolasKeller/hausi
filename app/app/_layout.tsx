@@ -129,6 +129,15 @@ function RootNavigator() {
           headerLeft: () => <ModalClose />,
         }}
       />
+      <Stack.Screen
+        name="add-plus-one"
+        options={{
+          title: 'Add a plus one',
+          presentation: 'modal',
+          gestureEnabled: true,
+          headerLeft: () => <ModalClose />,
+        }}
+      />
       <Stack.Screen name="notifications" options={{ title: 'Notifications' }} />
       <Stack.Screen name="event/[slug]/index" options={{ title: '', headerTransparent: true }} />
       <Stack.Screen

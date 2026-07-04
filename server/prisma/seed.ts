@@ -55,8 +55,24 @@ async function main() {
   }
   const [demo, mia, leo, zoe, noah, ava, kai, luna, max, iris] = users;
 
-  const going = (userIds: string[], plusOnes: Record<string, number> = {}) =>
-    userIds.map((userId) => ({ userId, status: 'GOING', plusOnes: plusOnes[userId] ?? 0 }));
+  // A GOING rsvp, optionally bringing a named +1. The plusOnes count and the
+  // PlusOne rows are created together so the invariant (count == row count)
+  // holds from the first seed.
+  const going = (
+    userIds: string[],
+    plusOnes: Record<string, { name: string; phone?: string }> = {}
+  ) =>
+    userIds.map((userId) => {
+      const guest = plusOnes[userId];
+      return {
+        userId,
+        status: 'GOING',
+        plusOnes: guest ? 1 : 0,
+        ...(guest
+          ? { plusOneGuests: { create: [{ name: guest.name, phone: guest.phone ?? null }] } }
+          : {}),
+      };
+    });
   const maybe = (userIds: string[]) => userIds.map((userId) => ({ userId, status: 'MAYBE' }));
 
   // ——— Private events for the demo user (calendar / my events) ———
@@ -79,7 +95,9 @@ async function main() {
       cohosts: { create: [{ userId: mia.id }] },
       rsvps: {
         create: [
-          ...going([demo.id, mia.id, zoe.id, noah.id], { [mia.id]: 1 }),
+          ...going([demo.id, mia.id, zoe.id, noah.id], {
+            [mia.id]: { name: 'Sam (Mia’s +1)', phone: '+14155550190' },
+          }),
           ...maybe([leo.id]),
         ],
       },
@@ -162,7 +180,9 @@ async function main() {
       hostId: mia.id,
       rsvps: {
         create: [
-          ...going([mia.id, demo.id, noah.id, ava.id, kai.id], { [ava.id]: 1 }),
+          ...going([mia.id, demo.id, noah.id, ava.id, kai.id], {
+            [ava.id]: { name: 'Jordan (Ava’s +1)', phone: '+14155550191' },
+          }),
           ...maybe([zoe.id, leo.id]),
         ],
       },

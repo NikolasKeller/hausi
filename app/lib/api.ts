@@ -210,11 +210,23 @@ export const api = {
       });
     return p;
   },
-  rsvp(eventId: string, status: RsvpStatus, plusOnes = 0) {
+  rsvp(eventId: string, status: RsvpStatus) {
     return request<{ event: EventDetail }>(`/events/${eventId}/rsvp`, {
       method: 'PUT',
-      body: JSON.stringify({ status, plusOnes }),
+      body: JSON.stringify({ status }),
     });
+  },
+  addPlusOne(eventId: string, guest: { userId: string } | { name: string; phone: string }) {
+    return request<{ event: EventDetail }>(`/events/${eventId}/plus-one`, {
+      method: 'POST',
+      body: JSON.stringify(guest),
+    });
+  },
+  removePlusOne(eventId: string, plusOneId: string) {
+    return request<{ event: EventDetail }>(
+      `/events/${eventId}/plus-one/${encodeURIComponent(plusOneId)}`,
+      { method: 'DELETE' }
+    );
   },
   removeGuest(eventId: string, userId: string) {
     return request<{ event: EventDetail }>(
