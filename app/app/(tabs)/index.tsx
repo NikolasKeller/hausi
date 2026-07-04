@@ -23,6 +23,7 @@ import { titleFontStyle } from '../../lib/fonts';
 import { CoverGradient } from '../../components/CoverGradient';
 import { Button } from '../../components/ui';
 import { formatEventDate, formatEventTime } from '../../components/EventCard';
+import { withScreenBackground } from '../../components/ScreenBackground';
 
 const PROMOS: {
   emoji: string;
@@ -54,7 +55,9 @@ const PROMOS: {
   },
 ];
 
-export default function HomeScreen() {
+export default withScreenBackground(HomeScreen);
+
+function HomeScreen() {
   const router = useRouter();
   const [home, setHome] = useState<HomeFeed | null>(null);
   const [recents, setRecents] = useState<RecentEvent[]>([]);
