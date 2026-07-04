@@ -1,3 +1,4 @@
+import './env.js';
 import { PrismaClient } from '@prisma/client';
 
 // The Prisma CLI reads server/.env itself; the Node runtime doesn't, so fall

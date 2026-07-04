@@ -10,7 +10,7 @@ import {
   type ViewStyle,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-import { colors, radius, spacing } from '../lib/theme';
+import { brandGradient, colors, radius, spacing } from '../lib/theme';
 
 export function Button({
   title,
@@ -43,7 +43,7 @@ export function Button({
     return (
       <Pressable onPress={onPress} disabled={loading} style={({ pressed }) => [pressed && styles.pressed, style]}>
         <LinearGradient
-          colors={[colors.accentDark, '#C13FFF']}
+          colors={[...brandGradient]}
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 1 }}
           style={styles.button}

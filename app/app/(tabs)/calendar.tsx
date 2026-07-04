@@ -16,6 +16,7 @@ import { colors, radius, spacing } from '../../lib/theme';
 import { COVERS } from '../../lib/covers';
 import { EventCard } from '../../components/EventCard';
 import { Button } from '../../components/ui';
+import { withScreenBackground } from '../../components/ScreenBackground';
 
 const MONTHS = [
   'January',
@@ -63,7 +64,9 @@ function chunkWeeks(cells: (Date | null)[]): (Date | null)[][] {
   return weeks;
 }
 
-export default function CalendarScreen() {
+export default withScreenBackground(CalendarScreen);
+
+function CalendarScreen() {
   const router = useRouter();
   const [events, setEvents] = useState<EventSummary[] | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -324,7 +327,7 @@ export default function CalendarScreen() {
 const styles = StyleSheet.create({
   safe: {
     flex: 1,
-    backgroundColor: colors.bg,
+    backgroundColor: 'transparent',
   },
   center: {
     flex: 1,

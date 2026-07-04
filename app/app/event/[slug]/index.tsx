@@ -484,7 +484,7 @@ const styles = StyleSheet.create({
     textShadowRadius: 8,
   },
   canceledBanner: {
-    backgroundColor: '#3A1B2A',
+    backgroundColor: 'rgba(255,107,129,0.12)',
     borderBottomWidth: 1,
     borderColor: colors.danger,
     padding: spacing.md,
@@ -570,7 +570,7 @@ const styles = StyleSheet.create({
   },
   rsvpButtonActive: {
     borderColor: colors.accent,
-    backgroundColor: '#241C3B',
+    backgroundColor: 'rgba(255,122,224,0.12)',
   },
   rsvpEmoji: {
     fontSize: 26,

@@ -3,17 +3,21 @@ import { Tabs } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { colors } from '../../lib/theme';
 
+// Each tab screen paints its own opaque backdrop (see withScreenBackground), so
+// the sceneStyle stays opaque here too: on web the navigator stacks every
+// mounted tab and only a solid scene keeps blurred tabs from bleeding through.
 export default function TabsLayout() {
   return (
     <Tabs
       screenOptions={{
         headerShown: false,
+        sceneStyle: { backgroundColor: colors.bg },
         tabBarStyle: {
-          backgroundColor: '#0A0812',
+          backgroundColor: '#120D22',
           borderTopColor: colors.cardBorder,
           borderTopWidth: 0.5,
         },
-        tabBarActiveTintColor: colors.text,
+        tabBarActiveTintColor: colors.accent,
         tabBarInactiveTintColor: colors.muted,
         tabBarShowLabel: false,
       }}

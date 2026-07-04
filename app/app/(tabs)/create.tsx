@@ -4,8 +4,11 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { colors, radius, spacing } from '../../lib/theme';
 import { CoverGradient } from '../../components/CoverGradient';
+import { withScreenBackground } from '../../components/ScreenBackground';
 
-export default function CreateScreen() {
+export default withScreenBackground(CreateScreen);
+
+function CreateScreen() {
   const router = useRouter();
 
   return (
@@ -52,7 +55,7 @@ export default function CreateScreen() {
 const styles = StyleSheet.create({
   safe: {
     flex: 1,
-    backgroundColor: colors.bg,
+    backgroundColor: 'transparent',
   },
   content: {
     flex: 1,

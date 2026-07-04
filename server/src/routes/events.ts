@@ -12,6 +12,7 @@ import {
 import { makeSlug } from '../lib/slug.js';
 import { unlinkImage } from '../lib/uploads.js';
 import { notify } from '../lib/notify.js';
+import { ledger } from '../lib/ledger.js';
 import {
   CATEGORIES,
   COVER_THEMES,
@@ -201,6 +202,15 @@ eventRoutes.post('/', async (c) => {
     },
     include: eventInclude,
   });
+  ledger({
+    action: 'created',
+    eventSlug: event.slug,
+    eventTitle: event.title,
+    category: event.category,
+    isPublic: event.isPublic,
+    actorId: userId,
+    actorName: me.name,
+  });
   return c.json({ event: toEventDetail(event, userId) }, 201);
 });
 
@@ -288,6 +298,16 @@ eventRoutes.patch('/:id', async (c) => {
     await unlinkImage(existing.coverImage);
   }
 
+  const editor = await db.user.findUniqueOrThrow({ where: { id: userId } });
+  ledger({
+    action: 'updated',
+    eventSlug: event.slug,
+    eventTitle: event.title,
+    category: event.category,
+    isPublic: event.isPublic,
+    actorId: userId,
+    actorName: editor.name,
+  });
   return c.json({ event: toEventDetail(event, userId) });
 });
 
@@ -321,6 +341,16 @@ eventRoutes.post('/:id/cancel', async (c) => {
     return tx.event.findUniqueOrThrow({ where: { id: existing.id }, include: eventInclude });
   });
 
+  const canceler = await db.user.findUniqueOrThrow({ where: { id: userId } });
+  ledger({
+    action: 'canceled',
+    eventSlug: event.slug,
+    eventTitle: event.title,
+    category: event.category,
+    isPublic: event.isPublic,
+    actorId: userId,
+    actorName: canceler.name,
+  });
   return c.json({ event: toEventDetail(event, userId) });
 });
 
@@ -333,6 +363,16 @@ eventRoutes.delete('/:id', async (c) => {
 
   await db.event.delete({ where: { id: existing.id } });
   await unlinkImage(existing.coverImage);
+  const deleter = await db.user.findUniqueOrThrow({ where: { id: userId } });
+  ledger({
+    action: 'deleted',
+    eventSlug: existing.slug,
+    eventTitle: existing.title,
+    category: existing.category,
+    isPublic: existing.isPublic,
+    actorId: userId,
+    actorName: deleter.name,
+  });
   return c.json({ ok: true });
 });
 

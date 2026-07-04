@@ -15,10 +15,23 @@ Requires Node 20+ and (for the app) the Expo Go app or an iOS Simulator / Androi
 ```bash
 cd server
 npm install
-npx prisma db push   # creates SQLite dev.db
-npm run seed         # demo users + 3 sample events
+npx prisma db push   # creates SQLite dev.db (empty — real data only)
 npm run dev          # API on http://localhost:3001
 ```
+
+The app ships with **no fake data**: every user signs up through the phone
+flow and every event is created for real. (`npm run seed` still exists for
+throwaway local demos, but it is not part of the normal flow and refuses to
+run against any non-SQLite database.)
+
+### Event ledger (Supabase)
+
+Every event lifecycle action — created / updated / canceled / deleted — is
+appended to the `EventLedger` table in the Hausi Supabase project (what kind
+of event, public or private, by whom, when). The server writes it through
+PostgREST using `SUPABASE_URL` + `SUPABASE_SERVICE_ROLE_KEY` from
+`server/.env` (gitignored; see `.env.example`). Writes are fire-and-forget so
+the ledger can never break a user request.
 
 ### 2. App
 

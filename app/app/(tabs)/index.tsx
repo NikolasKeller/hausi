@@ -9,7 +9,10 @@ import {
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useFocusEffect, useRouter } from 'expo-router';
+import { Redirect, useFocusEffect, useRouter } from 'expo-router';
+
+// Screenshot-tour helper: set to a tab path to hop there, null for normal.
+const DEV_TOUR_REDIRECT: string | null = null;
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import type { ExploreEvent, HomeFeed } from '../../shared/types';
@@ -20,6 +23,7 @@ import { titleFontStyle } from '../../lib/fonts';
 import { CoverGradient } from '../../components/CoverGradient';
 import { Button } from '../../components/ui';
 import { formatEventDate, formatEventTime } from '../../components/EventCard';
+import { withScreenBackground } from '../../components/ScreenBackground';
 
 const PROMOS: {
   emoji: string;
@@ -33,25 +37,27 @@ const PROMOS: {
     title: 'Introducing Calendars',
     subtitle: 'All your parties, one grid',
     route: '/calendar',
-    gradient: ['#2B2050', '#1A1626'],
+    gradient: ['#4A3580', '#241B3A'],
   },
   {
     emoji: '💘',
     title: 'Have a crush?',
     subtitle: 'Tell them. Anonymously-ish.',
     route: '/profile',
-    gradient: ['#3A1B2A', '#1A1626'],
+    gradient: ['#7A2E63', '#241B3A'],
   },
   {
     emoji: '💌',
     title: 'Send a card',
     subtitle: "Make someone's day",
     route: '/send-card',
-    gradient: ['#14313A', '#1A1626'],
+    gradient: ['#8A5A3A', '#241B3A'],
   },
 ];
 
-export default function HomeScreen() {
+export default withScreenBackground(HomeScreen);
+
+function HomeScreen() {
   const router = useRouter();
   const [home, setHome] = useState<HomeFeed | null>(null);
   const [recents, setRecents] = useState<RecentEvent[]>([]);
@@ -120,6 +126,10 @@ export default function HomeScreen() {
       </Pressable>
     </View>
   );
+
+  if (DEV_TOUR_REDIRECT) {
+    return <Redirect href={DEV_TOUR_REDIRECT as never} />;
+  }
 
   if (error && !home) {
     return (
@@ -331,7 +341,7 @@ function CompactRow({ event, subtitle }: { event: ExploreEvent; subtitle: string
 const styles = StyleSheet.create({
   screen: {
     flex: 1,
-    backgroundColor: colors.bg,
+    backgroundColor: 'transparent',
   },
   center: {
     flex: 1,
