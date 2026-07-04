@@ -111,6 +111,24 @@ function ProfileScreen() {
     }
   }
 
+  async function archiveCard(card: CardEntry) {
+    const label = card.to ? `to ${card.to.name}` : 'shared by link';
+    const ok = await confirmDialog(
+      'Archive card?',
+      `This hides the card (${label}) from your cards. The other person keeps theirs.`,
+      'Archive'
+    );
+    if (!ok) return;
+    try {
+      await api.archiveCard(card.id);
+      setProfile((prev) =>
+        prev ? { ...prev, cards: prev.cards.filter((c) => c.id !== card.id) } : prev
+      );
+    } catch (e) {
+      notify('Could not archive', e instanceof Error ? e.message : 'Try again');
+    }
+  }
+
   if (error && !profile) {
     return (
       <SafeAreaView style={styles.safe} edges={['top']}>
@@ -253,9 +271,19 @@ function ProfileScreen() {
             >
               {profile.cards.map((card) => (
                 <CoverGradient key={card.id} theme="candy" style={styles.cardItem}>
-                  <Text style={styles.cardFrom} numberOfLines={1}>
-                    {cardDirection(card, user?.id)}
-                  </Text>
+                  <View style={styles.cardHeader}>
+                    <Text style={styles.cardFrom} numberOfLines={1}>
+                      {cardDirection(card, user?.id)}
+                    </Text>
+                    <Pressable
+                      onPress={() => archiveCard(card)}
+                      hitSlop={8}
+                      accessibilityLabel="Archive card"
+                      style={({ pressed }) => [styles.cardArchive, pressed && styles.pressed]}
+                    >
+                      <Ionicons name="archive-outline" size={15} color="#fff" />
+                    </Pressable>
+                  </View>
                   <Text style={styles.cardMessage} numberOfLines={3}>
                     {card.message}
                   </Text>
@@ -447,8 +475,22 @@ const styles = StyleSheet.create({
     padding: spacing.md,
     gap: spacing.xs,
   },
+  cardHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.xs,
+  },
+  cardArchive: {
+    width: 26,
+    height: 26,
+    borderRadius: 13,
+    backgroundColor: 'rgba(0,0,0,0.22)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   cardFrom: {
     ...uiText(13, '800'),
+    flex: 1,
     color: '#fff',
     textShadowColor: 'rgba(0,0,0,0.35)',
     textShadowOffset: { width: 0, height: 1 },
