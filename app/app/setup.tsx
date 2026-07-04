@@ -22,8 +22,6 @@ const EMOJI_CHOICES = [
   '😎', '🐯', '🍩', '🎧', '🧃', '🫶',
 ] as const;
 
-const FALLBACK_NAME = 'Party Person';
-
 export default function SetupScreen() {
   const router = useRouter();
   const { user, updateUser } = useAuth();
@@ -35,23 +33,21 @@ export default function SetupScreen() {
       ? current
       : EMOJI_CHOICES[0];
   });
-  const [busy, setBusy] = useState<'save' | 'skip' | null>(null);
+  const [busy, setBusy] = useState<'save' | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  async function finish(fromSkip: boolean) {
+  async function finish() {
     if (busy) return;
     const trimmed = name.trim();
-    if (!fromSkip && !trimmed) {
+    if (!trimmed) {
       setError('Tell us your name first');
       return;
     }
-    // Skip still saves *something* so the guest list never shows a blank.
-    const finalName = trimmed || FALLBACK_NAME;
-    setBusy(fromSkip ? 'skip' : 'save');
+    setBusy('save');
     setError(null);
     try {
-      await api.updateProfile({ name: finalName, avatarEmoji });
-      updateUser({ ...user!, name: finalName, avatarEmoji });
+      await api.updateProfile({ name: trimmed, avatarEmoji });
+      updateUser({ ...user!, name: trimmed, avatarEmoji });
       router.replace('/');
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Could not save your profile');
@@ -62,19 +58,6 @@ export default function SetupScreen() {
   return (
     <AuroraBackground confetti={false}>
       <SafeAreaView style={styles.safe}>
-        <View style={styles.header}>
-          <Pressable
-            onPress={() => finish(true)}
-            disabled={busy !== null}
-            style={({ pressed }) => [
-              styles.skipPill,
-              (pressed || busy === 'skip') && styles.skipPillPressed,
-            ]}
-          >
-            <Text style={styles.skipText}>{busy === 'skip' ? 'Saving…' : 'Skip'}</Text>
-          </Pressable>
-        </View>
-
         <KeyboardAvoidingView style={{ flex: 1 }} behavior="padding">
           <ScrollView
             contentContainerStyle={styles.content}
@@ -134,7 +117,7 @@ export default function SetupScreen() {
 
             <Button
               title="Let's party 🎉"
-              onPress={() => finish(false)}
+              onPress={() => finish()}
               loading={busy === 'save'}
             />
           </ScrollView>
@@ -147,28 +130,6 @@ export default function SetupScreen() {
 const styles = StyleSheet.create({
   safe: {
     flex: 1,
-  },
-  header: {
-    flexDirection: 'row',
-    justifyContent: 'flex-end',
-    paddingHorizontal: spacing.lg,
-    paddingTop: spacing.sm,
-  },
-  skipPill: {
-    backgroundColor: 'rgba(14,11,22,0.45)',
-    borderWidth: 1,
-    borderColor: 'rgba(247,245,255,0.25)',
-    borderRadius: radius.pill,
-    paddingHorizontal: spacing.md,
-    paddingVertical: 6,
-  },
-  skipPillPressed: {
-    opacity: 0.7,
-  },
-  skipText: {
-    color: 'rgba(247,245,255,0.85)',
-    fontSize: 14,
-    fontWeight: '600',
   },
   content: {
     flexGrow: 1,
