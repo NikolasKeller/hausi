@@ -1,9 +1,12 @@
 import React, { useEffect, useRef } from 'react';
-import { Animated, Easing, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Animated, Easing, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { AuroraBackground } from '../../components/AuroraBackground';
 import { radius, spacing } from '../../lib/theme';
+
+// react-native-web has no native driver; silence its fallback warning.
+const useNativeDriver = Platform.OS !== 'web';
 
 interface BubbleSpec {
   text: string;
@@ -43,13 +46,13 @@ function FloatingBubble({ spec }: { spec: BubbleSpec }) {
           toValue: 1,
           duration: spec.duration,
           easing: Easing.inOut(Easing.sin),
-          useNativeDriver: true,
+          useNativeDriver,
         }),
         Animated.timing(progress, {
           toValue: 0,
           duration: spec.duration,
           easing: Easing.inOut(Easing.sin),
-          useNativeDriver: true,
+          useNativeDriver,
         }),
       ])
     );
@@ -95,7 +98,7 @@ export default function WelcomeScreen() {
       toValue: 1,
       duration: 600,
       easing: Easing.out(Easing.cubic),
-      useNativeDriver: true,
+      useNativeDriver,
     }).start();
   }, [intro]);
 

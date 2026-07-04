@@ -2,6 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import {
   Animated,
   KeyboardAvoidingView,
+  Platform,
   ScrollView,
   StyleSheet,
   Text,
@@ -39,7 +40,11 @@ export default function CodeScreen() {
   useEffect(() => {
     if (!currentDevCode) return;
     bannerY.setValue(-120);
-    Animated.spring(bannerY, { toValue: 0, useNativeDriver: true, damping: 14 }).start();
+    Animated.spring(bannerY, {
+      toValue: 0,
+      useNativeDriver: Platform.OS !== 'web',
+      damping: 14,
+    }).start();
   }, [currentDevCode, bannerY]);
 
   async function submit(value?: string) {
@@ -106,6 +111,7 @@ export default function CodeScreen() {
               style={styles.codeInput}
               maxLength={6}
               textContentType="oneTimeCode"
+              autoComplete="one-time-code"
             />
 
             <Text style={styles.resend} onPress={resend}>

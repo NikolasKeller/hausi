@@ -68,6 +68,32 @@ function defaultDate(): Date {
   return d;
 }
 
+const pad2 = (n: number) => String(n).padStart(2, '0');
+
+// Values for the HTML <input type="date|time"> used on web, in local time.
+function toDateInputValue(d: Date): string {
+  return `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`;
+}
+
+function toTimeInputValue(d: Date): string {
+  return `${pad2(d.getHours())}:${pad2(d.getMinutes())}`;
+}
+
+// @react-native-community/datetimepicker throws when rendered on web, so web
+// gets the browser's native pickers styled to match the form fields.
+const webPickerStyle = {
+  backgroundColor: colors.inputBg,
+  color: colors.text,
+  colorScheme: 'dark',
+  border: `1px solid ${colors.cardBorder}`,
+  borderRadius: `${radius.md}px`,
+  padding: '12px',
+  fontSize: '16px',
+  fontFamily: 'inherit',
+  width: '100%',
+  boxSizing: 'border-box',
+} as const;
+
 export function EventForm({ initial, submitLabel, onSubmit, footer }: Props) {
   const headerHeight = useHeaderHeight();
   const [title, setTitle] = useState(initial?.title ?? '');
@@ -228,13 +254,34 @@ export function EventForm({ initial, submitLabel, onSubmit, footer }: Props) {
             </Pressable>
           </View>
           {picker ? (
-            <DateTimePicker
-              value={date}
-              mode={picker}
-              display={Platform.OS === 'ios' ? 'spinner' : 'default'}
-              onChange={onPickerChange}
-              themeVariant="dark"
-            />
+            Platform.OS === 'web' ? (
+              React.createElement('input', {
+                type: picker,
+                value: picker === 'date' ? toDateInputValue(date) : toTimeInputValue(date),
+                onChange: (e: { target: { value: string } }) => {
+                  const value = e.target.value;
+                  if (!value) return;
+                  const next = new Date(date);
+                  if (picker === 'date') {
+                    const [y, m, d] = value.split('-').map(Number);
+                    next.setFullYear(y, m - 1, d);
+                  } else {
+                    const [h, min] = value.split(':').map(Number);
+                    next.setHours(h, min);
+                  }
+                  setDate(next);
+                },
+                style: webPickerStyle,
+              })
+            ) : (
+              <DateTimePicker
+                value={date}
+                mode={picker}
+                display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+                onChange={onPickerChange}
+                themeVariant="dark"
+              />
+            )
           ) : null}
         </View>
 

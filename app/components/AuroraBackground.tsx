@@ -1,6 +1,9 @@
 import React, { useEffect, useRef } from 'react';
-import { Animated, Easing, StyleSheet, View, useWindowDimensions } from 'react-native';
+import { Animated, Easing, Platform, StyleSheet, View, useWindowDimensions } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
+
+// react-native-web has no native driver; silence its fallback warning.
+const useNativeDriver = Platform.OS !== 'web';
 
 // Dusk-over-water palette: peach horizon → violet dusk → deep plum water.
 const DUSK = ['#E8927C', '#B76E9B', '#6E4E8E', '#3B2E5E', '#241B3A'] as const;
@@ -35,13 +38,13 @@ function Orb({ spec }: { spec: OrbSpec }) {
           toValue: 1,
           duration: spec.duration,
           easing: Easing.inOut(Easing.sin),
-          useNativeDriver: true,
+          useNativeDriver,
         }),
         Animated.timing(progress, {
           toValue: 0,
           duration: spec.duration,
           easing: Easing.inOut(Easing.sin),
-          useNativeDriver: true,
+          useNativeDriver,
         }),
       ])
     );
@@ -97,9 +100,9 @@ function ConfettiPiece({ index, height }: { index: number; height: number }) {
           toValue: 1,
           duration,
           easing: Easing.linear,
-          useNativeDriver: true,
+          useNativeDriver,
         }),
-        Animated.timing(progress, { toValue: 0, duration: 0, useNativeDriver: true }),
+        Animated.timing(progress, { toValue: 0, duration: 0, useNativeDriver }),
       ])
     );
     loop.start();

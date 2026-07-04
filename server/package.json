@@ -7,7 +7,7 @@
     "dev": "tsx watch src/index.ts",
     "start": "tsx src/index.ts",
     "seed": "tsx prisma/seed.ts",
-    "db:push": "prisma db push",
+    "db:push": "DATABASE_URL=${DATABASE_URL:-file:./dev.db} prisma db push",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
@@ -15,12 +15,12 @@
     "@prisma/client": "^6.8.0",
     "bcryptjs": "^3.0.2",
     "hono": "^4.7.0",
+    "prisma": "^6.8.0",
+    "tsx": "^4.19.0",
     "zod": "^3.24.0"
   },
   "devDependencies": {
     "@types/node": "^22.15.0",
-    "prisma": "^6.8.0",
-    "tsx": "^4.19.0",
     "typescript": "^5.8.0"
   }
 }

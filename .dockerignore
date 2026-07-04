@@ -1,0 +1,13 @@
+**/node_modules
+**/.expo
+**/dist
+**/web-build
+**/*.db
+**/*.db-journal
+**/*.tsbuildinfo
+.git
+.context
+app/ios
+app/android
+server/.env
+README.md

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   KeyboardAvoidingView,
   Pressable,
@@ -32,19 +32,30 @@ export default function PhoneScreen() {
   const [countryIndex, setCountryIndex] = useState(0);
   const [pickerOpen, setPickerOpen] = useState(false);
   const [digits, setDigits] = useState('');
+  const [invite, setInvite] = useState('');
+  const [inviteRequired, setInviteRequired] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [sending, setSending] = useState(false);
 
+  // The host may gate signup behind a shared invite code; ask the server.
+  useEffect(() => {
+    api
+      .config()
+      .then((cfg) => setInviteRequired(cfg.inviteRequired))
+      .catch(() => {});
+  }, []);
+
   const country = COUNTRY_CODES[countryIndex];
   const phone = `${country.code}${digits.replace(/[^0-9]/g, '')}`;
-  const valid = /^\+[0-9]{7,15}$/.test(phone);
+  const valid =
+    /^\+[0-9]{7,15}$/.test(phone) && (!inviteRequired || invite.trim().length > 0);
 
   async function sendCode() {
     if (!valid || sending) return;
     setSending(true);
     setError(null);
     try {
-      const res = await api.requestPhoneCode(phone);
+      const res = await api.requestPhoneCode(phone, invite.trim() || undefined);
       router.push({
         pathname: '/code',
         params: { phone, devCode: res.devCode ?? '' },
@@ -103,6 +114,18 @@ export default function PhoneScreen() {
                   </Pressable>
                 ))}
               </View>
+            ) : null}
+
+            {inviteRequired ? (
+              <TextInput
+                value={invite}
+                onChangeText={setInvite}
+                placeholder="Invite code"
+                placeholderTextColor="rgba(247,245,255,0.5)"
+                autoCapitalize="none"
+                autoCorrect={false}
+                style={styles.phoneInput}
+              />
             ) : null}
 
             <ErrorText message={error} />
