@@ -354,7 +354,12 @@ export default function EventScreen() {
                   onPress={() =>
                     router.push({
                       pathname: '/add-plus-one',
-                      params: { eventId: event.id, slug: event.slug, exclude: plusOneExclude },
+                      params: {
+                        eventId: event.id,
+                        slug: event.slug,
+                        title: event.title,
+                        exclude: plusOneExclude,
+                      },
                     })
                   }
                   style={styles.addPlusOneButton}
