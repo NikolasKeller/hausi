@@ -39,3 +39,20 @@ export async function removeRecentEvent(slug: string): Promise<void> {
     // Best-effort.
   }
 }
+
+// Drop cached recents whose event no longer exists on the server (i.e. it was
+// deleted). `existingSlugs` is the set the server confirms still exists.
+// Returns the pruned list so callers can render it without a re-read.
+export async function reconcileRecents(existingSlugs: string[]): Promise<RecentEvent[]> {
+  const alive = new Set(existingSlugs);
+  const list = await getRecentEvents();
+  const next = list.filter((e) => alive.has(e.slug));
+  if (next.length !== list.length) {
+    try {
+      await storage.setItemAsync(KEY, JSON.stringify(next));
+    } catch {
+      // Best-effort.
+    }
+  }
+  return next;
+}
