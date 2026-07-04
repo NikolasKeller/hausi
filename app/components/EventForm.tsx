@@ -182,7 +182,7 @@ export function EventForm({ initial, submitLabel, onSubmit, footer }: Props) {
           contentContainerStyle={styles.content}
           keyboardShouldPersistTaps="handled"
         >
-        <Pressable onPress={() => setIsPublic(!isPublic)}>
+        <Pressable onPress={() => setIsPublic(!isPublic)} style={styles.publicPillWrap}>
           <GlassPill tint={ink.glassTint} style={styles.publicPill}>
             <Text style={[styles.publicPillText, { color: ink.subtext }]}>
               {isPublic ? '🌐 Public — anyone can find it' : '🔒 Private — invite only'}
@@ -192,6 +192,42 @@ export function EventForm({ initial, submitLabel, onSubmit, footer }: Props) {
             </Text>
           </GlassPill>
         </Pressable>
+
+        {/* Title first, with the font picker directly beneath it — the poster
+            editor order from the reference. */}
+        <GlassField
+          label="Event title"
+          value={title}
+          onChangeText={setTitle}
+          placeholder="Untitled Event"
+          maxLength={LIMITS.title}
+          style={titleFontStyle(titleFont)}
+        />
+
+        <Glass radius={radius.pill} intensity={24} tint={ink.glassTint} style={styles.fontBar}>
+          {TITLE_FONTS.map((f) => {
+            const selected = titleFont === f;
+            return (
+              <Pressable
+                key={f}
+                onPress={() => setTitleFont(f)}
+                style={[
+                  styles.fontSeg,
+                  selected && {
+                    backgroundColor: ink.dark ? 'rgba(255,255,255,0.22)' : 'rgba(255,255,255,0.6)',
+                  },
+                ]}
+              >
+                <Text
+                  style={[styles.fontSegText, titleFontStyle(f), { color: selected ? ink.text : ink.subtext }]}
+                  numberOfLines={1}
+                >
+                  {TITLE_FONT_LABELS[f]}
+                </Text>
+              </Pressable>
+            );
+          })}
+        </Glass>
 
         <CoverGradient theme={coverTheme} image={coverImage} style={styles.preview}>
           <Burst size={44} rays={8} color={colors.helio} rotate={-12} style={styles.previewBurst} />
@@ -232,47 +268,6 @@ export function EventForm({ initial, submitLabel, onSubmit, footer }: Props) {
             </Glass>
           </Pressable>
         </View>
-
-        <View style={{ gap: spacing.xs }}>
-          <Text style={[styles.label, { color: ink.faint }]}>Title font</Text>
-          <View style={styles.fontRow}>
-            {TITLE_FONTS.map((f, i) => (
-              <Pressable
-                key={f}
-                onPress={() => setTitleFont(f)}
-                style={[
-                  styles.fontChipWrap,
-                  { transform: [{ rotate: `${(i % 2 === 0 ? -1 : 1) * 3}deg` }] },
-                ]}
-              >
-                <Glass
-                  radius={radius.md}
-                  intensity={titleFont === f ? 40 : 24}
-                  tint={ink.glassTint}
-                  fill={
-                    titleFont === f
-                      ? ink.dark
-                        ? 'rgba(255,255,255,0.18)'
-                        : 'rgba(255,255,255,0.34)'
-                      : undefined
-                  }
-                  style={styles.fontChip}
-                >
-                  <Text style={[styles.fontChipSample, titleFontStyle(f), { color: ink.text }]}>Aa</Text>
-                  <Text style={[styles.chipLabel, { color: ink.subtext }]}>{TITLE_FONT_LABELS[f]}</Text>
-                </Glass>
-              </Pressable>
-            ))}
-          </View>
-        </View>
-
-        <GlassField
-          label="Title"
-          value={title}
-          onChangeText={setTitle}
-          placeholder="Untitled Event"
-          maxLength={LIMITS.title}
-        />
 
         <View style={{ gap: spacing.xs }}>
           <Text style={[styles.label, { color: ink.faint }]}>When</Text>
@@ -558,6 +553,26 @@ const styles = StyleSheet.create({
   fontRow: {
     flexDirection: 'row',
     gap: spacing.sm,
+  },
+  fontBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 4,
+    gap: 2,
+  },
+  fontSeg: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 9,
+    paddingHorizontal: 4,
+    borderRadius: radius.pill,
+  },
+  fontSegText: {
+    fontSize: 15,
+  },
+  publicPillWrap: {
+    alignSelf: 'center',
   },
   publicPill: {
     justifyContent: 'space-between',
