@@ -29,7 +29,7 @@ import {
 } from '../shared/types';
 import { colors, light, radius, shadow, spacing } from '../lib/theme';
 import { themeInk } from '../lib/covers';
-import { TITLE_FONT_LABELS, titleFontStyle, display, kicker, uiText } from '../lib/fonts';
+import { TITLE_FONT_LABELS, titleFontStyle, kicker, uiText } from '../lib/fonts';
 import { CoverGradient } from './CoverGradient';
 import { EffectOverlay } from './EffectOverlay';
 import { Button, ErrorText } from './ui';
@@ -360,9 +360,6 @@ export function EventForm({ initial, submitLabel, onSubmit, footer }: Props) {
         <CoverGradient theme={coverTheme} image={coverImage} style={styles.preview}>
           <Burst size={44} rays={8} color="rgba(255,255,255,0.9)" rotate={-12} style={styles.previewBurst} />
           <Text style={styles.previewKicker}>Live preview</Text>
-          <Text style={[styles.previewTitle, titleFontStyle(titleFont)]} numberOfLines={3}>
-            {title.trim() || 'Untitled Event'}
-          </Text>
         </CoverGradient>
 
         <View style={styles.photoRow}>
@@ -635,7 +632,7 @@ const styles = StyleSheet.create({
   // ── Live preview ──
   preview: {
     borderRadius: radius.lg,
-    minHeight: 230,
+    aspectRatio: 1,
     padding: spacing.md,
     justifyContent: 'flex-end',
     overflow: 'hidden',
@@ -652,13 +649,6 @@ const styles = StyleSheet.create({
     ...kicker(),
     color: 'rgba(255,255,255,0.9)',
     marginBottom: spacing.xs,
-  },
-  previewTitle: {
-    color: '#fff',
-    ...display(38),
-    textShadowColor: 'rgba(0,0,0,0.35)',
-    textShadowOffset: { width: 0, height: 2 },
-    textShadowRadius: 6,
   },
 
   // ── Public toggle ──

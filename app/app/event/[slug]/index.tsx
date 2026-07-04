@@ -310,8 +310,12 @@ export default function EventScreen() {
                 <Burst size={60} rays={8} color={colors.helio} rotate={-14} style={styles.heroBurst} />
                 <Burst size={38} rays={6} color={colors.accent} rotate={12} style={styles.heroBurst2} />
                 <Text style={styles.heroKicker}>You're invited</Text>
-                <Text style={[styles.heroTitle, titleFontStyle(event.titleFont)]}>{event.title}</Text>
               </CoverGradient>
+              <Text
+                style={[styles.heroTitleBelow, titleFontStyle(event.titleFont), { color: ink.text }]}
+              >
+                {event.title}
+              </Text>
             </View>
           ) : (
             <View style={styles.heroBlock}>
@@ -894,11 +898,17 @@ const styles = StyleSheet.create({
     paddingTop: 80,
   },
   poster: {
-    minHeight: 300,
+    aspectRatio: 1,
     justifyContent: 'flex-end',
     padding: spacing.lg,
     borderRadius: radius.lg,
     overflow: 'hidden',
+  },
+  heroTitleBelow: {
+    fontSize: 56,
+    letterSpacing: -1,
+    lineHeight: 56,
+    marginTop: spacing.lg,
   },
   heroBlock: {
     paddingHorizontal: spacing.lg,
@@ -923,15 +933,6 @@ const styles = StyleSheet.create({
     textShadowColor: 'rgba(0,0,0,0.35)',
     textShadowOffset: { width: 0, height: 1 },
     textShadowRadius: 4,
-  },
-  heroTitle: {
-    color: '#fff',
-    fontSize: 56,
-    letterSpacing: -1,
-    lineHeight: 56,
-    textShadowColor: 'rgba(0,0,0,0.4)',
-    textShadowOffset: { width: 0, height: 2 },
-    textShadowRadius: 8,
   },
   heroKickerPlain: {
     ...kicker(),
