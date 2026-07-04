@@ -3,7 +3,6 @@ import {
   ActivityIndicator,
   Pressable,
   ScrollView,
-  Share,
   StyleSheet,
   Text,
   TextInput,
@@ -16,6 +15,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { CATEGORIES, CATEGORY_META, type Category, type ExploreEvent } from '../../shared/types';
 import { api } from '../../lib/api';
 import { citySuggestions } from '../../lib/cities';
+import { shareText } from '../../lib/share';
 import { colors, radius, spacing } from '../../lib/theme';
 import { titleFontStyle } from '../../lib/fonts';
 import { CoverGradient } from '../../components/CoverGradient';
@@ -33,9 +33,10 @@ const CATEGORY_CHIPS: { key: Category | 'all'; emoji: string; label: string }[] 
 
 async function shareEvent(event: ExploreEvent) {
   const url = Linking.createURL(`e/${event.slug}`);
-  await Share.share({
-    message: `${event.title} — ${formatEventDate(event.date)} in ${event.city}.\nOpen in Hausi: ${url}`,
-  });
+  await shareText(
+    `${event.title} — ${formatEventDate(event.date)} in ${event.city}.\nOpen in Hausi: ${url}`,
+    url
+  );
 }
 
 function ExploreCard({ event }: { event: ExploreEvent }) {

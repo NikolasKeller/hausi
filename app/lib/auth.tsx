@@ -82,7 +82,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       },
       updateUser: (updated) => {
         setUser(updated);
-        SecureStore.setItemAsync(USER_KEY, JSON.stringify(updated)).catch(() => {});
+        storage.setItemAsync(USER_KEY, JSON.stringify(updated)).catch(() => {});
       },
     };
   }, [user, initializing]);

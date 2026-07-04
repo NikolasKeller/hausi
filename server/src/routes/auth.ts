@@ -46,6 +46,31 @@ async function authResponse(user: {
 
 export const authRoutes = new Hono();
 
+// The OTP endpoints are unauthenticated and phone/request writes a user row
+// per unique phone, so cap them per IP. In-memory is fine: one instance, and
+// a restart resetting the counters is harmless.
+const RATE_LIMIT = 10;
+const RATE_WINDOW_MS = 60 * 1000;
+const rateBuckets = new Map<string, number[]>();
+
+function rateLimited(ip: string): boolean {
+  const now = Date.now();
+  const hits = (rateBuckets.get(ip) ?? []).filter((t) => now - t < RATE_WINDOW_MS);
+  if (rateBuckets.size > 10000) rateBuckets.clear();
+  hits.push(now);
+  rateBuckets.set(ip, hits);
+  return hits.length > RATE_LIMIT;
+}
+
+authRoutes.use('/phone/*', async (c, next) => {
+  // Railway sits behind a proxy, so the client IP arrives in x-forwarded-for.
+  const ip = c.req.header('x-forwarded-for')?.split(',')[0].trim() ?? 'unknown';
+  if (rateLimited(ip)) {
+    return c.json({ error: 'Too many attempts — wait a minute and try again' }, 429);
+  }
+  await next();
+});
+
 // Step 1: request an SMS code. Without an SMS provider configured (local
 // dev / until the Supabase Auth migration), the code is returned in the
 // response so the app can show it as a simulated text message.
@@ -63,10 +88,10 @@ authRoutes.post('/phone/request', async (c) => {
     update: { phoneCode: code, phoneCodeExpiresAt: expiresAt },
   });
 
-  const smsConfigured = Boolean(process.env.SMS_PROVIDER);
-  if (smsConfigured) {
-    // Placeholder for a real SMS provider (or Supabase Auth phone OTP).
-    return c.json({ sent: true });
+  if (process.env.SMS_PROVIDER) {
+    // No sender is implemented yet — fail loudly rather than swallowing every
+    // code and making signup impossible. Leave SMS_PROVIDER unset.
+    throw new Error('SMS_PROVIDER is set but no SMS sender is implemented');
   }
   return c.json({ sent: true, devCode: code });
 });

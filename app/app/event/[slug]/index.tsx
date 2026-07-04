@@ -2,10 +2,8 @@ import React, { useCallback, useState } from 'react';
 import {
   ActivityIndicator,
   KeyboardAvoidingView,
-  Platform,
   Pressable,
   ScrollView,
-  Share,
   StyleSheet,
   Text,
   TextInput,
@@ -18,6 +16,7 @@ import { api } from '../../../lib/api';
 import { useAuth } from '../../../lib/auth';
 import { confirmDialog, notify } from '../../../lib/dialogs';
 import { recordRecentEvent } from '../../../lib/recents';
+import { shareText } from '../../../lib/share';
 import { colors, radius, spacing } from '../../../lib/theme';
 import { titleFontStyle } from '../../../lib/fonts';
 import { CoverGradient } from '../../../components/CoverGradient';
@@ -90,21 +89,7 @@ export default function EventScreen() {
     if (!event) return;
     const url = Linking.createURL(`e/${event.slug}`);
     const message = `You're invited: ${event.title} — ${formatEventDate(event.date)} at ${formatEventTime(event.date)}.\nOpen in Hausi: ${url}`;
-    try {
-      if (Platform.OS === 'web') {
-        // Desktop browsers rarely implement the Web Share API — copy instead.
-        if (navigator.share) {
-          await navigator.share({ title: event.title, text: message, url });
-        } else {
-          await navigator.clipboard.writeText(url);
-          notify('Link copied', url);
-        }
-      } else {
-        await Share.share({ message });
-      }
-    } catch {
-      // Share sheet dismissed or clipboard blocked — nothing to report.
-    }
+    await shareText(message, url);
   }
 
   async function confirmRemoveGuest(guestId: string, guestName: string) {
