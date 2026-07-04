@@ -42,6 +42,32 @@ const STATUS_SECTIONS: { status: RsvpStatus; title: string }[] = [
   { status: 'CANT', title: "Can't go" },
 ];
 
+// One item in the floating bottom action bar (icon over a small label).
+function BarItem({
+  icon,
+  label,
+  color,
+  onPress,
+}: {
+  icon: React.ComponentProps<typeof Ionicons>['name'];
+  label: string;
+  color: string;
+  onPress: () => void;
+}) {
+  return (
+    <Pressable
+      onPress={onPress}
+      hitSlop={6}
+      style={({ pressed }) => [styles.barItem, pressed && { opacity: 0.55 }]}
+    >
+      <Ionicons name={icon} size={22} color={color} />
+      <Text style={[styles.barLabel, { color }]} numberOfLines={1}>
+        {label}
+      </Text>
+    </Pressable>
+  );
+}
+
 // One tappable row in the host "More" menu.
 function ActionRow({
   icon,
@@ -143,6 +169,15 @@ export default function EventScreen() {
     if (!event) return;
     const url = Linking.createURL(`e/${event.slug}`);
     await shareText(`You're my +1 for "${event.title}"! 🎟️ RSVP here: ${url}`, url);
+  }
+
+  // "Text Blast": open the OS share/compose sheet with an update the host can
+  // fire off to the group. (A true per-guest SMS blast needs a server endpoint.)
+  async function textBlast() {
+    if (!event) return;
+    const url = Linking.createURL(`e/${event.slug}`);
+    const msg = `📣 ${event.title} — ${formatEventDate(event.date)} at ${formatEventTime(event.date)}.\nDetails & RSVP: ${url}`;
+    await shareText(msg, url);
   }
 
   async function confirmRemoveGuest(guestId: string, guestName: string) {
@@ -261,7 +296,10 @@ export default function EventScreen() {
   return (
     <ThemeBackground theme={event.coverTheme} effect={event.effect}>
       <KeyboardAvoidingView style={{ flex: 1 }} behavior="padding">
-        <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
+        <ScrollView
+          contentContainerStyle={[styles.content, { paddingBottom: insets.bottom + 108 }]}
+          keyboardShouldPersistTaps="handled"
+        >
           {event.coverImage ? (
             <View style={styles.posterWrap}>
               <CoverGradient
@@ -645,19 +683,47 @@ export default function EventScreen() {
         </Glass>
       </Pressable>
 
-      {/* Host controls live behind this "⋯ More" menu instead of a stack of
-          inline buttons in the body. */}
-      {event.canManage ? (
-        <Pressable
-          onPress={() => setMenuOpen(true)}
-          hitSlop={10}
-          style={[styles.moreFab, { top: insets.top + spacing.sm }]}
-        >
-          <Glass tint={ink.glassTint} radius={999} style={styles.fabInner}>
-            <Ionicons name="ellipsis-horizontal" size={22} color={ink.text} />
-          </Glass>
-        </Pressable>
-      ) : null}
+      {/* Floating bottom action bar — Edit · Text Blast · Going · Invite · More.
+          Host-only items are hidden for guests; the body stays uncluttered. */}
+      <View
+        pointerEvents="box-none"
+        style={[styles.actionBarWrap, { paddingBottom: insets.bottom + spacing.sm }]}
+      >
+        <Glass tint={ink.dark ? 'dark' : 'light'} radius={radius.pill} style={styles.actionBar}>
+          {event.canManage ? (
+            <BarItem
+              icon="pencil"
+              label="Edit"
+              color={ink.text}
+              onPress={() => router.push(`/event/${event.slug}/edit`)}
+            />
+          ) : null}
+          {event.canManage ? (
+            <BarItem icon="megaphone" label="Text Blast" color={ink.text} onPress={textBlast} />
+          ) : null}
+
+          <Pressable
+            onPress={() => {
+              if (!rsvpLocked) setRsvp('GOING');
+            }}
+            disabled={rsvpBusy}
+            style={({ pressed }) => [styles.barGoing, pressed && { opacity: 0.85 }]}
+          >
+            <Text style={styles.barGoingCount}>{event.counts.going}</Text>
+            <Text style={styles.barGoingLabel}>Going</Text>
+          </Pressable>
+
+          <BarItem icon="person-add" label="Invite" color={ink.text} onPress={share} />
+          {event.canManage ? (
+            <BarItem
+              icon="ellipsis-horizontal"
+              label="More"
+              color={ink.text}
+              onPress={() => setMenuOpen(true)}
+            />
+          ) : null}
+        </Glass>
+      </View>
 
       {menuOpen ? (
         <View style={styles.menuOverlay}>
@@ -735,16 +801,57 @@ const styles = StyleSheet.create({
     left: spacing.lg,
     zIndex: 20,
   },
-  moreFab: {
-    position: 'absolute',
-    right: spacing.lg,
-    zIndex: 20,
-  },
   fabInner: {
     width: 40,
     height: 40,
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  actionBarWrap: {
+    position: 'absolute',
+    left: spacing.md,
+    right: spacing.md,
+    bottom: 0,
+    zIndex: 20,
+  },
+  actionBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-around',
+    paddingHorizontal: spacing.sm,
+    paddingVertical: spacing.xs,
+  },
+  barItem: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 3,
+    minWidth: 50,
+    paddingVertical: 6,
+  },
+  barLabel: {
+    ...uiText(11, '600'),
+  },
+  barGoing: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#fff',
+    width: 58,
+    height: 58,
+    borderRadius: 29,
+    marginHorizontal: 2,
+    shadowColor: '#000',
+    shadowOpacity: 0.18,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 3 },
+    elevation: 4,
+  },
+  barGoingCount: {
+    ...uiText(18, '800'),
+    color: '#111',
+  },
+  barGoingLabel: {
+    ...uiText(10, '700'),
+    color: '#555',
   },
   menuOverlay: {
     ...StyleSheet.absoluteFillObject,
