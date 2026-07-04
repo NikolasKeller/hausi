@@ -6,6 +6,7 @@ import {
   ScrollView,
   StyleSheet,
   Text,
+  TextInput,
   View,
 } from 'react-native';
 import DateTimePicker from '@react-native-community/datetimepicker';
@@ -22,12 +23,13 @@ import {
   type EventInput,
   type TitleFont,
 } from '../shared/types';
-import { colors, radius, spacing } from '../lib/theme';
+import { colors, light, radius, spacing } from '../lib/theme';
 import { COVER_LIST } from '../lib/covers';
 import { TITLE_FONT_LABELS, titleFontStyle, display, kicker, uiText } from '../lib/fonts';
 import { CoverGradient } from './CoverGradient';
 import { EffectOverlay } from './EffectOverlay';
-import { Button, ErrorText, Field } from './ui';
+import { Button, ErrorText } from './ui';
+import { AmbientBackground, Glass, GlassField, GlassPill } from './glass';
 import { Burst } from './partiful';
 import { formatEventDate, formatEventTime } from './EventCard';
 import { pickCoverImage } from '../lib/imageUpload';
@@ -85,16 +87,18 @@ function toTimeInputValue(d: Date): string {
 // @react-native-community/datetimepicker throws when rendered on web, so web
 // gets the browser's native pickers styled to match the form fields.
 const webPickerStyle = {
-  backgroundColor: colors.inputBg,
-  color: colors.text,
-  colorScheme: 'dark',
-  border: `1px solid ${colors.cardBorder}`,
-  borderRadius: `${radius.md}px`,
+  backgroundColor: 'rgba(255,255,255,0.42)',
+  color: '#0A0A0A',
+  colorScheme: 'light',
+  border: '1px solid rgba(255,255,255,0.55)',
+  borderRadius: '14px',
   padding: '12px',
   fontSize: '16px',
   fontFamily: 'inherit',
   width: '100%',
   boxSizing: 'border-box',
+  backdropFilter: 'blur(12px)',
+  WebkitBackdropFilter: 'blur(12px)',
 } as const;
 
 export function EventForm({ initial, submitLabel, onSubmit, footer }: Props) {
@@ -171,21 +175,26 @@ export function EventForm({ initial, submitLabel, onSubmit, footer }: Props) {
   }
 
   return (
-    <KeyboardAvoidingView
-      style={{ flex: 1 }}
-      behavior="padding"
-      keyboardVerticalOffset={headerHeight}
-    >
-      <ScrollView
-        style={styles.container}
-        contentContainerStyle={styles.content}
-        keyboardShouldPersistTaps="handled"
+    <AmbientBackground variant="cloud">
+      <KeyboardAvoidingView
+        style={{ flex: 1 }}
+        behavior="padding"
+        keyboardVerticalOffset={headerHeight}
       >
-        <Pressable onPress={() => setIsPublic(!isPublic)} style={styles.publicPill}>
-          <Text style={styles.publicPillText}>
-            {isPublic ? '🌐 Public — anyone can find it' : '🔒 Private — invite only'}
-          </Text>
-          <Text style={styles.publicPillAction}>{isPublic ? 'Make private' : 'Make it public'}</Text>
+        <ScrollView
+          style={styles.container}
+          contentContainerStyle={styles.content}
+          keyboardShouldPersistTaps="handled"
+        >
+        <Pressable onPress={() => setIsPublic(!isPublic)}>
+          <GlassPill style={styles.publicPill}>
+            <Text style={styles.publicPillText}>
+              {isPublic ? '🌐 Public — anyone can find it' : '🔒 Private — invite only'}
+            </Text>
+            <Text style={styles.publicPillAction}>
+              {isPublic ? 'Make private' : 'Make it public'}
+            </Text>
+          </GlassPill>
         </Pressable>
 
         <CoverGradient theme={coverTheme} image={coverImage} style={styles.preview}>
@@ -198,14 +207,16 @@ export function EventForm({ initial, submitLabel, onSubmit, footer }: Props) {
         </CoverGradient>
 
         <View style={styles.photoRow}>
-          <Pressable style={styles.photoBtn} onPress={onPickPhoto} disabled={uploadingCover}>
-            <Text style={styles.photoBtnText}>
-              {uploadingCover
-                ? 'Uploading…'
-                : coverImage
-                  ? '🖼  Change cover photo'
-                  : '🖼  Add cover photo'}
-            </Text>
+          <Pressable style={styles.photoBtnWrap} onPress={onPickPhoto} disabled={uploadingCover}>
+            <Glass radius={radius.md} intensity={24} tint="light" style={styles.photoBtn}>
+              <Text style={styles.photoBtnText}>
+                {uploadingCover
+                  ? 'Uploading…'
+                  : coverImage
+                    ? '🖼  Change cover photo'
+                    : '🖼  Add cover photo'}
+              </Text>
+            </Glass>
           </Pressable>
           {coverImage && !uploadingCover ? (
             <Pressable style={styles.photoRemove} onPress={() => setCoverImage('')} hitSlop={8}>
@@ -222,13 +233,20 @@ export function EventForm({ initial, submitLabel, onSubmit, footer }: Props) {
                 key={f}
                 onPress={() => setTitleFont(f)}
                 style={[
-                  styles.fontChip,
+                  styles.fontChipWrap,
                   { transform: [{ rotate: `${(i % 2 === 0 ? -1 : 1) * 3}deg` }] },
-                  titleFont === f && styles.chipActive,
                 ]}
               >
-                <Text style={[styles.fontChipSample, titleFontStyle(f)]}>Aa</Text>
-                <Text style={styles.chipLabel}>{TITLE_FONT_LABELS[f]}</Text>
+                <Glass
+                  radius={radius.md}
+                  intensity={titleFont === f ? 40 : 24}
+                  tint="light"
+                  fill={titleFont === f ? 'rgba(255,255,255,0.34)' : undefined}
+                  style={styles.fontChip}
+                >
+                  <Text style={[styles.fontChipSample, titleFontStyle(f)]}>Aa</Text>
+                  <Text style={styles.chipLabel}>{TITLE_FONT_LABELS[f]}</Text>
+                </Glass>
               </Pressable>
             ))}
           </View>
@@ -262,18 +280,16 @@ export function EventForm({ initial, submitLabel, onSubmit, footer }: Props) {
           <Text style={styles.label}>Effect</Text>
           <View style={styles.themeRow}>
             {EFFECTS.map((e) => (
-              <Pressable
-                key={e}
-                onPress={() => setEffect(e)}
-                style={[styles.effectChip, effect === e && styles.chipActive]}
-              >
-                <Text style={styles.chipLabel}>{EFFECT_LABELS[e]}</Text>
+              <Pressable key={e} onPress={() => setEffect(e)}>
+                <GlassPill active={effect === e} style={styles.optionPill}>
+                  <Text style={styles.chipLabel}>{EFFECT_LABELS[e]}</Text>
+                </GlassPill>
               </Pressable>
             ))}
           </View>
         </View>
 
-        <Field
+        <GlassField
           label="Title"
           value={title}
           onChangeText={setTitle}
@@ -285,16 +301,20 @@ export function EventForm({ initial, submitLabel, onSubmit, footer }: Props) {
           <Text style={styles.label}>When</Text>
           <View style={styles.dateRow}>
             <Pressable
-              style={styles.dateButton}
+              style={styles.dateButtonWrap}
               onPress={() => setPicker(picker === 'date' ? null : 'date')}
             >
-              <Text style={styles.dateText}>{formatEventDate(date.toISOString())}</Text>
+              <Glass radius={14} intensity={24} tint="light" style={styles.dateButton}>
+                <Text style={styles.dateText}>{formatEventDate(date.toISOString())}</Text>
+              </Glass>
             </Pressable>
             <Pressable
-              style={styles.dateButton}
+              style={styles.dateButtonWrap}
               onPress={() => setPicker(picker === 'time' ? null : 'time')}
             >
-              <Text style={styles.dateText}>{formatEventTime(date.toISOString())}</Text>
+              <Glass radius={14} intensity={24} tint="light" style={styles.dateButton}>
+                <Text style={styles.dateText}>{formatEventTime(date.toISOString())}</Text>
+              </Glass>
             </Pressable>
           </View>
           {picker ? (
@@ -329,14 +349,14 @@ export function EventForm({ initial, submitLabel, onSubmit, footer }: Props) {
           ) : null}
         </View>
 
-        <Field
+        <GlassField
           label="Where"
           value={location}
           onChangeText={setLocation}
           placeholder="Location"
           maxLength={LIMITS.location}
         />
-        <Field
+        <GlassField
           label="City"
           value={city}
           onChangeText={setCity}
@@ -348,44 +368,49 @@ export function EventForm({ initial, submitLabel, onSubmit, footer }: Props) {
           <Text style={styles.label}>Category</Text>
           <View style={styles.themeRow}>
             {CATEGORIES.map((cat) => (
-              <Pressable
-                key={cat}
-                onPress={() => setCategory(cat)}
-                style={[styles.effectChip, category === cat && styles.chipActive]}
-              >
-                <Text style={styles.chipLabel}>
-                  {CATEGORY_META[cat].emoji} {CATEGORY_META[cat].label}
-                </Text>
+              <Pressable key={cat} onPress={() => setCategory(cat)}>
+                <GlassPill active={category === cat} style={styles.optionPill}>
+                  <Text style={styles.chipLabel}>
+                    {CATEGORY_META[cat].emoji} {CATEGORY_META[cat].label}
+                  </Text>
+                </GlassPill>
               </Pressable>
             ))}
           </View>
         </View>
 
-        <Field
+        <GlassField
           label="Cost per person (optional)"
           value={costPerPerson}
           onChangeText={setCostPerPerson}
           placeholder="Free"
           maxLength={60}
         />
-        <Field
+        <GlassField
           label="Dress code (optional)"
           value={dressCode}
           onChangeText={setDressCode}
           placeholder="Come as you are"
           maxLength={120}
         />
-        <Field
-          label="Description"
-          value={description}
-          onChangeText={setDescription}
-          placeholder="Add a description of your event"
-          multiline
-          numberOfLines={4}
-          maxLength={LIMITS.description}
-          style={{ minHeight: 100, textAlignVertical: 'top' }}
-        />
-        <Field
+
+        <View style={{ gap: 6 }}>
+          <Text style={styles.glassFieldLabel}>Description</Text>
+          <Glass radius={14} intensity={24} tint="light" style={styles.descPanel}>
+            <TextInput
+              value={description}
+              onChangeText={setDescription}
+              placeholder="Add a description of your event"
+              placeholderTextColor="rgba(0,0,0,0.42)"
+              multiline
+              numberOfLines={4}
+              maxLength={LIMITS.description}
+              style={styles.descInput}
+            />
+          </Glass>
+        </View>
+
+        <GlassField
           label="Max guests (optional)"
           value={maxGuests}
           onChangeText={setMaxGuests}
@@ -393,39 +418,44 @@ export function EventForm({ initial, submitLabel, onSubmit, footer }: Props) {
           keyboardType="number-pad"
         />
 
-        <View style={styles.plusOneRow}>
+        <Glass radius={radius.md} intensity={24} tint="light" style={styles.plusOneRow}>
           <Text style={styles.plusOneLabel}>Plus ones per guest</Text>
           <View style={styles.stepper}>
             <Pressable
               onPress={() => setPlusOneLimit(Math.max(0, plusOneLimit - 1))}
-              style={styles.stepButton}
+              style={styles.stepButtonWrap}
             >
-              <Text style={styles.stepText}>−</Text>
+              <Glass radius={18} intensity={30} tint="light" style={styles.stepButton}>
+                <Text style={styles.stepText}>−</Text>
+              </Glass>
             </Pressable>
             <Text style={styles.plusOneValue}>
               {plusOneLimit === 0 ? 'None' : `+${plusOneLimit}`}
             </Text>
             <Pressable
               onPress={() => setPlusOneLimit(Math.min(LIMITS.plusOnes, plusOneLimit + 1))}
-              style={styles.stepButton}
+              style={styles.stepButtonWrap}
             >
-              <Text style={styles.stepText}>＋</Text>
+              <Glass radius={18} intensity={30} tint="light" style={styles.stepButton}>
+                <Text style={styles.stepText}>＋</Text>
+              </Glass>
             </Pressable>
           </View>
-        </View>
+        </Glass>
 
         <ErrorText message={error} />
-        <Button title={submitLabel} onPress={submit} loading={saving} variant="vibrant" />
+        <Button title={submitLabel} onPress={submit} loading={saving} variant="primary" />
         {footer}
-      </ScrollView>
-    </KeyboardAvoidingView>
+        </ScrollView>
+      </KeyboardAvoidingView>
+    </AmbientBackground>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: colors.bg,
+    backgroundColor: 'transparent',
   },
   content: {
     padding: spacing.lg,
@@ -456,17 +486,15 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: spacing.sm,
   },
-  photoBtn: {
+  photoBtnWrap: {
     flex: 1,
-    backgroundColor: colors.inputBg,
-    borderWidth: 2,
-    borderColor: colors.cardBorder,
-    borderRadius: radius.md,
+  },
+  photoBtn: {
     paddingVertical: 12,
     alignItems: 'center',
   },
   photoBtnText: {
-    color: colors.text,
+    color: light.text2,
     ...uiText(14, '600'),
   },
   photoRemove: {
@@ -485,7 +513,14 @@ const styles = StyleSheet.create({
     textShadowRadius: 6,
   },
   label: {
-    ...kicker(colors.muted),
+    ...kicker('rgba(0,0,0,0.5)'),
+  },
+  glassFieldLabel: {
+    fontSize: 12,
+    fontWeight: '700',
+    letterSpacing: -0.2,
+    textTransform: 'uppercase',
+    color: 'rgba(0,0,0,0.5)',
   },
   themeRow: {
     flexDirection: 'row',
@@ -511,17 +546,15 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     gap: spacing.sm,
   },
-  dateButton: {
+  dateButtonWrap: {
     flex: 1,
-    backgroundColor: colors.inputBg,
-    borderWidth: 2,
-    borderColor: colors.cardBorder,
-    borderRadius: radius.md,
+  },
+  dateButton: {
     paddingVertical: 12,
     alignItems: 'center',
   },
   dateText: {
-    color: colors.text,
+    color: light.text,
     ...uiText(16, '600'),
   },
   fontRow: {
@@ -529,67 +562,59 @@ const styles = StyleSheet.create({
     gap: spacing.sm,
   },
   publicPill: {
-    flexDirection: 'row',
-    alignItems: 'center',
     justifyContent: 'space-between',
-    backgroundColor: colors.inputBg,
-    borderWidth: 2,
-    borderColor: colors.cardBorder,
-    borderRadius: radius.pill,
     paddingVertical: 12,
     paddingHorizontal: spacing.md,
   },
   publicPillText: {
-    color: colors.text,
+    color: light.text2,
     ...uiText(13, '600'),
     flexShrink: 1,
   },
   publicPillAction: {
-    color: colors.accent,
+    color: light.text,
     ...uiText(13, '700'),
   },
-  fontChip: {
+  fontChipWrap: {
     flex: 1,
+  },
+  fontChip: {
     alignItems: 'center',
     gap: 2,
-    backgroundColor: colors.inputBg,
-    borderWidth: 2,
-    borderColor: colors.cardBorder,
-    borderRadius: radius.md,
     paddingVertical: spacing.sm,
   },
   fontChipSample: {
-    color: colors.text,
+    color: light.text,
     fontSize: 22,
   },
-  effectChip: {
-    backgroundColor: colors.inputBg,
-    borderWidth: 2,
-    borderColor: colors.cardBorder,
-    borderRadius: radius.pill,
+  optionPill: {
     paddingHorizontal: spacing.md,
     paddingVertical: 8,
   },
-  chipActive: {
-    borderColor: colors.accent,
-  },
   chipLabel: {
-    color: colors.text,
+    color: light.text2,
     ...uiText(13, '600'),
+  },
+  descPanel: {
+    padding: 4,
+  },
+  descInput: {
+    color: '#0A0A0A',
+    paddingHorizontal: 12,
+    paddingVertical: 12,
+    fontSize: 16,
+    minHeight: 100,
+    textAlignVertical: 'top',
   },
   plusOneRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    backgroundColor: colors.inputBg,
-    borderWidth: 2,
-    borderColor: colors.cardBorder,
-    borderRadius: radius.md,
     padding: spacing.sm,
     paddingHorizontal: spacing.md,
   },
   plusOneLabel: {
-    color: colors.text,
+    color: light.text2,
     ...uiText(15, '600'),
   },
   stepper: {
@@ -597,23 +622,23 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: spacing.md,
   },
+  stepButtonWrap: {
+    width: 36,
+    height: 36,
+  },
   stepButton: {
     width: 36,
     height: 36,
-    borderRadius: 18,
-    backgroundColor: colors.card,
-    borderWidth: 2,
-    borderColor: colors.cardBorder,
     alignItems: 'center',
     justifyContent: 'center',
   },
   stepText: {
-    color: colors.text,
+    color: light.text,
     fontSize: 18,
     fontWeight: '700',
   },
   plusOneValue: {
-    color: colors.accent,
+    color: light.text,
     ...uiText(16, '800'),
     minWidth: 44,
     textAlign: 'center',

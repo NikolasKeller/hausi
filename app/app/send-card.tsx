@@ -14,12 +14,13 @@ import { CARD_THEMES, type CardEntry, type CardTheme, type MyProfile } from '../
 import { api } from '../lib/api';
 import { CARD_META } from '../lib/cards';
 import { copyLink, shareText } from '../lib/share';
-import { light, radius, spacing } from '../lib/theme';
+import { light, radius, shadow, spacing } from '../lib/theme';
 import { display, kicker, titleFontStyle, uiText } from '../lib/fonts';
 import { CoverGradient } from '../components/CoverGradient';
 import { Avatar } from '../components/Avatar';
-import { Button, ErrorText, Field } from '../components/ui';
-import { Burst, PaperBackground, PaperCard, Seal, TiltCard } from '../components/partiful';
+import { Button, ErrorText } from '../components/ui';
+import { Burst, Seal, TiltCard } from '../components/partiful';
+import { AmbientBackground, Glass, GlassField, GlassPill } from '../components/glass';
 
 const MESSAGE_LIMIT = 500;
 
@@ -111,7 +112,7 @@ export default function SendCardScreen() {
 
   if (loadError && !profile) {
     return (
-      <PaperBackground>
+      <AmbientBackground variant="iridescent">
         <View style={styles.center}>
           <Seal size={92} color={light.sand} rotate={-8}>
             <Text style={styles.errorEmoji}>🫠</Text>
@@ -119,17 +120,17 @@ export default function SendCardScreen() {
           <Text style={styles.centerText}>{loadError}</Text>
           <Button title="Close" variant="ghost" onPress={() => router.back()} />
         </View>
-      </PaperBackground>
+      </AmbientBackground>
     );
   }
 
   if (!profile) {
     return (
-      <PaperBackground>
+      <AmbientBackground variant="iridescent">
         <View style={styles.center}>
           <ActivityIndicator color={light.ink} size="large" />
         </View>
-      </PaperBackground>
+      </AmbientBackground>
     );
   }
 
@@ -137,15 +138,15 @@ export default function SendCardScreen() {
   const recipient = profile.mutuals.find((m) => m.user.id === toUserId)?.user ?? null;
 
   return (
-    <PaperBackground>
+    <AmbientBackground variant="iridescent">
       <KeyboardAvoidingView style={styles.flex} behavior="padding">
         <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
           <View style={styles.header}>
-            <Text style={[styles.kicker, kicker(light.text3)]}>Send a card</Text>
+            <Text style={[styles.kicker, kicker('rgba(0,0,0,0.5)')]}>Send a card</Text>
             <Text style={[styles.headline, display(48)]}>Make it special</Text>
           </View>
 
-          <Text style={[styles.sectionLabel, kicker(light.text3)]}>Card</Text>
+          <Text style={styles.sectionLabel}>Card</Text>
           <ScrollView
             horizontal
             showsHorizontalScrollIndicator={false}
@@ -155,55 +156,62 @@ export default function SendCardScreen() {
               const selected = t === theme;
               const tMeta = CARD_META[t];
               return (
-                <Pressable
-                  key={t}
-                  onPress={() => setTheme(t)}
-                  style={[styles.themeCard, selected && styles.themeCardSelected]}
-                >
-                  <CoverGradient theme={tMeta.cover} style={styles.themeArt} emojiOpacity={0.2}>
-                    <Text style={styles.themeEmoji}>{tMeta.emoji}</Text>
-                  </CoverGradient>
-                  <Text style={[styles.themeLabel, selected && styles.themeLabelSelected]}>
-                    {tMeta.label}
-                  </Text>
+                <Pressable key={t} onPress={() => setTheme(t)}>
+                  <GlassPill active={selected} style={styles.themeChip}>
+                    <View style={styles.themeChipInner}>
+                      <CoverGradient theme={tMeta.cover} style={styles.themeArt} emojiOpacity={0.2}>
+                        <Text style={styles.themeEmoji}>{tMeta.emoji}</Text>
+                      </CoverGradient>
+                      <Text style={[styles.themeLabel, selected && styles.themeLabelSelected]}>
+                        {tMeta.label}
+                      </Text>
+                    </View>
+                  </GlassPill>
                 </Pressable>
               );
             })}
           </ScrollView>
 
-          <Field
+          <GlassField
             label="Message"
-            tone="light"
             value={message}
             onChangeText={setMessage}
             placeholder="Say something nice…"
             multiline
             maxLength={MESSAGE_LIMIT}
+            containerStyle={styles.messageWrap}
             style={styles.messageInput}
           />
 
-          <Text style={[styles.sectionLabel, kicker(light.text3)]}>Preview</Text>
-          <TiltCard rotate={-2} float style={styles.previewWrap}>
-            <PaperCard style={styles.previewPaper}>
-              <Burst size={44} color={light.sand} rotate={14} style={styles.previewBurst} />
-              <CoverGradient theme={meta.cover} style={styles.preview} emojiOpacity={0.2}>
-                <Text style={styles.previewEmoji}>{meta.emoji}</Text>
-                <Text
-                  style={[
-                    styles.previewMessage,
-                    titleFontStyle('fancy'),
-                    !message.trim() && styles.previewPlaceholder,
-                  ]}
-                >
-                  {message.trim() || 'Your message here…'}
-                </Text>
-              </CoverGradient>
-            </PaperCard>
-          </TiltCard>
+          <Text style={styles.sectionLabel}>Preview</Text>
+          <View style={styles.previewStage}>
+            {/* Decorative envelope peeking out behind the card — the "card in an
+                envelope" metaphor. Purely cosmetic; never intercepts touches. */}
+            <View pointerEvents="none" style={styles.envelope}>
+              <View style={styles.envelopeFlap} />
+            </View>
+            <TiltCard rotate={-2} float style={styles.previewWrap}>
+              <Glass intensity={30} tint="light" radius={radius.lg} style={styles.previewPaper}>
+                <Burst size={44} color={light.sand} rotate={14} style={styles.previewBurst} />
+                <CoverGradient theme={meta.cover} style={styles.preview} emojiOpacity={0.2}>
+                  <Text style={styles.previewEmoji}>{meta.emoji}</Text>
+                  <Text
+                    style={[
+                      styles.previewMessage,
+                      titleFontStyle('fancy'),
+                      !message.trim() && styles.previewPlaceholder,
+                    ]}
+                  >
+                    {message.trim() || 'Your message here…'}
+                  </Text>
+                </CoverGradient>
+              </Glass>
+            </TiltCard>
+          </View>
 
           {profile.mutuals.length > 0 ? (
             <>
-              <Text style={[styles.sectionLabel, kicker(light.text3)]}>Also send in-app (optional)</Text>
+              <Text style={styles.sectionLabel}>Also send in-app (optional)</Text>
               <ScrollView
                 horizontal
                 showsHorizontalScrollIndicator={false}
@@ -254,7 +262,7 @@ export default function SendCardScreen() {
           />
         </ScrollView>
       </KeyboardAvoidingView>
-    </PaperBackground>
+    </AmbientBackground>
   );
 }
 
@@ -287,13 +295,17 @@ const styles = StyleSheet.create({
     marginBottom: spacing.xs,
   },
   kicker: {
-    color: light.text3,
+    color: 'rgba(0,0,0,0.5)',
   },
   headline: {
     color: light.ink,
   },
   sectionLabel: {
-    color: light.text3,
+    color: 'rgba(0,0,0,0.5)',
+    fontSize: 12,
+    fontWeight: '700',
+    letterSpacing: -0.2,
+    textTransform: 'uppercase',
   },
   mutualsRow: {
     gap: spacing.md,
@@ -314,7 +326,7 @@ const styles = StyleSheet.create({
     borderColor: light.ink,
   },
   mutualName: {
-    color: light.text3,
+    color: light.text2,
     maxWidth: 72,
     ...uiText(12, '600'),
   },
@@ -323,23 +335,20 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
   recipientNote: {
-    color: light.text3,
+    color: light.text2,
     ...uiText(13, '500'),
   },
   themesRow: {
     gap: spacing.sm,
     paddingVertical: spacing.xs,
   },
-  themeCard: {
+  themeChip: {
+    paddingHorizontal: spacing.xs,
+    paddingVertical: spacing.xs,
+  },
+  themeChipInner: {
     alignItems: 'center',
     gap: spacing.xs,
-    borderWidth: 2,
-    borderColor: 'transparent',
-    borderRadius: radius.md,
-    padding: spacing.xs,
-  },
-  themeCardSelected: {
-    borderColor: light.ink,
   },
   themeArt: {
     width: 76,
@@ -352,23 +361,50 @@ const styles = StyleSheet.create({
     fontSize: 32,
   },
   themeLabel: {
-    color: light.text3,
+    color: light.text2,
     ...uiText(12, '600'),
   },
   themeLabelSelected: {
     color: light.ink,
     fontWeight: '700',
   },
+  messageWrap: {
+    alignItems: 'flex-start',
+  },
   messageInput: {
     minHeight: 90,
     textAlignVertical: 'top',
+  },
+  previewStage: {
+    alignSelf: 'stretch',
+    justifyContent: 'center',
   },
   previewWrap: {
     alignSelf: 'stretch',
   },
   previewPaper: {
     padding: spacing.sm,
-    overflow: 'visible',
+  },
+  envelope: {
+    position: 'absolute',
+    left: spacing.lg,
+    right: spacing.lg,
+    top: 14,
+    bottom: -14,
+    backgroundColor: '#F2E9D6',
+    borderRadius: radius.md,
+    transform: [{ rotate: '3deg' }],
+    ...shadow.card,
+  },
+  envelopeFlap: {
+    position: 'absolute',
+    top: 0,
+    left: '18%',
+    right: '18%',
+    height: 46,
+    backgroundColor: '#E8DCC2',
+    borderBottomLeftRadius: 60,
+    borderBottomRightRadius: 60,
   },
   previewBurst: {
     position: 'absolute',

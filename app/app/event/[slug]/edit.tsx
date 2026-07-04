@@ -11,9 +11,10 @@ import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import type { EventDetail } from '../../../shared/types';
 import { api } from '../../../lib/api';
 import { confirmDialog, notify } from '../../../lib/dialogs';
-import { colors, radius, spacing } from '../../../lib/theme';
+import { colors, light, radius, spacing } from '../../../lib/theme';
 import { kicker, uiText } from '../../../lib/fonts';
 import { EventForm } from '../../../components/EventForm';
+import { AmbientBackground, Glass } from '../../../components/glass';
 import { Avatar } from '../../../components/Avatar';
 
 export default function EditEventScreen() {
@@ -77,13 +78,15 @@ export default function EditEventScreen() {
 
   if (!event) {
     return (
-      <View style={styles.center}>
-        {error ? (
-          <Text style={styles.errorText}>{error}</Text>
-        ) : (
-          <ActivityIndicator color={colors.accent} size="large" />
-        )}
-      </View>
+      <AmbientBackground variant="cloud">
+        <View style={styles.center}>
+          {error ? (
+            <Text style={styles.errorText}>{error}</Text>
+          ) : (
+            <ActivityIndicator color={light.text} size="large" />
+          )}
+        </View>
+      </AmbientBackground>
     );
   }
 
@@ -122,29 +125,39 @@ export default function EditEventScreen() {
               </Text>
             ) : (
               event.cohosts.map((ch) => (
-                <View key={ch.id} style={styles.cohostRow}>
+                <Glass
+                  key={ch.id}
+                  radius={radius.md}
+                  intensity={24}
+                  tint="light"
+                  style={styles.cohostRow}
+                >
                   <Avatar emoji={ch.avatarEmoji} size={30} />
                   <Text style={styles.cohostName}>{ch.name}</Text>
                   <Pressable
                     onPress={() => removeCohost(ch.id, ch.name)}
-                    style={styles.cohostRemove}
+                    style={styles.cohostRemoveWrap}
                     hitSlop={8}
                   >
-                    <Text style={styles.cohostRemoveText}>✕</Text>
+                    <Glass radius={13} intensity={30} tint="light" style={styles.cohostRemove}>
+                      <Text style={styles.cohostRemoveText}>✕</Text>
+                    </Glass>
                   </Pressable>
-                </View>
+                </Glass>
               ))
             )}
             <View style={styles.cohostInputRow}>
-              <TextInput
-                value={cohostEmail}
-                onChangeText={setCohostEmail}
-                placeholder="friend@example.com"
-                placeholderTextColor={colors.muted}
-                autoCapitalize="none"
-                keyboardType="email-address"
-                style={styles.cohostInput}
-              />
+              <Glass radius={14} intensity={24} tint="light" style={styles.cohostInputWrap}>
+                <TextInput
+                  value={cohostEmail}
+                  onChangeText={setCohostEmail}
+                  placeholder="friend@example.com"
+                  placeholderTextColor="rgba(0,0,0,0.42)"
+                  autoCapitalize="none"
+                  keyboardType="email-address"
+                  style={styles.cohostInput}
+                />
+              </Glass>
               <Pressable
                 onPress={addCohost}
                 disabled={cohostBusy || !cohostEmail.trim()}
@@ -167,7 +180,7 @@ export default function EditEventScreen() {
 const styles = StyleSheet.create({
   center: {
     flex: 1,
-    backgroundColor: colors.bg,
+    backgroundColor: 'transparent',
     alignItems: 'center',
     justifyContent: 'center',
     padding: spacing.lg,
@@ -179,44 +192,46 @@ const styles = StyleSheet.create({
   },
   cohostSection: {
     gap: spacing.sm,
-    borderTopWidth: 2,
-    borderColor: colors.cardBorder,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderColor: 'rgba(0,0,0,0.15)',
     paddingTop: spacing.lg,
     marginTop: spacing.sm,
   },
   cohostKicker: {
-    ...kicker(colors.accent),
+    ...kicker('rgba(0,0,0,0.5)'),
   },
   cohostTitle: {
-    color: colors.text,
+    color: light.text,
     ...uiText(20, '800'),
   },
   cohostEmpty: {
-    color: colors.muted,
+    color: light.text3,
     ...uiText(13, '400'),
   },
   cohostRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing.sm,
+    paddingVertical: 8,
+    paddingHorizontal: spacing.md,
   },
   cohostName: {
-    color: colors.text,
+    color: light.text2,
     ...uiText(15, '500'),
     flex: 1,
+  },
+  cohostRemoveWrap: {
+    width: 26,
+    height: 26,
   },
   cohostRemove: {
     width: 26,
     height: 26,
-    borderRadius: 13,
-    backgroundColor: colors.inputBg,
-    borderWidth: 2,
-    borderColor: colors.cardBorder,
     alignItems: 'center',
     justifyContent: 'center',
   },
   cohostRemoveText: {
-    color: colors.muted,
+    color: 'rgba(0,0,0,0.5)',
     fontSize: 12,
     fontWeight: '700',
   },
@@ -224,19 +239,18 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     gap: spacing.sm,
   },
+  cohostInputWrap: {
+    flex: 1,
+  },
   cohostInput: {
     flex: 1,
-    backgroundColor: colors.inputBg,
-    borderWidth: 2,
-    borderColor: colors.cardBorder,
-    borderRadius: radius.md,
-    color: colors.text,
+    color: '#0A0A0A',
     paddingHorizontal: spacing.md,
     paddingVertical: 10,
     fontSize: 15,
   },
   cohostAdd: {
-    backgroundColor: colors.accentDark,
+    backgroundColor: colors.ink,
     borderRadius: radius.pill,
     paddingHorizontal: spacing.lg,
     justifyContent: 'center',

@@ -22,6 +22,7 @@ import { CoverGradient } from '../../components/CoverGradient';
 import { Button } from '../../components/ui';
 import { Burst } from '../../components/partiful';
 import { withScreenBackground } from '../../components/ScreenBackground';
+import { GlassPill } from '../../components/glass';
 import { formatEventDate } from '../../components/EventCard';
 
 const CATEGORY_CHIPS: { key: Category | 'all'; emoji: string; label: string }[] = [
@@ -198,15 +199,13 @@ function ExploreScreen() {
               {CATEGORY_CHIPS.map((chip) => {
                 const active = category === chip.key;
                 return (
-                  <Pressable
-                    key={chip.key}
-                    onPress={() => selectCategory(chip.key)}
-                    style={[styles.chip, active && styles.chipActive]}
-                  >
-                    <Text style={styles.chipEmoji}>{chip.emoji}</Text>
-                    <Text style={[styles.chipLabel, active && styles.chipLabelActive]}>
-                      {chip.label}
-                    </Text>
+                  <Pressable key={chip.key} onPress={() => selectCategory(chip.key)}>
+                    <GlassPill active={active} tint="dark" style={styles.chip}>
+                      <Text style={styles.chipEmoji}>{chip.emoji}</Text>
+                      <Text style={[styles.chipLabel, active && styles.chipLabelActive]}>
+                        {chip.label}
+                      </Text>
+                    </GlassPill>
                   </Pressable>
                 );
               })}
@@ -441,29 +440,17 @@ const styles = StyleSheet.create({
     paddingVertical: spacing.sm,
   },
   chip: {
-    flexDirection: 'row',
-    alignItems: 'center',
     gap: spacing.xs,
-    backgroundColor: colors.card,
-    borderWidth: 2,
-    borderColor: colors.cardBorder,
-    borderRadius: radius.pill,
-    paddingHorizontal: spacing.md,
-    paddingVertical: 8,
-  },
-  chipActive: {
-    borderColor: colors.accent,
-    backgroundColor: colors.accent,
   },
   chipEmoji: {
     fontSize: 14,
   },
   chipLabel: {
     ...uiText(14, '700'),
-    color: colors.muted,
+    color: 'rgba(255,255,255,0.82)',
   },
   chipLabelActive: {
-    color: colors.onAccent,
+    color: '#fff',
   },
   hero: {
     minHeight: 200,
