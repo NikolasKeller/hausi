@@ -39,6 +39,21 @@ const PROMOS: {
 
 export default withScreenBackground(HomeScreen);
 
+// Never a plain "welcome back" — always something cheerful and party-flavored.
+const GREETINGS: Array<(name: string) => { text: string; subtext: string }> = [
+  (n) => ({ text: `Look who's back — ${n}! 🎉`, subtext: "Let's find your next party." }),
+  (n) => ({ text: `${n} has entered the chat 🎊`, subtext: 'Good vibes incoming.' }),
+  (n) => ({ text: `Ayy, ${n}! 🥳`, subtext: 'Who are we celebrating today?' }),
+  (n) => ({ text: `The party missed you, ${n} 💃`, subtext: "Let's get something on the calendar." }),
+  (n) => ({ text: `There they are — ${n} 🕺`, subtext: 'Ready to make plans?' }),
+  (n) => ({ text: `${n} in the building ✨`, subtext: 'Time to stir something up.' }),
+  (n) => ({ text: `Confetti's out for ${n} 🎈`, subtext: "What's the move tonight?" }),
+];
+
+function pickGreeting(name: string) {
+  return GREETINGS[Math.floor(Math.random() * GREETINGS.length)](name);
+}
+
 function HomeScreen() {
   const router = useRouter();
   const { welcomeBack, dismissWelcome } = useAuth();
@@ -48,10 +63,10 @@ function HomeScreen() {
   const [error, setError] = useState<string | null>(null);
   const [refreshing, setRefreshing] = useState(false);
   // Greet a returning user once, on app open, then let it fade.
-  const [welcome, setWelcome] = useState<string | null>(null);
+  const [welcome, setWelcome] = useState<{ text: string; subtext: string } | null>(null);
   useEffect(() => {
     if (!welcomeBack) return;
-    setWelcome(welcomeBack);
+    setWelcome(pickGreeting(welcomeBack));
     dismissWelcome(); // consume so it won't reappear on tab switches
     const t = setTimeout(() => setWelcome(null), 5000);
     return () => clearTimeout(t);
@@ -175,8 +190,8 @@ function HomeScreen() {
         {welcome ? (
           <Pressable onPress={() => setWelcome(null)} style={styles.sectionGroup}>
             <View style={styles.welcomeBanner}>
-              <Text style={styles.welcomeText}>Welcome back, {welcome}.</Text>
-              <Text style={styles.welcomeSubtext}>Good to see you again.</Text>
+              <Text style={styles.welcomeText}>{welcome.text}</Text>
+              <Text style={styles.welcomeSubtext}>{welcome.subtext}</Text>
             </View>
           </Pressable>
         ) : null}
