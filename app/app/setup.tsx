@@ -5,36 +5,33 @@ import {
   ScrollView,
   StyleSheet,
   Text,
+  TextInput,
   View,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { LinearGradient } from 'expo-linear-gradient';
 import { api } from '../lib/api';
 import { useAuth } from '../lib/auth';
-import { colors, radius, spacing } from '../lib/theme';
-import { AuroraBackground } from '../components/AuroraBackground';
-import { Avatar } from '../components/Avatar';
-import { Button, ErrorText, Field } from '../components/ui';
+import { radius, spacing } from '../lib/theme';
+import { Button, ErrorText } from '../components/ui';
 
-const EMOJI_CHOICES = [
-  '🎉', '🦄', '🕺', '🌸', '🐙', '🪩',
-  '🌈', '🍕', '👽', '🔥', '🐸', '💫',
-  '😎', '🐯', '🍩', '🎧', '🧃', '🫶',
-] as const;
+// One face at a time: tapping the big face cycles through a short list
+// instead of presenting a grid to scan.
+const FACES = ['🎉', '😎', '🦄', '🔥', '🌈', '🪩'] as const;
 
 export default function SetupScreen() {
   const router = useRouter();
   const { user, updateUser } = useAuth();
 
+  const [faceIndex, setFaceIndex] = useState(() =>
+    Math.max(0, FACES.indexOf((user?.avatarEmoji ?? '') as (typeof FACES)[number]))
+  );
   const [name, setName] = useState('');
-  const [avatarEmoji, setAvatarEmoji] = useState<string>(() => {
-    const current = user?.avatarEmoji;
-    return current && (EMOJI_CHOICES as readonly string[]).includes(current)
-      ? current
-      : EMOJI_CHOICES[0];
-  });
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  const face = FACES[faceIndex];
 
   // Onboarding is mandatory: no skip — a name is required to enter the app.
   async function finish() {
@@ -47,8 +44,8 @@ export default function SetupScreen() {
     setBusy(true);
     setError(null);
     try {
-      await api.updateProfile({ name: trimmed, avatarEmoji });
-      updateUser({ ...user!, name: trimmed, avatarEmoji });
+      await api.updateProfile({ name: trimmed, avatarEmoji: face });
+      updateUser({ ...user!, name: trimmed, avatarEmoji: face });
       router.replace('/');
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Could not save your profile');
@@ -57,7 +54,14 @@ export default function SetupScreen() {
   }
 
   return (
-    <AuroraBackground confetti={false}>
+    <View style={styles.fill}>
+      <LinearGradient
+        colors={['#12102A', '#3E2273', '#B23A8F', '#FF9A6C']}
+        locations={[0, 0.42, 0.78, 1]}
+        start={{ x: 0.1, y: 0 }}
+        end={{ x: 0.9, y: 1 }}
+        style={StyleSheet.absoluteFill}
+      />
       <SafeAreaView style={styles.safe}>
         <KeyboardAvoidingView style={{ flex: 1 }} behavior="padding">
           <ScrollView
@@ -66,150 +70,98 @@ export default function SetupScreen() {
             showsVerticalScrollIndicator={false}
           >
             <Text style={styles.title}>Pick your look</Text>
-            <Text style={styles.subtitle}>So people spot you on the guest list</Text>
 
-            <View style={styles.heroWrap}>
-              <View style={styles.glowRing} />
-              <Avatar emoji={avatarEmoji} size={140} />
+            <View style={styles.faceWrap}>
+              <Pressable
+                onPress={() => setFaceIndex((i) => (i + 1) % FACES.length)}
+                style={({ pressed }) => [styles.face, pressed && styles.facePressed]}
+              >
+                <Text style={styles.faceEmoji}>{face}</Text>
+              </Pressable>
+              <Text style={styles.hint}>Tap the face to change it</Text>
             </View>
 
-            <View style={styles.grid}>
-              {EMOJI_CHOICES.map((emoji) => {
-                const selected = emoji === avatarEmoji;
-                return (
-                  <Pressable
-                    key={emoji}
-                    onPress={() => setAvatarEmoji(emoji)}
-                    style={({ pressed }) => [
-                      styles.chip,
-                      selected && styles.chipSelected,
-                      pressed && styles.chipPressed,
-                    ]}
-                  >
-                    <Text style={styles.chipEmoji}>{emoji}</Text>
-                  </Pressable>
-                );
-              })}
-            </View>
-
-            <Field
-              label="Your name"
-              placeholder="How friends know you"
+            <TextInput
               value={name}
               onChangeText={(t) => {
                 setName(t);
                 if (error) setError(null);
               }}
+              placeholder="Your name"
+              placeholderTextColor="rgba(255,255,255,0.55)"
               maxLength={80}
               autoCapitalize="words"
               returnKeyType="done"
+              onSubmitEditing={finish}
               style={styles.nameInput}
             />
-
-            <View style={styles.tipCard}>
-              <Text style={styles.tipTitle}>Pro tip 💡</Text>
-              <Text style={styles.tipBody}>
-                People with a face on the guest list get invited way more often 😉
-              </Text>
-            </View>
-
             <ErrorText message={error} />
-            <View style={{ flex: 1 }} />
 
+            <View style={{ flex: 1 }} />
             <Button title="Let's party 🎉" onPress={finish} loading={busy} />
           </ScrollView>
         </KeyboardAvoidingView>
       </SafeAreaView>
-    </AuroraBackground>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
+  fill: {
+    flex: 1,
+    backgroundColor: '#12102A',
+  },
   safe: {
     flex: 1,
   },
   content: {
     flexGrow: 1,
     padding: spacing.lg,
-    paddingTop: spacing.md,
-    gap: spacing.md,
+    paddingTop: spacing.xl * 2,
+    gap: spacing.lg,
   },
   title: {
     color: '#fff',
-    fontSize: 32,
+    fontSize: 34,
     fontWeight: '800',
     textAlign: 'center',
     letterSpacing: -1,
   },
-  subtitle: {
-    color: 'rgba(247,245,255,0.8)',
-    fontSize: 16,
-    textAlign: 'center',
-  },
-  heroWrap: {
-    alignSelf: 'center',
-    width: 172,
-    height: 172,
+  faceWrap: {
     alignItems: 'center',
-    justifyContent: 'center',
-    marginVertical: spacing.sm,
+    gap: spacing.md,
+    marginVertical: spacing.lg,
   },
-  glowRing: {
-    position: 'absolute',
-    width: 172,
-    height: 172,
-    borderRadius: 86,
-    backgroundColor: 'rgba(180,140,255,0.18)',
+  face: {
+    width: 208,
+    height: 208,
+    borderRadius: 104,
+    backgroundColor: 'rgba(255,255,255,0.12)',
     borderWidth: 1,
-    borderColor: 'rgba(180,140,255,0.35)',
-  },
-  grid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    justifyContent: 'space-between',
-    rowGap: spacing.sm,
-  },
-  chip: {
-    width: '15%',
-    aspectRatio: 1,
-    borderRadius: radius.md,
-    backgroundColor: 'rgba(14,11,22,0.45)',
-    borderWidth: 2,
-    borderColor: 'rgba(247,245,255,0.15)',
+    borderColor: 'rgba(255,255,255,0.3)',
     alignItems: 'center',
     justifyContent: 'center',
   },
-  chipSelected: {
-    borderColor: colors.accent,
-    backgroundColor: 'rgba(180,140,255,0.25)',
+  facePressed: {
+    transform: [{ scale: 0.96 }],
   },
-  chipPressed: {
-    opacity: 0.7,
+  faceEmoji: {
+    fontSize: 112,
   },
-  chipEmoji: {
-    fontSize: 26,
+  hint: {
+    color: 'rgba(255,255,255,0.7)',
+    fontSize: 14,
+    fontWeight: '600',
   },
   nameInput: {
-    backgroundColor: 'rgba(14,11,22,0.55)',
-    borderColor: 'rgba(247,245,255,0.25)',
-    color: '#fff',
-  },
-  tipCard: {
-    backgroundColor: 'rgba(14,11,22,0.55)',
+    backgroundColor: 'rgba(14,11,22,0.35)',
     borderWidth: 1,
-    borderColor: 'rgba(247,245,255,0.15)',
+    borderColor: 'rgba(255,255,255,0.35)',
     borderRadius: radius.md,
-    padding: spacing.md,
-    gap: spacing.xs,
-  },
-  tipTitle: {
     color: '#fff',
-    fontSize: 15,
-    fontWeight: '700',
-  },
-  tipBody: {
-    color: 'rgba(247,245,255,0.75)',
-    fontSize: 14,
-    lineHeight: 20,
+    paddingHorizontal: spacing.md,
+    paddingVertical: 14,
+    fontSize: 18,
+    textAlign: 'center',
   },
 });

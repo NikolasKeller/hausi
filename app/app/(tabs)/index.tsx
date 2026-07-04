@@ -9,10 +9,7 @@ import {
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Redirect, useFocusEffect, useRouter } from 'expo-router';
-
-// Screenshot-tour helper: set to a tab path to hop there, null for normal.
-const DEV_TOUR_REDIRECT: string | null = null;
+import { useFocusEffect, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import type { ExploreEvent, HomeFeed } from '../../shared/types';
@@ -127,9 +124,6 @@ function HomeScreen() {
     </View>
   );
 
-  if (DEV_TOUR_REDIRECT) {
-    return <Redirect href={DEV_TOUR_REDIRECT as never} />;
-  }
 
   if (error && !home) {
     return (
