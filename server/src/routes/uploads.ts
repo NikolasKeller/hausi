@@ -1,9 +1,37 @@
 import { Hono } from 'hono';
+import { bodyLimit } from 'hono/body-limit';
 import { requireAuth, type AuthVariables } from '../lib/auth.js';
 import { saveImage } from '../lib/uploads.js';
 
 export const uploadRoutes = new Hono<{ Variables: AuthVariables }>();
 uploadRoutes.use('*', requireAuth);
+
+// Per-IP throttle so one account can't spam uploads and fill the volume.
+const recent = new Map<string, number[]>();
+const UPLOAD_LIMIT = 30;
+const UPLOAD_WINDOW_MS = 60 * 1000;
+uploadRoutes.use('*', async (c, next) => {
+  const ip = c.req.header('x-forwarded-for')?.split(',').at(-1)?.trim() ?? 'unknown';
+  const now = Date.now();
+  const hits = (recent.get(ip) ?? []).filter((t) => now - t < UPLOAD_WINDOW_MS);
+  if (recent.size > 5000) recent.clear();
+  hits.push(now);
+  recent.set(ip, hits);
+  if (hits.length > UPLOAD_LIMIT) {
+    return c.json({ error: 'Too many uploads — slow down a moment' }, 429);
+  }
+  await next();
+});
+
+// Reject oversized bodies before they're buffered into memory — the decoded
+// 6 MB cap in saveImage is defense-in-depth behind this.
+uploadRoutes.use(
+  '*',
+  bodyLimit({
+    maxSize: 8 * 1024 * 1024,
+    onError: (c) => c.json({ error: 'Image too large (max 6 MB)' }, 413),
+  })
+);
 
 // Accepts { data: <base64, no data-URL prefix>, contentType: "image/jpeg" }
 // and returns { url: "/uploads/<file>" } to store on the event.

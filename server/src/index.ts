@@ -43,6 +43,7 @@ app.get('/uploads/:name', async (c) => {
     const buffer = await readFile(join(UPLOAD_DIR, name));
     const ext = name.split('.').pop()!.toLowerCase();
     c.header('Content-Type', MIME_BY_EXT[ext] ?? 'application/octet-stream');
+    c.header('X-Content-Type-Options', 'nosniff');
     c.header('Cache-Control', 'public, max-age=31536000, immutable');
     return c.body(new Uint8Array(buffer));
   } catch {

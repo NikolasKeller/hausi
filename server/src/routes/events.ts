@@ -10,6 +10,7 @@ import {
   toEventSummary,
 } from '../lib/serialize.js';
 import { makeSlug } from '../lib/slug.js';
+import { unlinkImage } from '../lib/uploads.js';
 import { notify } from '../lib/notify.js';
 import {
   CATEGORIES,
@@ -282,6 +283,11 @@ eventRoutes.patch('/:id', async (c) => {
     return tx.event.findUniqueOrThrow({ where: { id: existing.id }, include: eventInclude });
   });
 
+  // A replaced cover leaves the old file orphaned on the volume — reclaim it.
+  if (data.coverImage !== undefined && data.coverImage !== existing.coverImage) {
+    await unlinkImage(existing.coverImage);
+  }
+
   return c.json({ event: toEventDetail(event, userId) });
 });
 
@@ -326,6 +332,7 @@ eventRoutes.delete('/:id', async (c) => {
     return c.json({ error: 'Only the host can delete this event' }, 403);
 
   await db.event.delete({ where: { id: existing.id } });
+  await unlinkImage(existing.coverImage);
   return c.json({ ok: true });
 });
 

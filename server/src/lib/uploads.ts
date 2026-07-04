@@ -1,5 +1,5 @@
 import { mkdirSync } from 'node:fs';
-import { writeFile } from 'node:fs/promises';
+import { unlink, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { randomUUID } from 'node:crypto';
 
@@ -41,4 +41,16 @@ export async function saveImage(base64: string, contentType: string): Promise<st
   const name = `${randomUUID()}.${ext}`;
   await writeFile(join(UPLOAD_DIR, name), buffer);
   return `/uploads/${name}`;
+}
+
+const SAFE_NAME = /^[a-zA-Z0-9_-]+\.(jpg|jpeg|png|webp)$/;
+
+// Deletes a file previously returned by saveImage, given its public path
+// ("/uploads/x.jpg"). No-op for empty values, external URLs, or unsafe names,
+// and swallows a missing-file error — used to reclaim replaced/deleted covers.
+export async function unlinkImage(path: string | null | undefined): Promise<void> {
+  if (!path?.startsWith('/uploads/')) return;
+  const name = path.slice('/uploads/'.length);
+  if (!SAFE_NAME.test(name)) return;
+  await unlink(join(UPLOAD_DIR, name)).catch(() => {});
 }
