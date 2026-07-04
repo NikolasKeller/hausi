@@ -1,0 +1,35 @@
+{
+  "expo": {
+    "name": "Hausi",
+    "slug": "hausi",
+    "version": "0.1.0",
+    "scheme": "hausi",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "dark",
+    "backgroundColor": "#0E0B16",
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.hausi.app"
+    },
+    "android": {
+      "package": "com.hausi.app",
+      "adaptiveIcon": {
+        "backgroundColor": "#0E0B16",
+        "foregroundImage": "./assets/android-icon-foreground.png",
+        "backgroundImage": "./assets/android-icon-background.png",
+        "monochromeImage": "./assets/android-icon-monochrome.png"
+      },
+      "predictiveBackGestureEnabled": false
+    },
+    "web": {
+      "favicon": "./assets/favicon.png"
+    },
+    "plugins": [
+      "expo-router",
+      "expo-status-bar",
+      "expo-secure-store",
+      "@react-native-community/datetimepicker"
+    ]
+  }
+}
