@@ -1,4 +1,5 @@
-import type { MiddlewareHandler } from 'hono';
+import type { Context, MiddlewareHandler } from 'hono';
+import { deleteCookie, getCookie, setCookie } from 'hono/cookie';
 import { sign, verify } from 'hono/jwt';
 import { db } from './db.js';
 
@@ -16,16 +17,39 @@ export async function createToken(userId: string): Promise<string> {
   return sign({ sub: userId, iat: now, exp: now + TOKEN_TTL_SECONDS }, JWT_SECRET);
 }
 
+// Same JWT, also stored as a first-party cookie. On iOS Safari, server-set
+// cookies survive far longer than script-writable storage (localStorage is
+// capped/evicted by ITP), so this keeps web/PWA users logged in across reopens.
+export const SESSION_COOKIE = 'hausi_session';
+
+export function setSessionCookie(c: Context, token: string): void {
+  setCookie(c, SESSION_COOKIE, token, {
+    path: '/',
+    httpOnly: true,
+    secure: process.env.NODE_ENV === 'production',
+    sameSite: 'Lax',
+    maxAge: TOKEN_TTL_SECONDS,
+  });
+}
+
+export function clearSessionCookie(c: Context): void {
+  deleteCookie(c, SESSION_COOKIE, { path: '/' });
+}
+
 export type AuthVariables = { userId: string };
 
 export const requireAuth: MiddlewareHandler<{ Variables: AuthVariables }> = async (c, next) => {
   const header = c.req.header('Authorization');
-  if (!header?.startsWith('Bearer ')) {
+  const bearer = header?.startsWith('Bearer ') ? header.slice('Bearer '.length) : undefined;
+  // Fall back to the session cookie when there's no Bearer token — e.g. a
+  // returning web user whose localStorage was cleared but whose cookie lives.
+  const raw = bearer ?? getCookie(c, SESSION_COOKIE);
+  if (!raw) {
     return c.json({ error: 'Missing Authorization header' }, 401);
   }
   let userId: string;
   try {
-    const payload = await verify(header.slice('Bearer '.length), JWT_SECRET, 'HS256');
+    const payload = await verify(raw, JWT_SECRET, 'HS256');
     if (typeof payload.sub !== 'string') throw new Error('bad sub');
     userId = payload.sub;
   } catch {

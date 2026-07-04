@@ -1,9 +1,15 @@
-import { Hono } from 'hono';
+import { Hono, type Context } from 'hono';
 import bcrypt from 'bcryptjs';
 import { randomInt } from 'node:crypto';
 import { z } from 'zod';
 import { db } from '../lib/db.js';
-import { createToken } from '../lib/auth.js';
+import {
+  createToken,
+  requireAuth,
+  setSessionCookie,
+  clearSessionCookie,
+  type AuthVariables,
+} from '../lib/auth.js';
 import { normalizePhone } from '../lib/phone.js';
 import {
   checkVerification,
@@ -52,7 +58,20 @@ async function authResponse(user: {
   };
 }
 
-export const authRoutes = new Hono();
+// Build the auth response, set the durable session cookie, and reply. Every
+// sign-in path goes through here so the cookie is always issued alongside the
+// token the client stores locally.
+async function sessionJson(
+  c: Context,
+  user: { id: string; name: string; email: string | null; phone: string | null; avatarEmoji: string },
+  extra: Record<string, unknown> = {}
+) {
+  const resp = await authResponse(user);
+  setSessionCookie(c, resp.token);
+  return c.json({ ...resp, ...extra });
+}
+
+export const authRoutes = new Hono<{ Variables: AuthVariables }>();
 
 // The OTP endpoints are unauthenticated and phone/request writes a user row
 // per unique phone, so cap them per IP. In-memory is fine: one instance, and
@@ -168,7 +187,7 @@ authRoutes.post('/phone/verify', async (c) => {
     if (!approved) return c.json({ error: 'Wrong or expired code — try again' }, 401);
     const user = await db.user.upsert({ where: { phone }, create: { phone }, update: {} });
     await claimPlusOneSpots(user.id, phone);
-    return c.json({ ...(await authResponse(user)), isNew: user.name.trim() === '' });
+    return sessionJson(c, user, { isNew: user.name.trim() === '' });
   }
 
   const user = await db.user.findUnique({ where: { phone } });
@@ -188,7 +207,7 @@ authRoutes.post('/phone/verify', async (c) => {
   });
   await claimPlusOneSpots(cleared.id, phone);
 
-  return c.json({ ...(await authResponse(cleared)), isNew: cleared.name.trim() === '' });
+  return sessionJson(c, cleared, { isNew: cleared.name.trim() === '' });
 });
 
 // Legacy dev login for seeded email accounts; not exposed in the app UI.
@@ -201,5 +220,18 @@ authRoutes.post('/login', async (c) => {
   if (!user || !user.passwordHash || !(await bcrypt.compare(password, user.passwordHash))) {
     return c.json({ error: 'Wrong email or password' }, 401);
   }
-  return c.json(await authResponse(user));
+  return sessionJson(c, user);
+});
+
+// Restore a session from the durable cookie when the client has no stored token
+// (e.g. iOS Safari evicted localStorage). Re-issues the cookie to slide expiry.
+authRoutes.get('/session', requireAuth, async (c) => {
+  const user = await db.user.findUniqueOrThrow({ where: { id: c.get('userId') } });
+  return sessionJson(c, user);
+});
+
+// Clear the durable cookie on logout (the client also clears its local copy).
+authRoutes.post('/logout', (c) => {
+  clearSessionCookie(c);
+  return c.json({ ok: true });
 });
