@@ -140,7 +140,7 @@ function HomeScreen() {
         <View style={styles.center}>
           <Text style={styles.errorEmoji}>🫠</Text>
           <Text style={styles.errorText}>{error}</Text>
-          <Button title="Try again" variant="ghost" tone="paper" onPress={onRefresh} loading={refreshing} />
+          <Button title="Try again" variant="ghost" tone="ink" onPress={onRefresh} loading={refreshing} />
         </View>
       </SafeAreaView>
     );

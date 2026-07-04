@@ -116,7 +116,7 @@ function ProfileScreen() {
       <SafeAreaView style={styles.safe} edges={['top']}>
         <View style={styles.center}>
           <Text style={styles.errorText}>{error}</Text>
-          <Button title="Retry" variant="ghost" tone="paper" onPress={load} />
+          <Button title="Retry" variant="ghost" tone="ink" onPress={load} />
         </View>
       </SafeAreaView>
     );
@@ -171,7 +171,7 @@ function ProfileScreen() {
           <Button
             title="Edit profile"
             variant="ghost"
-            tone="paper"
+            tone="ink"
             onPress={() => router.push('/edit-profile')}
             style={styles.actionButton}
           />

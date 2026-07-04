@@ -152,7 +152,7 @@ function CalendarScreen() {
         <View style={styles.center}>
           <Text style={styles.errorEmoji}>🫠</Text>
           <Text style={styles.errorText}>{error}</Text>
-          <Button title="Try again" variant="ghost" tone="paper" onPress={retry} />
+          <Button title="Try again" variant="ghost" tone="ink" onPress={retry} />
         </View>
       </SafeAreaView>
     );
