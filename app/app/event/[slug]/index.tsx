@@ -202,7 +202,9 @@ export default function EventScreen() {
     if (!ok) return;
     try {
       await api.deleteEvent(event.id);
-      removeRecentEvent(event.slug);
+      // Prune the local "recently viewed" cache before navigating, so the home
+      // screen's focus refetch reads the pruned list rather than racing this write.
+      await removeRecentEvent(event.slug);
       router.replace('/');
     } catch (e) {
       notify('Delete failed', e instanceof Error ? e.message : 'Try again');
