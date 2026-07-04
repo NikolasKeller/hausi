@@ -103,6 +103,12 @@ export default function EventScreen() {
     await shareText(message, url);
   }
 
+  async function sharePlusOneInvite() {
+    if (!event) return;
+    const url = Linking.createURL(`e/${event.slug}`);
+    await shareText(`You're my +1 for "${event.title}"! 🎟️ RSVP here: ${url}`, url);
+  }
+
   async function confirmRemoveGuest(guestId: string, guestName: string) {
     if (!event) return;
     const ok = await confirmDialog(
@@ -324,6 +330,12 @@ export default function EventScreen() {
                   <Text style={styles.plusOneChipName} numberOfLines={1}>
                     {myPlusOne.name}
                   </Text>
+                  {myPlusOne.userId == null ? (
+                    // Not on Hausi yet — resurface the invite link to text them.
+                    <Pressable onPress={sharePlusOneInvite} hitSlop={8}>
+                      <Text style={styles.plusOneShareText}>Share invite</Text>
+                    </Pressable>
+                  ) : null}
                   <Pressable
                     onPress={() => dropPlusOne(myPlusOne.id)}
                     hitSlop={8}
@@ -662,6 +674,11 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontWeight: '700',
     flexShrink: 1,
+  },
+  plusOneShareText: {
+    color: colors.accent,
+    fontSize: 13,
+    fontWeight: '700',
   },
   addPlusOneButton: {
     borderWidth: 1,

@@ -138,6 +138,13 @@ authRoutes.post('/phone/request', async (c) => {
   return c.json({ sent: true, devCode: code });
 });
 
+// Plus-one spots reserved for this phone before the account existed get
+// linked on sign-in, so the invitee shows up on guest lists with their own
+// profile (avatar and all) instead of the name their friend typed.
+async function claimPlusOneSpots(userId: string, phone: string) {
+  await db.plusOne.updateMany({ where: { phone, userId: null }, data: { userId } });
+}
+
 // Step 2: verify the code → session token. isNew signals the app to run
 // the profile-setup step (name + avatar).
 authRoutes.post('/phone/verify', async (c) => {
@@ -160,6 +167,7 @@ authRoutes.post('/phone/verify', async (c) => {
     }
     if (!approved) return c.json({ error: 'Wrong or expired code — try again' }, 401);
     const user = await db.user.upsert({ where: { phone }, create: { phone }, update: {} });
+    await claimPlusOneSpots(user.id, phone);
     return c.json({ ...(await authResponse(user)), isNew: user.name.trim() === '' });
   }
 
@@ -178,6 +186,7 @@ authRoutes.post('/phone/verify', async (c) => {
     where: { id: user.id },
     data: { phoneCode: null, phoneCodeExpiresAt: null },
   });
+  await claimPlusOneSpots(cleared.id, phone);
 
   return c.json({ ...(await authResponse(cleared)), isNew: cleared.name.trim() === '' });
 });

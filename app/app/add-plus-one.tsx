@@ -10,8 +10,10 @@ import {
   View,
 } from 'react-native';
 import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
+import * as Linking from 'expo-linking';
 import { LIMITS, type Mutual } from '../shared/types';
 import { api } from '../lib/api';
+import { shareText } from '../lib/share';
 import { colors, radius, spacing } from '../lib/theme';
 import { Avatar } from '../components/Avatar';
 import { Button, ErrorText, Field } from '../components/ui';
@@ -23,7 +25,7 @@ type Mode = 'browse' | 'manual';
 // name + phone. The event screen refetches on focus, so we just router.back().
 export default function AddPlusOneScreen() {
   const router = useRouter();
-  const { eventId, exclude } = useLocalSearchParams<{
+  const { eventId, slug, exclude } = useLocalSearchParams<{
     eventId: string;
     slug?: string;
     exclude?: string;
@@ -86,6 +88,14 @@ export default function AddPlusOneScreen() {
     try {
       await api.addPlusOne(eventId, guest);
       router.back();
+      // A manual invitee isn't on Hausi yet — hand over the invite link so
+      // they can be texted right away. Signing up with that number links the
+      // spot to their account. Fired after navigating back and not awaited:
+      // a blocked share sheet/clipboard must never strand the screen.
+      if ('phone' in guest && slug) {
+        const url = Linking.createURL(`e/${slug}`);
+        shareText(`You're my +1! 🎟️ RSVP here: ${url}`, url).catch(() => {});
+      }
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Could not add your plus one');
     } finally {
