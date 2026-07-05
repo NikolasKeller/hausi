@@ -18,8 +18,7 @@ function CreateScreen() {
         <View style={styles.heading}>
           <Text style={[styles.kicker, kicker(colors.muted)]}>Start something</Text>
           <Text style={styles.title}>
-            Make something{'\n'}
-            <Text style={styles.titleItalic}>happen</Text>
+            Make something{'\n'}happen
           </Text>
         </View>
 
@@ -34,20 +33,6 @@ function CreateScreen() {
             <View style={styles.rowText}>
               <Text style={styles.rowTitle}>New event</Text>
               <Text style={styles.rowSubtitle}>Collect RSVPs</Text>
-            </View>
-            <Ionicons name="chevron-forward" size={20} color={colors.muted} />
-          </Pressable>
-
-          <Pressable
-            onPress={() => router.push('/send-card')}
-            style={({ pressed }) => [styles.row, pressed && styles.pressed]}
-          >
-            <View style={styles.rowIcon}>
-              <Ionicons name="mail-outline" size={22} color={colors.accent} />
-            </View>
-            <View style={styles.rowText}>
-              <Text style={styles.rowTitle}>Send a card</Text>
-              <Text style={styles.rowSubtitle}>Brighten someone's day</Text>
             </View>
             <Ionicons name="chevron-forward" size={20} color={colors.muted} />
           </Pressable>
@@ -82,9 +67,6 @@ const styles = StyleSheet.create({
   title: {
     ...display(52),
     color: colors.text,
-  },
-  titleItalic: {
-    fontStyle: 'italic',
   },
   rows: {
     gap: spacing.md,

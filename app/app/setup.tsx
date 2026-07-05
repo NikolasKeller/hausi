@@ -87,7 +87,7 @@ export default function SetupScreen() {
           >
             <Text style={styles.kicker}>Welcome</Text>
             <Text style={styles.title}>
-              Pick your <Text style={styles.titleItalic}>look</Text>
+              Pick your look
             </Text>
 
             <View style={styles.faceWrap}>
@@ -192,9 +192,6 @@ const styles = StyleSheet.create({
     ...display(56),
     color: colors.text,
     textAlign: 'center',
-  },
-  titleItalic: {
-    fontStyle: 'italic',
   },
   faceWrap: {
     alignItems: 'center',

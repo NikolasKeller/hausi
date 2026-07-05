@@ -91,10 +91,6 @@ export const CATEGORY_META: Record<Category, { label: string; emoji: string }> =
   other: { label: 'Other', emoji: '✨' },
 };
 
-export const CARD_THEMES = ['confetti', 'birthday', 'thanks', 'miss-you', 'congrats'] as const;
-
-export type CardTheme = (typeof CARD_THEMES)[number];
-
 export interface PublicUser {
   id: string;
   name: string;
@@ -234,16 +230,6 @@ export interface Badge {
   value: number;
 }
 
-export interface CardEntry {
-  id: string;
-  from: PublicUser;
-  // null for cards shared by link (no in-app recipient).
-  to: PublicUser | null;
-  theme: CardTheme;
-  message: string;
-  createdAt: string;
-}
-
 export interface MyProfile {
   id: string;
   name: string;
@@ -255,7 +241,6 @@ export interface MyProfile {
   joinedAt: string;
   badges: Badge[];
   mutuals: Mutual[];
-  cards: CardEntry[];
 }
 
 export interface NotificationEntry {

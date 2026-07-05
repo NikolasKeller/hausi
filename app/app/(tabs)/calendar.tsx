@@ -2,6 +2,7 @@ import React, { useCallback, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
   Image,
+  PanResponder,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -127,6 +128,21 @@ function CalendarScreen() {
     return { upcoming: up, past: pa };
   }, [events]);
 
+  // Swipe up anywhere on the calendar to pull up the full list of events —
+  // the panel handle below the grid hints at the gesture. Only claim decisive
+  // upward drags so day taps and the panel's internal scroll still work.
+  const swipeUp = useMemo(
+    () =>
+      PanResponder.create({
+        onMoveShouldSetPanResponder: (_e, g) =>
+          g.dy < -10 && Math.abs(g.dy) > Math.abs(g.dx),
+        onPanResponderRelease: (_e, g) => {
+          if (g.dy < -50 || (g.dy < -20 && g.vy < -0.4)) setMode('list');
+        },
+      }),
+    []
+  );
+
   function shiftMonth(delta: number) {
     setView((v) => {
       const d = new Date(v.year, v.month + delta, 1);
@@ -184,7 +200,12 @@ function CalendarScreen() {
       <View style={styles.monthRow}>
         <View style={styles.monthTitleWrap}>
           <Text style={[styles.kicker, kicker(colors.accent)]}>Your calendar</Text>
-          <Text style={styles.monthTitle} numberOfLines={1}>
+          <Text
+            style={styles.monthTitle}
+            numberOfLines={1}
+            adjustsFontSizeToFit
+            minimumFontScale={0.7}
+          >
             {monthTitle}
           </Text>
         </View>
@@ -204,18 +225,11 @@ function CalendarScreen() {
           <Pressable onPress={goToToday} style={styles.todayPill} hitSlop={4}>
             <Text style={styles.todayPillText}>Today</Text>
           </Pressable>
-        ) : null}
-        <Pressable
-          onPress={() => setMode((m) => (m === 'grid' ? 'list' : 'grid'))}
-          style={styles.toggleButton}
-          hitSlop={4}
-        >
-          <Ionicons
-            name={mode === 'grid' ? 'list-outline' : 'calendar-outline'}
-            size={20}
-            color={colors.text}
-          />
-        </Pressable>
+        ) : (
+          <Pressable onPress={() => setMode('grid')} style={styles.toggleButton} hitSlop={4}>
+            <Ionicons name="calendar-outline" size={20} color={colors.text} />
+          </Pressable>
+        )}
       </View>
     </View>
   );
@@ -228,7 +242,7 @@ function CalendarScreen() {
   if (mode === 'grid') {
     return (
       <SafeAreaView edges={['top']} style={styles.safe}>
-        <View style={styles.gridContent}>
+        <View style={styles.gridContent} {...swipeUp.panHandlers}>
           {header}
 
           <View style={styles.weekdayRow}>
@@ -329,9 +343,7 @@ function CalendarScreen() {
 
         <View style={styles.listSections}>
           <View style={styles.sectionHead}>
-            <Text style={styles.sectionTitle}>
-              <Text style={styles.sectionTitleItalic}>Upcoming</Text>
-            </Text>
+            <Text style={styles.sectionTitle}>Upcoming</Text>
           </View>
           {upcoming.length === 0 ? (
             <Text style={styles.sectionEmpty}>Nothing planned — yet 👀</Text>
@@ -405,7 +417,7 @@ const styles = StyleSheet.create({
     color: colors.accent,
   },
   monthTitle: {
-    ...display(44),
+    ...display(40),
     color: colors.text,
     flexShrink: 1,
   },
@@ -435,11 +447,11 @@ const styles = StyleSheet.create({
     borderColor: colors.cardBorder,
     backgroundColor: colors.card,
     borderRadius: radius.pill,
-    paddingHorizontal: spacing.md,
-    paddingVertical: 8,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: 6,
   },
   todayPillText: {
-    ...uiText(13, '700'),
+    ...uiText(12, '700'),
     color: colors.text,
   },
   toggleButton: {
@@ -573,11 +585,6 @@ const styles = StyleSheet.create({
   sectionTitle: {
     ...display(30),
     color: colors.text,
-  },
-  sectionTitleItalic: {
-    ...display(30),
-    color: colors.text,
-    fontStyle: 'italic',
   },
   sectionEmpty: {
     ...uiText(15),

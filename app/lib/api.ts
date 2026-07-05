@@ -2,8 +2,6 @@ import { Platform } from 'react-native';
 import Constants from 'expo-constants';
 import type {
   AuthResponse,
-  CardEntry,
-  CardTheme,
   Category,
   CommentEntry,
   EventDetail,
@@ -196,22 +194,6 @@ export const api = {
     return request<{ user: AuthResponse['user'] & { city: string } }>('/me', {
       method: 'PATCH',
       body: JSON.stringify(data),
-    });
-  },
-  // Omit toUserId for a share-by-link card; pass it to also deliver in-app to a mutual.
-  sendCard(theme: CardTheme, message: string, toUserId?: string) {
-    return request<{ card: CardEntry }>('/me/cards', {
-      method: 'POST',
-      body: JSON.stringify(toUserId ? { toUserId, theme, message } : { theme, message }),
-    });
-  },
-  cardById(id: string) {
-    return request<{ card: CardEntry }>(`/cards/${encodeURIComponent(id)}`);
-  },
-  // Hide a card from your own "My cards" list (sent or received).
-  archiveCard(id: string) {
-    return request<{ ok: boolean }>(`/me/cards/${encodeURIComponent(id)}/archive`, {
-      method: 'POST',
     });
   },
   toggleCrush(userId: string) {

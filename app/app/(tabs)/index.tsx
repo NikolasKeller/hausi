@@ -23,20 +23,6 @@ import { Button } from '../../components/ui';
 import { formatEventDate, formatEventTime } from '../../components/EventCard';
 import { withScreenBackground } from '../../components/ScreenBackground';
 
-const PROMOS: {
-  emoji: string;
-  title: string;
-  subtitle: string;
-  route: string;
-}[] = [
-  {
-    emoji: '💌',
-    title: 'Send a card',
-    subtitle: "Make someone's day",
-    route: '/send-card',
-  },
-];
-
 export default withScreenBackground(HomeScreen);
 
 // Never a plain "welcome back" — always something cheerful and party-flavored.
@@ -199,7 +185,7 @@ function HomeScreen() {
         <View style={styles.sectionGroup}>
           <Text style={styles.kicker}>Hot right now</Text>
           <Text style={styles.sectionTitle}>
-            Trending in <Text style={styles.sectionTitleItalic}>{home.city}</Text>
+            Trending in {home.city}
           </Text>
           {home.trendingNearby.length === 0 ? (
             <Text style={styles.emptyNote}>Nothing trending nearby yet — start something.</Text>
@@ -234,28 +220,11 @@ function HomeScreen() {
           </View>
         ) : null}
 
-        <View style={[styles.sectionGroup, { gap: spacing.sm }]}>
-          {PROMOS.map((promo) => (
-            <Pressable
-              key={promo.route}
-              onPress={() => router.push(promo.route)}
-              style={({ pressed }) => [styles.promo, pressed && { opacity: 0.8 }]}
-            >
-              <Text style={styles.promoEmoji}>{promo.emoji}</Text>
-              <View style={{ flex: 1, gap: 2 }}>
-                <Text style={styles.promoTitle}>{promo.title}</Text>
-                <Text style={styles.promoSubtitle}>{promo.subtitle}</Text>
-              </View>
-              <Ionicons name="chevron-forward" size={20} color={colors.muted} />
-            </Pressable>
-          ))}
-        </View>
-
         {home.palsGoing.length > 0 ? (
           <View style={styles.sectionGroup}>
             <Text style={styles.kicker}>Your crew</Text>
             <Text style={styles.sectionTitle}>
-              Where your <Text style={styles.sectionTitleItalic}>pals</Text> are going
+              Where your pals are going
             </Text>
             <View style={styles.rowList}>
               {home.palsGoing.map((event) => (
@@ -272,7 +241,7 @@ function HomeScreen() {
         <View style={styles.sectionGroup}>
           <Text style={styles.kicker}>Need a plan?</Text>
           <Text style={styles.sectionTitle}>
-            Party <Text style={styles.sectionTitleItalic}>starters</Text>
+            Party starters
           </Text>
           <Text style={styles.sectionBlurb}>Tap an idea to spin up an event in seconds.</Text>
           <ScrollView
@@ -290,7 +259,7 @@ function HomeScreen() {
         <View style={[styles.sectionGroup, styles.ctaGroup]}>
           <Text style={styles.ctaKicker}>Your move</Text>
           <Text style={styles.ctaTitle}>
-            Throw{'\n'}<Text style={styles.ctaTitleItalic}>something</Text>
+            Throw{'\n'}something
           </Text>
           <Button
             title="Create an event"
@@ -468,9 +437,6 @@ const styles = StyleSheet.create({
     ...display(30),
     color: colors.text,
   },
-  sectionTitleItalic: {
-    fontStyle: 'italic',
-  },
   emptyNote: {
     ...uiText(14),
     color: colors.muted,
@@ -492,9 +458,6 @@ const styles = StyleSheet.create({
     ...display(52),
     color: colors.text,
     marginBottom: spacing.md,
-  },
-  ctaTitleItalic: {
-    fontStyle: 'italic',
   },
   ctaButton: {
     alignSelf: 'stretch',
@@ -591,28 +554,6 @@ const styles = StyleSheet.create({
     color: colors.accent,
     padding: spacing.sm,
     paddingTop: 6,
-  },
-  promo: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.md,
-    backgroundColor: colors.card,
-    borderRadius: radius.lg,
-    borderWidth: 1,
-    borderColor: colors.cardBorder,
-    padding: spacing.md,
-    ...shadow.card,
-  },
-  promoEmoji: {
-    fontSize: 30,
-  },
-  promoTitle: {
-    ...uiText(16, '700'),
-    color: colors.text,
-  },
-  promoSubtitle: {
-    ...uiText(13),
-    color: colors.muted,
   },
   rowList: {
     gap: spacing.sm,

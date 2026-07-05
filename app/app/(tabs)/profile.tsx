@@ -10,7 +10,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import type { CardEntry, MyProfile } from '../../shared/types';
+import type { MyProfile } from '../../shared/types';
 import { api } from '../../lib/api';
 import { useAuth } from '../../lib/auth';
 import { confirmDialog, notify } from '../../lib/dialogs';
@@ -18,8 +18,8 @@ import { shareText } from '../../lib/share';
 import { colors, radius, shadow, spacing } from '../../lib/theme';
 import { display, kicker, uiText } from '../../lib/fonts';
 import { Avatar } from '../../components/Avatar';
-import { CoverGradient } from '../../components/CoverGradient';
 import { Button } from '../../components/ui';
+import { SettingsSheet } from '../../components/SettingsSheet';
 import { withScreenBackground } from '../../components/ScreenBackground';
 
 function joinedLabel(iso: string): string {
@@ -28,23 +28,15 @@ function joinedLabel(iso: string): string {
   return `${month} '${String(date.getFullYear()).slice(-2)}`;
 }
 
-function cardDate(iso: string): string {
-  return new Date(iso).toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
-}
-
-function cardDirection(card: CardEntry, myId: string | undefined): string {
-  if (myId && card.from.id === myId) return card.to ? `to ${card.to.name}` : 'shared by link 🔗';
-  return `${card.from.avatarEmoji} from ${card.from.name}`;
-}
-
 export default withScreenBackground(ProfileScreen);
 
 function ProfileScreen() {
   const router = useRouter();
-  const { user, logout } = useAuth();
+  const { logout } = useAuth();
   const [profile, setProfile] = useState<MyProfile | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [crushBusy, setCrushBusy] = useState<string | null>(null);
+  const [settingsOpen, setSettingsOpen] = useState(false);
 
   const load = useCallback(async () => {
     try {
@@ -76,7 +68,7 @@ function ProfileScreen() {
     }, [])
   );
 
-  async function openSettings() {
+  async function confirmLogout() {
     const ok = await confirmDialog('Log out?', 'You can log back in with your phone number.', 'Log out');
     if (ok) logout().catch(() => {});
   }
@@ -108,24 +100,6 @@ function ProfileScreen() {
       notify('Crush failed', e instanceof Error ? e.message : 'Try again');
     } finally {
       setCrushBusy(null);
-    }
-  }
-
-  async function archiveCard(card: CardEntry) {
-    const label = card.to ? `to ${card.to.name}` : 'shared by link';
-    const ok = await confirmDialog(
-      'Archive card?',
-      `This hides the card (${label}) from your cards. The other person keeps theirs.`,
-      'Archive'
-    );
-    if (!ok) return;
-    try {
-      await api.archiveCard(card.id);
-      setProfile((prev) =>
-        prev ? { ...prev, cards: prev.cards.filter((c) => c.id !== card.id) } : prev
-      );
-    } catch (e) {
-      notify('Could not archive', e instanceof Error ? e.message : 'Try again');
     }
   }
 
@@ -162,20 +136,12 @@ function ProfileScreen() {
       <ScrollView contentContainerStyle={styles.container}>
         <View style={styles.header}>
           <Text style={[styles.headerKicker, kicker(colors.accent)]}>Your profile</Text>
-          <View style={styles.headerActions}>
-            <Pressable
-              onPress={() => router.push('/edit-profile')}
-              style={({ pressed }) => [styles.roundButton, pressed && styles.pressed]}
-            >
-              <Ionicons name="pencil" size={18} color={colors.text} />
-            </Pressable>
-            <Pressable
-              onPress={openSettings}
-              style={({ pressed }) => [styles.roundButton, pressed && styles.pressed]}
-            >
-              <Ionicons name="settings-sharp" size={18} color={colors.text} />
-            </Pressable>
-          </View>
+          <Pressable
+            onPress={() => setSettingsOpen(true)}
+            style={({ pressed }) => [styles.roundButton, pressed && styles.pressed]}
+          >
+            <Ionicons name="settings-sharp" size={18} color={colors.text} />
+          </Pressable>
         </View>
 
         <View style={styles.hero}>
@@ -183,22 +149,6 @@ function ProfileScreen() {
             <Avatar emoji={profile.avatarEmoji} image={profile.avatarImage} size={120} />
           </View>
           <Text style={styles.bigName}>{profile.name}</Text>
-        </View>
-
-        <View style={styles.actionRow}>
-          <Button
-            title="Edit profile"
-            variant="ghost"
-            tone="ink"
-            onPress={() => router.push('/edit-profile')}
-            style={styles.actionButton}
-          />
-          <Button
-            title="Share profile"
-            variant="paper"
-            onPress={shareProfile}
-            style={styles.actionButton}
-          />
         </View>
 
         <Text style={styles.metaLine}>{metaLine}</Text>
@@ -225,9 +175,7 @@ function ProfileScreen() {
         </View>
 
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>
-            <Text style={styles.sectionTitleItalic}>Mutuals</Text>
-          </Text>
+          <Text style={styles.sectionTitle}>Mutuals</Text>
           <Text style={styles.sectionSubtitle}>Everyone you've ever partied with</Text>
           {profile.mutuals.length === 0 ? (
             <Text style={styles.emptyText}>Party with someone to make your first mutual 🫂</Text>
@@ -260,40 +208,15 @@ function ProfileScreen() {
             </View>
           )}
         </View>
-
-        {profile.cards.length > 0 ? (
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>My cards 💌</Text>
-            <ScrollView
-              horizontal
-              showsHorizontalScrollIndicator={false}
-              contentContainerStyle={styles.cardsRow}
-            >
-              {profile.cards.map((card) => (
-                <CoverGradient key={card.id} theme="candy" style={styles.cardItem}>
-                  <View style={styles.cardHeader}>
-                    <Text style={styles.cardFrom} numberOfLines={1}>
-                      {cardDirection(card, user?.id)}
-                    </Text>
-                    <Pressable
-                      onPress={() => archiveCard(card)}
-                      hitSlop={8}
-                      accessibilityLabel="Archive card"
-                      style={({ pressed }) => [styles.cardArchive, pressed && styles.pressed]}
-                    >
-                      <Ionicons name="archive-outline" size={15} color="#fff" />
-                    </Pressable>
-                  </View>
-                  <Text style={styles.cardMessage} numberOfLines={3}>
-                    {card.message}
-                  </Text>
-                  <Text style={styles.cardDate}>{cardDate(card.createdAt)}</Text>
-                </CoverGradient>
-              ))}
-            </ScrollView>
-          </View>
-        ) : null}
       </ScrollView>
+      {settingsOpen ? (
+        <SettingsSheet
+          onClose={() => setSettingsOpen(false)}
+          onEditProfile={() => router.push('/edit-profile')}
+          onShareProfile={shareProfile}
+          onLogout={confirmLogout}
+        />
+      ) : null}
     </SafeAreaView>
   );
 }
@@ -330,10 +253,6 @@ const styles = StyleSheet.create({
     color: colors.accent,
     flexShrink: 1,
   },
-  headerActions: {
-    flexDirection: 'row',
-    gap: spacing.sm,
-  },
   roundButton: {
     width: 40,
     height: 40,
@@ -362,20 +281,11 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     paddingHorizontal: spacing.lg,
   },
-  actionRow: {
-    flexDirection: 'row',
-    gap: spacing.sm,
-    paddingHorizontal: spacing.md,
-    marginTop: spacing.lg,
-  },
-  actionButton: {
-    flex: 1,
-  },
   metaLine: {
     ...uiText(14),
     color: colors.muted,
     textAlign: 'center',
-    marginTop: spacing.md,
+    marginTop: spacing.lg,
   },
   section: {
     marginTop: spacing.xxl,
@@ -385,11 +295,6 @@ const styles = StyleSheet.create({
     ...display(28),
     color: colors.text,
     paddingHorizontal: spacing.md,
-  },
-  sectionTitleItalic: {
-    ...display(28),
-    color: colors.text,
-    fontStyle: 'italic',
   },
   sectionSubtitle: {
     ...uiText(14),
@@ -464,47 +369,5 @@ const styles = StyleSheet.create({
     borderColor: colors.cardBorder,
     alignItems: 'center',
     justifyContent: 'center',
-  },
-  cardsRow: {
-    gap: spacing.sm,
-    paddingHorizontal: spacing.md,
-  },
-  cardItem: {
-    width: 200,
-    borderRadius: radius.lg,
-    padding: spacing.md,
-    gap: spacing.xs,
-  },
-  cardHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.xs,
-  },
-  cardArchive: {
-    width: 26,
-    height: 26,
-    borderRadius: 13,
-    backgroundColor: 'rgba(0,0,0,0.22)',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  cardFrom: {
-    ...uiText(13, '800'),
-    flex: 1,
-    color: '#fff',
-    textShadowColor: 'rgba(0,0,0,0.35)',
-    textShadowOffset: { width: 0, height: 1 },
-    textShadowRadius: 4,
-  },
-  cardMessage: {
-    ...uiText(14, '400', { lineHeight: 1.35 }),
-    color: '#fff',
-    textShadowColor: 'rgba(0,0,0,0.35)',
-    textShadowOffset: { width: 0, height: 1 },
-    textShadowRadius: 4,
-  },
-  cardDate: {
-    ...uiText(11, '600'),
-    color: 'rgba(255,255,255,0.85)',
   },
 });

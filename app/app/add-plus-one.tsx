@@ -147,7 +147,7 @@ export default function AddPlusOneScreen() {
         >
           <Text style={styles.kicker}>Your plus one</Text>
           <Text style={styles.title}>
-            Who are you <Text style={styles.titleItalic}>bringing?</Text>
+            Who are you bringing?
           </Text>
           <Text style={styles.subtitle}>
             One guest — someone you've partied with, or a brand-new face.
@@ -275,9 +275,6 @@ const styles = StyleSheet.create({
     ...display(56),
     color: colors.text,
     marginBottom: spacing.sm,
-  },
-  titleItalic: {
-    fontStyle: 'italic',
   },
   subtitle: {
     ...uiText(15),
