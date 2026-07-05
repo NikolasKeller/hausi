@@ -33,4 +33,7 @@ ENV NODE_ENV=production
 ENV DATABASE_URL="file:/data/hausi.db"
 
 # `db push` is idempotent: it creates/updates the sqlite schema on boot.
-CMD ["sh", "-c", "mkdir -p /data && npx prisma db push --skip-generate && npm start"]
+# --accept-data-loss lets db push apply destructive schema changes (e.g. a
+# dropped model) non-interactively; without it the boot aborts and the
+# healthcheck never comes up on a volume that still has the old tables.
+CMD ["sh", "-c", "mkdir -p /data && npx prisma db push --skip-generate --accept-data-loss && npm start"]
