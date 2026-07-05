@@ -125,7 +125,9 @@ export function EventForm({ initial, submitLabel, onSubmit, footer }: Props) {
   const [uploadingCover, setUploadingCover] = useState(false);
   const titleFont: TitleFont = initial?.titleFont ?? 'classic';
   const [effect, setEffect] = useState<Effect>(initial?.effect ?? 'none');
-  const [date, setDate] = useState<Date>(initial?.date ?? defaultDate());
+  // null until the host actually opens the When picker — "When" is a required
+  // field, so we don't silently pre-fill it. The sheet opens at defaultDate().
+  const [date, setDate] = useState<Date | null>(initial?.date ?? null);
   const [maxGuests, setMaxGuests] = useState(
     initial?.maxGuests != null ? String(initial.maxGuests) : ''
   );
@@ -174,9 +176,25 @@ export function EventForm({ initial, submitLabel, onSubmit, footer }: Props) {
   const hasHiddenSettings =
     Boolean(costPerPerson.trim() || dressCode.trim() || maxGuests.trim()) || plusOneLimit !== 1;
 
+  // Name, When and Location are all required — the Save button stays disabled
+  // until each is filled, so a half-baked event can't be created (or edited into
+  // one). Location can only ever be a real, geocoded place: the LocationPicker
+  // never commits free text, so a made-up spot can't be saved.
+  const canSave = Boolean(
+    title.trim() && date && !Number.isNaN(date.getTime()) && location.trim()
+  );
+
   async function submit() {
     if (!title.trim()) {
       setError('Give your party a name!');
+      return;
+    }
+    if (!date || Number.isNaN(date.getTime())) {
+      setError('Pick a date and time for your party!');
+      return;
+    }
+    if (!location.trim()) {
+      setError('Add a location — pick a real spot from the list!');
       return;
     }
     const guests = maxGuests.trim() ? Number(maxGuests.trim()) : null;
@@ -281,9 +299,19 @@ export function EventForm({ initial, submitLabel, onSubmit, footer }: Props) {
 
         <View style={{ gap: spacing.xs }}>
           <SectionLabel color={ink.faint}>When</SectionLabel>
-          <PaperPressable style={styles.whenButton} onPress={() => setDateSheetOpen(true)}>
-            <Text style={styles.dateText}>
-              {formatEventDate(date.toISOString())} · {formatEventTime(date.toISOString())}
+          <PaperPressable
+            style={styles.whenButton}
+            onPress={() => {
+              // Seed a sensible default the first time When opens so the picker
+              // starts on a real value the host can accept or adjust.
+              if (!date) setDate(defaultDate());
+              setDateSheetOpen(true);
+            }}
+          >
+            <Text style={[styles.dateText, !date && styles.datePlaceholder]}>
+              {date
+                ? `${formatEventDate(date.toISOString())} · ${formatEventTime(date.toISOString())}`
+                : 'Add a date & time'}
             </Text>
           </PaperPressable>
         </View>
@@ -320,6 +348,7 @@ export function EventForm({ initial, submitLabel, onSubmit, footer }: Props) {
           title={submitLabel}
           onPress={submit}
           loading={saving}
+          disabled={!canSave}
           variant={ink.dark ? 'paper' : 'primary'}
         />
         {footer}
@@ -405,7 +434,7 @@ export function EventForm({ initial, submitLabel, onSubmit, footer }: Props) {
       ) : null}
       {dateSheetOpen ? (
         <DateTimeSheet
-          date={date}
+          date={date ?? defaultDate()}
           onChange={setDate}
           onClose={() => setDateSheetOpen(false)}
         />
@@ -568,6 +597,9 @@ const styles = StyleSheet.create({
   dateText: {
     color: colors.text,
     ...uiText(16, '600'),
+  },
+  datePlaceholder: {
+    color: colors.muted,
   },
 
   // ── Description ──
