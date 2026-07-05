@@ -18,8 +18,7 @@ function CreateScreen() {
         <View style={styles.heading}>
           <Text style={[styles.kicker, kicker(colors.muted)]}>Start something</Text>
           <Text style={styles.title}>
-            Make something{'\n'}
-            <Text style={styles.titleItalic}>happen</Text>
+            Make something{'\n'}happen
           </Text>
         </View>
 
@@ -82,9 +81,6 @@ const styles = StyleSheet.create({
   title: {
     ...display(52),
     color: colors.text,
-  },
-  titleItalic: {
-    fontStyle: 'italic',
   },
   rows: {
     gap: spacing.md,

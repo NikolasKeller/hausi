@@ -70,7 +70,7 @@ export default function CardScreen() {
           <View style={styles.header}>
             <Text style={styles.kicker}>A card for you</Text>
             <Text style={styles.headline}>
-              You{'’'}ve got <Text style={styles.headlineAccent}>mail</Text>
+              You{'’'}ve got mail
             </Text>
           </View>
 
@@ -129,10 +129,6 @@ const styles = StyleSheet.create({
   headline: {
     color: colors.text,
     ...display(52),
-  },
-  headlineAccent: {
-    ...display(52),
-    fontStyle: 'italic',
   },
   cardWrap: {
     alignSelf: 'stretch',

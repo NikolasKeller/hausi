@@ -142,7 +142,7 @@ export default function SendCardScreen() {
           <View style={styles.header}>
             <Text style={styles.kicker}>Send a card</Text>
             <Text style={styles.headline}>
-              Make it <Text style={styles.headlineAccent}>special</Text>
+              Make it special
             </Text>
           </View>
 
@@ -292,10 +292,6 @@ const styles = StyleSheet.create({
   headline: {
     color: colors.text,
     ...display(48),
-  },
-  headlineAccent: {
-    ...display(48),
-    fontStyle: 'italic',
   },
   sectionLabel: {
     ...kicker(colors.muted),
