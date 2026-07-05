@@ -13,7 +13,7 @@ import { makeSlug } from '../lib/slug.js';
 import { normalizePhone } from '../lib/phone.js';
 import { unlinkImage } from '../lib/uploads.js';
 import { notify } from '../lib/notify.js';
-import { findMutuals } from '../lib/mutuals.js';
+import { findMutuals, rememberPartyConnections } from '../lib/mutuals.js';
 import { ledger } from '../lib/ledger.js';
 import {
   CATEGORIES,
@@ -396,12 +396,20 @@ eventRoutes.post('/:id/cancel', async (c) => {
 
 eventRoutes.delete('/:id', async (c) => {
   const userId = c.get('userId');
-  const existing = await db.event.findUnique({ where: { id: c.req.param('id') } });
+  const existing = await db.event.findUnique({
+    where: { id: c.req.param('id') },
+    include: { rsvps: true, cohosts: true },
+  });
   if (!existing) return c.json({ error: 'Event not found' }, 404);
   if (existing.hostId !== userId)
     return c.json({ error: 'Only the host can delete this event' }, 403);
 
-  await db.event.delete({ where: { id: existing.id } });
+  await db.$transaction(async (tx) => {
+    // Preserve who partied here before the cascade wipes the RSVPs, so these
+    // people stay in everyone's mutuals even once the event is gone.
+    await rememberPartyConnections(tx, existing);
+    await tx.event.delete({ where: { id: existing.id } });
+  });
   await unlinkImage(existing.coverImage);
   const deleter = await db.user.findUniqueOrThrow({ where: { id: userId } });
   ledger({
