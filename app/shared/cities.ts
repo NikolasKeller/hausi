@@ -1,5 +1,9 @@
-// Common cities offered in search suggestions. Free-text entry is always
-// allowed on top of these — this list is convenience, not a constraint.
+// Curated set of well-known cities. Used as a fail-safe allowlist when a
+// user-entered city is validated against the live geocoder (Open-Meteo), so a
+// brief geocoder outage — or a naming-convention gap the geocoder spells
+// differently (e.g. it calls "Washington DC" simply "Washington") — never
+// wipes a genuinely real city from Explore. Lives in shared/ so both the
+// Expo client and the server can import it.
 export const COMMON_CITIES = [
   'Amsterdam',
   'Athens',
@@ -85,19 +89,7 @@ export const COMMON_CITIES = [
   'Zurich',
 ] as const;
 
-// Merge server-known cities (those that actually have events) with the
-// common list, deduped, and filter by a search query.
-export function citySuggestions(known: string[], query: string): string[] {
-  const seen = new Set<string>();
-  const all: string[] = [];
-  for (const c of [...known, ...COMMON_CITIES]) {
-    const key = c.toLowerCase();
-    if (!seen.has(key)) {
-      seen.add(key);
-      all.push(c);
-    }
-  }
-  const q = query.trim().toLowerCase();
-  const filtered = q ? all.filter((c) => c.toLowerCase().includes(q)) : all;
-  return filtered.sort((a, b) => a.localeCompare(b)).slice(0, 30);
-}
+// Lowercased city name -> canonical display casing, for fast allowlist lookups.
+export const COMMON_CITY_BY_KEY = new Map<string, string>(
+  COMMON_CITIES.map((c) => [c.toLowerCase(), c] as [string, string])
+);

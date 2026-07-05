@@ -14,7 +14,7 @@ import * as Linking from 'expo-linking';
 import { Ionicons } from '@expo/vector-icons';
 import { CATEGORIES, CATEGORY_META, type Category, type ExploreEvent } from '../../shared/types';
 import { api } from '../../lib/api';
-import { citySuggestions } from '../../lib/cities';
+import { searchCities } from '../../lib/geocoding';
 import { hasLocationPermission, locateCity, type LocatedCity } from '../../lib/location';
 import { getRecentCities, recordRecentCity } from '../../lib/recentCities';
 import { shareText } from '../../lib/share';
@@ -90,10 +90,13 @@ function ExploreScreen() {
   const [city, setCity] = useState<string | null>(null);
   const [category, setCategory] = useState<Category | 'all'>('all');
   const [events, setEvents] = useState<ExploreEvent[] | null>(null);
-  const [cities, setCities] = useState<string[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [cityMenuOpen, setCityMenuOpen] = useState(false);
   const [citySearch, setCitySearch] = useState('');
+  // Live real-city results for the search box (Open-Meteo) — so only cities
+  // that actually exist can be searched and viewed, never a made-up name.
+  const [citySearchResults, setCitySearchResults] = useState<string[]>([]);
+  const [citySearching, setCitySearching] = useState(false);
   const [recentCities, setRecentCities] = useState<string[]>([]);
   const [myLocation, setMyLocation] = useState<LocatedCity | null>(null);
   const [locating, setLocating] = useState(false);
@@ -114,6 +117,47 @@ function ExploreScreen() {
     cityRef.current = city;
   }, [city]);
 
+  // Debounced live city search: query Open-Meteo for real cities as the user
+  // types, deduped by name. Aborts the in-flight request on each keystroke.
+  useEffect(() => {
+    const q = citySearch.trim();
+    // Clear stale results on every keystroke so the previous query's cities
+    // don't linger under the spinner while the new query is in flight.
+    setCitySearchResults([]);
+    if (q.length < 2) {
+      setCitySearching(false);
+      return;
+    }
+    setCitySearching(true);
+    const ctrl = new AbortController();
+    const timer = setTimeout(() => {
+      searchCities(q, ctrl.signal)
+        .then((found) => {
+          if (ctrl.signal.aborted) return;
+          const seen = new Set<string>();
+          const names: string[] = [];
+          for (const r of found) {
+            const key = r.name.toLowerCase();
+            if (!seen.has(key)) {
+              seen.add(key);
+              names.push(r.name);
+            }
+          }
+          setCitySearchResults(names);
+          setCitySearching(false);
+        })
+        .catch(() => {
+          if (ctrl.signal.aborted) return;
+          setCitySearchResults([]);
+          setCitySearching(false);
+        });
+    }, 250);
+    return () => {
+      ctrl.abort();
+      clearTimeout(timer);
+    };
+  }, [citySearch]);
+
   const load = useCallback(
     async (isActive: () => boolean) => {
       try {
@@ -125,7 +169,6 @@ function ExploreScreen() {
         }
         const res = await api.explore(target || undefined, category);
         if (!isActive()) return;
-        setCities(res.cities);
         if (city === null) {
           // Lock in the default city; fall back to the first city from the API.
           const fallback = res.cities[0] ?? '';
@@ -246,9 +289,8 @@ function ExploreScreen() {
   const cityLabel = city === null ? '…' : city === '' ? 'All cities' : city;
   const query = citySearch.trim();
   // Suggestions only appear while typing — the resting menu shows My Location
-  // and recents instead of the full city list.
-  const suggestions = query ? citySuggestions(cities, citySearch) : [];
-  const exactMatch = suggestions.some((s) => s.toLowerCase() === query.toLowerCase());
+  // and recents instead. Results are real cities from the live geocoder.
+  const suggestions = query ? citySearchResults : [];
   const myLocationSubtitle = locating
     ? 'Finding you…'
     : myLocation
@@ -375,8 +417,9 @@ function ExploreScreen() {
                   autoCorrect={false}
                   returnKeyType="search"
                   onSubmitEditing={() => {
-                    const q = citySearch.trim();
-                    if (q) selectCity(suggestions[0] ?? q);
+                    // Only commit a real city — the top live result — and only
+                    // once results match the current query (not a stale prefix).
+                    if (!citySearching && suggestions[0]) selectCity(suggestions[0]);
                   }}
                 />
               </View>
@@ -391,8 +434,7 @@ function ExploreScreen() {
                           onPress={() => selectCity(option)}
                           style={[
                             styles.menuItem,
-                            (!exactMatch || index < suggestions.length - 1) &&
-                              styles.menuItemBorder,
+                            index < suggestions.length - 1 && styles.menuItemBorder,
                           ]}
                         >
                           <Text
@@ -406,10 +448,14 @@ function ExploreScreen() {
                         </Pressable>
                       );
                     })}
-                    {!exactMatch ? (
-                      <Pressable onPress={() => selectCity(query)} style={styles.menuItem}>
-                        <Text style={styles.menuItemText}>🔎 Search “{query}”</Text>
-                      </Pressable>
+                    {citySearching ? (
+                      <View style={styles.citySearchState}>
+                        <ActivityIndicator size="small" color={colors.accent} />
+                      </View>
+                    ) : suggestions.length === 0 && query.length >= 2 ? (
+                      <Text style={styles.citySearchEmpty}>
+                        No city by that name — check the spelling
+                      </Text>
                     ) : null}
                   </>
                 ) : (
@@ -626,6 +672,16 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.md,
     paddingTop: spacing.md,
     paddingBottom: spacing.xs,
+  },
+  citySearchState: {
+    alignItems: 'center',
+    paddingVertical: spacing.md,
+  },
+  citySearchEmpty: {
+    ...uiText(14),
+    color: colors.muted,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.md,
   },
   content: {
     paddingBottom: spacing.xl * 2,
