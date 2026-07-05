@@ -139,7 +139,7 @@ export default function EditEventScreen() {
             ) : (
               event.cohosts.map((ch) => (
                 <View key={ch.id} style={styles.cohostRow}>
-                  <Avatar emoji={ch.avatarEmoji} size={30} />
+                  <Avatar emoji={ch.avatarEmoji} image={ch.avatarImage} size={30} />
                   <Text style={styles.cohostName}>{ch.name}</Text>
                   <Pressable
                     onPress={() => removeCohost(ch.id, ch.name)}

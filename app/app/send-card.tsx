@@ -218,7 +218,7 @@ export default function SendCardScreen() {
                       style={styles.mutual}
                     >
                       <View style={[styles.avatarRing, selected && styles.avatarRingSelected]}>
-                        <Avatar emoji={m.user.avatarEmoji} size={52} />
+                        <Avatar emoji={m.user.avatarEmoji} image={m.user.avatarImage} size={52} />
                       </View>
                       <Text
                         style={[styles.mutualName, selected && styles.mutualNameSelected]}

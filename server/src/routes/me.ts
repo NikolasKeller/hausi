@@ -3,6 +3,7 @@ import { z } from 'zod';
 import { db } from '../lib/db.js';
 import { requireAuth, type AuthVariables } from '../lib/auth.js';
 import { toCardEntry, toPublicUser } from '../lib/serialize.js';
+import { unlinkImage } from '../lib/uploads.js';
 import { findMutuals } from '../lib/mutuals.js';
 import { notify } from '../lib/notify.js';
 import {
@@ -13,9 +14,21 @@ import {
   type Mutual,
 } from '../../../app/shared/types.js';
 
+// Only our own upload paths are acceptable — never an external URL (which would
+// let a user turn every viewer's client into a tracking beacon) or a traversal
+// string. '' clears the photo back to the emoji.
+const UPLOAD_PATH = /^\/uploads\/[a-zA-Z0-9_-]+\.(jpg|jpeg|png|webp)$/;
+
 const updateSchema = z.object({
   name: z.string().trim().min(1).max(LIMITS.name).optional(),
   avatarEmoji: z.string().trim().min(1).max(8).optional(),
+  // Path to an uploaded profile photo (from POST /api/uploads); '' clears it.
+  avatarImage: z
+    .string()
+    .trim()
+    .max(500)
+    .refine((v) => v === '' || UPLOAD_PATH.test(v), 'Invalid image path')
+    .optional(),
   city: z.string().trim().min(1).max(80).optional(),
 });
 
@@ -87,6 +100,7 @@ meRoutes.get('/', async (c) => {
     email: me.email,
     phone: me.phone,
     avatarEmoji: me.avatarEmoji,
+    avatarImage: me.avatarImage,
     city: me.city,
     joinedAt: me.createdAt.toISOString(),
     badges,
@@ -101,9 +115,31 @@ meRoutes.patch('/', async (c) => {
   const parsed = updateSchema.safeParse(await c.req.json().catch(() => null));
   if (!parsed.success) return c.json({ error: 'Invalid profile data' }, 400);
 
+  // A user may only point their avatar at a file they uploaded — otherwise they
+  // could reference (and, via the reclaim below, delete) someone else's upload.
+  if (parsed.data.avatarImage) {
+    const owned = await db.upload.findFirst({
+      where: { path: parsed.data.avatarImage, userId },
+    });
+    if (!owned) return c.json({ error: 'Invalid image' }, 400);
+  }
+
+  const existing = await db.user.findUniqueOrThrow({ where: { id: userId } });
   const me = await db.user.update({ where: { id: userId }, data: parsed.data });
+  // Replacing or clearing the profile photo orphans the old upload — reclaim it.
+  if (parsed.data.avatarImage !== undefined && existing.avatarImage !== me.avatarImage) {
+    await unlinkImage(existing.avatarImage);
+    await db.upload.deleteMany({ where: { path: existing.avatarImage } });
+  }
   return c.json({
-    user: { id: me.id, name: me.name, email: me.email, avatarEmoji: me.avatarEmoji, city: me.city },
+    user: {
+      id: me.id,
+      name: me.name,
+      email: me.email,
+      avatarEmoji: me.avatarEmoji,
+      avatarImage: me.avatarImage,
+      city: me.city,
+    },
   });
 });
 

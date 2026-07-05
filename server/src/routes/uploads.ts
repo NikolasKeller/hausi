@@ -1,5 +1,6 @@
 import { Hono } from 'hono';
 import { bodyLimit } from 'hono/body-limit';
+import { db } from '../lib/db.js';
 import { requireAuth, type AuthVariables } from '../lib/auth.js';
 import { saveImage } from '../lib/uploads.js';
 
@@ -45,6 +46,9 @@ uploadRoutes.post('/', async (c) => {
   }
   try {
     const url = await saveImage(body.data, body.contentType);
+    // Remember who owns this file so ownership can be enforced later (e.g. only
+    // letting a user set their own upload as a profile photo).
+    await db.upload.create({ data: { path: url, userId: c.get('userId') } });
     return c.json({ url }, 201);
   } catch (e) {
     return c.json({ error: e instanceof Error ? e.message : 'Upload failed' }, 400);

@@ -79,7 +79,7 @@ export default function CardScreen() {
               <Text style={styles.emoji}>{meta.emoji}</Text>
               <Text style={[styles.message, titleFontStyle('fancy')]}>{card.message}</Text>
               <View style={styles.fromRow}>
-                <Avatar emoji={card.from.avatarEmoji} size={28} />
+                <Avatar emoji={card.from.avatarEmoji} image={card.from.avatarImage} size={28} />
                 <Text style={styles.fromText}>from {card.from.name}</Text>
               </View>
             </CoverGradient>

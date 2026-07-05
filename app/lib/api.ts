@@ -187,7 +187,12 @@ export const api = {
   myProfile() {
     return request<{ profile: MyProfile }>('/me');
   },
-  updateProfile(data: { name?: string; avatarEmoji?: string; city?: string }) {
+  updateProfile(data: {
+    name?: string;
+    avatarEmoji?: string;
+    avatarImage?: string;
+    city?: string;
+  }) {
     return request<{ user: AuthResponse['user'] & { city: string } }>('/me', {
       method: 'PATCH',
       body: JSON.stringify(data),

@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import {
   KeyboardAvoidingView,
+  Platform,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -12,6 +13,7 @@ import { useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { api } from '../lib/api';
 import { useAuth } from '../lib/auth';
+import { pickAvatarImage } from '../lib/imageUpload';
 import { colors, radius, shadow, spacing } from '../lib/theme';
 import { display, kicker, uiText } from '../lib/fonts';
 import { Avatar } from '../components/Avatar';
@@ -28,15 +30,35 @@ export default function SetupScreen() {
   const [faceIndex, setFaceIndex] = useState(() =>
     Math.max(0, FACES.indexOf((user?.avatarEmoji ?? '') as (typeof FACES)[number]))
   );
+  const [photo, setPhoto] = useState(user?.avatarImage ?? '');
+  const [uploading, setUploading] = useState(false);
   const [name, setName] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const face = FACES[faceIndex];
 
+  async function addPhoto(source: 'library' | 'camera') {
+    if (uploading) return;
+    setUploading(true);
+    try {
+      const url = await pickAvatarImage(source);
+      if (url) setPhoto(url);
+    } finally {
+      setUploading(false);
+    }
+  }
+
+  const photoPillStyle = ({ pressed }: { pressed: boolean }) => [
+    styles.photoPill,
+    pressed && styles.photoPillPressed,
+    uploading && styles.photoPillDisabled,
+  ];
+
   // Onboarding is mandatory: no skip — a name is required to enter the app.
   async function finish() {
-    if (busy) return;
+    // Don't submit while a photo is still uploading — we'd save without it.
+    if (busy || uploading) return;
     const trimmed = name.trim();
     if (!trimmed) {
       setError('Tell us your name first');
@@ -45,8 +67,8 @@ export default function SetupScreen() {
     setBusy(true);
     setError(null);
     try {
-      await api.updateProfile({ name: trimmed, avatarEmoji: face });
-      updateUser({ ...user!, name: trimmed, avatarEmoji: face });
+      await api.updateProfile({ name: trimmed, avatarEmoji: face, avatarImage: photo });
+      updateUser({ ...user!, name: trimmed, avatarEmoji: face, avatarImage: photo });
       router.replace('/');
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Could not save your profile');
@@ -70,12 +92,51 @@ export default function SetupScreen() {
 
             <View style={styles.faceWrap}>
               <Pressable
-                onPress={() => setFaceIndex((i) => (i + 1) % FACES.length)}
+                onPress={() =>
+                  photo ? addPhoto('library') : setFaceIndex((i) => (i + 1) % FACES.length)
+                }
                 style={({ pressed }) => [pressed && styles.facePressed]}
               >
-                <Avatar emoji={face} size={168} />
+                <Avatar emoji={face} image={photo} size={168} />
               </Pressable>
-              <Text style={styles.hint}>Tap the face to change it</Text>
+              <Text style={styles.hint}>
+                {uploading
+                  ? 'Uploading your fabulous face…'
+                  : photo
+                    ? 'Lookin’ ready to party ✨'
+                    : 'Tap the face to change it'}
+              </Text>
+              <View style={styles.photoActions}>
+                {/* Native only: web's "camera" is the same file dialog as the
+                    library, so it'd just be a confusing duplicate button. */}
+                {Platform.OS !== 'web' && (
+                  <Pressable
+                    onPress={() => addPhoto('camera')}
+                    disabled={uploading}
+                    style={photoPillStyle}
+                  >
+                    <Text style={styles.photoPillText}>📸 Snap a pic</Text>
+                  </Pressable>
+                )}
+                <Pressable
+                  onPress={() => addPhoto('library')}
+                  disabled={uploading}
+                  style={photoPillStyle}
+                >
+                  <Text style={styles.photoPillText}>
+                    {photo ? '🖼️ Swap photo' : '🖼️ Add a photo'}
+                  </Text>
+                </Pressable>
+                {!!photo && (
+                  <Pressable
+                    onPress={() => setPhoto('')}
+                    disabled={uploading}
+                    style={photoPillStyle}
+                  >
+                    <Text style={styles.photoPillText}>✕ Use an emoji</Text>
+                  </Pressable>
+                )}
+              </View>
             </View>
 
             <TextInput
@@ -95,7 +156,13 @@ export default function SetupScreen() {
             <ErrorText message={error} />
 
             <View style={{ flex: 1 }} />
-            <Button title="Continue" onPress={finish} loading={busy} variant="primary" />
+            <Button
+              title="Continue"
+              onPress={finish}
+              loading={busy}
+              disabled={uploading}
+              variant="primary"
+            />
           </ScrollView>
         </KeyboardAvoidingView>
       </SafeAreaView>
@@ -140,6 +207,30 @@ const styles = StyleSheet.create({
   hint: {
     ...uiText(14, '600'),
     color: colors.muted,
+  },
+  photoActions: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'center',
+    gap: spacing.sm,
+  },
+  photoPill: {
+    paddingHorizontal: spacing.md,
+    paddingVertical: 8,
+    borderRadius: radius.pill,
+    backgroundColor: colors.inputBg,
+    borderWidth: 1,
+    borderColor: colors.cardBorder,
+  },
+  photoPillPressed: {
+    opacity: 0.6,
+  },
+  photoPillDisabled: {
+    opacity: 0.5,
+  },
+  photoPillText: {
+    ...uiText(14, '600'),
+    color: colors.text,
   },
   nameInput: {
     backgroundColor: colors.inputBg,

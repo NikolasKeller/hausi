@@ -16,7 +16,7 @@ import type {
   TitleFont,
 } from '../../../app/shared/types.js';
 
-type UserRow = { id: string; name: string; avatarEmoji: string };
+type UserRow = { id: string; name: string; avatarEmoji: string; avatarImage: string };
 type PlusOneRow = {
   id: string;
   name: string;
@@ -61,7 +61,7 @@ type EventRow = {
 };
 
 export function toPublicUser(u: UserRow): PublicUser {
-  return { id: u.id, name: u.name, avatarEmoji: u.avatarEmoji };
+  return { id: u.id, name: u.name, avatarEmoji: u.avatarEmoji, avatarImage: u.avatarImage };
 }
 
 export function toCardEntry(card: {
@@ -176,6 +176,7 @@ export function toEventDetail(
             // whatever the inviter typed.
             name: g.user?.name.trim() ? g.user.name : g.name,
             avatarEmoji: g.user?.avatarEmoji ?? '🎟️',
+            avatarImage: g.user?.avatarImage ?? '',
             userId: g.userId,
           })
         ),

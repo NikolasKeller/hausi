@@ -205,7 +205,7 @@ export default function AddPlusOneScreen() {
                       }}
                       style={[styles.personRow, selected && styles.personRowSelected]}
                     >
-                      <Avatar emoji={m.user.avatarEmoji} size={44} />
+                      <Avatar emoji={m.user.avatarEmoji} image={m.user.avatarImage} size={44} />
                       <View style={{ flex: 1 }}>
                         <Text style={styles.personName} numberOfLines={1}>
                           {m.user.name}

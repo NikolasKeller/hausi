@@ -180,7 +180,7 @@ function ProfileScreen() {
 
         <View style={styles.hero}>
           <View style={styles.avatarStack}>
-            <Avatar emoji={profile.avatarEmoji} size={120} />
+            <Avatar emoji={profile.avatarEmoji} image={profile.avatarImage} size={120} />
           </View>
           <Text style={styles.bigName}>{profile.name}</Text>
         </View>
@@ -235,7 +235,7 @@ function ProfileScreen() {
             <View style={styles.mutualsGrid}>
               {profile.mutuals.map((m) => (
                 <View key={m.user.id} style={styles.mutualItem}>
-                  <Avatar emoji={m.user.avatarEmoji} size={44} />
+                  <Avatar emoji={m.user.avatarEmoji} image={m.user.avatarImage} size={44} />
                   <View style={styles.mutualInfo}>
                     <Text style={styles.mutualName} numberOfLines={1}>
                       {m.user.name}

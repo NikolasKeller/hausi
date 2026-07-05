@@ -22,6 +22,8 @@ model User {
   phoneCode          String?
   phoneCodeExpiresAt DateTime?
   avatarEmoji        String    @default("🙂")
+  // Path to an uploaded profile photo (from POST /api/uploads), '' = emoji only.
+  avatarImage        String    @default("")
   city               String    @default("San Francisco")
   createdAt      DateTime       @default(now())
   events         Event[]        @relation("HostEvents")
@@ -36,6 +38,16 @@ model User {
   plusOneAppearances PlusOne[]  @relation("PlusOneGuest")
   partyMemories   PartyConnection[] @relation("MyPartyMemories")
   partyMemoriesOf PartyConnection[] @relation("PartyMemoryOf")
+}
+
+// Records who uploaded each file (path = "/uploads/x.jpg") so a user can only
+// reference their own uploads — e.g. setting a profile photo. Without this, any
+// authed user could point their avatar at another user's file and get it deleted
+// by the reclaim logic.
+model Upload {
+  path      String   @id
+  userId    String
+  createdAt DateTime @default(now())
 }
 
 // A durable "we partied together" link between two users, snapshotted the
