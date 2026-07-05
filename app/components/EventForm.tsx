@@ -11,7 +11,6 @@ import {
   useWindowDimensions,
   View,
   type StyleProp,
-  type TextInputProps,
   type ViewStyle,
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -33,7 +32,7 @@ import { TITLE_FONT_LABELS, titleFontStyle, kicker, uiText } from '../lib/fonts'
 import { CoverGradient } from './CoverGradient';
 import { EFFECT_META, EffectOverlay } from './EffectOverlay';
 import { Button, ErrorText } from './ui';
-import { CityPicker } from './CityPicker';
+import { LocationPicker } from './LocationPicker';
 import { EventSettingsSheet } from './EventSettingsSheet';
 import { DateTimeSheet } from './DateTimeSheet';
 import { Glass } from './glass';
@@ -99,22 +98,6 @@ function PaperPressable({
     >
       {children}
     </Pressable>
-  );
-}
-
-function PaperField({
-  label,
-  labelColor,
-  style,
-  ...props
-}: TextInputProps & { label?: string; labelColor?: string; style?: TextInputProps['style'] }) {
-  return (
-    <View style={{ gap: 6 }}>
-      {label ? <SectionLabel color={labelColor}>{label}</SectionLabel> : null}
-      <View style={styles.inputCard}>
-        <TextInput placeholderTextColor={colors.muted} style={[styles.input, style]} {...props} />
-      </View>
-    </View>
   );
 }
 
@@ -333,15 +316,16 @@ export function EventForm({ initial, submitLabel, onSubmit, footer }: Props) {
           </PaperPressable>
         </View>
 
-        <PaperField
-          label="Where"
+        <LocationPicker
+          label="Location"
           labelColor={ink.faint}
           value={location}
-          onChangeText={setLocation}
-          placeholder="Location"
-          maxLength={LIMITS.location}
+          city={city}
+          onChange={(loc, cty) => {
+            setLocation(loc);
+            setCity(cty);
+          }}
         />
-        <CityPicker label="City" labelColor={ink.faint} value={city} onChange={setCity} />
 
         <View style={{ gap: 6 }}>
           <SectionLabel color={ink.faint}>Description</SectionLabel>
