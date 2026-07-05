@@ -19,7 +19,6 @@ import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import {
   LIMITS,
-  TITLE_FONTS,
   type Category,
   type CoverTheme,
   type Effect,
@@ -28,7 +27,7 @@ import {
 } from '../shared/types';
 import { colors, light, radius, shadow, spacing } from '../lib/theme';
 import { coverFor } from '../lib/covers';
-import { TITLE_FONT_LABELS, titleFontStyle, kicker, uiText } from '../lib/fonts';
+import { titleFontStyle, kicker, uiText } from '../lib/fonts';
 import { CoverGradient } from './CoverGradient';
 import { EFFECT_META, EffectOverlay } from './EffectOverlay';
 import { Button, ErrorText } from './ui';
@@ -124,7 +123,7 @@ export function EventForm({ initial, submitLabel, onSubmit, footer }: Props) {
   const [coverTheme, setCoverTheme] = useState<CoverTheme>(initial?.coverTheme ?? 'sunset');
   const [coverImage, setCoverImage] = useState(initial?.coverImage ?? '');
   const [uploadingCover, setUploadingCover] = useState(false);
-  const [titleFont, setTitleFont] = useState<TitleFont>(initial?.titleFont ?? 'classic');
+  const titleFont: TitleFont = initial?.titleFont ?? 'classic';
   const [effect, setEffect] = useState<Effect>(initial?.effect ?? 'none');
   const [date, setDate] = useState<Date>(initial?.date ?? defaultDate());
   const [maxGuests, setMaxGuests] = useState(
@@ -245,8 +244,7 @@ export function EventForm({ initial, submitLabel, onSubmit, footer }: Props) {
           contentContainerStyle={styles.content}
           keyboardShouldPersistTaps="handled"
         >
-        {/* Title and its typeface live in ONE box — the name up top, the four
-            font choices right beneath it, like the reference poster editor. */}
+        {/* Just the event name — type it and go. */}
         <View style={styles.titleBox}>
           <TextInput
             value={title}
@@ -254,34 +252,8 @@ export function EventForm({ initial, submitLabel, onSubmit, footer }: Props) {
             placeholder="Untitled Event"
             placeholderTextColor={colors.muted}
             maxLength={LIMITS.title}
-            // Pin the line box so switching fonts only swaps the glyphs — the
-            // field keeps the same height instead of growing for tall faces
-            // (Pacifico/Bungee) and shrinking for compact ones.
             style={[styles.titleInput, titleFontStyle(titleFont)]}
           />
-          <View style={styles.fontBar}>
-            {TITLE_FONTS.map((f) => {
-              const selected = titleFont === f;
-              return (
-                <Pressable
-                  key={f}
-                  onPress={() => setTitleFont(f)}
-                  style={[styles.fontSeg, selected && styles.fontSegActive]}
-                >
-                  <Text
-                    style={[
-                      styles.fontSegText,
-                      titleFontStyle(f),
-                      { color: selected ? '#fff' : light.text3 },
-                    ]}
-                    numberOfLines={1}
-                  >
-                    {TITLE_FONT_LABELS[f]}
-                  </Text>
-                </Pressable>
-              );
-            })}
-          </View>
         </View>
 
         {/* The cover the guest will see — framed against the full-screen theme. */}
@@ -588,33 +560,6 @@ const styles = StyleSheet.create({
     color: colors.accentDark,
     ...uiText(14, '700'),
   },
-  // ── Font segmented control (inset row of the title box) ──
-  fontBar: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: colors.inputBg,
-    borderWidth: 1,
-    borderColor: colors.cardBorder,
-    borderRadius: radius.pill,
-    padding: 4,
-    gap: 2,
-  },
-  fontSeg: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 9,
-    paddingHorizontal: 2,
-    borderRadius: radius.pill,
-  },
-  fontSegActive: {
-    backgroundColor: colors.ink,
-  },
-  // Small enough that the widest face (Bungee "Eclectic") fits its segment.
-  fontSegText: {
-    fontSize: 13,
-  },
-
   // ── Date / time (one combined button, opens the Date & Time sheet) ──
   whenButton: {
     paddingVertical: 14,
