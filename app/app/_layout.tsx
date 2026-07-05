@@ -17,13 +17,14 @@ if (Platform.OS === 'web') {
   enableScreens(true);
 }
 
-// ✕ in modal headers so nothing forces the user to complete a flow. A filled
-// ink circle with a heavy border gives it the Partiful "physical button" weight.
+// ✕ in modal headers so nothing forces the user to complete a flow. A paper
+// circle (same as the event form's close) — a filled ink circle disappears
+// against the light scheme since the ✕ glyph is near-black too.
 function ModalClose() {
   const router = useRouter();
   return (
     <Pressable
-      onPress={() => router.back()}
+      onPress={() => (router.canGoBack() ? router.back() : router.replace('/'))}
       hitSlop={12}
       style={({ pressed }) => [
         {
@@ -33,9 +34,9 @@ function ModalClose() {
           width: 34,
           height: 34,
           borderRadius: 17,
-          backgroundColor: colors.ink,
-          borderWidth: 2,
-          borderColor: colors.text,
+          backgroundColor: colors.card,
+          borderWidth: 1,
+          borderColor: colors.cardBorder,
           alignItems: 'center',
           justifyContent: 'center',
         },
