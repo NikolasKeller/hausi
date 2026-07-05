@@ -399,7 +399,7 @@ eventRoutes.delete('/:id', async (c) => {
   const userId = c.get('userId');
   const existing = await db.event.findUnique({
     where: { id: c.req.param('id') },
-    include: { rsvps: true, cohosts: true },
+    include: { rsvps: { include: { plusOneGuests: true } }, cohosts: true },
   });
   if (!existing) return c.json({ error: 'Event not found' }, 404);
   if (existing.hostId !== userId)
