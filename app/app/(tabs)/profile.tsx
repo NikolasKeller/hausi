@@ -20,6 +20,7 @@ import { display, kicker, uiText } from '../../lib/fonts';
 import { Avatar } from '../../components/Avatar';
 import { CoverGradient } from '../../components/CoverGradient';
 import { Button } from '../../components/ui';
+import { SettingsSheet } from '../../components/SettingsSheet';
 import { withScreenBackground } from '../../components/ScreenBackground';
 
 function joinedLabel(iso: string): string {
@@ -45,6 +46,7 @@ function ProfileScreen() {
   const [profile, setProfile] = useState<MyProfile | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [crushBusy, setCrushBusy] = useState<string | null>(null);
+  const [settingsOpen, setSettingsOpen] = useState(false);
 
   const load = useCallback(async () => {
     try {
@@ -76,7 +78,7 @@ function ProfileScreen() {
     }, [])
   );
 
-  async function openSettings() {
+  async function confirmLogout() {
     const ok = await confirmDialog('Log out?', 'You can log back in with your phone number.', 'Log out');
     if (ok) logout().catch(() => {});
   }
@@ -170,7 +172,7 @@ function ProfileScreen() {
               <Ionicons name="pencil" size={18} color={colors.text} />
             </Pressable>
             <Pressable
-              onPress={openSettings}
+              onPress={() => setSettingsOpen(true)}
               style={({ pressed }) => [styles.roundButton, pressed && styles.pressed]}
             >
               <Ionicons name="settings-sharp" size={18} color={colors.text} />
@@ -292,6 +294,14 @@ function ProfileScreen() {
           </View>
         ) : null}
       </ScrollView>
+      {settingsOpen ? (
+        <SettingsSheet
+          onClose={() => setSettingsOpen(false)}
+          onEditProfile={() => router.push('/edit-profile')}
+          onShareProfile={shareProfile}
+          onLogout={confirmLogout}
+        />
+      ) : null}
     </SafeAreaView>
   );
 }
