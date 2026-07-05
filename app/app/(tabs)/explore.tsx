@@ -415,7 +415,8 @@ const styles = StyleSheet.create({
   citySearchInput: {
     flex: 1,
     color: colors.text,
-    fontSize: 15,
+    // 16px avoids mobile Safari's auto-zoom when this autoFocus input opens.
+    fontSize: 16,
     paddingVertical: 0,
   },
   menuItem: {
