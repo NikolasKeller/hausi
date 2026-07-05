@@ -1,4 +1,4 @@
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Pressable,
@@ -15,6 +15,8 @@ import { Ionicons } from '@expo/vector-icons';
 import { CATEGORIES, CATEGORY_META, type Category, type ExploreEvent } from '../../shared/types';
 import { api } from '../../lib/api';
 import { citySuggestions } from '../../lib/cities';
+import { hasLocationPermission, locateCity, type LocatedCity } from '../../lib/location';
+import { getRecentCities, recordRecentCity } from '../../lib/recentCities';
 import { shareText } from '../../lib/share';
 import { colors, radius, spacing, shadow } from '../../lib/theme';
 import { titleFontStyle, display, uiText, kicker } from '../../lib/fonts';
@@ -92,6 +94,25 @@ function ExploreScreen() {
   const [error, setError] = useState<string | null>(null);
   const [cityMenuOpen, setCityMenuOpen] = useState(false);
   const [citySearch, setCitySearch] = useState('');
+  const [recentCities, setRecentCities] = useState<string[]>([]);
+  const [myLocation, setMyLocation] = useState<LocatedCity | null>(null);
+  const [locating, setLocating] = useState(false);
+  const [locateError, setLocateError] = useState<string | null>(null);
+  // Refs mirror state so async locate callbacks read fresh values, not the
+  // closure from the render they were started in.
+  const cityRef = useRef(city);
+  const myLocationRef = useRef<LocatedCity | null>(null);
+  const locatingRef = useRef(false);
+  // Token value at the moment the user asked to select the locate result;
+  // null = no pending intent. Comparing against the live token on landing
+  // drops intents the user has since superseded, not fresh ones.
+  const wantSelectTokenRef = useRef<number | null>(null);
+  // Bumped on every selection or menu close; a locate intent stamped with an
+  // older token must not auto-select (the user moved on while in flight).
+  const locateTokenRef = useRef(0);
+  useEffect(() => {
+    cityRef.current = city;
+  }, [city]);
 
   const load = useCallback(
     async (isActive: () => boolean) => {
@@ -131,11 +152,87 @@ function ExploreScreen() {
   );
 
   function selectCity(next: string) {
+    locateTokenRef.current += 1;
+    wantSelectTokenRef.current = null;
     setCityMenuOpen(false);
     setCitySearch('');
-    if (next !== city) {
+    if (next) {
+      recordRecentCity(next).then(setRecentCities);
+    }
+    if (next !== cityRef.current) {
+      cityRef.current = next;
       setEvents(null);
       setCity(next);
+    }
+  }
+
+  function closeCityMenu() {
+    locateTokenRef.current += 1;
+    wantSelectTokenRef.current = null;
+    setCityMenuOpen(false);
+    setCitySearch('');
+  }
+
+  function toggleCityMenu() {
+    if (cityMenuOpen) {
+      closeCityMenu();
+      return;
+    }
+    setCityMenuOpen(true);
+    getRecentCities().then(setRecentCities);
+    // Only resolve quietly when permission was already granted — opening the
+    // menu should never trigger a surprise permission prompt.
+    if (!myLocationRef.current && !locatingRef.current) {
+      hasLocationPermission().then((granted) => {
+        if (granted && !myLocationRef.current && !locatingRef.current) {
+          resolveMyLocation(false);
+        }
+      });
+    }
+  }
+
+  async function resolveMyLocation(select: boolean) {
+    if (locatingRef.current) return;
+    locatingRef.current = true;
+    if (select) wantSelectTokenRef.current = locateTokenRef.current;
+    const startToken = locateTokenRef.current;
+    setLocating(true);
+    setLocateError(null);
+    try {
+      const located = await locateCity();
+      myLocationRef.current = located;
+      setMyLocation(located);
+      // Apply only if the user hasn't picked something else or closed the
+      // menu since expressing the intent to select.
+      if (wantSelectTokenRef.current === locateTokenRef.current) {
+        selectCity(located.city);
+      }
+    } catch (e) {
+      // Suppress errors nobody is waiting on (quiet resolve after the user
+      // already moved on) so a stale message doesn't greet the next open.
+      const relevant =
+        startToken === locateTokenRef.current ||
+        wantSelectTokenRef.current === locateTokenRef.current;
+      if (relevant) {
+        setLocateError(e instanceof Error ? e.message : 'Could not find your location');
+      }
+    } finally {
+      wantSelectTokenRef.current = null;
+      locatingRef.current = false;
+      setLocating(false);
+    }
+  }
+
+  function onMyLocationPress() {
+    if (locatingRef.current) {
+      // A resolve is in flight — apply its result when it lands.
+      wantSelectTokenRef.current = locateTokenRef.current;
+      return;
+    }
+    if (myLocationRef.current) {
+      selectCity(myLocationRef.current.city);
+    } else {
+      resolveMyLocation(true);
     }
   }
 
@@ -147,12 +244,16 @@ function ExploreScreen() {
   }
 
   const cityLabel = city === null ? '…' : city === '' ? 'All cities' : city;
-  // Search across every known city plus the common-cities list; free text works too.
-  const suggestions = citySuggestions(cities, citySearch);
-  const cityOptions = citySearch.trim() ? suggestions : ['', ...suggestions];
-  const exactMatch = suggestions.some(
-    (s) => s.toLowerCase() === citySearch.trim().toLowerCase()
-  );
+  const query = citySearch.trim();
+  // Suggestions only appear while typing — the resting menu shows My Location
+  // and recents instead of the full city list.
+  const suggestions = query ? citySuggestions(cities, citySearch) : [];
+  const exactMatch = suggestions.some((s) => s.toLowerCase() === query.toLowerCase());
+  const myLocationSubtitle = locating
+    ? 'Finding you…'
+    : myLocation
+      ? [myLocation.city, myLocation.region].filter(Boolean).join(', ')
+      : locateError ?? 'Use your current location';
 
   return (
     <SafeAreaView edges={['top']} style={styles.safe}>
@@ -163,7 +264,7 @@ function ExploreScreen() {
             <Text style={styles.headerTitle}>Explore</Text>
           </View>
           <Pressable
-            onPress={() => setCityMenuOpen((open) => !open)}
+            onPress={toggleCityMenu}
             style={({ pressed }) => [styles.cityPill, pressed && { opacity: 0.8 }]}
           >
             <Text style={styles.cityPillText} numberOfLines={1}>
@@ -260,13 +361,7 @@ function ExploreScreen() {
 
         {cityMenuOpen ? (
           <>
-            <Pressable
-              style={styles.menuBackdrop}
-              onPress={() => {
-                setCityMenuOpen(false);
-                setCitySearch('');
-              }}
-            />
+            <Pressable style={styles.menuBackdrop} onPress={closeCityMenu} />
             <View style={styles.cityMenu}>
               <View style={styles.citySearchRow}>
                 <Ionicons name="search" size={16} color={colors.muted} />
@@ -286,34 +381,100 @@ function ExploreScreen() {
                 />
               </View>
               <ScrollView keyboardShouldPersistTaps="handled">
-                {citySearch.trim() && !exactMatch ? (
-                  <Pressable
-                    onPress={() => selectCity(citySearch.trim())}
-                    style={[styles.menuItem, styles.menuItemBorder]}
-                  >
-                    <Text style={styles.menuItemText}>🔎 Search “{citySearch.trim()}”</Text>
-                  </Pressable>
-                ) : null}
-                {cityOptions.map((option, index) => {
-                  const active = option === city;
-                  return (
+                {query ? (
+                  <>
+                    {suggestions.map((option, index) => {
+                      const active = option === city;
+                      return (
+                        <Pressable
+                          key={option}
+                          onPress={() => selectCity(option)}
+                          style={[
+                            styles.menuItem,
+                            (!exactMatch || index < suggestions.length - 1) &&
+                              styles.menuItemBorder,
+                          ]}
+                        >
+                          <Text
+                            style={[styles.menuItemText, active && styles.menuItemTextActive]}
+                          >
+                            📍 {option}
+                          </Text>
+                          {active ? (
+                            <Ionicons name="checkmark" size={16} color={colors.accent} />
+                          ) : null}
+                        </Pressable>
+                      );
+                    })}
+                    {!exactMatch ? (
+                      <Pressable onPress={() => selectCity(query)} style={styles.menuItem}>
+                        <Text style={styles.menuItemText}>🔎 Search “{query}”</Text>
+                      </Pressable>
+                    ) : null}
+                  </>
+                ) : (
+                  <>
                     <Pressable
-                      key={option || 'all'}
-                      onPress={() => selectCity(option)}
-                      style={[
-                        styles.menuItem,
-                        index < cityOptions.length - 1 && styles.menuItemBorder,
-                      ]}
+                      onPress={onMyLocationPress}
+                      style={[styles.locationRow, styles.menuItemBorder]}
                     >
-                      <Text style={[styles.menuItemText, active && styles.menuItemTextActive]}>
-                        {option === '' ? '🌍 All cities' : `📍 ${option}`}
+                      <View style={styles.locationIcon}>
+                        {locating ? (
+                          <ActivityIndicator size="small" color={colors.accent} />
+                        ) : (
+                          <Ionicons name="navigate" size={18} color={colors.text} />
+                        )}
+                      </View>
+                      <View style={styles.locationTextWrap}>
+                        <Text style={styles.menuItemText}>My Location</Text>
+                        <Text style={styles.locationSubtitle} numberOfLines={1}>
+                          {myLocationSubtitle}
+                        </Text>
+                      </View>
+                    </Pressable>
+                    <Pressable
+                      onPress={() => selectCity('')}
+                      style={[styles.menuItem, recentCities.length > 0 && styles.menuItemBorder]}
+                    >
+                      <Text style={[styles.menuItemText, city === '' && styles.menuItemTextActive]}>
+                        🌍 All cities
                       </Text>
-                      {active ? (
+                      {city === '' ? (
                         <Ionicons name="checkmark" size={16} color={colors.accent} />
                       ) : null}
                     </Pressable>
-                  );
-                })}
+                    {recentCities.length > 0 ? (
+                      <>
+                        <Text style={styles.recentHeader}>Recent locations</Text>
+                        {recentCities.map((option, index) => {
+                          const active = option === city;
+                          return (
+                            <Pressable
+                              key={option}
+                              onPress={() => selectCity(option)}
+                              style={[
+                                styles.menuItem,
+                                index < recentCities.length - 1 && styles.menuItemBorder,
+                              ]}
+                            >
+                              <Text
+                                style={[
+                                  styles.menuItemText,
+                                  active && styles.menuItemTextActive,
+                                ]}
+                              >
+                                📍 {option}
+                              </Text>
+                              {active ? (
+                                <Ionicons name="checkmark" size={16} color={colors.accent} />
+                              ) : null}
+                            </Pressable>
+                          );
+                        })}
+                      </>
+                    ) : null}
+                  </>
+                )}
               </ScrollView>
             </View>
           </>
@@ -437,6 +598,33 @@ const styles = StyleSheet.create({
   menuItemTextActive: {
     ...uiText(15, '700'),
     color: colors.accent,
+  },
+  locationRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    paddingHorizontal: spacing.md,
+    paddingVertical: 12,
+  },
+  locationIcon: {
+    width: 28,
+    height: 28,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  locationTextWrap: {
+    flex: 1,
+    gap: 2,
+  },
+  locationSubtitle: {
+    ...uiText(13),
+    color: colors.muted,
+  },
+  recentHeader: {
+    ...kicker(colors.muted),
+    paddingHorizontal: spacing.md,
+    paddingTop: spacing.md,
+    paddingBottom: spacing.xs,
   },
   content: {
     paddingBottom: spacing.xl * 2,
