@@ -80,6 +80,24 @@ async function mergeUser(fromId: string, toId: string): Promise<void> {
       else await tx.rsvp.update({ where: { id: r.id }, data: { userId: toId } });
     }
 
+    // PlusOne: plain FK (userId → User, onDelete SetNull). Re-point the
+    // merged-away user's linked spots onto the survivor so they aren't nulled
+    // out when fromId is deleted below...
+    await tx.plusOne.updateMany({ where: { userId: fromId }, data: { userId: toId } });
+    // ...then drop any spot that now sits on its own owner's rsvp — a merged
+    // person can't be their own +1 ("olivia is bringing Olivia"). RSVPs were
+    // just reassigned to toId above, so a survivor-linked +1 on a survivor rsvp
+    // is a self-+1. Recompute the denormalized count on each affected rsvp.
+    for (const s of await tx.plusOne.findMany({
+      where: { userId: toId },
+      select: { id: true, rsvpId: true, rsvp: { select: { userId: true } } },
+    })) {
+      if (s.rsvp.userId !== toId) continue;
+      await tx.plusOne.delete({ where: { id: s.id } });
+      const count = await tx.plusOne.count({ where: { rsvpId: s.rsvpId } });
+      await tx.rsvp.update({ where: { id: s.rsvpId }, data: { plusOnes: count } });
+    }
+
     // EventCohost: @@unique([eventId, userId]).
     for (const co of await tx.eventCohost.findMany({ where: { userId: fromId } })) {
       const clash = await tx.eventCohost.findUnique({

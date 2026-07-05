@@ -170,7 +170,36 @@ authRoutes.post('/phone/request', async (c) => {
 // linked on sign-in, so the invitee shows up on guest lists with their own
 // profile (avatar and all) instead of the name their friend typed.
 async function claimPlusOneSpots(userId: string, phone: string) {
-  await db.plusOne.updateMany({ where: { phone, userId: null }, data: { userId } });
+  // Link every unclaimed +1 held under this number to the account — EXCEPT any
+  // the user parked on their OWN rsvp (adding their own number as a +1 before it
+  // was a verified account). Linking that would make them their own guest —
+  // "olivia is bringing Olivia" — so drop it and fix the denormalized count.
+  // Read + write in one transaction so a concurrent verify/removal can't slip
+  // a row out from under us; deleteMany (not per-id delete) can't throw P2025.
+  // Best-effort: linking +1s is a convenience, never auth-critical, so a DB
+  // hiccup here must not fail an already-approved sign-in.
+  try {
+    await db.$transaction(async (tx) => {
+      const spots = await tx.plusOne.findMany({
+        where: { phone, userId: null },
+        select: { id: true, rsvpId: true, rsvp: { select: { userId: true } } },
+      });
+      const claimable = spots.filter((s) => s.rsvp.userId !== userId).map((s) => s.id);
+      const selfSpots = spots.filter((s) => s.rsvp.userId === userId);
+      if (claimable.length) {
+        await tx.plusOne.updateMany({ where: { id: { in: claimable } }, data: { userId } });
+      }
+      if (selfSpots.length) {
+        await tx.plusOne.deleteMany({ where: { id: { in: selfSpots.map((s) => s.id) } } });
+        for (const s of selfSpots) {
+          const count = await tx.plusOne.count({ where: { rsvpId: s.rsvpId } });
+          await tx.rsvp.update({ where: { id: s.rsvpId }, data: { plusOnes: count } });
+        }
+      }
+    });
+  } catch (e) {
+    console.error('claimPlusOneSpots failed:', e);
+  }
 }
 
 // Step 2: verify the code → session token. isNew signals the app to run
