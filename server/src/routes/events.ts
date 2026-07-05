@@ -46,7 +46,11 @@ const eventInputSchema = z.object({
     .string()
     .refine((s) => !Number.isNaN(Date.parse(s)), 'Invalid date')
     .transform((s) => new Date(s)),
-  location: z.string().trim().max(LIMITS.location).optional(),
+  // Required on create — a party needs a where. Realness (that it's an
+  // on-the-map place) is enforced by the client LocationPicker, mirroring how
+  // the City search gates cities; the server just guarantees presence. On PATCH
+  // the schema is .partial()'d, so this only applies when location is sent.
+  location: z.string().trim().min(1).max(LIMITS.location),
   city: z.string().trim().max(80).optional(),
   category: z.enum(CATEGORIES).optional(),
   isPublic: z.boolean().optional(),

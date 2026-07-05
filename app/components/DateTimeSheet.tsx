@@ -1,6 +1,8 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
+  ActivityIndicator,
   Animated,
+  InteractionManager,
   PanResponder,
   Platform,
   Pressable,
@@ -43,14 +45,30 @@ export function DateTimeSheet({
   // RN Web has no native animated module; gate the flag to avoid the warning.
   const nativeDriver = Platform.OS !== 'web';
 
+  // iOS's inline UIDatePicker is expensive to construct on first mount; mounting
+  // it in the same commit that reveals the sheet blocks the slide-up for up to a
+  // second. Let the sheet animate in first, then swap the placeholder for the
+  // real picker one interaction later. Other platforms render instantly.
+  const [pickerReady, setPickerReady] = useState(Platform.OS !== 'ios');
+
   useEffect(() => {
     Animated.spring(translateY, {
       toValue: 0,
       useNativeDriver: nativeDriver,
       damping: 22,
       stiffness: 220,
+      // Don't hold the InteractionManager queue open — we want the picker to
+      // mount right after the sheet's first frame, not after the spring settles.
+      isInteraction: false,
     }).start();
   }, [translateY, nativeDriver]);
+
+  // Mount the heavy iOS picker one interaction after the sheet appears.
+  useEffect(() => {
+    if (pickerReady) return;
+    const task = InteractionManager.runAfterInteractions(() => setPickerReady(true));
+    return () => task.cancel();
+  }, [pickerReady]);
 
   function dismiss() {
     Animated.timing(translateY, {
@@ -129,14 +147,20 @@ export function DateTimeSheet({
               })}
             </View>
           ) : Platform.OS === 'ios' ? (
-            <DateTimePicker
-              value={date}
-              mode="datetime"
-              display="inline"
-              themeVariant="light"
-              onChange={(_e, d) => set(d)}
-              style={styles.iosPicker}
-            />
+            pickerReady ? (
+              <DateTimePicker
+                value={date}
+                mode="datetime"
+                display="inline"
+                themeVariant="light"
+                onChange={(_e, d) => set(d)}
+                style={styles.iosPicker}
+              />
+            ) : (
+              <View style={[styles.iosPicker, styles.pickerPlaceholder]}>
+                <ActivityIndicator color={light.text3} />
+              </View>
+            )
           ) : (
             // Android's picker is imperative-only (it can't render inline), so
             // the sheet shows two rows that each open the native dialog.
@@ -221,6 +245,10 @@ const styles = StyleSheet.create({
   },
   iosPicker: {
     height: 360,
+  },
+  pickerPlaceholder: {
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   androidStack: {
     gap: spacing.sm,

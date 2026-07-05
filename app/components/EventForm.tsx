@@ -19,7 +19,6 @@ import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import {
   LIMITS,
-  TITLE_FONTS,
   type Category,
   type CoverTheme,
   type Effect,
@@ -28,7 +27,7 @@ import {
 } from '../shared/types';
 import { colors, light, radius, shadow, spacing } from '../lib/theme';
 import { coverFor } from '../lib/covers';
-import { TITLE_FONT_LABELS, titleFontStyle, kicker, uiText } from '../lib/fonts';
+import { titleFontStyle, kicker, uiText } from '../lib/fonts';
 import { CoverGradient } from './CoverGradient';
 import { EFFECT_META, EffectOverlay } from './EffectOverlay';
 import { Button, ErrorText } from './ui';
@@ -131,9 +130,11 @@ export function EventForm({ initial, submitLabel, onSubmit, footer }: Props) {
   const [cropSrc, setCropSrc] = useState<{ uri: string; width?: number; height?: number } | null>(
     null
   );
-  const [titleFont, setTitleFont] = useState<TitleFont>(initial?.titleFont ?? 'classic');
+  const titleFont: TitleFont = initial?.titleFont ?? 'classic';
   const [effect, setEffect] = useState<Effect>(initial?.effect ?? 'none');
-  const [date, setDate] = useState<Date>(initial?.date ?? defaultDate());
+  // null until the host actually opens the When picker — "When" is a required
+  // field, so we don't silently pre-fill it. The sheet opens at defaultDate().
+  const [date, setDate] = useState<Date | null>(initial?.date ?? null);
   const [maxGuests, setMaxGuests] = useState(
     initial?.maxGuests != null ? String(initial.maxGuests) : ''
   );
@@ -182,9 +183,25 @@ export function EventForm({ initial, submitLabel, onSubmit, footer }: Props) {
   const hasHiddenSettings =
     Boolean(costPerPerson.trim() || dressCode.trim() || maxGuests.trim()) || plusOneLimit !== 1;
 
+  // Name, When and Location are all required — the Save button stays disabled
+  // until each is filled, so a half-baked event can't be created (or edited into
+  // one). Location can only ever be a real, geocoded place: the LocationPicker
+  // never commits free text, so a made-up spot can't be saved.
+  const canSave = Boolean(
+    title.trim() && date && !Number.isNaN(date.getTime()) && location.trim()
+  );
+
   async function submit() {
     if (!title.trim()) {
       setError('Give your party a name!');
+      return;
+    }
+    if (!date || Number.isNaN(date.getTime())) {
+      setError('Pick a date and time for your party!');
+      return;
+    }
+    if (!location.trim()) {
+      setError('Add a location — pick a real spot from the list!');
       return;
     }
     const guests = maxGuests.trim() ? Number(maxGuests.trim()) : null;
@@ -267,8 +284,7 @@ export function EventForm({ initial, submitLabel, onSubmit, footer }: Props) {
           contentContainerStyle={styles.content}
           keyboardShouldPersistTaps="handled"
         >
-        {/* Title and its typeface live in ONE box — the name up top, the four
-            font choices right beneath it, like the reference poster editor. */}
+        {/* Just the event name — type it and go. */}
         <View style={styles.titleBox}>
           <TextInput
             value={title}
@@ -276,34 +292,8 @@ export function EventForm({ initial, submitLabel, onSubmit, footer }: Props) {
             placeholder="Untitled Event"
             placeholderTextColor={colors.muted}
             maxLength={LIMITS.title}
-            // Pin the line box so switching fonts only swaps the glyphs — the
-            // field keeps the same height instead of growing for tall faces
-            // (Pacifico/Bungee) and shrinking for compact ones.
             style={[styles.titleInput, titleFontStyle(titleFont)]}
           />
-          <View style={styles.fontBar}>
-            {TITLE_FONTS.map((f) => {
-              const selected = titleFont === f;
-              return (
-                <Pressable
-                  key={f}
-                  onPress={() => setTitleFont(f)}
-                  style={[styles.fontSeg, selected && styles.fontSegActive]}
-                >
-                  <Text
-                    style={[
-                      styles.fontSegText,
-                      titleFontStyle(f),
-                      { color: selected ? '#fff' : light.text3 },
-                    ]}
-                    numberOfLines={1}
-                  >
-                    {TITLE_FONT_LABELS[f]}
-                  </Text>
-                </Pressable>
-              );
-            })}
-          </View>
         </View>
 
         {/* The cover the guest will see — framed against the full-screen theme. */}
@@ -336,9 +326,19 @@ export function EventForm({ initial, submitLabel, onSubmit, footer }: Props) {
 
         <View style={{ gap: spacing.xs }}>
           <SectionLabel color={ink.faint}>When</SectionLabel>
-          <PaperPressable style={styles.whenButton} onPress={() => setDateSheetOpen(true)}>
-            <Text style={styles.dateText}>
-              {formatEventDate(date.toISOString())} · {formatEventTime(date.toISOString())}
+          <PaperPressable
+            style={styles.whenButton}
+            onPress={() => {
+              // Seed a sensible default the first time When opens so the picker
+              // starts on a real value the host can accept or adjust.
+              if (!date) setDate(defaultDate());
+              setDateSheetOpen(true);
+            }}
+          >
+            <Text style={[styles.dateText, !date && styles.datePlaceholder]}>
+              {date
+                ? `${formatEventDate(date.toISOString())} · ${formatEventTime(date.toISOString())}`
+                : 'Add a date & time'}
             </Text>
           </PaperPressable>
         </View>
@@ -375,6 +375,7 @@ export function EventForm({ initial, submitLabel, onSubmit, footer }: Props) {
           title={submitLabel}
           onPress={submit}
           loading={saving}
+          disabled={!canSave}
           variant={ink.dark ? 'paper' : 'primary'}
         />
         {footer}
@@ -460,7 +461,7 @@ export function EventForm({ initial, submitLabel, onSubmit, footer }: Props) {
       ) : null}
       {dateSheetOpen ? (
         <DateTimeSheet
-          date={date}
+          date={date ?? defaultDate()}
           onChange={setDate}
           onClose={() => setDateSheetOpen(false)}
         />
@@ -625,33 +626,6 @@ const styles = StyleSheet.create({
     color: colors.accentDark,
     ...uiText(14, '700'),
   },
-  // ── Font segmented control (inset row of the title box) ──
-  fontBar: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: colors.inputBg,
-    borderWidth: 1,
-    borderColor: colors.cardBorder,
-    borderRadius: radius.pill,
-    padding: 4,
-    gap: 2,
-  },
-  fontSeg: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 9,
-    paddingHorizontal: 2,
-    borderRadius: radius.pill,
-  },
-  fontSegActive: {
-    backgroundColor: colors.ink,
-  },
-  // Small enough that the widest face (Bungee "Eclectic") fits its segment.
-  fontSegText: {
-    fontSize: 13,
-  },
-
   // ── Date / time (one combined button, opens the Date & Time sheet) ──
   whenButton: {
     paddingVertical: 14,
@@ -660,6 +634,9 @@ const styles = StyleSheet.create({
   dateText: {
     color: colors.text,
     ...uiText(16, '600'),
+  },
+  datePlaceholder: {
+    color: colors.muted,
   },
 
   // ── Description ──

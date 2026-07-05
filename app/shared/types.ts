@@ -194,6 +194,9 @@ export interface EventDetail extends EventSummary {
 }
 
 export interface EventInput {
+  // title, date and location are all required to create an event — the form
+  // blocks Save until each is filled, and location must be a real place picked
+  // from the geocoder (never free text).
   title: string;
   description?: string;
   coverTheme?: CoverTheme;
@@ -201,7 +204,7 @@ export interface EventInput {
   titleFont?: TitleFont;
   effect?: Effect;
   date: string;
-  location?: string;
+  location: string;
   city?: string;
   category?: Category;
   isPublic?: boolean;
