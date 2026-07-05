@@ -97,7 +97,7 @@ export default function CodeScreen() {
           <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
             <Text style={styles.kicker}>Step 2 of 2</Text>
             <Text style={styles.title}>
-              Verify your <Text style={styles.titleAccent}>phone</Text>
+              Verify your phone
             </Text>
             <Text style={styles.subtitle}>We sent {phone} a code via SMS</Text>
 
@@ -195,10 +195,6 @@ const styles = StyleSheet.create({
     color: colors.text,
     ...display(56),
     textAlign: 'center',
-  },
-  titleAccent: {
-    ...display(56),
-    fontStyle: 'italic',
   },
   subtitle: {
     color: colors.muted,

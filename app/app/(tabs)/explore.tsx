@@ -319,7 +319,7 @@ function ExploreScreen() {
             <CoverGradient theme="midnight" style={styles.hero} emojiOpacity={0.2}>
               <Text style={styles.heroKicker}>Get out there</Text>
               <Text style={styles.heroTitle}>
-                The streets are <Text style={styles.heroTitleItalic}>calling</Text>
+                The streets are calling
               </Text>
               <Text style={styles.heroSubtitle}>
                 {city ? `See what's happening in ${city}` : "See what's happening everywhere"}
@@ -328,7 +328,7 @@ function ExploreScreen() {
 
             <Text style={styles.sectionKicker}>New faces</Text>
             <Text style={styles.sectionTitle}>
-              Meet new <Text style={styles.sectionTitleItalic}>people</Text>
+              Meet new people
             </Text>
 
             {error ? (
@@ -687,9 +687,6 @@ const styles = StyleSheet.create({
     textShadowOffset: { width: 0, height: 2 },
     textShadowRadius: 8,
   },
-  heroTitleItalic: {
-    fontStyle: 'italic',
-  },
   heroSubtitle: {
     ...uiText(15),
     color: '#fff',
@@ -706,9 +703,6 @@ const styles = StyleSheet.create({
     marginHorizontal: spacing.md,
     marginTop: spacing.xs,
     marginBottom: spacing.md,
-  },
-  sectionTitleItalic: {
-    fontStyle: 'italic',
   },
   inlineState: {
     alignItems: 'center',

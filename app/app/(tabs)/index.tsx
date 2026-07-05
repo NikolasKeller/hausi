@@ -185,7 +185,7 @@ function HomeScreen() {
         <View style={styles.sectionGroup}>
           <Text style={styles.kicker}>Hot right now</Text>
           <Text style={styles.sectionTitle}>
-            Trending in <Text style={styles.sectionTitleItalic}>{home.city}</Text>
+            Trending in {home.city}
           </Text>
           {home.trendingNearby.length === 0 ? (
             <Text style={styles.emptyNote}>Nothing trending nearby yet — start something.</Text>
@@ -224,7 +224,7 @@ function HomeScreen() {
           <View style={styles.sectionGroup}>
             <Text style={styles.kicker}>Your crew</Text>
             <Text style={styles.sectionTitle}>
-              Where your <Text style={styles.sectionTitleItalic}>pals</Text> are going
+              Where your pals are going
             </Text>
             <View style={styles.rowList}>
               {home.palsGoing.map((event) => (
@@ -241,7 +241,7 @@ function HomeScreen() {
         <View style={styles.sectionGroup}>
           <Text style={styles.kicker}>Need a plan?</Text>
           <Text style={styles.sectionTitle}>
-            Party <Text style={styles.sectionTitleItalic}>starters</Text>
+            Party starters
           </Text>
           <Text style={styles.sectionBlurb}>Tap an idea to spin up an event in seconds.</Text>
           <ScrollView
@@ -259,7 +259,7 @@ function HomeScreen() {
         <View style={[styles.sectionGroup, styles.ctaGroup]}>
           <Text style={styles.ctaKicker}>Your move</Text>
           <Text style={styles.ctaTitle}>
-            Throw{'\n'}<Text style={styles.ctaTitleItalic}>something</Text>
+            Throw{'\n'}something
           </Text>
           <Button
             title="Create an event"
@@ -437,9 +437,6 @@ const styles = StyleSheet.create({
     ...display(30),
     color: colors.text,
   },
-  sectionTitleItalic: {
-    fontStyle: 'italic',
-  },
   emptyNote: {
     ...uiText(14),
     color: colors.muted,
@@ -461,9 +458,6 @@ const styles = StyleSheet.create({
     ...display(52),
     color: colors.text,
     marginBottom: spacing.md,
-  },
-  ctaTitleItalic: {
-    fontStyle: 'italic',
   },
   ctaButton: {
     alignSelf: 'stretch',

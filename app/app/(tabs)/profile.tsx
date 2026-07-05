@@ -19,6 +19,7 @@ import { colors, radius, shadow, spacing } from '../../lib/theme';
 import { display, kicker, uiText } from '../../lib/fonts';
 import { Avatar } from '../../components/Avatar';
 import { Button } from '../../components/ui';
+import { SettingsSheet } from '../../components/SettingsSheet';
 import { withScreenBackground } from '../../components/ScreenBackground';
 
 function joinedLabel(iso: string): string {
@@ -35,6 +36,7 @@ function ProfileScreen() {
   const [profile, setProfile] = useState<MyProfile | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [crushBusy, setCrushBusy] = useState<string | null>(null);
+  const [settingsOpen, setSettingsOpen] = useState(false);
 
   const load = useCallback(async () => {
     try {
@@ -66,7 +68,7 @@ function ProfileScreen() {
     }, [])
   );
 
-  async function openSettings() {
+  async function confirmLogout() {
     const ok = await confirmDialog('Log out?', 'You can log back in with your phone number.', 'Log out');
     if (ok) logout().catch(() => {});
   }
@@ -134,20 +136,12 @@ function ProfileScreen() {
       <ScrollView contentContainerStyle={styles.container}>
         <View style={styles.header}>
           <Text style={[styles.headerKicker, kicker(colors.accent)]}>Your profile</Text>
-          <View style={styles.headerActions}>
-            <Pressable
-              onPress={() => router.push('/edit-profile')}
-              style={({ pressed }) => [styles.roundButton, pressed && styles.pressed]}
-            >
-              <Ionicons name="pencil" size={18} color={colors.text} />
-            </Pressable>
-            <Pressable
-              onPress={openSettings}
-              style={({ pressed }) => [styles.roundButton, pressed && styles.pressed]}
-            >
-              <Ionicons name="settings-sharp" size={18} color={colors.text} />
-            </Pressable>
-          </View>
+          <Pressable
+            onPress={() => setSettingsOpen(true)}
+            style={({ pressed }) => [styles.roundButton, pressed && styles.pressed]}
+          >
+            <Ionicons name="settings-sharp" size={18} color={colors.text} />
+          </Pressable>
         </View>
 
         <View style={styles.hero}>
@@ -155,22 +149,6 @@ function ProfileScreen() {
             <Avatar emoji={profile.avatarEmoji} size={120} />
           </View>
           <Text style={styles.bigName}>{profile.name}</Text>
-        </View>
-
-        <View style={styles.actionRow}>
-          <Button
-            title="Edit profile"
-            variant="ghost"
-            tone="ink"
-            onPress={() => router.push('/edit-profile')}
-            style={styles.actionButton}
-          />
-          <Button
-            title="Share profile"
-            variant="paper"
-            onPress={shareProfile}
-            style={styles.actionButton}
-          />
         </View>
 
         <Text style={styles.metaLine}>{metaLine}</Text>
@@ -197,9 +175,7 @@ function ProfileScreen() {
         </View>
 
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>
-            <Text style={styles.sectionTitleItalic}>Mutuals</Text>
-          </Text>
+          <Text style={styles.sectionTitle}>Mutuals</Text>
           <Text style={styles.sectionSubtitle}>Everyone you've ever partied with</Text>
           {profile.mutuals.length === 0 ? (
             <Text style={styles.emptyText}>Party with someone to make your first mutual 🫂</Text>
@@ -233,6 +209,14 @@ function ProfileScreen() {
           )}
         </View>
       </ScrollView>
+      {settingsOpen ? (
+        <SettingsSheet
+          onClose={() => setSettingsOpen(false)}
+          onEditProfile={() => router.push('/edit-profile')}
+          onShareProfile={shareProfile}
+          onLogout={confirmLogout}
+        />
+      ) : null}
     </SafeAreaView>
   );
 }
@@ -269,10 +253,6 @@ const styles = StyleSheet.create({
     color: colors.accent,
     flexShrink: 1,
   },
-  headerActions: {
-    flexDirection: 'row',
-    gap: spacing.sm,
-  },
   roundButton: {
     width: 40,
     height: 40,
@@ -301,20 +281,11 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     paddingHorizontal: spacing.lg,
   },
-  actionRow: {
-    flexDirection: 'row',
-    gap: spacing.sm,
-    paddingHorizontal: spacing.md,
-    marginTop: spacing.lg,
-  },
-  actionButton: {
-    flex: 1,
-  },
   metaLine: {
     ...uiText(14),
     color: colors.muted,
     textAlign: 'center',
-    marginTop: spacing.md,
+    marginTop: spacing.lg,
   },
   section: {
     marginTop: spacing.xxl,
@@ -324,11 +295,6 @@ const styles = StyleSheet.create({
     ...display(28),
     color: colors.text,
     paddingHorizontal: spacing.md,
-  },
-  sectionTitleItalic: {
-    ...display(28),
-    color: colors.text,
-    fontStyle: 'italic',
   },
   sectionSubtitle: {
     ...uiText(14),
