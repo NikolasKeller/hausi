@@ -19,8 +19,9 @@ import { EVENT_TEMPLATES, type EventTemplate } from '../../lib/eventTemplates';
 import { colors, radius, spacing, shadow } from '../../lib/theme';
 import { titleFontStyle, display, uiText, kicker } from '../../lib/fonts';
 import { CoverGradient } from '../../components/CoverGradient';
+import { Avatar } from '../../components/Avatar';
 import { Button } from '../../components/ui';
-import { formatEventDate, formatEventTime } from '../../components/EventCard';
+import { formatEventDate } from '../../components/EventCard';
 import { withScreenBackground } from '../../components/ScreenBackground';
 
 export default withScreenBackground(HomeScreen);
@@ -48,6 +49,7 @@ function HomeScreen() {
   const [unread, setUnread] = useState(0);
   const [error, setError] = useState<string | null>(null);
   const [refreshing, setRefreshing] = useState(false);
+  const [showAllMutuals, setShowAllMutuals] = useState(false);
   // Greet a returning user once, on app open, then let it fade.
   const [welcome, setWelcome] = useState<{ text: string; subtext: string } | null>(null);
   useEffect(() => {
@@ -183,23 +185,27 @@ function HomeScreen() {
         ) : null}
 
         <View style={styles.sectionGroup}>
-          <Text style={styles.kicker}>Hot right now</Text>
-          <Text style={styles.sectionTitle}>
-            Trending in {home.city}
-          </Text>
-          {home.trendingNearby.length === 0 ? (
-            <Text style={styles.emptyNote}>Nothing trending nearby yet — start something.</Text>
+          <Text style={styles.kicker}>Your crew</Text>
+          <Text style={styles.sectionTitle}>Find your mutuals</Text>
+          <Text style={styles.sectionBlurb}>See which parties your people are hitting.</Text>
+          {home.palsGoing.length === 0 ? (
+            <Text style={styles.emptyNote}>
+              No mutual plans yet — RSVP to a few parties and your crew will pop up here.
+            </Text>
           ) : (
-            <ScrollView
-              horizontal
-              showsHorizontalScrollIndicator={false}
-              contentContainerStyle={styles.horizontalList}
-              style={styles.horizontalScroll}
-            >
-              {home.trendingNearby.map((event) => (
-                <TrendingCard key={event.id} event={event} />
+            <View style={styles.mutualFeed}>
+              {(showAllMutuals ? home.palsGoing : home.palsGoing.slice(0, 3)).map((event) => (
+                <MutualCard key={event.id} event={event} />
               ))}
-            </ScrollView>
+              {home.palsGoing.length > 3 ? (
+                <Pressable
+                  onPress={() => setShowAllMutuals((v) => !v)}
+                  style={({ pressed }) => [styles.seeMore, pressed && { opacity: 0.7 }]}
+                >
+                  <Text style={styles.seeMoreText}>{showAllMutuals ? 'See less' : 'See more'}</Text>
+                </Pressable>
+              ) : null}
+            </View>
           )}
         </View>
 
@@ -217,24 +223,6 @@ function HomeScreen() {
                 <RecentCard key={recent.slug} recent={recent} />
               ))}
             </ScrollView>
-          </View>
-        ) : null}
-
-        {home.palsGoing.length > 0 ? (
-          <View style={styles.sectionGroup}>
-            <Text style={styles.kicker}>Your crew</Text>
-            <Text style={styles.sectionTitle}>
-              Where your pals are going
-            </Text>
-            <View style={styles.rowList}>
-              {home.palsGoing.map((event) => (
-                <CompactRow
-                  key={event.id}
-                  event={event}
-                  subtitle={event.friendGoing ? `${event.friendGoing.name} is going` : event.city}
-                />
-              ))}
-            </View>
           </View>
         ) : null}
 
@@ -273,34 +261,97 @@ function HomeScreen() {
   );
 }
 
-function TrendingCard({ event }: { event: ExploreEvent }) {
+// One entry in the "Find your mutuals" feed: a friend's attribution, the event
+// card, then the interested faces + a save (⭐ Interested) toggle.
+function MutualCard({ event }: { event: ExploreEvent }) {
   const router = useRouter();
+  const { user } = useAuth();
+  const [saved, setSaved] = useState(false);
+  const [busy, setBusy] = useState(false);
+
+  async function toggleSaved() {
+    if (busy) return;
+    const next = !saved;
+    setSaved(next); // optimistic — revert if the request fails
+    setBusy(true);
+    try {
+      if (next) await api.rsvp(event.id, 'MAYBE');
+      else if (user) await api.removeGuest(event.id, user.id);
+    } catch {
+      setSaved(!next);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  const faces = event.interestedAvatars.slice(0, 3);
+  const interested = event.interested + (saved ? 1 : 0);
+  const blurb = event.description.trim()
+    ? event.description
+    : `${formatEventDate(event.date)}${event.location ? ` · ${event.location}` : ''}`;
+
   return (
-    <Pressable
-      onPress={() => router.push(`/event/${event.slug}`)}
-      style={({ pressed }) => [styles.trendingCard, pressed && { opacity: 0.85 }]}
-    >
-      <CoverGradient theme={event.coverTheme} image={event.coverImage} style={styles.trendingCover} emojiOpacity={0.3}>
-        <Text
-          style={[styles.trendingTitle, titleFontStyle(event.titleFont)]}
-          numberOfLines={2}
-        >
-          {event.title}
-        </Text>
-      </CoverGradient>
-      <View style={styles.trendingBody}>
-        <Text style={styles.trendingMeta} numberOfLines={1}>
-          {formatEventDate(event.date)} · {formatEventTime(event.date)}
-          {event.location ? ` · ${event.location}` : ''}
-        </Text>
-        <Text style={styles.trendingInterested}>⭐ {event.interested} interested</Text>
-        {event.friendGoing ? (
-          <Text style={styles.trendingFriend} numberOfLines={1}>
-            {event.friendGoing.avatarEmoji} {event.friendGoing.name} is going
+    <View style={styles.mutualEntry}>
+      {event.friendGoing ? (
+        <View style={styles.mutualAttrib}>
+          <Avatar emoji={event.friendGoing.avatarEmoji} size={28} />
+          <Text style={styles.mutualAttribText} numberOfLines={1}>
+            <Text style={styles.mutualName}>{event.friendGoing.name}</Text>
+            <Text style={styles.mutualGoing}> is going</Text> 👍
           </Text>
-        ) : null}
+        </View>
+      ) : null}
+
+      <Pressable
+        onPress={() => router.push(`/event/${event.slug}`)}
+        style={({ pressed }) => [styles.mutualCard, pressed && { opacity: 0.85 }]}
+      >
+        <CoverGradient
+          theme={event.coverTheme}
+          image={event.coverImage}
+          style={styles.mutualCover}
+          emojiOpacity={0.3}
+        />
+        <View style={styles.mutualBody}>
+          <Text style={[styles.mutualTitle, titleFontStyle(event.titleFont)]} numberOfLines={2}>
+            {event.title}
+          </Text>
+          <Text style={styles.mutualDesc} numberOfLines={3}>
+            {blurb}
+          </Text>
+        </View>
+      </Pressable>
+
+      <View style={styles.mutualFooter}>
+        {faces.length > 0 ? <AvatarCluster emojis={faces} /> : null}
+        <Text style={styles.mutualInterested}>{interested} interested</Text>
+        <View style={{ flex: 1 }} />
+        <Pressable
+          onPress={toggleSaved}
+          hitSlop={10}
+          style={({ pressed }) => pressed && { opacity: 0.6 }}
+        >
+          <Ionicons
+            name={saved ? 'star' : 'star-outline'}
+            size={22}
+            color={saved ? colors.accent : colors.muted}
+          />
+        </Pressable>
       </View>
-    </Pressable>
+    </View>
+  );
+}
+
+// Overlapping row of attendee avatar emoji.
+function AvatarCluster({ emojis }: { emojis: string[] }) {
+  return (
+    <View style={styles.cluster}>
+      {emojis.map((emoji, i) => (
+        <View key={i} style={[styles.clusterChip, i > 0 && { marginLeft: -10 }]}>
+          <Text style={styles.clusterEmoji}>{emoji}</Text>
+        </View>
+      ))}
+    </View>
   );
 }
 
@@ -317,28 +368,6 @@ function RecentCard({ recent }: { recent: RecentEvent }) {
         </Text>
       </CoverGradient>
       <Text style={styles.recentDate}>{formatEventDate(recent.date)}</Text>
-    </Pressable>
-  );
-}
-
-function CompactRow({ event, subtitle }: { event: ExploreEvent; subtitle: string }) {
-  const router = useRouter();
-  return (
-    <Pressable
-      onPress={() => router.push(`/event/${event.slug}`)}
-      style={({ pressed }) => [styles.compactRow, pressed && { opacity: 0.85 }]}
-    >
-      <CoverGradient theme={event.coverTheme} image={event.coverImage} style={styles.compactCover} emojiOpacity={0.35} />
-      <View style={{ flex: 1, gap: 2 }}>
-        <Text style={styles.compactTitle} numberOfLines={1}>
-          {event.title}
-        </Text>
-        <Text style={styles.compactDate}>{formatEventDate(event.date)}</Text>
-        <Text style={styles.compactSubtitle} numberOfLines={1}>
-          {subtitle}
-        </Text>
-      </View>
-      <Ionicons name="chevron-forward" size={18} color={colors.muted} />
     </Pressable>
   );
 }
@@ -487,8 +516,32 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.md,
     gap: spacing.sm,
   },
-  trendingCard: {
-    width: 300,
+  mutualFeed: {
+    gap: spacing.lg,
+  },
+  mutualEntry: {
+    gap: spacing.sm,
+  },
+  mutualAttrib: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+  },
+  mutualAttribText: {
+    ...uiText(15),
+    color: colors.text,
+    flex: 1,
+  },
+  mutualName: {
+    ...uiText(15, '800'),
+    color: colors.text,
+  },
+  mutualGoing: {
+    ...uiText(15),
+    color: colors.muted,
+  },
+  mutualCard: {
+    flexDirection: 'row',
     backgroundColor: colors.card,
     borderRadius: radius.lg,
     borderWidth: 1,
@@ -496,35 +549,64 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
     ...shadow.card,
   },
-  trendingCover: {
-    height: 220,
-    padding: spacing.md,
-    justifyContent: 'flex-end',
+  mutualCover: {
+    width: 108,
+    alignSelf: 'stretch',
   },
-  trendingTitle: {
-    color: '#fff',
-    fontSize: 22,
-    fontWeight: '800',
-    letterSpacing: -0.5,
-    textShadowColor: 'rgba(0,0,0,0.35)',
-    textShadowOffset: { width: 0, height: 2 },
-    textShadowRadius: 6,
-  },
-  trendingBody: {
+  mutualBody: {
+    flex: 1,
     padding: spacing.md,
     gap: spacing.xs,
+    justifyContent: 'center',
   },
-  trendingMeta: {
-    ...uiText(13, '700'),
-    color: colors.accent,
+  mutualTitle: {
+    ...display(18),
+    color: colors.text,
   },
-  trendingInterested: {
-    ...uiText(13, '700'),
-    color: colors.accent,
-  },
-  trendingFriend: {
+  mutualDesc: {
     ...uiText(13),
     color: colors.muted,
+    lineHeight: 18,
+  },
+  mutualFooter: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    paddingHorizontal: spacing.xs,
+  },
+  mutualInterested: {
+    ...uiText(13, '700'),
+    color: colors.muted,
+  },
+  cluster: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  clusterChip: {
+    width: 26,
+    height: 26,
+    borderRadius: 13,
+    backgroundColor: colors.card,
+    borderWidth: 1.5,
+    borderColor: colors.bg,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  clusterEmoji: {
+    fontSize: 14,
+  },
+  seeMore: {
+    alignSelf: 'center',
+    paddingVertical: spacing.sm,
+    paddingHorizontal: spacing.lg,
+    borderRadius: radius.pill,
+    borderWidth: 1,
+    borderColor: colors.cardBorder,
+    marginTop: spacing.xs,
+  },
+  seeMoreText: {
+    ...uiText(14, '700'),
+    color: colors.text,
   },
   recentCard: {
     width: 150,
@@ -554,37 +636,6 @@ const styles = StyleSheet.create({
     color: colors.accent,
     padding: spacing.sm,
     paddingTop: 6,
-  },
-  rowList: {
-    gap: spacing.sm,
-  },
-  compactRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.md,
-    backgroundColor: colors.card,
-    borderWidth: 1,
-    borderColor: colors.cardBorder,
-    borderRadius: radius.md,
-    padding: spacing.sm,
-    ...shadow.card,
-  },
-  compactCover: {
-    width: 56,
-    height: 56,
-    borderRadius: radius.sm,
-  },
-  compactTitle: {
-    ...uiText(15, '700'),
-    color: colors.text,
-  },
-  compactDate: {
-    ...uiText(12, '700'),
-    color: colors.accent,
-  },
-  compactSubtitle: {
-    ...uiText(12),
-    color: colors.muted,
   },
   templateCard: {
     width: 172,
