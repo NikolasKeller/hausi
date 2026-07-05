@@ -36,6 +36,7 @@ import { TITLE_FONT_LABELS, titleFontStyle, kicker, uiText } from '../lib/fonts'
 import { CoverGradient } from './CoverGradient';
 import { EFFECT_META, EffectOverlay } from './EffectOverlay';
 import { Button, ErrorText } from './ui';
+import { CityPicker } from './CityPicker';
 import { EventSettingsSheet } from './EventSettingsSheet';
 import { Glass } from './glass';
 import { ThemeBackground, ThemePicker, EffectPicker } from './themes';
@@ -443,14 +444,7 @@ export function EventForm({ initial, submitLabel, onSubmit, footer }: Props) {
           placeholder="Location"
           maxLength={LIMITS.location}
         />
-        <PaperField
-          label="City"
-          labelColor={ink.faint}
-          value={city}
-          onChangeText={setCity}
-          placeholder="e.g. San Francisco"
-          maxLength={80}
-        />
+        <CityPicker label="City" labelColor={ink.faint} value={city} onChange={setCity} />
 
         <View style={{ gap: spacing.xs }}>
           <SectionLabel color={ink.faint}>Category</SectionLabel>

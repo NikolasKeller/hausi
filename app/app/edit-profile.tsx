@@ -18,6 +18,7 @@ import { colors, radius, spacing } from '../lib/theme';
 import { display, kicker, uiText } from '../lib/fonts';
 import { Avatar } from '../components/Avatar';
 import { Button, ErrorText, Field } from '../components/ui';
+import { CityPicker } from '../components/CityPicker';
 
 const AVATARS = ['🎉', '🦄', '🕺', '🌸', '🐙', '🪩', '🌈', '🍕', '👽', '🔥', '🐸', '💫'];
 
@@ -201,13 +202,7 @@ export default function EditProfileScreen() {
           </View>
         </View>
 
-        <Field
-          label="City"
-          value={city}
-          onChangeText={setCity}
-          placeholder="Where the parties are"
-          maxLength={LIMITS.location}
-        />
+        <CityPicker label="City" value={city} onChange={setCity} />
 
         <ErrorText message={error} />
         <Button
