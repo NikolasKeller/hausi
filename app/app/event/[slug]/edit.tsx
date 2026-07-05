@@ -206,7 +206,7 @@ const styles = StyleSheet.create({
   },
   loadingCloseText: {
     fontSize: 16,
-    fontWeight: '700',
+    fontWeight: '600',
     color: colors.text,
   },
   errorText: {
@@ -262,7 +262,7 @@ const styles = StyleSheet.create({
   cohostRemoveText: {
     color: light.text3,
     fontSize: 12,
-    fontWeight: '700',
+    fontWeight: '600',
   },
   cohostInputRow: {
     flexDirection: 'row',
@@ -285,12 +285,12 @@ const styles = StyleSheet.create({
   },
   cohostAdd: {
     backgroundColor: colors.ink,
-    borderRadius: radius.pill,
+    borderRadius: radius.md,
     paddingHorizontal: spacing.lg,
     justifyContent: 'center',
   },
   cohostAddText: {
     color: '#fff',
-    ...uiText(15, '700'),
+    ...uiText(15, '600'),
   },
 });

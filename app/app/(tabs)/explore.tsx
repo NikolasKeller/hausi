@@ -579,7 +579,7 @@ const styles = StyleSheet.create({
     ...shadow.card,
   },
   cityPillText: {
-    ...uiText(14, '700'),
+    ...uiText(14, '600'),
     color: colors.text,
     flexShrink: 1,
   },
@@ -707,7 +707,7 @@ const styles = StyleSheet.create({
     fontSize: 14,
   },
   chipLabel: {
-    ...uiText(14, '700'),
+    ...uiText(14, '600'),
     color: colors.text,
   },
   chipLabelActive: {
@@ -791,7 +791,7 @@ const styles = StyleSheet.create({
   posterTitle: {
     color: '#fff',
     fontSize: 20,
-    fontWeight: '800',
+    fontWeight: '700',
     letterSpacing: -0.5,
     textAlign: 'center',
     textShadowColor: 'rgba(0,0,0,0.35)',
@@ -812,11 +812,11 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
   cardTitle: {
-    ...uiText(15, '800'),
+    ...uiText(15, '700'),
     color: colors.text,
   },
   cardMeta: {
-    ...uiText(13, '700'),
+    ...uiText(13, '600'),
     color: colors.accent,
   },
   cardDescription: {
@@ -830,7 +830,7 @@ const styles = StyleSheet.create({
     marginTop: spacing.xs,
   },
   interested: {
-    ...uiText(13, '700'),
+    ...uiText(13, '600'),
     color: colors.text,
   },
 });

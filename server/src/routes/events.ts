@@ -11,7 +11,7 @@ import {
   toPublicUser,
 } from '../lib/serialize.js';
 import { makeSlug } from '../lib/slug.js';
-import { normalizePhone } from '../lib/phone.js';
+import { normalizePhone, phoneCountry } from '../lib/phone.js';
 import { unlinkImage } from '../lib/uploads.js';
 import { findMutuals, rememberPartyConnections } from '../lib/mutuals.js';
 import { ledger } from '../lib/ledger.js';
@@ -53,7 +53,11 @@ const eventInputSchema = z.object({
     .string()
     .refine((s) => !Number.isNaN(Date.parse(s)), 'Invalid date')
     .transform((s) => new Date(s)),
-  location: z.string().trim().max(LIMITS.location).optional(),
+  // Required on create — a party needs a where. Realness (that it's an
+  // on-the-map place) is enforced by the client LocationPicker, mirroring how
+  // the City search gates cities; the server just guarantees presence. On PATCH
+  // the schema is .partial()'d, so this only applies when location is sent.
+  location: z.string().trim().min(1).max(LIMITS.location),
   city: z.string().trim().max(80).optional(),
   category: z.enum(CATEGORIES).optional(),
   isPublic: z.boolean().optional(),
@@ -557,6 +561,16 @@ eventRoutes.post('/:id/plus-one', async (c) => {
         }
         const guest = await tx.user.findUnique({ where: { id: input.userId } });
         if (!guest) throw new HttpError('That person is no longer on Hausi', 404);
+        // Also block a duplicate account of yourself (same number, different id):
+        // picking it links a +1 to your own person and collapses to a self-+1
+        // once the two accounts are deduped.
+        if (
+          guest.phone &&
+          mine.user.phone &&
+          normalizePhone(guest.phone) === normalizePhone(mine.user.phone)
+        ) {
+          throw new HttpError("You're already going — pick someone else", 400);
+        }
         // Linked +1s must be someone you've actually partied with. The client
         // only offers mutuals; this closes the direct-API bypass (attaching a
         // stranger's name/avatar to the guest list without any connection).
@@ -580,12 +594,23 @@ eventRoutes.post('/:id/plus-one', async (c) => {
         name = input.name;
         // Canonicalize so the spot links up when this number signs in later,
         // and so the same person can't be added twice under different spellings.
-        phone = normalizePhone(input.phone);
+        // Fold a bare national number (no "+") using the adder's own country, so
+        // typing your own "4155551234" maps to the same "+14155551234" as your
+        // account — otherwise the self-check below (and the sign-in link) misses.
+        phone = normalizePhone(input.phone, phoneCountry(mine.user.phone));
         if (!/^\+[0-9]{7,15}$/.test(phone)) {
           throw new HttpError('Enter a valid phone number, like +14155551234', 400);
         }
         linkedUserId = null;
         const holder = await tx.user.findUnique({ where: { phone } });
+        // You can't bring yourself. Compare against your own number directly:
+        // the holder lookup below can miss a self-add when your account's stored
+        // phone was never canonicalized to E.164, so "+1 415…" vs "4155551234…"
+        // wouldn't match and the spot would slip through as "olivia brings Olivia."
+        const myPhone = mine.user.phone ? normalizePhone(mine.user.phone) : null;
+        if ((myPhone && myPhone === phone) || (holder && holder.id === userId)) {
+          throw new HttpError("You're already going — you can't bring yourself", 400);
+        }
         if (holder && event.rsvps.some((r) => r.userId === holder.id && r.status !== 'CANT')) {
           throw new HttpError(
             `${holder.name.trim() || 'That person'} is already on the guest list`,

@@ -11,20 +11,15 @@ import {
   useWindowDimensions,
   View,
   type StyleProp,
-  type TextInputProps,
   type ViewStyle,
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
-import DateTimePicker from '@react-native-community/datetimepicker';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import {
-  CATEGORIES,
-  CATEGORY_META,
   DESCRIPTION_SCALE,
   LIMITS,
-  TITLE_FONTS,
   type Category,
   type CoverTheme,
   type Effect,
@@ -33,19 +28,22 @@ import {
 } from '../shared/types';
 import { colors, light, radius, shadow, spacing } from '../lib/theme';
 import { coverFor } from '../lib/covers';
-import { TITLE_FONT_LABELS, titleFontStyle, kicker, uiText } from '../lib/fonts';
+import { titleFontStyle, kicker, uiText } from '../lib/fonts';
 import { CoverGradient } from './CoverGradient';
 import { EFFECT_META, EffectOverlay } from './EffectOverlay';
 import { Button, ErrorText } from './ui';
-import { CityPicker } from './CityPicker';
+import { LocationPicker } from './LocationPicker';
 import { EventSettingsSheet } from './EventSettingsSheet';
+import { DateTimeSheet } from './DateTimeSheet';
 import { Glass } from './glass';
 import { ThemePicker, EffectPicker } from './themes';
 import { ScreenBackground } from './ScreenBackground';
 import { DescriptionEditor } from './DescriptionEditor';
 import { Burst } from './partiful';
 import { formatEventDate, formatEventTime } from './EventCard';
-import { pickCoverImage } from '../lib/imageUpload';
+import { ImageCropSheet } from './ImageCropSheet';
+import { pickRawImage, uploadCroppedImage, type CropRect } from '../lib/imageUpload';
+import { mediaUrl } from '../lib/api';
 
 export interface EventFormValues {
   title: string;
@@ -107,59 +105,12 @@ function PaperPressable({
   );
 }
 
-function PaperField({
-  label,
-  labelColor,
-  style,
-  ...props
-}: TextInputProps & { label?: string; labelColor?: string; style?: TextInputProps['style'] }) {
-  return (
-    <View style={{ gap: 6 }}>
-      {label ? <SectionLabel color={labelColor}>{label}</SectionLabel> : null}
-      <View style={styles.inputCard}>
-        <TextInput placeholderTextColor={colors.muted} style={[styles.input, style]} {...props} />
-      </View>
-    </View>
-  );
-}
-
 function defaultDate(): Date {
   const d = new Date();
   d.setDate(d.getDate() + 7);
   d.setHours(19, 0, 0, 0);
   return d;
 }
-
-const pad2 = (n: number) => String(n).padStart(2, '0');
-
-// Values for the HTML <input type="date|time"> used on web, in local time.
-function toDateInputValue(d: Date): string {
-  return `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`;
-}
-
-function toTimeInputValue(d: Date): string {
-  return `${pad2(d.getHours())}:${pad2(d.getMinutes())}`;
-}
-
-// @react-native-community/datetimepicker throws when rendered on web, so web
-// gets the browser's native pickers. Rather than revealing a separate inline
-// input (which pushes the rest of the form down), an invisible native input is
-// laid directly over each date/time button — tapping it opens the browser's
-// floating calendar/clock popup, so the form layout never shifts.
-const webPickerOverlayStyle = {
-  position: 'absolute',
-  top: 0,
-  left: 0,
-  width: '100%',
-  height: '100%',
-  margin: 0,
-  padding: 0,
-  border: 'none',
-  background: 'transparent',
-  opacity: 0,
-  cursor: 'pointer',
-  colorScheme: 'light',
-} as const;
 
 export function EventForm({ initial, submitLabel, onSubmit, footer }: Props) {
   const router = useRouter();
@@ -171,21 +122,30 @@ export function EventForm({ initial, submitLabel, onSubmit, footer }: Props) {
   );
   const [location, setLocation] = useState(initial?.location ?? '');
   const [city, setCity] = useState(initial?.city ?? '');
-  const [category, setCategory] = useState<Category>(initial?.category ?? 'community');
+  // Category is no longer edited on the form — kept at its default (or the
+  // event's existing value) so the payload stays valid.
+  const category: Category = initial?.category ?? 'community';
   const [isPublic, setIsPublic] = useState(initial?.isPublic ?? false);
   const [costPerPerson, setCostPerPerson] = useState(initial?.costPerPerson ?? '');
   const [dressCode, setDressCode] = useState(initial?.dressCode ?? '');
   const [coverTheme, setCoverTheme] = useState<CoverTheme>(initial?.coverTheme ?? 'sunset');
   const [coverImage, setCoverImage] = useState(initial?.coverImage ?? '');
   const [uploadingCover, setUploadingCover] = useState(false);
-  const [titleFont, setTitleFont] = useState<TitleFont>(initial?.titleFont ?? 'classic');
+  // The photo being cropped: a freshly picked asset (with pixel dims) or the
+  // current cover reopened for a re-crop (dims measured by the sheet).
+  const [cropSrc, setCropSrc] = useState<{ uri: string; width?: number; height?: number } | null>(
+    null
+  );
+  const titleFont: TitleFont = initial?.titleFont ?? 'classic';
   const [effect, setEffect] = useState<Effect>(initial?.effect ?? 'none');
-  const [date, setDate] = useState<Date>(initial?.date ?? defaultDate());
+  // null until the host actually opens the When picker — "When" is a required
+  // field, so we don't silently pre-fill it. The sheet opens at defaultDate().
+  const [date, setDate] = useState<Date | null>(initial?.date ?? null);
   const [maxGuests, setMaxGuests] = useState(
     initial?.maxGuests != null ? String(initial.maxGuests) : ''
   );
   const [plusOneLimit, setPlusOneLimit] = useState<number>(initial?.plusOneLimit ?? 1);
-  const [picker, setPicker] = useState<'date' | 'time' | null>(null);
+  const [dateSheetOpen, setDateSheetOpen] = useState(false);
   const [themePickerOpen, setThemePickerOpen] = useState(false);
   const [effectPickerOpen, setEffectPickerOpen] = useState(false);
   const [descriptionEditorOpen, setDescriptionEditorOpen] = useState(false);
@@ -230,9 +190,25 @@ export function EventForm({ initial, submitLabel, onSubmit, footer }: Props) {
   const hasHiddenSettings =
     Boolean(costPerPerson.trim() || dressCode.trim() || maxGuests.trim()) || plusOneLimit !== 1;
 
+  // Name, When and Location are all required — the Save button stays disabled
+  // until each is filled, so a half-baked event can't be created (or edited into
+  // one). Location can only ever be a real, geocoded place: the LocationPicker
+  // never commits free text, so a made-up spot can't be saved.
+  const canSave = Boolean(
+    title.trim() && date && !Number.isNaN(date.getTime()) && location.trim()
+  );
+
   async function submit() {
     if (!title.trim()) {
       setError('Give your party a name!');
+      return;
+    }
+    if (!date || Number.isNaN(date.getTime())) {
+      setError('Pick a date and time for your party!');
+      return;
+    }
+    if (!location.trim()) {
+      setError('Add a location — pick a real spot from the list!');
       return;
     }
     const guests = maxGuests.trim() ? Number(maxGuests.trim()) : null;
@@ -270,65 +246,27 @@ export function EventForm({ initial, submitLabel, onSubmit, footer }: Props) {
     }
   }
 
-  function onPickerChange(_event: unknown, selected?: Date) {
-    if (Platform.OS === 'android') setPicker(null);
-    if (selected) setDate(selected);
-  }
-
-  // Web: apply a value from the native <input type="date|time"> overlay.
-  function updateDate(kind: 'date' | 'time', value: string) {
-    if (!value) return;
-    const next = new Date(date);
-    if (kind === 'date') {
-      const [y, m, d] = value.split('-').map(Number);
-      next.setFullYear(y, m - 1, d);
-    } else {
-      const [h, min] = value.split(':').map(Number);
-      next.setHours(h, min);
-    }
-    setDate(next);
-  }
-
-  // One WHEN button. On web the button is a plain view with an invisible native
-  // picker overlaid on top (opens a floating popup — no layout shift). On native
-  // it's a Pressable that toggles the inline DateTimePicker below.
-  function renderPickerField(kind: 'date' | 'time') {
-    const labelText =
-      kind === 'date' ? formatEventDate(date.toISOString()) : formatEventTime(date.toISOString());
-    if (Platform.OS === 'web') {
-      return (
-        <View style={styles.dateButtonWrap}>
-          <View style={[styles.card, styles.dateButton]}>
-            <Text style={styles.dateText}>{labelText}</Text>
-          </View>
-          {React.createElement('input', {
-            type: kind,
-            value: kind === 'date' ? toDateInputValue(date) : toTimeInputValue(date),
-            onChange: (e: { target: { value: string } }) => updateDate(kind, e.target.value),
-            onClick: (e: { currentTarget: { showPicker?: () => void } }) =>
-              e.currentTarget.showPicker?.(),
-            'aria-label': kind === 'date' ? 'Event date' : 'Event time',
-            style: webPickerOverlayStyle,
-          })}
-        </View>
-      );
-    }
-    return (
-      <PaperPressable
-        style={styles.dateButton}
-        onPress={() => setPicker(picker === kind ? null : kind)}
-      >
-        <Text style={styles.dateText}>{labelText}</Text>
-      </PaperPressable>
-    );
-  }
-
+  // Pick a new photo, then drop into the in-app cropper.
   async function onPickPhoto() {
     if (uploadingCover) return;
+    const picked = await pickRawImage();
+    if (picked) setCropSrc({ uri: picked.uri, width: picked.width, height: picked.height });
+  }
+
+  // Re-open the cropper on the cover already set, to reposition / zoom it.
+  function onAdjustPhoto() {
+    if (uploadingCover || !coverImage) return;
+    const uri = mediaUrl(coverImage);
+    if (uri) setCropSrc({ uri });
+  }
+
+  async function onCropConfirm(crop: CropRect) {
+    if (!cropSrc) return;
     setUploadingCover(true);
-    const url = await pickCoverImage();
+    const url = await uploadCroppedImage(cropSrc.uri, crop);
     if (url) setCoverImage(url);
     setUploadingCover(false);
+    setCropSrc(null);
   }
 
   return (
@@ -342,18 +280,6 @@ export function EventForm({ initial, submitLabel, onSubmit, footer }: Props) {
           >
             <Text style={styles.formCloseText}>✕</Text>
           </Pressable>
-          <Pressable
-            onPress={submit}
-            disabled={saving}
-            style={[
-              styles.formSave,
-              { backgroundColor: ink.dark ? '#fff' : colors.ink, opacity: saving ? 0.5 : 1 },
-            ]}
-          >
-            <Text style={[styles.formSaveText, { color: ink.dark ? colors.ink : '#fff' }]}>
-              {saving ? 'Saving…' : 'Save'}
-            </Text>
-          </Pressable>
         </View>
       </SafeAreaView>
       <KeyboardAvoidingView
@@ -366,8 +292,7 @@ export function EventForm({ initial, submitLabel, onSubmit, footer }: Props) {
           contentContainerStyle={styles.content}
           keyboardShouldPersistTaps="handled"
         >
-        {/* Title and its typeface live in ONE box — the name up top, the four
-            font choices right beneath it, like the reference poster editor. */}
+        {/* Just the event name — type it and go. */}
         <View style={styles.titleBox}>
           <TextInput
             value={title}
@@ -375,34 +300,8 @@ export function EventForm({ initial, submitLabel, onSubmit, footer }: Props) {
             placeholder="Untitled Event"
             placeholderTextColor={colors.muted}
             maxLength={LIMITS.title}
-            // Pin the line box so switching fonts only swaps the glyphs — the
-            // field keeps the same height instead of growing for tall faces
-            // (Pacifico/Bungee) and shrinking for compact ones.
             style={[styles.titleInput, titleFontStyle(titleFont)]}
           />
-          <View style={styles.fontBar}>
-            {TITLE_FONTS.map((f) => {
-              const selected = titleFont === f;
-              return (
-                <Pressable
-                  key={f}
-                  onPress={() => setTitleFont(f)}
-                  style={[styles.fontSeg, selected && styles.fontSegActive]}
-                >
-                  <Text
-                    style={[
-                      styles.fontSegText,
-                      titleFontStyle(f),
-                      { color: selected ? '#fff' : light.text3 },
-                    ]}
-                    numberOfLines={1}
-                  >
-                    {TITLE_FONT_LABELS[f]}
-                  </Text>
-                </Pressable>
-              );
-            })}
-          </View>
         </View>
 
         {/* The cover the guest will see — framed against the full-screen theme. */}
@@ -417,72 +316,51 @@ export function EventForm({ initial, submitLabel, onSubmit, footer }: Props) {
               {uploadingCover
                 ? 'Uploading…'
                 : coverImage
-                  ? '🖼  Change cover photo'
+                  ? '🖼  Change photo'
                   : '🖼  Add cover photo'}
             </Text>
           </PaperPressable>
           {coverImage && !uploadingCover ? (
-            <Pressable style={styles.photoRemove} onPress={() => setCoverImage('')} hitSlop={8}>
-              <Text style={styles.photoRemoveText}>Remove</Text>
-            </Pressable>
+            <>
+              <Pressable style={styles.photoRemove} onPress={onAdjustPhoto} hitSlop={8}>
+                <Text style={styles.photoRemoveText}>Adjust</Text>
+              </Pressable>
+              <Pressable style={styles.photoRemove} onPress={() => setCoverImage('')} hitSlop={8}>
+                <Text style={styles.photoRemoveText}>Remove</Text>
+              </Pressable>
+            </>
           ) : null}
         </View>
-
-        <PaperPressable onPress={() => setIsPublic(!isPublic)} style={styles.publicPill}>
-          <Text style={styles.publicPillText}>
-            {isPublic ? '🌐 Public — anyone can find it' : '🔒 Private — invite only'}
-          </Text>
-          <Text style={styles.publicPillAction}>
-            {isPublic ? 'Make private' : 'Make it public'}
-          </Text>
-        </PaperPressable>
 
         <View style={{ gap: spacing.xs }}>
           <SectionLabel color={ink.faint}>When</SectionLabel>
-          <View style={styles.dateRow}>
-            {renderPickerField('date')}
-            {renderPickerField('time')}
-          </View>
-          {Platform.OS !== 'web' && picker ? (
-            <DateTimePicker
-              value={date}
-              mode={picker}
-              display={Platform.OS === 'ios' ? 'spinner' : 'default'}
-              onChange={onPickerChange}
-              themeVariant="light"
-            />
-          ) : null}
+          <PaperPressable
+            style={styles.whenButton}
+            onPress={() => {
+              // Seed a sensible default the first time When opens so the picker
+              // starts on a real value the host can accept or adjust.
+              if (!date) setDate(defaultDate());
+              setDateSheetOpen(true);
+            }}
+          >
+            <Text style={[styles.dateText, !date && styles.datePlaceholder]}>
+              {date
+                ? `${formatEventDate(date.toISOString())} · ${formatEventTime(date.toISOString())}`
+                : 'Add a date & time'}
+            </Text>
+          </PaperPressable>
         </View>
 
-        <PaperField
-          label="Where"
+        <LocationPicker
+          label="Location"
           labelColor={ink.faint}
           value={location}
-          onChangeText={setLocation}
-          placeholder="Location"
-          maxLength={LIMITS.location}
+          city={city}
+          onChange={(loc, cty) => {
+            setLocation(loc);
+            setCity(cty);
+          }}
         />
-        <CityPicker label="City" labelColor={ink.faint} value={city} onChange={setCity} />
-
-        <View style={{ gap: spacing.xs }}>
-          <SectionLabel color={ink.faint}>Category</SectionLabel>
-          <View style={styles.themeRow}>
-            {CATEGORIES.map((cat) => {
-              const active = category === cat;
-              return (
-                <Pressable
-                  key={cat}
-                  onPress={() => setCategory(cat)}
-                  style={[styles.optionPill, active && styles.optionPillActive]}
-                >
-                  <Text style={[styles.chipLabel, { color: active ? '#fff' : light.text2 }]}>
-                    {CATEGORY_META[cat].emoji} {CATEGORY_META[cat].label}
-                  </Text>
-                </Pressable>
-              );
-            })}
-          </View>
-        </View>
 
         {/* Collapsed to a compact row — tapping opens the full-screen note
             editor (bullets, font size) instead of a big always-open box. */}
@@ -507,6 +385,7 @@ export function EventForm({ initial, submitLabel, onSubmit, footer }: Props) {
           title={submitLabel}
           onPress={submit}
           loading={saving}
+          disabled={!canSave}
           variant={ink.dark ? 'paper' : 'primary'}
         />
         {footer}
@@ -599,6 +478,23 @@ export function EventForm({ initial, submitLabel, onSubmit, footer }: Props) {
           onClose={() => setEffectPickerOpen(false)}
         />
       ) : null}
+      {dateSheetOpen ? (
+        <DateTimeSheet
+          date={date ?? defaultDate()}
+          onChange={setDate}
+          onClose={() => setDateSheetOpen(false)}
+        />
+      ) : null}
+      {cropSrc ? (
+        <ImageCropSheet
+          uri={cropSrc.uri}
+          width={cropSrc.width}
+          height={cropSrc.height}
+          busy={uploadingCover}
+          onCancel={() => setCropSrc(null)}
+          onConfirm={onCropConfirm}
+        />
+      ) : null}
       {settingsOpen ? (
         <EventSettingsSheet
           isPublic={isPublic}
@@ -642,17 +538,6 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: colors.text,
   },
-  formSave: {
-    borderRadius: 999,
-    paddingHorizontal: 22,
-    paddingVertical: 10,
-    ...shadow.card,
-  },
-  formSaveText: {
-    fontSize: 15,
-    fontWeight: '700',
-    letterSpacing: -0.3,
-  },
   container: {
     flex: 1,
     backgroundColor: 'transparent',
@@ -670,18 +555,20 @@ const styles = StyleSheet.create({
 
   // ── Shared paper surfaces (opaque; lift off the gradient with a shadow) ──
   card: {
+    // Flat paper field, Partiful-style: a thin hairline instead of a puffy
+    // drop shadow, so buttons sit calmly on the linen canvas.
     backgroundColor: colors.card,
     borderWidth: 1,
     borderColor: colors.cardBorder,
     borderRadius: radius.md,
-    ...shadow.card,
   },
   cardPressed: {
     opacity: 0.7,
   },
   cardBtnText: {
+    // Medium weight, not heavy — matches Partiful's calm field labels.
     color: colors.text,
-    ...uiText(15, '700'),
+    ...uiText(15, '600'),
   },
   inputCard: {
     backgroundColor: colors.inputBg,
@@ -741,26 +628,6 @@ const styles = StyleSheet.create({
     marginBottom: spacing.xs,
   },
 
-  // ── Public toggle ──
-  publicPill: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    borderRadius: radius.pill,
-    paddingVertical: 12,
-    paddingHorizontal: spacing.md,
-    gap: spacing.sm,
-  },
-  publicPillText: {
-    color: light.text2,
-    ...uiText(13, '600'),
-    flexShrink: 1,
-  },
-  publicPillAction: {
-    color: colors.accentDark,
-    ...uiText(13, '700'),
-  },
-
   // ── Photo / style buttons ──
   photoRow: {
     flexDirection: 'row',
@@ -778,48 +645,10 @@ const styles = StyleSheet.create({
   },
   photoRemoveText: {
     color: colors.accentDark,
-    ...uiText(14, '700'),
+    ...uiText(14, '600'),
   },
-  // ── Font segmented control (inset row of the title box) ──
-  fontBar: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: colors.inputBg,
-    borderWidth: 1,
-    borderColor: colors.cardBorder,
-    borderRadius: radius.pill,
-    padding: 4,
-    gap: 2,
-  },
-  fontSeg: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 9,
-    paddingHorizontal: 2,
-    borderRadius: radius.pill,
-  },
-  fontSegActive: {
-    backgroundColor: colors.ink,
-  },
-  // Small enough that the widest face (Bungee "Eclectic") fits its segment.
-  fontSegText: {
-    fontSize: 13,
-  },
-
-  // ── Date / time ──
-  dateRow: {
-    flexDirection: 'row',
-    gap: spacing.sm,
-  },
-  // Web wraps each date button so the invisible native <input> overlay can be
-  // absolutely positioned over it (opens the picker without shifting the form).
-  dateButtonWrap: {
-    flex: 1,
-    position: 'relative',
-  },
-  dateButton: {
-    flex: 1,
+  // ── Date / time (one combined button, opens the Date & Time sheet) ──
+  whenButton: {
     paddingVertical: 14,
     alignItems: 'center',
   },
@@ -827,28 +656,8 @@ const styles = StyleSheet.create({
     color: colors.text,
     ...uiText(16, '600'),
   },
-
-  // ── Category pills ──
-  themeRow: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: spacing.sm,
-  },
-  optionPill: {
-    backgroundColor: colors.card,
-    borderWidth: 1,
-    borderColor: colors.cardBorder,
-    borderRadius: radius.pill,
-    paddingHorizontal: spacing.md,
-    paddingVertical: 8,
-    ...shadow.card,
-  },
-  optionPillActive: {
-    backgroundColor: colors.ink,
-    borderColor: colors.ink,
-  },
-  chipLabel: {
-    ...uiText(13, '600'),
+  datePlaceholder: {
+    color: colors.muted,
   },
 
   // ── Description (compact row → full-screen note editor) ──

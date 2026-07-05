@@ -9,8 +9,7 @@ import {
   type TextInputProps,
   type ViewStyle,
 } from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
-import { brand, colors, light, radius, shadow, spacing } from '../lib/theme';
+import { colors, light, radius, spacing } from '../lib/theme';
 
 export type ButtonVariant = 'primary' | 'vibrant' | 'paper' | 'ghost' | 'danger';
 
@@ -122,17 +121,22 @@ export function ErrorText({ message }: { message: string | null }) {
 const styles = StyleSheet.create({
   button: {
     borderRadius: radius.pill,
-    paddingVertical: 16,
+    paddingVertical: 15,
     paddingHorizontal: spacing.xl,
     alignItems: 'center',
     justifyContent: 'center',
   },
   solid: {
-    // Heavy black CTAs get a subtle lift so they read as physical.
-    ...shadow.card,
+    // A gentle, close lift — Partiful buttons sit near-flat on the page,
+    // not puffy. Soft shadow instead of the heavy card elevation.
+    shadowColor: '#000',
+    shadowOpacity: 0.08,
+    shadowRadius: 6,
+    shadowOffset: { width: 0, height: 2 },
+    elevation: 2,
   },
   ghost: {
-    borderWidth: 2,
+    borderWidth: 1.5,
     backgroundColor: 'transparent',
   },
   pressed: {
@@ -143,9 +147,10 @@ const styles = StyleSheet.create({
     opacity: 0.45,
   },
   buttonText: {
+    // Partiful labels are medium-weight, not heavy — calmer, less shouty.
     fontSize: 16,
-    fontWeight: '700',
-    letterSpacing: -0.5,
+    fontWeight: '600',
+    letterSpacing: -0.2,
   },
   label: {
     color: colors.muted,

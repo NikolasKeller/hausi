@@ -263,7 +263,7 @@ const styles = StyleSheet.create({
   gridScroll: { flex: 1 },
   tab: { gap: 6 },
   tabEmoji: { fontSize: 13 },
-  tabLabel: { ...uiText(13, '700'), color: 'rgba(255,255,255,0.7)' },
+  tabLabel: { ...uiText(13, '600'), color: 'rgba(255,255,255,0.7)' },
   tabLabelActive: { color: '#fff' },
   grid: {
     flexDirection: 'row',
@@ -282,7 +282,7 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
     alignItems: 'center',
     justifyContent: 'center',
-    borderWidth: 2,
+    borderWidth: 1,
     borderColor: 'rgba(255,255,255,0.18)',
   },
   circle: {
@@ -292,11 +292,11 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
     alignItems: 'center',
     justifyContent: 'center',
-    borderWidth: 2,
+    borderWidth: 1,
     borderColor: 'rgba(255,255,255,0.18)',
     backgroundColor: 'rgba(30,26,48,0.7)',
   },
-  swatchSelected: { borderColor: '#fff', borderWidth: 3 },
+  swatchSelected: { borderColor: '#fff', borderWidth: 1.5 },
   swatchEmoji: { fontSize: 30, opacity: 0.9 },
   effectEmoji: { fontSize: 34 },
   check: {

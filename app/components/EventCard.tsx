@@ -72,7 +72,7 @@ export function EventCard({ event }: { event: EventSummary }) {
 const styles = StyleSheet.create({
   card: {
     backgroundColor: colors.card,
-    borderRadius: radius.lg,
+    borderRadius: radius.md,
     borderWidth: 1,
     borderColor: colors.cardBorder,
     overflow: 'hidden',
