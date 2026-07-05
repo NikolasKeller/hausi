@@ -1,5 +1,6 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
+  Keyboard,
   KeyboardAvoidingView,
   Platform,
   Pressable,
@@ -13,8 +14,10 @@ import {
   type TextInputProps,
   type ViewStyle,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import DateTimePicker from '@react-native-community/datetimepicker';
+import { LinearGradient } from 'expo-linear-gradient';
+import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import {
   CATEGORIES,
@@ -28,11 +31,13 @@ import {
   type TitleFont,
 } from '../shared/types';
 import { colors, light, radius, shadow, spacing } from '../lib/theme';
-import { themeInk } from '../lib/covers';
+import { coverFor, themeInk } from '../lib/covers';
 import { TITLE_FONT_LABELS, titleFontStyle, kicker, uiText } from '../lib/fonts';
 import { CoverGradient } from './CoverGradient';
-import { EffectOverlay } from './EffectOverlay';
+import { EFFECT_META, EffectOverlay } from './EffectOverlay';
 import { Button, ErrorText } from './ui';
+import { EventSettingsSheet } from './EventSettingsSheet';
+import { Glass } from './glass';
 import { ThemeBackground, ThemePicker, EffectPicker } from './themes';
 import { Burst } from './partiful';
 import { formatEventDate, formatEventTime } from './EventCard';
@@ -174,11 +179,38 @@ export function EventForm({ initial, submitLabel, onSubmit, footer }: Props) {
   const [picker, setPicker] = useState<'date' | 'time' | null>(null);
   const [themePickerOpen, setThemePickerOpen] = useState(false);
   const [effectPickerOpen, setEffectPickerOpen] = useState(false);
+  const [settingsOpen, setSettingsOpen] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+  const [keyboardOpen, setKeyboardOpen] = useState(false);
+  const insets = useSafeAreaInsets();
+
+  // Hide the floating taskbar while typing — on Android the window resizes for
+  // the keyboard, which would otherwise park the bar right on top of the
+  // focused field (and swallow the taps meant to refocus it).
+  useEffect(() => {
+    const show = Keyboard.addListener(
+      Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow',
+      () => setKeyboardOpen(true)
+    );
+    const hide = Keyboard.addListener(
+      Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide',
+      () => setKeyboardOpen(false)
+    );
+    return () => {
+      show.remove();
+      hide.remove();
+    };
+  }, []);
 
   // Mood-aware ink for the few labels/CTAs that sit directly on the gradient.
   const ink = themeInk(coverTheme);
+  const cover = coverFor(coverTheme);
+  const effectMeta = effect === 'none' ? null : EFFECT_META.find((e) => e.key === effect);
+  // Dot on the Settings gear when values that only live in the sheet are set —
+  // e.g. a party-starter template seeded a dress code the user hasn't seen.
+  const hasHiddenSettings =
+    Boolean(costPerPerson.trim() || dressCode.trim() || maxGuests.trim()) || plusOneLimit !== 1;
 
   async function submit() {
     if (!title.trim()) {
@@ -187,7 +219,10 @@ export function EventForm({ initial, submitLabel, onSubmit, footer }: Props) {
     }
     const guests = maxGuests.trim() ? Number(maxGuests.trim()) : null;
     if (guests != null && (!Number.isInteger(guests) || guests < 1 || guests > LIMITS.maxGuests)) {
-      setError(`Max guests must be a whole number between 1 and ${LIMITS.maxGuests}`);
+      setError(`Max guests (in Settings) must be a whole number between 1 and ${LIMITS.maxGuests}`);
+      // The field lives in the settings sheet now — open it so the error
+      // points at something the user can see.
+      setSettingsOpen(true);
       return;
     }
     setError(null);
@@ -321,43 +356,43 @@ export function EventForm({ initial, submitLabel, onSubmit, footer }: Props) {
           </Text>
         </PaperPressable>
 
-        {/* Title first, with the font picker directly beneath it — the poster
-            editor order from the reference. */}
-        <PaperField
-          label="Event title"
-          labelColor={ink.faint}
-          value={title}
-          onChangeText={setTitle}
-          placeholder="Untitled Event"
-          maxLength={LIMITS.title}
-          // Pin the line box so switching fonts only swaps the glyphs — the
-          // field keeps the same height instead of growing for tall faces
-          // (Pacifico/Bungee) and shrinking for compact ones.
-          style={[titleFontStyle(titleFont), styles.titleFieldInput]}
-        />
-
-        <View style={styles.fontBar}>
-          {TITLE_FONTS.map((f) => {
-            const selected = titleFont === f;
-            return (
-              <Pressable
-                key={f}
-                onPress={() => setTitleFont(f)}
-                style={[styles.fontSeg, selected && styles.fontSegActive]}
-              >
-                <Text
-                  style={[
-                    styles.fontSegText,
-                    titleFontStyle(f),
-                    { color: selected ? '#fff' : light.text3 },
-                  ]}
-                  numberOfLines={1}
+        {/* Title and its typeface live in ONE box — the name up top, the four
+            font choices right beneath it, like the reference poster editor. */}
+        <View style={styles.titleBox}>
+          <TextInput
+            value={title}
+            onChangeText={setTitle}
+            placeholder="Untitled Event"
+            placeholderTextColor={colors.muted}
+            maxLength={LIMITS.title}
+            // Pin the line box so switching fonts only swaps the glyphs — the
+            // field keeps the same height instead of growing for tall faces
+            // (Pacifico/Bungee) and shrinking for compact ones.
+            style={[styles.titleInput, titleFontStyle(titleFont)]}
+          />
+          <View style={styles.fontBar}>
+            {TITLE_FONTS.map((f) => {
+              const selected = titleFont === f;
+              return (
+                <Pressable
+                  key={f}
+                  onPress={() => setTitleFont(f)}
+                  style={[styles.fontSeg, selected && styles.fontSegActive]}
                 >
-                  {TITLE_FONT_LABELS[f]}
-                </Text>
-              </Pressable>
-            );
-          })}
+                  <Text
+                    style={[
+                      styles.fontSegText,
+                      titleFontStyle(f),
+                      { color: selected ? '#fff' : light.text3 },
+                    ]}
+                    numberOfLines={1}
+                  >
+                    {TITLE_FONT_LABELS[f]}
+                  </Text>
+                </Pressable>
+              );
+            })}
+          </View>
         </View>
 
         {/* The cover the guest will see — framed against the full-screen theme. */}
@@ -381,15 +416,6 @@ export function EventForm({ initial, submitLabel, onSubmit, footer }: Props) {
               <Text style={styles.photoRemoveText}>Remove</Text>
             </Pressable>
           ) : null}
-        </View>
-
-        <View style={styles.styleRow}>
-          <PaperPressable style={styles.styleBtn} onPress={() => setThemePickerOpen(true)}>
-            <Text style={styles.cardBtnText}>🎨 Theme</Text>
-          </PaperPressable>
-          <PaperPressable style={styles.styleBtn} onPress={() => setEffectPickerOpen(true)}>
-            <Text style={styles.cardBtnText}>✨ Effect</Text>
-          </PaperPressable>
         </View>
 
         <View style={{ gap: spacing.xs }}>
@@ -446,23 +472,6 @@ export function EventForm({ initial, submitLabel, onSubmit, footer }: Props) {
           </View>
         </View>
 
-        <PaperField
-          label="Cost per person (optional)"
-          labelColor={ink.faint}
-          value={costPerPerson}
-          onChangeText={setCostPerPerson}
-          placeholder="Free"
-          maxLength={60}
-        />
-        <PaperField
-          label="Dress code (optional)"
-          labelColor={ink.faint}
-          value={dressCode}
-          onChangeText={setDressCode}
-          placeholder="Come as you are"
-          maxLength={120}
-        />
-
         <View style={{ gap: 6 }}>
           <SectionLabel color={ink.faint}>Description</SectionLabel>
           <View style={styles.inputCard}>
@@ -479,36 +488,6 @@ export function EventForm({ initial, submitLabel, onSubmit, footer }: Props) {
           </View>
         </View>
 
-        <PaperField
-          label="Max guests (optional)"
-          labelColor={ink.faint}
-          value={maxGuests}
-          onChangeText={setMaxGuests}
-          placeholder="Unlimited spots"
-          keyboardType="number-pad"
-        />
-
-        <View style={styles.plusOneRow}>
-          <Text style={styles.plusOneLabel}>Plus ones per guest</Text>
-          <View style={styles.stepper}>
-            <Pressable
-              onPress={() => setPlusOneLimit(Math.max(0, plusOneLimit - 1))}
-              style={styles.stepButton}
-            >
-              <Text style={styles.stepText}>−</Text>
-            </Pressable>
-            <Text style={styles.plusOneValue}>
-              {plusOneLimit === 0 ? 'None' : `+${plusOneLimit}`}
-            </Text>
-            <Pressable
-              onPress={() => setPlusOneLimit(Math.min(LIMITS.plusOnes, plusOneLimit + 1))}
-              style={styles.stepButton}
-            >
-              <Text style={styles.stepText}>＋</Text>
-            </Pressable>
-          </View>
-        </View>
-
         <ErrorText message={error} />
         <Button
           title={submitLabel}
@@ -519,6 +498,55 @@ export function EventForm({ initial, submitLabel, onSubmit, footer }: Props) {
         {footer}
         </ScrollView>
       </KeyboardAvoidingView>
+
+      {/* Floating mini taskbar — Theme, Effect, Settings (reference order).
+          Glass pinned above the bottom edge; the form scrolls underneath it. */}
+      {keyboardOpen ? null : (
+      <View
+        pointerEvents="box-none"
+        style={[styles.taskbarWrap, { bottom: insets.bottom + spacing.sm }]}
+      >
+        <Glass
+          tint={ink.glassTint}
+          intensity={40}
+          radius={radius.pill}
+          border
+          fill={ink.dark ? 'rgba(15,12,24,0.45)' : 'rgba(255,255,255,0.5)'}
+          style={styles.taskbar}
+        >
+          <Pressable style={styles.taskbarItem} onPress={() => setThemePickerOpen(true)}>
+            <View style={[styles.taskbarSwatch, { borderColor: ink.hairline }]}>
+              <LinearGradient
+                colors={cover.colors}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+                style={StyleSheet.absoluteFill}
+              />
+            </View>
+            <Text style={[styles.taskbarLabel, { color: ink.text }]}>Theme</Text>
+          </Pressable>
+          <Pressable style={styles.taskbarItem} onPress={() => setEffectPickerOpen(true)}>
+            <View
+              style={[styles.taskbarSwatch, styles.taskbarEffectSwatch, { borderColor: ink.hairline }]}
+            >
+              {effectMeta ? (
+                <Text style={styles.taskbarEffectEmoji}>{effectMeta.emoji}</Text>
+              ) : (
+                <Ionicons name="close" size={16} color="rgba(255,255,255,0.7)" />
+              )}
+            </View>
+            <Text style={[styles.taskbarLabel, { color: ink.text }]}>Effect</Text>
+          </Pressable>
+          <Pressable style={styles.taskbarItem} onPress={() => setSettingsOpen(true)}>
+            <View style={styles.taskbarIconWrap}>
+              <Ionicons name="settings-sharp" size={26} color={ink.text} />
+              {hasHiddenSettings ? <View style={styles.taskbarDot} /> : null}
+            </View>
+            <Text style={[styles.taskbarLabel, { color: ink.text }]}>Settings</Text>
+          </Pressable>
+        </Glass>
+      </View>
+      )}
 
       {/* Full-screen effect: drifts over everything (pointerEvents none, so it
           never blocks taps and never obscures the opaque controls). */}
@@ -546,6 +574,21 @@ export function EventForm({ initial, submitLabel, onSubmit, footer }: Props) {
             setEffectPickerOpen(false);
           }}
           onClose={() => setEffectPickerOpen(false)}
+        />
+      ) : null}
+      {settingsOpen ? (
+        <EventSettingsSheet
+          isPublic={isPublic}
+          onTogglePublic={() => setIsPublic(!isPublic)}
+          maxGuests={maxGuests}
+          onChangeMaxGuests={(v) => setMaxGuests(v.replace(/\D/g, ''))}
+          plusOneLimit={plusOneLimit}
+          onChangePlusOneLimit={setPlusOneLimit}
+          costPerPerson={costPerPerson}
+          onChangeCostPerPerson={setCostPerPerson}
+          dressCode={dressCode}
+          onChangeDressCode={setDressCode}
+          onClose={() => setSettingsOpen(false)}
         />
       ) : null}
     </ThemeBackground>
@@ -594,7 +637,9 @@ const styles = StyleSheet.create({
   content: {
     padding: spacing.lg,
     gap: spacing.lg,
-    paddingBottom: spacing.section,
+    // Extra room at the end so the submit button scrolls clear of the
+    // floating taskbar.
+    paddingBottom: spacing.section + 72,
   },
 
   // ── Shared paper surfaces (opaque; lift off the gradient with a shadow) ──
@@ -625,9 +670,24 @@ const styles = StyleSheet.create({
     paddingVertical: 14,
     fontSize: 16,
   },
+  // ── Title box (name + font picker as one unit) ──
+  titleBox: {
+    backgroundColor: colors.card,
+    borderWidth: 1,
+    borderColor: colors.cardBorder,
+    borderRadius: radius.lg,
+    padding: spacing.sm,
+    gap: spacing.sm,
+    ...shadow.card,
+  },
   // Fixed line box so the title field height stays constant across title fonts.
-  titleFieldInput: {
-    lineHeight: 24,
+  titleInput: {
+    color: colors.text,
+    fontSize: 26,
+    lineHeight: 40,
+    textAlign: 'center',
+    paddingHorizontal: spacing.md,
+    paddingVertical: 8,
   },
   sectionLabel: {
     ...kicker(light.text3),
@@ -697,41 +757,31 @@ const styles = StyleSheet.create({
     textShadowOffset: { width: 0, height: 1 },
     textShadowRadius: 3,
   },
-  styleRow: {
-    flexDirection: 'row',
-    gap: spacing.sm,
-  },
-  styleBtn: {
-    flex: 1,
-    paddingVertical: 14,
-    alignItems: 'center',
-  },
-
-  // ── Font segmented control ──
+  // ── Font segmented control (inset row of the title box) ──
   fontBar: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: colors.card,
+    backgroundColor: colors.inputBg,
     borderWidth: 1,
     borderColor: colors.cardBorder,
     borderRadius: radius.pill,
     padding: 4,
     gap: 2,
-    ...shadow.card,
   },
   fontSeg: {
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
     paddingVertical: 9,
-    paddingHorizontal: 4,
+    paddingHorizontal: 2,
     borderRadius: radius.pill,
   },
   fontSegActive: {
     backgroundColor: colors.ink,
   },
+  // Small enough that the widest face (Bungee "Eclectic") fits its segment.
   fontSegText: {
-    fontSize: 15,
+    fontSize: 13,
   },
 
   // ── Date / time ──
@@ -784,47 +834,55 @@ const styles = StyleSheet.create({
     textAlignVertical: 'top',
   },
 
-  // ── Plus-one stepper ──
-  plusOneRow: {
+  // ── Floating mini taskbar (Theme / Effect / Settings) ──
+  taskbarWrap: {
+    position: 'absolute',
+    left: spacing.lg,
+    right: spacing.lg,
+    zIndex: 10,
+  },
+  taskbar: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
-    backgroundColor: colors.card,
-    borderWidth: 1,
-    borderColor: colors.cardBorder,
-    borderRadius: radius.md,
-    padding: spacing.sm,
+    paddingVertical: 10,
     paddingHorizontal: spacing.md,
-    ...shadow.card,
+    ...shadow.float,
   },
-  plusOneLabel: {
-    color: light.text2,
-    ...uiText(15, '600'),
-  },
-  stepper: {
-    flexDirection: 'row',
+  taskbarItem: {
+    flex: 1,
     alignItems: 'center',
-    gap: spacing.md,
+    gap: 4,
   },
-  stepButton: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
+  taskbarSwatch: {
+    width: 34,
+    height: 34,
+    borderRadius: 17,
+    overflow: 'hidden',
+    borderWidth: 1.5,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: colors.inputBg,
-    borderWidth: 1,
-    borderColor: colors.cardBorder,
   },
-  stepText: {
-    color: colors.text,
-    fontSize: 18,
-    fontWeight: '700',
+  taskbarEffectSwatch: {
+    backgroundColor: 'rgba(30,26,48,0.7)',
   },
-  plusOneValue: {
-    color: colors.text,
-    ...uiText(16, '800'),
-    minWidth: 44,
-    textAlign: 'center',
+  taskbarEffectEmoji: {
+    fontSize: 17,
+  },
+  taskbarIconWrap: {
+    height: 34,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  taskbarDot: {
+    position: 'absolute',
+    top: 2,
+    right: -4,
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: colors.accent,
+  },
+  taskbarLabel: {
+    ...uiText(12, '600'),
   },
 });
