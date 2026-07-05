@@ -116,11 +116,31 @@ export function toExploreEvent(
         (r) => r.status === 'GOING' && r.userId !== viewerId && friendIds.has(r.userId)
       )
     : undefined;
+  // A few faces for the interested cluster: mutuals first, then anyone else
+  // who's GOING/MAYBE, skipping the viewer and de-duping emoji.
+  const interestedRsvps = event.rsvps.filter(
+    (r) => (r.status === 'GOING' || r.status === 'MAYBE') && r.userId !== viewerId
+  );
+  interestedRsvps.sort((a, b) => {
+    const aFriend = friendIds?.has(a.userId) ? 0 : 1;
+    const bFriend = friendIds?.has(b.userId) ? 0 : 1;
+    if (aFriend !== bFriend) return aFriend - bFriend;
+    // GOING ahead of MAYBE within each group.
+    return (a.status === 'GOING' ? 0 : 1) - (b.status === 'GOING' ? 0 : 1);
+  });
+  const interestedAvatars: string[] = [];
+  for (const r of interestedRsvps) {
+    if (!interestedAvatars.includes(r.user.avatarEmoji)) {
+      interestedAvatars.push(r.user.avatarEmoji);
+    }
+    if (interestedAvatars.length >= 5) break;
+  }
   return {
     ...toEventSummary(event, viewerId),
     description: event.description,
     interested: counts.going + counts.maybe,
     friendGoing: friend ? toPublicUser(friend.user) : null,
+    interestedAvatars,
   };
 }
 

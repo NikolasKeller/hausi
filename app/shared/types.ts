@@ -172,6 +172,9 @@ export interface ExploreEvent extends EventSummary {
   description: string;
   interested: number;
   friendGoing: PublicUser | null;
+  // A handful of attendee avatar emoji (mutuals first) for the interested-face
+  // cluster on discovery cards. Up to 5; may be empty.
+  interestedAvatars: string[];
 }
 
 export interface EventDetail extends EventSummary {
