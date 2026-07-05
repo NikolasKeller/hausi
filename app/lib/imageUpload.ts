@@ -4,10 +4,23 @@ import { manipulateAsync, SaveFormat } from 'expo-image-manipulator';
 import { api } from './api';
 import { notify } from './dialogs';
 
-// Pick a photo, downscale + compress it to a small JPEG, upload it, and return
-// the server path (e.g. "/uploads/x.jpg"). Returns null if the user cancels.
-// Works on native (photo library) and web (file picker).
-export async function pickCoverImage(): Promise<string | null> {
+export interface PickedImage {
+  uri: string;
+  width: number;
+  height: number;
+}
+
+export interface CropRect {
+  originX: number;
+  originY: number;
+  width: number;
+  height: number;
+}
+
+// Open the photo library and hand back the raw pick (no forced editing) so our
+// own in-app cropper can run on every platform — the native editor is skipped
+// on web and inconsistent across OSes. Returns null if the user cancels.
+export async function pickRawImage(): Promise<PickedImage | null> {
   try {
     if (Platform.OS !== 'web') {
       const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
@@ -19,16 +32,28 @@ export async function pickCoverImage(): Promise<string | null> {
 
     const result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ['images'],
-      allowsEditing: true,
-      aspect: [16, 10],
+      allowsEditing: false, // we crop in-app so the flow is identical everywhere
       quality: 1,
     });
     if (result.canceled || !result.assets?.length) return null;
 
-    // Normalize to a ~1280px-wide JPEG so uploads stay small and consistent.
+    const a = result.assets[0];
+    return { uri: a.uri, width: a.width ?? 0, height: a.height ?? 0 };
+  } catch (e) {
+    notify('Couldn’t open photos', e instanceof Error ? e.message : 'Could not add that photo');
+    return null;
+  }
+}
+
+// Crop a picked photo to the region the user framed, normalize to a ~1280px
+// JPEG so uploads stay small and consistent, upload it, and return the server
+// path (e.g. "/uploads/x.jpg"). Returns null on failure. Works on native and
+// web (expo-image-manipulator uses a canvas on web).
+export async function uploadCroppedImage(uri: string, crop: CropRect): Promise<string | null> {
+  try {
     const edited = await manipulateAsync(
-      result.assets[0].uri,
-      [{ resize: { width: 1280 } }],
+      uri,
+      [{ crop }, { resize: { width: 1280 } }],
       { compress: 0.7, format: SaveFormat.JPEG, base64: true }
     );
     if (!edited.base64) return null;
@@ -36,7 +61,7 @@ export async function pickCoverImage(): Promise<string | null> {
     const { url } = await api.uploadImage(edited.base64, 'image/jpeg');
     return url;
   } catch (e) {
-    notify('Upload failed', e instanceof Error ? e.message : 'Could not add that photo');
+    notify('Upload failed', e instanceof Error ? e.message : 'Could not save that photo');
     return null;
   }
 }

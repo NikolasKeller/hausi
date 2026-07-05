@@ -40,7 +40,9 @@ import { ThemePicker, EffectPicker } from './themes';
 import { ScreenBackground } from './ScreenBackground';
 import { Burst } from './partiful';
 import { formatEventDate, formatEventTime } from './EventCard';
-import { pickCoverImage } from '../lib/imageUpload';
+import { ImageCropSheet } from './ImageCropSheet';
+import { pickRawImage, uploadCroppedImage, type CropRect } from '../lib/imageUpload';
+import { mediaUrl } from '../lib/api';
 
 export interface EventFormValues {
   title: string;
@@ -124,6 +126,11 @@ export function EventForm({ initial, submitLabel, onSubmit, footer }: Props) {
   const [coverTheme, setCoverTheme] = useState<CoverTheme>(initial?.coverTheme ?? 'sunset');
   const [coverImage, setCoverImage] = useState(initial?.coverImage ?? '');
   const [uploadingCover, setUploadingCover] = useState(false);
+  // The photo being cropped: a freshly picked asset (with pixel dims) or the
+  // current cover reopened for a re-crop (dims measured by the sheet).
+  const [cropSrc, setCropSrc] = useState<{ uri: string; width?: number; height?: number } | null>(
+    null
+  );
   const [titleFont, setTitleFont] = useState<TitleFont>(initial?.titleFont ?? 'classic');
   const [effect, setEffect] = useState<Effect>(initial?.effect ?? 'none');
   const [date, setDate] = useState<Date>(initial?.date ?? defaultDate());
@@ -214,12 +221,27 @@ export function EventForm({ initial, submitLabel, onSubmit, footer }: Props) {
     }
   }
 
+  // Pick a new photo, then drop into the in-app cropper.
   async function onPickPhoto() {
     if (uploadingCover) return;
+    const picked = await pickRawImage();
+    if (picked) setCropSrc({ uri: picked.uri, width: picked.width, height: picked.height });
+  }
+
+  // Re-open the cropper on the cover already set, to reposition / zoom it.
+  function onAdjustPhoto() {
+    if (uploadingCover || !coverImage) return;
+    const uri = mediaUrl(coverImage);
+    if (uri) setCropSrc({ uri });
+  }
+
+  async function onCropConfirm(crop: CropRect) {
+    if (!cropSrc) return;
     setUploadingCover(true);
-    const url = await pickCoverImage();
+    const url = await uploadCroppedImage(cropSrc.uri, crop);
     if (url) setCoverImage(url);
     setUploadingCover(false);
+    setCropSrc(null);
   }
 
   return (
@@ -296,14 +318,19 @@ export function EventForm({ initial, submitLabel, onSubmit, footer }: Props) {
               {uploadingCover
                 ? 'Uploading…'
                 : coverImage
-                  ? '🖼  Change cover photo'
+                  ? '🖼  Change photo'
                   : '🖼  Add cover photo'}
             </Text>
           </PaperPressable>
           {coverImage && !uploadingCover ? (
-            <Pressable style={styles.photoRemove} onPress={() => setCoverImage('')} hitSlop={8}>
-              <Text style={styles.photoRemoveText}>Remove</Text>
-            </Pressable>
+            <>
+              <Pressable style={styles.photoRemove} onPress={onAdjustPhoto} hitSlop={8}>
+                <Text style={styles.photoRemoveText}>Adjust</Text>
+              </Pressable>
+              <Pressable style={styles.photoRemove} onPress={() => setCoverImage('')} hitSlop={8}>
+                <Text style={styles.photoRemoveText}>Remove</Text>
+              </Pressable>
+            </>
           ) : null}
         </View>
 
@@ -436,6 +463,16 @@ export function EventForm({ initial, submitLabel, onSubmit, footer }: Props) {
           date={date}
           onChange={setDate}
           onClose={() => setDateSheetOpen(false)}
+        />
+      ) : null}
+      {cropSrc ? (
+        <ImageCropSheet
+          uri={cropSrc.uri}
+          width={cropSrc.width}
+          height={cropSrc.height}
+          busy={uploadingCover}
+          onCancel={() => setCropSrc(null)}
+          onConfirm={onCropConfirm}
         />
       ) : null}
       {settingsOpen ? (
