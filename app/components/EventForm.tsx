@@ -31,7 +31,7 @@ import {
   type TitleFont,
 } from '../shared/types';
 import { colors, light, radius, shadow, spacing } from '../lib/theme';
-import { coverFor, themeInk } from '../lib/covers';
+import { coverFor } from '../lib/covers';
 import { TITLE_FONT_LABELS, titleFontStyle, kicker, uiText } from '../lib/fonts';
 import { CoverGradient } from './CoverGradient';
 import { EFFECT_META, EffectOverlay } from './EffectOverlay';
@@ -39,7 +39,8 @@ import { Button, ErrorText } from './ui';
 import { CityPicker } from './CityPicker';
 import { EventSettingsSheet } from './EventSettingsSheet';
 import { Glass } from './glass';
-import { ThemeBackground, ThemePicker, EffectPicker } from './themes';
+import { ThemePicker, EffectPicker } from './themes';
+import { ScreenBackground } from './ScreenBackground';
 import { Burst } from './partiful';
 import { formatEventDate, formatEventTime } from './EventCard';
 import { pickCoverImage } from '../lib/imageUpload';
@@ -70,10 +71,11 @@ interface Props {
 }
 
 // ── Local "paper" primitives ──────────────────────────────────────────────────
-// The theme gradient + effect fill the whole screen, so every control is a
-// solid, opaque paper surface (near-black ink on warm white) that lifts off the
-// gradient with a soft shadow. This keeps button labels legible on ANY theme —
-// bright or dark — while the vibrant surface stays full-screen behind them.
+// The form sits on the calm warm "linen" surface shared with the rest of the
+// app, so every control is a solid, opaque paper card (near-black ink on warm
+// white) that lifts off the canvas with a soft shadow. The chosen theme shows
+// only in the live-preview cover, its taskbar swatch, and the picker — never as
+// a full-screen wash.
 
 function SectionLabel({ children, color }: { children: React.ReactNode; color?: string }) {
   return <Text style={[styles.sectionLabel, color ? { color } : null]}>{children}</Text>;
@@ -204,8 +206,16 @@ export function EventForm({ initial, submitLabel, onSubmit, footer }: Props) {
     };
   }, []);
 
-  // Mood-aware ink for the few labels/CTAs that sit directly on the gradient.
-  const ink = themeInk(coverTheme);
+  // The form now sits on the calm linen canvas (like the calendar), so labels
+  // and controls use fixed dark-on-light ink instead of a mood that flipped
+  // with the theme gradient.
+  const ink = {
+    dark: false,
+    text: colors.text,
+    faint: light.text3,
+    glassTint: 'light' as const,
+    hairline: light.hairline,
+  };
   const cover = coverFor(coverTheme);
   const effectMeta = effect === 'none' ? null : EFFECT_META.find((e) => e.key === effect);
   // Dot on the Settings gear when values that only live in the sheet are set —
@@ -314,7 +324,7 @@ export function EventForm({ initial, submitLabel, onSubmit, footer }: Props) {
   }
 
   return (
-    <ThemeBackground theme={coverTheme}>
+    <ScreenBackground>
       <SafeAreaView edges={['top']} style={{ backgroundColor: 'transparent' }}>
         <View style={styles.formHeader}>
           <Pressable
@@ -585,7 +595,7 @@ export function EventForm({ initial, submitLabel, onSubmit, footer }: Props) {
           onClose={() => setSettingsOpen(false)}
         />
       ) : null}
-    </ThemeBackground>
+    </ScreenBackground>
   );
 }
 
@@ -748,11 +758,8 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
   },
   photoRemoveText: {
-    color: '#fff',
+    color: colors.accentDark,
     ...uiText(14, '700'),
-    textShadowColor: 'rgba(0,0,0,0.35)',
-    textShadowOffset: { width: 0, height: 1 },
-    textShadowRadius: 3,
   },
   // ── Font segmented control (inset row of the title box) ──
   fontBar: {
