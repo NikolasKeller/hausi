@@ -196,33 +196,21 @@ export default function EventScreen() {
     }
   }
 
-  async function confirmDelete() {
-    if (!event) return;
-    const ok = await confirmDialog('Delete event?', 'This removes the event for all guests.', 'Delete');
-    if (!ok) return;
-    try {
-      await api.deleteEvent(event.id);
-      // Prune the local "recently viewed" cache before navigating, so the home
-      // screen's focus refetch reads the pruned list rather than racing this write.
-      await removeRecentEvent(event.slug);
-      router.replace('/');
-    } catch (e) {
-      notify('Delete failed', e instanceof Error ? e.message : 'Try again');
-    }
-  }
-
   async function confirmCancel() {
     if (!event) return;
     const ok = await confirmDialog(
       'Cancel event?',
-      'All guests will be notified. The page stays visible.',
+      'All guests will be notified and the event will be removed.',
       'Cancel event',
       'Keep event'
     );
     if (!ok) return;
     try {
-      const res = await api.cancelEvent(event.id);
-      setEvent(res.event);
+      await api.cancelEvent(event.id);
+      // Canceling hides the event everywhere, so leave the (now-gone) page and
+      // prune the local "recently viewed" cache before the home screen refetches.
+      await removeRecentEvent(event.slug);
+      router.replace('/');
     } catch (e) {
       notify('Cancel failed', e instanceof Error ? e.message : 'Try again');
     }
@@ -286,8 +274,7 @@ export default function EventScreen() {
     ])
     .filter((id): id is string => !!id)
     .join(',');
-  const isCanceled = event.canceledAt != null;
-  const rsvpLocked = isCanceled || (!event.rsvpsOpen && !event.canManage);
+  const rsvpLocked = !event.rsvpsOpen && !event.canManage;
   // Guest-list summary preview: going + maybe, in that order.
   const previewGuests = event.rsvps.filter(
     (r) => r.status === 'GOING' || r.status === 'MAYBE'
@@ -333,14 +320,6 @@ export default function EventScreen() {
               </Text>
             </View>
           )}
-
-          {isCanceled ? (
-            <View style={styles.canceledBanner}>
-              <Text style={styles.canceledBannerText}>
-                😢 This event was canceled by the host
-              </Text>
-            </View>
-          ) : null}
 
           <View style={styles.section}>
             <View style={styles.hostRow}>
@@ -427,23 +406,21 @@ export default function EventScreen() {
             </Glass>
 
             {rsvpLocked ? (
-              !isCanceled ? (
-                <View style={{ gap: spacing.sm }}>
-                  <Glass tint={ink.glassTint} radius={radius.md} style={styles.lockedNote}>
-                    <Text style={[styles.lockedNoteText, { color: ink.subtext }]}>
-                      🔒 RSVPs are closed for this event
-                    </Text>
-                  </Glass>
-                  {myRsvp && myRsvp.status !== 'CANT' ? (
-                    <Button
-                      title="I can't make it anymore"
-                      variant="ghost"
-                      tone={ink.dark ? 'paper' : 'ink'}
-                      onPress={() => setRsvp('CANT')}
-                    />
-                  ) : null}
-                </View>
-              ) : null
+              <View style={{ gap: spacing.sm }}>
+                <Glass tint={ink.glassTint} radius={radius.md} style={styles.lockedNote}>
+                  <Text style={[styles.lockedNoteText, { color: ink.subtext }]}>
+                    🔒 RSVPs are closed for this event
+                  </Text>
+                </Glass>
+                {myRsvp && myRsvp.status !== 'CANT' ? (
+                  <Button
+                    title="I can't make it anymore"
+                    variant="ghost"
+                    tone={ink.dark ? 'paper' : 'ink'}
+                    onPress={() => setRsvp('CANT')}
+                  />
+                ) : null}
+              </View>
             ) : (
               <View style={styles.rsvpRow}>
                 {RSVP_OPTIONS.map((opt) => {
@@ -749,19 +726,17 @@ export default function EventScreen() {
                   router.push(`/event/${event.slug}/edit`);
                 }}
               />
-              {!isCanceled ? (
-                <ActionRow
-                  icon={event.rsvpsOpen ? 'lock-closed-outline' : 'lock-open-outline'}
-                  label={event.rsvpsOpen ? 'Close RSVPs' : 'Open RSVPs'}
-                  color={ink.text}
-                  divider={ink.hairline}
-                  onPress={() => {
-                    setMenuOpen(false);
-                    toggleRsvpsOpen();
-                  }}
-                />
-              ) : null}
-              {event.isHost && !isCanceled ? (
+              <ActionRow
+                icon={event.rsvpsOpen ? 'lock-closed-outline' : 'lock-open-outline'}
+                label={event.rsvpsOpen ? 'Close RSVPs' : 'Open RSVPs'}
+                color={ink.text}
+                divider={ink.hairline}
+                onPress={() => {
+                  setMenuOpen(false);
+                  toggleRsvpsOpen();
+                }}
+              />
+              {event.isHost ? (
                 <ActionRow
                   icon="close-circle-outline"
                   label="Cancel event"
@@ -770,18 +745,6 @@ export default function EventScreen() {
                   onPress={() => {
                     setMenuOpen(false);
                     confirmCancel();
-                  }}
-                />
-              ) : null}
-              {event.isHost ? (
-                <ActionRow
-                  icon="trash-outline"
-                  label="Delete event"
-                  color={colors.danger}
-                  divider={ink.hairline}
-                  onPress={() => {
-                    setMenuOpen(false);
-                    confirmDelete();
                   }}
                 />
               ) : null}
@@ -943,17 +906,6 @@ const styles = StyleSheet.create({
     fontSize: 56,
     letterSpacing: -1,
     lineHeight: 56,
-  },
-  canceledBanner: {
-    backgroundColor: 'rgba(255,107,129,0.12)',
-    borderBottomWidth: 2,
-    borderColor: colors.danger,
-    padding: spacing.md,
-  },
-  canceledBannerText: {
-    color: colors.danger,
-    ...uiText(15, '700'),
-    textAlign: 'center',
   },
   lockedNote: {
     padding: spacing.md,

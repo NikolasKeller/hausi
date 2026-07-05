@@ -172,6 +172,7 @@ eventRoutes.get('/', async (c) => {
   const userId = c.get('userId');
   const events = await db.event.findMany({
     where: {
+      canceledAt: null,
       OR: [
         { hostId: userId },
         { cohosts: { some: { userId } } },
@@ -233,7 +234,8 @@ eventRoutes.get('/by-slug/:slug', async (c) => {
     where: { slug: c.req.param('slug') },
     include: eventInclude,
   });
-  if (!event) return c.json({ error: 'Event not found' }, 404);
+  // Canceled events are treated as gone — the page 404s like a deleted one.
+  if (!event || event.canceledAt) return c.json({ error: 'Event not found' }, 404);
   return c.json({ event: toEventDetail(event, c.get('userId')) });
 });
 
@@ -248,7 +250,7 @@ eventRoutes.post('/exists', async (c) => {
   if (!parsed.success) return c.json({ error: 'Invalid request' }, 400);
   if (parsed.data.slugs.length === 0) return c.json({ slugs: [] });
   const rows = await db.event.findMany({
-    where: { slug: { in: parsed.data.slugs } },
+    where: { slug: { in: parsed.data.slugs }, canceledAt: null },
     select: { slug: true },
   });
   return c.json({ slugs: rows.map((r) => r.slug) });
@@ -259,7 +261,7 @@ eventRoutes.get('/:id', async (c) => {
     where: { id: c.req.param('id') },
     include: eventInclude,
   });
-  if (!event) return c.json({ error: 'Event not found' }, 404);
+  if (!event || event.canceledAt) return c.json({ error: 'Event not found' }, 404);
   return c.json({ event: toEventDetail(event, c.get('userId')) });
 });
 
@@ -348,7 +350,8 @@ eventRoutes.patch('/:id', async (c) => {
   return c.json({ event: toEventDetail(event, userId) });
 });
 
-// Cancel keeps the page alive with a banner; delete removes it entirely.
+// Canceling soft-hides the event: guests are notified, then it disappears from
+// every list and its page 404s. (The delete endpoint below hard-removes the row.)
 eventRoutes.post('/:id/cancel', async (c) => {
   const userId = c.get('userId');
   const existing = await db.event.findUnique({
