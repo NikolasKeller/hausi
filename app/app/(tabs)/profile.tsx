@@ -164,20 +164,12 @@ function ProfileScreen() {
       <ScrollView contentContainerStyle={styles.container}>
         <View style={styles.header}>
           <Text style={[styles.headerKicker, kicker(colors.accent)]}>Your profile</Text>
-          <View style={styles.headerActions}>
-            <Pressable
-              onPress={() => router.push('/edit-profile')}
-              style={({ pressed }) => [styles.roundButton, pressed && styles.pressed]}
-            >
-              <Ionicons name="pencil" size={18} color={colors.text} />
-            </Pressable>
-            <Pressable
-              onPress={() => setSettingsOpen(true)}
-              style={({ pressed }) => [styles.roundButton, pressed && styles.pressed]}
-            >
-              <Ionicons name="settings-sharp" size={18} color={colors.text} />
-            </Pressable>
-          </View>
+          <Pressable
+            onPress={() => setSettingsOpen(true)}
+            style={({ pressed }) => [styles.roundButton, pressed && styles.pressed]}
+          >
+            <Ionicons name="settings-sharp" size={18} color={colors.text} />
+          </Pressable>
         </View>
 
         <View style={styles.hero}>
@@ -185,22 +177,6 @@ function ProfileScreen() {
             <Avatar emoji={profile.avatarEmoji} size={120} />
           </View>
           <Text style={styles.bigName}>{profile.name}</Text>
-        </View>
-
-        <View style={styles.actionRow}>
-          <Button
-            title="Edit profile"
-            variant="ghost"
-            tone="ink"
-            onPress={() => router.push('/edit-profile')}
-            style={styles.actionButton}
-          />
-          <Button
-            title="Share profile"
-            variant="paper"
-            onPress={shareProfile}
-            style={styles.actionButton}
-          />
         </View>
 
         <Text style={styles.metaLine}>{metaLine}</Text>
@@ -338,10 +314,6 @@ const styles = StyleSheet.create({
     color: colors.accent,
     flexShrink: 1,
   },
-  headerActions: {
-    flexDirection: 'row',
-    gap: spacing.sm,
-  },
   roundButton: {
     width: 40,
     height: 40,
@@ -370,20 +342,11 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     paddingHorizontal: spacing.lg,
   },
-  actionRow: {
-    flexDirection: 'row',
-    gap: spacing.sm,
-    paddingHorizontal: spacing.md,
-    marginTop: spacing.lg,
-  },
-  actionButton: {
-    flex: 1,
-  },
   metaLine: {
     ...uiText(14),
     color: colors.muted,
     textAlign: 'center',
-    marginTop: spacing.md,
+    marginTop: spacing.lg,
   },
   section: {
     marginTop: spacing.xxl,
