@@ -200,7 +200,12 @@ function CalendarScreen() {
       <View style={styles.monthRow}>
         <View style={styles.monthTitleWrap}>
           <Text style={[styles.kicker, kicker(colors.accent)]}>Your calendar</Text>
-          <Text style={styles.monthTitle} numberOfLines={1}>
+          <Text
+            style={styles.monthTitle}
+            numberOfLines={1}
+            adjustsFontSizeToFit
+            minimumFontScale={0.7}
+          >
             {monthTitle}
           </Text>
         </View>
@@ -412,7 +417,7 @@ const styles = StyleSheet.create({
     color: colors.accent,
   },
   monthTitle: {
-    ...display(44),
+    ...display(40),
     color: colors.text,
     flexShrink: 1,
   },
@@ -442,11 +447,11 @@ const styles = StyleSheet.create({
     borderColor: colors.cardBorder,
     backgroundColor: colors.card,
     borderRadius: radius.pill,
-    paddingHorizontal: spacing.md,
-    paddingVertical: 8,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: 6,
   },
   todayPillText: {
-    ...uiText(13, '700'),
+    ...uiText(12, '700'),
     color: colors.text,
   },
   toggleButton: {
