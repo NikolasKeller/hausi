@@ -95,6 +95,9 @@ export interface PublicUser {
   id: string;
   name: string;
   avatarEmoji: string;
+  // Server path to an uploaded profile photo ("/uploads/x.jpg"); '' when the
+  // user sticks with their emoji.
+  avatarImage: string;
 }
 
 export interface AuthResponse {
@@ -120,6 +123,7 @@ export interface PlusOneGuest {
   id: string;
   name: string;
   avatarEmoji: string;
+  avatarImage: string;
   userId: string | null;
 }
 
@@ -232,6 +236,7 @@ export interface MyProfile {
   email: string | null;
   phone: string | null;
   avatarEmoji: string;
+  avatarImage: string;
   city: string;
   joinedAt: string;
   badges: Badge[];

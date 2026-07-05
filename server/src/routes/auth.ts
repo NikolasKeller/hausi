@@ -45,6 +45,7 @@ async function authResponse(user: {
   email: string | null;
   phone: string | null;
   avatarEmoji: string;
+  avatarImage: string;
 }): Promise<AuthResponse> {
   return {
     token: await createToken(user.id),
@@ -54,6 +55,7 @@ async function authResponse(user: {
       email: user.email,
       phone: user.phone,
       avatarEmoji: user.avatarEmoji,
+      avatarImage: user.avatarImage,
     },
   };
 }
@@ -63,7 +65,14 @@ async function authResponse(user: {
 // token the client stores locally.
 async function sessionJson(
   c: Context,
-  user: { id: string; name: string; email: string | null; phone: string | null; avatarEmoji: string },
+  user: {
+    id: string;
+    name: string;
+    email: string | null;
+    phone: string | null;
+    avatarEmoji: string;
+    avatarImage: string;
+  },
   extra: Record<string, unknown> = {}
 ) {
   const resp = await authResponse(user);

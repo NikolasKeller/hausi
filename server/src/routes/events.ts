@@ -8,6 +8,7 @@ import {
   countRsvps,
   toEventDetail,
   toEventSummary,
+  toPublicUser,
 } from '../lib/serialize.js';
 import { makeSlug } from '../lib/slug.js';
 import { normalizePhone } from '../lib/phone.js';
@@ -782,7 +783,7 @@ eventRoutes.get('/:id/comments', async (c) => {
   return c.json({
     comments: comments.map((co) => ({
       id: co.id,
-      user: { id: co.user.id, name: co.user.name, avatarEmoji: co.user.avatarEmoji },
+      user: toPublicUser(co.user),
       text: co.text,
       type: co.type === 'system' ? 'system' : 'comment',
       createdAt: co.createdAt.toISOString(),
@@ -820,11 +821,7 @@ eventRoutes.post('/:id/comments', async (c) => {
     {
       comment: {
         id: comment.id,
-        user: {
-          id: comment.user.id,
-          name: comment.user.name,
-          avatarEmoji: comment.user.avatarEmoji,
-        },
+        user: toPublicUser(comment.user),
         text: comment.text,
         type: 'comment' as const,
         createdAt: comment.createdAt.toISOString(),
