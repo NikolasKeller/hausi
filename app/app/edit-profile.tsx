@@ -15,7 +15,7 @@ import { api } from '../lib/api';
 import { useAuth } from '../lib/auth';
 import { pickAvatarImage } from '../lib/imageUpload';
 import { colors, radius, spacing } from '../lib/theme';
-import { display, kicker, uiText } from '../lib/fonts';
+import { display, uiText } from '../lib/fonts';
 import { Avatar } from '../components/Avatar';
 import { Button, ErrorText, Field } from '../components/ui';
 import { CityPicker } from '../components/CityPicker';
@@ -122,7 +122,6 @@ export default function EditProfileScreen() {
     >
       <ScrollView contentContainerStyle={styles.container} keyboardShouldPersistTaps="handled">
         <View style={styles.header}>
-          <Text style={styles.kicker}>Your profile</Text>
           <Text style={styles.title}>
             Edit profile
           </Text>
@@ -236,9 +235,6 @@ const styles = StyleSheet.create({
     marginTop: spacing.md,
     marginBottom: spacing.md,
     gap: spacing.xs,
-  },
-  kicker: {
-    ...kicker(colors.muted),
   },
   title: {
     ...display(44),

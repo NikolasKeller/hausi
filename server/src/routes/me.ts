@@ -5,7 +5,6 @@ import { requireAuth, type AuthVariables } from '../lib/auth.js';
 import { toPublicUser } from '../lib/serialize.js';
 import { unlinkImage } from '../lib/uploads.js';
 import { findMutuals } from '../lib/mutuals.js';
-import { notify } from '../lib/notify.js';
 import {
   LIMITS,
   type Badge,
@@ -119,7 +118,7 @@ meRoutes.patch('/', async (c) => {
   });
 });
 
-// Toggle a crush on another user; a reciprocal crush notifies both.
+// Toggle a crush on another user; reciprocal crushes are a match.
 meRoutes.post('/crush/:userId', async (c) => {
   const me = c.get('userId');
   const target = c.req.param('userId');
@@ -142,15 +141,6 @@ meRoutes.post('/crush/:userId', async (c) => {
       where: { fromId_toId: { fromId: target, toId: me } },
     });
     if (reciprocal) {
-      const meUser = await tx.user.findUniqueOrThrow({ where: { id: me } });
-      await notify(tx, [me], {
-        type: 'CRUSH_MATCH',
-        text: `You and ${targetUser.name} have a crush on each other 💘`,
-      });
-      await notify(tx, [target], {
-        type: 'CRUSH_MATCH',
-        text: `You and ${meUser.name} have a crush on each other 💘`,
-      });
       return true;
     }
     return false;
