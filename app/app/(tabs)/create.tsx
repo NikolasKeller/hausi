@@ -4,7 +4,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { colors, radius, shadow, spacing } from '../../lib/theme';
-import { display, kicker, uiText } from '../../lib/fonts';
+import { display, uiText } from '../../lib/fonts';
 import { withScreenBackground } from '../../components/ScreenBackground';
 
 export default withScreenBackground(CreateScreen);
@@ -16,7 +16,6 @@ function CreateScreen() {
     <SafeAreaView style={styles.safe} edges={['top']}>
       <View style={styles.content}>
         <View style={styles.heading}>
-          <Text style={[styles.kicker, kicker(colors.muted)]}>Start something</Text>
           <Text style={styles.title}>
             Make something{'\n'}happen
           </Text>
@@ -51,10 +50,6 @@ function CreateScreen() {
             <Ionicons name="chevron-forward" size={20} color={colors.muted} />
           </Pressable>
         </View>
-
-        <Text style={styles.hint}>
-          Events can be private (invite-only) or public on Explore.
-        </Text>
       </View>
     </SafeAreaView>
   );
@@ -74,9 +69,6 @@ const styles = StyleSheet.create({
   },
   heading: {
     gap: spacing.md,
-  },
-  kicker: {
-    color: colors.muted,
   },
   title: {
     ...display(52),
@@ -120,10 +112,5 @@ const styles = StyleSheet.create({
   rowSubtitle: {
     ...uiText(14),
     color: colors.muted,
-  },
-  hint: {
-    ...uiText(13),
-    color: colors.muted,
-    textAlign: 'center',
   },
 });

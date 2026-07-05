@@ -155,7 +155,6 @@ function RootNavigator() {
           headerLeft: () => <ModalClose />,
         }}
       />
-      <Stack.Screen name="notifications" options={{ title: 'Notifications' }} />
       <Stack.Screen name="event/[slug]/index" options={{ headerShown: false }} />
       <Stack.Screen
         name="event/[slug]/edit"

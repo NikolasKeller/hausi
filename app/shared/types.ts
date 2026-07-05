@@ -253,11 +253,3 @@ export interface MyProfile {
   cards: CardEntry[];
 }
 
-export interface NotificationEntry {
-  id: string;
-  type: string;
-  text: string;
-  eventSlug: string | null;
-  read: boolean;
-  createdAt: string;
-}

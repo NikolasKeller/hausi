@@ -59,7 +59,6 @@ function HomeScreen() {
   const { welcomeBack, dismissWelcome } = useAuth();
   const [home, setHome] = useState<HomeFeed | null>(null);
   const [recents, setRecents] = useState<RecentEvent[]>([]);
-  const [unread, setUnread] = useState(0);
   const [error, setError] = useState<string | null>(null);
   const [refreshing, setRefreshing] = useState(false);
   // Greet a returning user once, on app open, then let it fade.
@@ -73,10 +72,9 @@ function HomeScreen() {
   }, [welcomeBack, dismissWelcome]);
 
   const fetchAll = useCallback(async () => {
-    const [homeRes, storedRecents, notifRes] = await Promise.all([
+    const [homeRes, storedRecents] = await Promise.all([
       api.home(),
       getRecentEvents(),
-      api.notifications(),
     ]);
     // Recents are cached locally per device, so prune any whose event has since
     // been deleted server-side. Keep the cached list on a network hiccup.
@@ -89,7 +87,7 @@ function HomeScreen() {
         // Leave recents as-is rather than blanking the section.
       }
     }
-    return { homeRes, recentList, unread: notifRes.unread };
+    return { homeRes, recentList };
   }, []);
 
   useFocusEffect(
@@ -100,7 +98,6 @@ function HomeScreen() {
           if (!active) return;
           setHome(res.homeRes);
           setRecents(res.recentList);
-          setUnread(res.unread);
           setError(null);
         })
         .catch((e) => {
@@ -118,7 +115,6 @@ function HomeScreen() {
       const res = await fetchAll();
       setHome(res.homeRes);
       setRecents(res.recentList);
-      setUnread(res.unread);
       setError(null);
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Could not refresh');
@@ -132,21 +128,8 @@ function HomeScreen() {
       <View style={styles.wordmarkWrap}>
         <Text style={styles.wordmark}>Hausi</Text>
       </View>
-      <Pressable
-        onPress={() => router.push('/notifications')}
-        hitSlop={8}
-        style={({ pressed }) => [styles.bellButton, pressed && { opacity: 0.7 }]}
-      >
-        <Ionicons name="notifications-outline" size={24} color={colors.text} />
-        {unread > 0 ? (
-          <View style={styles.unreadBadge}>
-            <Text style={styles.unreadText}>{unread > 99 ? '99+' : unread}</Text>
-          </View>
-        ) : null}
-      </Pressable>
     </View>
   );
-
 
   if (error && !home) {
     return (
@@ -274,7 +257,6 @@ function HomeScreen() {
           <Text style={styles.sectionTitle}>
             Party starters
           </Text>
-          <Text style={styles.sectionBlurb}>Tap an idea to spin up an event in seconds.</Text>
           <ScrollView
             horizontal
             showsHorizontalScrollIndicator={false}
@@ -288,7 +270,6 @@ function HomeScreen() {
         </View>
 
         <View style={[styles.sectionGroup, styles.ctaGroup]}>
-          <Text style={styles.ctaKicker}>Your move</Text>
           <Text style={styles.ctaTitle}>
             Throw{'\n'}something
           </Text>
@@ -436,26 +417,6 @@ const styles = StyleSheet.create({
     ...display(38),
     color: colors.text,
   },
-  bellButton: {
-    padding: spacing.xs,
-  },
-  unreadBadge: {
-    position: 'absolute',
-    top: -2,
-    right: -4,
-    minWidth: 16,
-    height: 16,
-    borderRadius: radius.pill,
-    backgroundColor: colors.danger,
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingHorizontal: 3,
-  },
-  unreadText: {
-    color: '#fff',
-    fontSize: 10,
-    fontWeight: '800',
-  },
   sectionGroup: {
     gap: spacing.md,
     paddingHorizontal: spacing.md,
@@ -472,18 +433,9 @@ const styles = StyleSheet.create({
     ...uiText(14),
     color: colors.muted,
   },
-  sectionBlurb: {
-    ...uiText(14),
-    color: colors.muted,
-    marginTop: -spacing.xs,
-  },
   ctaGroup: {
     marginTop: spacing.lg,
     alignItems: 'flex-start',
-  },
-  ctaKicker: {
-    ...kicker(colors.accent),
-    marginBottom: spacing.xs,
   },
   ctaTitle: {
     ...display(52),

@@ -28,7 +28,6 @@ model User {
   rsvps          Rsvp[]
   comments       Comment[]
   cohosting      EventCohost[]
-  notifications  Notification[]
   cardsSent      Card[]         @relation("CardsSent")
   cardsReceived  Card[]         @relation("CardsReceived")
   crushesSent    Crush[]        @relation("CrushesSent")
@@ -128,20 +127,6 @@ model EventCohost {
   createdAt DateTime @default(now())
 
   @@unique([eventId, userId])
-}
-
-// type: RSVP | COMMENT | EVENT_UPDATED | EVENT_CANCELED | WAITLIST_PROMOTED | COHOST_ADDED
-model Notification {
-  id        String    @id @default(cuid())
-  userId    String
-  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  type      String
-  text      String
-  eventSlug String?
-  readAt    DateTime?
-  createdAt DateTime  @default(now())
-
-  @@index([userId, createdAt])
 }
 
 // status: GOING | MAYBE | CANT | WAITLIST (SQLite has no enums)

@@ -16,7 +16,7 @@ import { useAuth } from '../../lib/auth';
 import { confirmDialog, notify } from '../../lib/dialogs';
 import { shareText } from '../../lib/share';
 import { colors, radius, shadow, spacing } from '../../lib/theme';
-import { display, kicker, uiText } from '../../lib/fonts';
+import { display, uiText } from '../../lib/fonts';
 import { Avatar } from '../../components/Avatar';
 import { CoverGradient } from '../../components/CoverGradient';
 import { Button } from '../../components/ui';
@@ -163,21 +163,12 @@ function ProfileScreen() {
     <SafeAreaView style={styles.safe} edges={['top']}>
       <ScrollView contentContainerStyle={styles.container}>
         <View style={styles.header}>
-          <Text style={[styles.headerKicker, kicker(colors.accent)]}>Your profile</Text>
-          <View style={styles.headerActions}>
-            <Pressable
-              onPress={() => router.push('/edit-profile')}
-              style={({ pressed }) => [styles.roundButton, pressed && styles.pressed]}
-            >
-              <Ionicons name="pencil" size={18} color={colors.text} />
-            </Pressable>
-            <Pressable
-              onPress={() => setSettingsOpen(true)}
-              style={({ pressed }) => [styles.roundButton, pressed && styles.pressed]}
-            >
-              <Ionicons name="settings-sharp" size={18} color={colors.text} />
-            </Pressable>
-          </View>
+          <Pressable
+            onPress={() => setSettingsOpen(true)}
+            style={({ pressed }) => [styles.roundButton, pressed && styles.pressed]}
+          >
+            <Ionicons name="settings-sharp" size={18} color={colors.text} />
+          </Pressable>
         </View>
 
         <View style={styles.hero}>
@@ -329,17 +320,9 @@ const styles = StyleSheet.create({
   header: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
+    justifyContent: 'flex-end',
     paddingHorizontal: spacing.md,
     paddingTop: spacing.sm,
-    gap: spacing.sm,
-  },
-  headerKicker: {
-    color: colors.accent,
-    flexShrink: 1,
-  },
-  headerActions: {
-    flexDirection: 'row',
     gap: spacing.sm,
   },
   roundButton: {

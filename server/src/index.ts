@@ -9,7 +9,6 @@ import { logger } from 'hono/logger';
 import { authRoutes, INVITE_CODE } from './routes/auth.js';
 import { cardRoutes } from './routes/cards.js';
 import { eventRoutes } from './routes/events.js';
-import { notificationRoutes } from './routes/notifications.js';
 import { discoverRoutes } from './routes/discover.js';
 import { meRoutes } from './routes/me.js';
 import { dedupeUsersByPhone } from './lib/dedupeUsers.js';
@@ -23,14 +22,13 @@ app.use('*', logger());
 app.use('/api/*', cors());
 
 // The API lives under /api so it can never collide with the web app's own
-// routes (the SPA has a /notifications page, the API a /notifications feed).
+// client-side routes.
 const api = new Hono();
 api.get('/health', (c) => c.json({ name: 'Hausi API', ok: true }));
 // Public client config — lets the app know whether to ask for an invite code.
 api.get('/config', (c) => c.json({ inviteRequired: INVITE_CODE != null }));
 api.route('/auth', authRoutes);
 api.route('/events', eventRoutes);
-api.route('/notifications', notificationRoutes);
 api.route('/discover', discoverRoutes);
 api.route('/me', meRoutes);
 api.route('/cards', cardRoutes);

@@ -260,7 +260,6 @@ function ExploreScreen() {
       <View style={{ flex: 1 }}>
         <View style={styles.headerRow}>
           <View style={styles.headerTitleWrap}>
-            <Text style={styles.headerKicker}>Discover</Text>
             <Text style={styles.headerTitle}>Explore</Text>
           </View>
           <Pressable
@@ -515,9 +514,6 @@ const styles = StyleSheet.create({
   },
   headerTitleWrap: {
     gap: spacing.xs,
-  },
-  headerKicker: {
-    ...kicker(colors.accent),
   },
   headerTitle: {
     ...display(44),

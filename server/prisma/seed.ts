@@ -25,7 +25,6 @@ function daysFromNow(days: number, hour = 19): Date {
 }
 
 async function main() {
-  await db.notification.deleteMany();
   await db.comment.deleteMany();
   await db.rsvp.deleteMany();
   await db.eventCohost.deleteMany();

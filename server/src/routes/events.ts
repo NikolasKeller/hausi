@@ -12,7 +12,6 @@ import {
 import { makeSlug } from '../lib/slug.js';
 import { normalizePhone } from '../lib/phone.js';
 import { unlinkImage } from '../lib/uploads.js';
-import { notify } from '../lib/notify.js';
 import { findMutuals, rememberPartyConnections } from '../lib/mutuals.js';
 import { ledger } from '../lib/ledger.js';
 import {
@@ -102,14 +101,11 @@ function rsvpPhrase(status: string, plusOnes: number): string {
 
 // Promote waitlisted guests FIFO (by waitlist-join time) while capacity allows.
 // Paused while RSVPs are closed — the host froze the list; reopening resumes it.
-// Runs inside the caller's transaction; writes system entries and notifications.
+// Runs inside the caller's transaction; writes system entries.
 async function promoteWaitlist(tx: Prisma.TransactionClient, eventId: string) {
   const event = await tx.event.findUnique({
     where: { id: eventId },
-    include: {
-      rsvps: { include: { user: true } },
-      cohosts: true,
-    },
+    include: { rsvps: true },
   });
   if (!event || event.canceledAt || !event.rsvpsOpen) return;
 
@@ -143,25 +139,7 @@ async function promoteWaitlist(tx: Prisma.TransactionClient, eventId: string) {
         type: 'system',
       },
     });
-    await notify(tx, [entry.userId], {
-      type: 'WAITLIST_PROMOTED',
-      text: `You're off the waitlist for "${event.title}" — you're going! 🎉`,
-      eventSlug: event.slug,
-    });
-    await notify(
-      tx,
-      managerIds(event).filter((id) => id !== entry.userId),
-      {
-        type: 'RSVP',
-        text: `${entry.user.name} is off the waitlist — going 🎉 — "${event.title}"`,
-        eventSlug: event.slug,
-      }
-    );
   }
-}
-
-function managerIds(event: { hostId: string; cohosts: { userId: string }[] }): string[] {
-  return [event.hostId, ...event.cohosts.map((c) => c.userId)];
 }
 
 export const eventRoutes = new Hono<{ Variables: AuthVariables }>();
@@ -284,7 +262,7 @@ eventRoutes.patch('/:id', async (c) => {
   const data = parsed.data;
 
   const event = await db.$transaction(async (tx) => {
-    const updated = await tx.event.update({
+    await tx.event.update({
       where: { id: existing.id },
       data,
       include: eventInclude,
@@ -313,20 +291,6 @@ eventRoutes.patch('/:id', async (c) => {
     // Capacity may have grown (cap raised/dropped, parties clamped, RSVPs reopened).
     if ('maxGuests' in data || data.plusOneLimit != null || data.rsvpsOpen === true) {
       await promoteWaitlist(tx, existing.id);
-    }
-
-    // Tell guests when the plan materially changes.
-    const dateChanged =
-      data.date != null && data.date.getTime() !== existing.date.getTime();
-    const locationChanged = data.location != null && data.location !== existing.location;
-    const titleChanged = data.title != null && data.title !== existing.title;
-    if (dateChanged || locationChanged || titleChanged) {
-      const guests = existing.rsvps.map((r) => r.userId).filter((id) => id !== userId);
-      await notify(tx, guests, {
-        type: 'EVENT_UPDATED',
-        text: `"${updated.title}" was updated — check the new details 📝`,
-        eventSlug: updated.slug,
-      });
     }
 
     return tx.event.findUniqueOrThrow({ where: { id: existing.id }, include: eventInclude });
@@ -371,12 +335,6 @@ eventRoutes.post('/:id/cancel', async (c) => {
     });
     await tx.comment.create({
       data: { eventId: existing.id, userId, text: 'canceled the event 😢', type: 'system' },
-    });
-    const guests = existing.rsvps.map((r) => r.userId).filter((id) => id !== userId);
-    await notify(tx, guests, {
-      type: 'EVENT_CANCELED',
-      text: `"${existing.title}" was canceled 😢`,
-      eventSlug: existing.slug,
     });
     return tx.event.findUniqueOrThrow({ where: { id: existing.id }, include: eventInclude });
   });
@@ -496,16 +454,6 @@ eventRoutes.put('/:id/rsvp', async (c) => {
         await tx.comment.create({
           data: { eventId, userId, text: rsvpPhrase(status, plusOnes), type: 'system' },
         });
-        const me = previous?.user ?? (await tx.user.findUniqueOrThrow({ where: { id: userId } }));
-        await notify(
-          tx,
-          managerIds(event).filter((id) => id !== userId),
-          {
-            type: 'RSVP',
-            text: `${me.name} ${rsvpPhrase(status, plusOnes)} — "${event.title}"`,
-            eventSlug: event.slug,
-          }
-        );
       }
 
       // Leaving GOING (or shrinking a party) can free spots for the queue.
@@ -652,11 +600,6 @@ eventRoutes.post('/:id/plus-one', async (c) => {
       await tx.comment.create({
         data: { eventId, userId, text: `is bringing ${name} 🎟️`, type: 'system' },
       });
-      await notify(tx, managerIds(event).filter((id) => id !== userId), {
-        type: 'RSVP',
-        text: `${mine.user.name} is bringing ${name} to "${event.title}" 🎟️`,
-        eventSlug: event.slug,
-      });
     });
   } catch (e) {
     if (e instanceof HttpError) return c.json({ error: e.message }, e.code);
@@ -737,11 +680,6 @@ eventRoutes.post('/:id/cohosts', async (c) => {
       create: { eventId, userId: user.id, status: 'GOING' },
       update: { status: 'GOING' },
     });
-    await notify(tx, [user.id], {
-      type: 'COHOST_ADDED',
-      text: `You're now a co-host of "${event.title}" 🤝`,
-      eventSlug: event.slug,
-    });
   });
 
   const updated = await db.event.findUniqueOrThrow({
@@ -804,15 +742,6 @@ eventRoutes.post('/:id/comments', async (c) => {
       data: { eventId, userId, text: parsed.data.text },
       include: { user: true },
     });
-    await notify(
-      tx,
-      managerIds(event).filter((id) => id !== userId),
-      {
-        type: 'COMMENT',
-        text: `${created.user.name} commented on "${event.title}" 💬`,
-        eventSlug: event.slug,
-      }
-    );
     return created;
   });
 

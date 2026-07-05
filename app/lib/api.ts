@@ -12,7 +12,6 @@ import type {
   ExploreEvent,
   HomeFeed,
   MyProfile,
-  NotificationEntry,
   PhoneRequestResponse,
   PhoneVerifyResponse,
   RsvpStatus,
@@ -60,7 +59,6 @@ export class ApiError extends Error {
 
 let authToken: string | null = null;
 let onUnauthorized: (() => void) | null = null;
-let pendingReadAll: Promise<void> | null = null;
 
 export function setAuthToken(token: string | null) {
   authToken = token;
@@ -214,27 +212,6 @@ export const api = {
       `/me/crush/${encodeURIComponent(userId)}`,
       { method: 'POST' }
     );
-  },
-  async notifications() {
-    // Let an in-flight read-all settle first so the unread count isn't stale
-    // when the user pops back to home right after viewing notifications.
-    if (pendingReadAll) await pendingReadAll;
-    return request<{ notifications: NotificationEntry[]; unread: number }>('/notifications');
-  },
-  markNotificationsRead(before?: string) {
-    const p = request<{ ok: boolean }>('/notifications/read-all', {
-      method: 'POST',
-      body: JSON.stringify(before ? { before } : {}),
-    });
-    pendingReadAll = p
-      .then(
-        () => undefined,
-        () => undefined
-      )
-      .finally(() => {
-        pendingReadAll = null;
-      });
-    return p;
   },
   rsvp(eventId: string, status: RsvpStatus) {
     return request<{ event: EventDetail }>(`/events/${eventId}/rsvp`, {

@@ -70,7 +70,6 @@ async function mergeUser(fromId: string, toId: string): Promise<void> {
     // Plain foreign keys — no uniqueness to worry about.
     await tx.event.updateMany({ where: { hostId: fromId }, data: { hostId: toId } });
     await tx.comment.updateMany({ where: { userId: fromId }, data: { userId: toId } });
-    await tx.notification.updateMany({ where: { userId: fromId }, data: { userId: toId } });
     await tx.card.updateMany({ where: { fromId }, data: { fromId: toId } });
     await tx.card.updateMany({ where: { toId: fromId }, data: { toId } });
 
