@@ -4,7 +4,7 @@ import { normalizePhone } from './phone.js';
 // Before phone numbers were canonicalized, the same person could create several
 // accounts by typing their number differently (a German mobile as "+49 0176…"
 // vs "+49 176…"). This one-time-safe, idempotent routine collapses each such
-// cluster into a single account: it reassigns every event/RSVP/card/etc. from
+// cluster into a single account: it reassigns every event/RSVP/etc. from
 // the duplicates onto one primary row, then deletes the duplicates. Runs on
 // boot; once the data is clean it makes no writes.
 export async function dedupeUsersByPhone(): Promise<{ merged: number; renormalized: number }> {
@@ -71,8 +71,6 @@ async function mergeUser(fromId: string, toId: string): Promise<void> {
     await tx.event.updateMany({ where: { hostId: fromId }, data: { hostId: toId } });
     await tx.comment.updateMany({ where: { userId: fromId }, data: { userId: toId } });
     await tx.notification.updateMany({ where: { userId: fromId }, data: { userId: toId } });
-    await tx.card.updateMany({ where: { fromId }, data: { fromId: toId } });
-    await tx.card.updateMany({ where: { toId: fromId }, data: { toId } });
 
     // RSVP: @@unique([eventId, userId]).
     for (const r of await tx.rsvp.findMany({ where: { userId: fromId } })) {

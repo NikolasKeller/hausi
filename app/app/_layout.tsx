@@ -127,15 +127,6 @@ function RootNavigator() {
         }}
       />
       <Stack.Screen
-        name="send-card"
-        options={{
-          title: 'Send a Card',
-          presentation: 'modal',
-          gestureEnabled: true,
-          headerLeft: () => <ModalClose />,
-        }}
-      />
-      <Stack.Screen
         name="edit-profile"
         options={{
           title: 'Edit Profile',
@@ -166,11 +157,6 @@ function RootNavigator() {
         }}
       />
       <Stack.Screen name="e/[slug]" options={{ headerShown: false }} />
-      <Stack.Screen
-        name="card/[id]"
-        options={{ title: '', headerTransparent: true, headerStyle: { backgroundColor: 'transparent' } }}
-      />
-      <Stack.Screen name="c/[id]" options={{ headerShown: false }} />
     </Stack>
   );
 }

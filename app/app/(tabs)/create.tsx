@@ -37,20 +37,6 @@ function CreateScreen() {
             </View>
             <Ionicons name="chevron-forward" size={20} color={colors.muted} />
           </Pressable>
-
-          <Pressable
-            onPress={() => router.push('/send-card')}
-            style={({ pressed }) => [styles.row, pressed && styles.pressed]}
-          >
-            <View style={styles.rowIcon}>
-              <Ionicons name="mail-outline" size={22} color={colors.accent} />
-            </View>
-            <View style={styles.rowText}>
-              <Text style={styles.rowTitle}>Send a card</Text>
-              <Text style={styles.rowSubtitle}>Brighten someone's day</Text>
-            </View>
-            <Ionicons name="chevron-forward" size={20} color={colors.muted} />
-          </Pressable>
         </View>
 
         <Text style={styles.hint}>

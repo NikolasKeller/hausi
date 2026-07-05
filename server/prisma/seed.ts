@@ -29,7 +29,6 @@ async function main() {
   await db.comment.deleteMany();
   await db.rsvp.deleteMany();
   await db.eventCohost.deleteMany();
-  await db.card.deleteMany();
   await db.crush.deleteMany();
   await db.event.deleteMany();
   await db.user.deleteMany();
@@ -315,15 +314,7 @@ async function main() {
     },
   });
 
-  // ——— Cards & crushes ———
-  await db.card.create({
-    data: {
-      fromId: mia.id,
-      toId: demo.id,
-      theme: 'thanks',
-      message: 'Thanks for hosting the rooftop night — best evening of the summer! 🌇',
-    },
-  });
+  // ——— Crushes ———
   await db.crush.create({ data: { fromId: zoe.id, toId: demo.id } });
 
   console.log(`Seeded ${users.length} users and 11 events (7 public, 3 cities).`);

@@ -23,20 +23,6 @@ import { Button } from '../../components/ui';
 import { formatEventDate, formatEventTime } from '../../components/EventCard';
 import { withScreenBackground } from '../../components/ScreenBackground';
 
-const PROMOS: {
-  emoji: string;
-  title: string;
-  subtitle: string;
-  route: string;
-}[] = [
-  {
-    emoji: '💌',
-    title: 'Send a card',
-    subtitle: "Make someone's day",
-    route: '/send-card',
-  },
-];
-
 export default withScreenBackground(HomeScreen);
 
 // Never a plain "welcome back" — always something cheerful and party-flavored.
@@ -233,23 +219,6 @@ function HomeScreen() {
             </ScrollView>
           </View>
         ) : null}
-
-        <View style={[styles.sectionGroup, { gap: spacing.sm }]}>
-          {PROMOS.map((promo) => (
-            <Pressable
-              key={promo.route}
-              onPress={() => router.push(promo.route)}
-              style={({ pressed }) => [styles.promo, pressed && { opacity: 0.8 }]}
-            >
-              <Text style={styles.promoEmoji}>{promo.emoji}</Text>
-              <View style={{ flex: 1, gap: 2 }}>
-                <Text style={styles.promoTitle}>{promo.title}</Text>
-                <Text style={styles.promoSubtitle}>{promo.subtitle}</Text>
-              </View>
-              <Ionicons name="chevron-forward" size={20} color={colors.muted} />
-            </Pressable>
-          ))}
-        </View>
 
         {home.palsGoing.length > 0 ? (
           <View style={styles.sectionGroup}>
@@ -591,28 +560,6 @@ const styles = StyleSheet.create({
     color: colors.accent,
     padding: spacing.sm,
     paddingTop: 6,
-  },
-  promo: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.md,
-    backgroundColor: colors.card,
-    borderRadius: radius.lg,
-    borderWidth: 1,
-    borderColor: colors.cardBorder,
-    padding: spacing.md,
-    ...shadow.card,
-  },
-  promoEmoji: {
-    fontSize: 30,
-  },
-  promoTitle: {
-    ...uiText(16, '700'),
-    color: colors.text,
-  },
-  promoSubtitle: {
-    ...uiText(13),
-    color: colors.muted,
   },
   rowList: {
     gap: spacing.sm,
