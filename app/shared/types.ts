@@ -91,14 +91,13 @@ export const CATEGORY_META: Record<Category, { label: string; emoji: string }> =
   other: { label: 'Other', emoji: '✨' },
 };
 
-export const CARD_THEMES = ['confetti', 'birthday', 'thanks', 'miss-you', 'congrats'] as const;
-
-export type CardTheme = (typeof CARD_THEMES)[number];
-
 export interface PublicUser {
   id: string;
   name: string;
   avatarEmoji: string;
+  // Server path to an uploaded profile photo ("/uploads/x.jpg"); '' when the
+  // user sticks with their emoji.
+  avatarImage: string;
 }
 
 export interface AuthResponse {
@@ -124,6 +123,7 @@ export interface PlusOneGuest {
   id: string;
   name: string;
   avatarEmoji: string;
+  avatarImage: string;
   userId: string | null;
 }
 
@@ -230,26 +230,16 @@ export interface Badge {
   value: number;
 }
 
-export interface CardEntry {
-  id: string;
-  from: PublicUser;
-  // null for cards shared by link (no in-app recipient).
-  to: PublicUser | null;
-  theme: CardTheme;
-  message: string;
-  createdAt: string;
-}
-
 export interface MyProfile {
   id: string;
   name: string;
   email: string | null;
   phone: string | null;
   avatarEmoji: string;
+  avatarImage: string;
   city: string;
   joinedAt: string;
   badges: Badge[];
   mutuals: Mutual[];
-  cards: CardEntry[];
 }
 

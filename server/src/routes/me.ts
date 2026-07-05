@@ -2,35 +2,39 @@ import { Hono } from 'hono';
 import { z } from 'zod';
 import { db } from '../lib/db.js';
 import { requireAuth, type AuthVariables } from '../lib/auth.js';
-import { toCardEntry, toPublicUser } from '../lib/serialize.js';
+import { toPublicUser } from '../lib/serialize.js';
+import { unlinkImage } from '../lib/uploads.js';
 import { findMutuals } from '../lib/mutuals.js';
 import {
-  CARD_THEMES,
   LIMITS,
   type Badge,
   type MyProfile,
   type Mutual,
 } from '../../../app/shared/types.js';
 
+// Only our own upload paths are acceptable — never an external URL (which would
+// let a user turn every viewer's client into a tracking beacon) or a traversal
+// string. '' clears the photo back to the emoji.
+const UPLOAD_PATH = /^\/uploads\/[a-zA-Z0-9_-]+\.(jpg|jpeg|png|webp)$/;
+
 const updateSchema = z.object({
   name: z.string().trim().min(1).max(LIMITS.name).optional(),
   avatarEmoji: z.string().trim().min(1).max(8).optional(),
+  // Path to an uploaded profile photo (from POST /api/uploads); '' clears it.
+  avatarImage: z
+    .string()
+    .trim()
+    .max(500)
+    .refine((v) => v === '' || UPLOAD_PATH.test(v), 'Invalid image path')
+    .optional(),
   city: z.string().trim().min(1).max(80).optional(),
 });
 
-const cardSchema = z.object({
-  // Optional: set to deliver in-app to a mutual. Omitted for share-by-link cards.
-  toUserId: z.string().min(1).optional(),
-  theme: z.enum(CARD_THEMES),
-  message: z.string().trim().min(1).max(500),
-});
-
 async function computeBadges(userId: string): Promise<Badge[]> {
-  const [hosted, attended, comments, cardsSent] = await Promise.all([
+  const [hosted, attended, comments] = await Promise.all([
     db.event.count({ where: { hostId: userId, canceledAt: null } }),
     db.rsvp.count({ where: { userId, status: 'GOING', event: { hostId: { not: userId } } } }),
     db.comment.count({ where: { userId, type: 'comment' } }),
-    db.card.count({ where: { fromId: userId } }),
   ]);
 
   const badges: Badge[] = [];
@@ -39,8 +43,6 @@ async function computeBadges(userId: string): Promise<Badge[]> {
   if (hosted > 0) badges.push({ key: 'hosted', label: 'hosted', emoji: '🎉', value: hosted });
   if (comments >= 3)
     badges.push({ key: 'hype', label: 'wall messages', emoji: '💬', value: comments });
-  if (cardsSent > 0)
-    badges.push({ key: 'cards', label: 'cards sent', emoji: '💌', value: cardsSent });
   return badges;
 }
 
@@ -51,21 +53,9 @@ meRoutes.get('/', async (c) => {
   const userId = c.get('userId');
   const me = await db.user.findUniqueOrThrow({ where: { id: userId } });
 
-  const [mutualMap, badges, cards, myCrushes] = await Promise.all([
+  const [mutualMap, badges, myCrushes] = await Promise.all([
     findMutuals(db, userId),
     computeBadges(userId),
-    db.card.findMany({
-      // Skip cards the viewer archived on their own side (sent or received).
-      where: {
-        OR: [
-          { fromId: userId, fromArchivedAt: null },
-          { toId: userId, toArchivedAt: null },
-        ],
-      },
-      include: { from: true, to: true },
-      orderBy: { createdAt: 'desc' },
-      take: 30,
-    }),
     db.crush.findMany({ where: { fromId: userId }, select: { toId: true } }),
   ]);
 
@@ -86,11 +76,11 @@ meRoutes.get('/', async (c) => {
     email: me.email,
     phone: me.phone,
     avatarEmoji: me.avatarEmoji,
+    avatarImage: me.avatarImage,
     city: me.city,
     joinedAt: me.createdAt.toISOString(),
     badges,
     mutuals,
-    cards: cards.map(toCardEntry),
   };
   return c.json({ profile });
 });
@@ -100,53 +90,32 @@ meRoutes.patch('/', async (c) => {
   const parsed = updateSchema.safeParse(await c.req.json().catch(() => null));
   if (!parsed.success) return c.json({ error: 'Invalid profile data' }, 400);
 
-  const me = await db.user.update({ where: { id: userId }, data: parsed.data });
-  return c.json({
-    user: { id: me.id, name: me.name, email: me.email, avatarEmoji: me.avatarEmoji, city: me.city },
-  });
-});
-
-// Create a digital card. With `toUserId`, it's delivered in-app to that mutual
-// (and they're notified). Without it, the card is shared by link — its id is the
-// shareable handle (GET /api/cards/:id).
-meRoutes.post('/cards', async (c) => {
-  const userId = c.get('userId');
-  const parsed = cardSchema.safeParse(await c.req.json().catch(() => null));
-  if (!parsed.success) return c.json({ error: 'Invalid card' }, 400);
-  const { toUserId, theme, message } = parsed.data;
-  if (toUserId === userId) return c.json({ error: "You can't send a card to yourself" }, 400);
-
-  if (toUserId) {
-    const recipient = await db.user.findUnique({ where: { id: toUserId } });
-    if (!recipient) return c.json({ error: 'Recipient not found' }, 404);
+  // A user may only point their avatar at a file they uploaded — otherwise they
+  // could reference (and, via the reclaim below, delete) someone else's upload.
+  if (parsed.data.avatarImage) {
+    const owned = await db.upload.findFirst({
+      where: { path: parsed.data.avatarImage, userId },
+    });
+    if (!owned) return c.json({ error: 'Invalid image' }, 400);
   }
 
-  const card = await db.$transaction(async (tx) => {
-    const created = await tx.card.create({
-      data: { fromId: userId, toId: toUserId ?? null, theme, message },
-      include: { from: true, to: true },
-    });
-    return created;
+  const existing = await db.user.findUniqueOrThrow({ where: { id: userId } });
+  const me = await db.user.update({ where: { id: userId }, data: parsed.data });
+  // Replacing or clearing the profile photo orphans the old upload — reclaim it.
+  if (parsed.data.avatarImage !== undefined && existing.avatarImage !== me.avatarImage) {
+    await unlinkImage(existing.avatarImage);
+    await db.upload.deleteMany({ where: { path: existing.avatarImage } });
+  }
+  return c.json({
+    user: {
+      id: me.id,
+      name: me.name,
+      email: me.email,
+      avatarEmoji: me.avatarEmoji,
+      avatarImage: me.avatarImage,
+      city: me.city,
+    },
   });
-
-  return c.json({ card: toCardEntry(card) }, 201);
-});
-
-// Archive a card from your own "My cards" list. Stamps whichever side you are
-// (sender or recipient), so it disappears for you while the other party keeps
-// their copy; a share-by-link card stays reachable at GET /api/cards/:id.
-meRoutes.post('/cards/:id/archive', async (c) => {
-  const userId = c.get('userId');
-  const card = await db.card.findUnique({ where: { id: c.req.param('id') } });
-  if (!card) return c.json({ error: 'Card not found' }, 404);
-  if (card.fromId !== userId && card.toId !== userId)
-    return c.json({ error: 'Not your card' }, 403);
-
-  await db.card.update({
-    where: { id: card.id },
-    data: card.fromId === userId ? { fromArchivedAt: new Date() } : { toArchivedAt: new Date() },
-  });
-  return c.json({ ok: true });
 });
 
 // Toggle a crush on another user; reciprocal crushes are a match.

@@ -22,19 +22,29 @@ model User {
   phoneCode          String?
   phoneCodeExpiresAt DateTime?
   avatarEmoji        String    @default("🙂")
+  // Path to an uploaded profile photo (from POST /api/uploads), '' = emoji only.
+  avatarImage        String    @default("")
   city               String    @default("San Francisco")
   createdAt      DateTime       @default(now())
   events         Event[]        @relation("HostEvents")
   rsvps          Rsvp[]
   comments       Comment[]
   cohosting      EventCohost[]
-  cardsSent      Card[]         @relation("CardsSent")
-  cardsReceived  Card[]         @relation("CardsReceived")
   crushesSent    Crush[]        @relation("CrushesSent")
   crushesGotten  Crush[]        @relation("CrushesGotten")
   plusOneAppearances PlusOne[]  @relation("PlusOneGuest")
   partyMemories   PartyConnection[] @relation("MyPartyMemories")
   partyMemoriesOf PartyConnection[] @relation("PartyMemoryOf")
+}
+
+// Records who uploaded each file (path = "/uploads/x.jpg") so a user can only
+// reference their own uploads — e.g. setting a profile photo. Without this, any
+// authed user could point their avatar at another user's file and get it deleted
+// by the reclaim logic.
+model Upload {
+  path      String   @id
+  userId    String
+  createdAt DateTime @default(now())
 }
 
 // A durable "we partied together" link between two users, snapshotted the
@@ -56,23 +66,6 @@ model PartyConnection {
 
   @@unique([userId, otherUserId])
   @@index([userId])
-}
-
-// A digital greeting card. `toId` is set when delivered in-app to a mutual;
-// left null for cards shared by link (the card's id is its shareable handle).
-model Card {
-  id        String   @id @default(cuid())
-  fromId    String
-  from      User     @relation("CardsSent", fields: [fromId], references: [id], onDelete: Cascade)
-  toId      String?
-  to        User?    @relation("CardsReceived", fields: [toId], references: [id], onDelete: Cascade)
-  theme     String   @default("confetti")
-  message   String
-  createdAt DateTime @default(now())
-  // Per-side archive: hides the card from that party's "My cards" list without
-  // touching the other party's copy. Set when the sender/recipient archives.
-  fromArchivedAt DateTime?
-  toArchivedAt   DateTime?
 }
 
 // One-way crush; when reciprocal, both get notified.

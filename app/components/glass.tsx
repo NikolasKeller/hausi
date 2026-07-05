@@ -131,9 +131,8 @@ export function GlassField({
 // The screen's "mood" wallpaper — a soft ambient gradient that the glass reads
 // through. Opaque, static (blur cost is per-glass, not per-frame).
 //   cloud      — dreamy pastel sky (blues → lilac → peach) for create/edit.
-//   iridescent — holographic diagonal light-leaks for the card composer.
 //   coral      — warm coral spotlight with vertical light-leak streaks (RSVP feed).
-type Variant = 'cloud' | 'iridescent' | 'coral';
+type Variant = 'cloud' | 'coral';
 
 const SPARKS: { top: string; left: string; size: number }[] = [
   { top: '14%', left: '82%', size: 4 },
@@ -193,7 +192,6 @@ export function AmbientBackground({
 
 const BASE: Record<Variant, string> = {
   cloud: '#C6C6E8',
-  iridescent: '#BFD0EE',
   coral: '#F3B3B0',
 };
 
@@ -203,11 +201,6 @@ const LAYERS: Record<Variant, Grad[]> = {
     { colors: ['#AEC3E8', '#C9C2E6', '#E8C6D0', '#F5D9BE'], start: { x: 0, y: 0 }, end: { x: 1, y: 1 } },
     { colors: ['rgba(255,214,170,0.6)', 'rgba(255,214,170,0)'], start: { x: 1, y: 0 }, end: { x: 0.2, y: 0.55 } },
     { colors: ['rgba(174,195,232,0)', 'rgba(158,178,224,0.55)'], start: { x: 0, y: 0.45 }, end: { x: 0, y: 1 } },
-  ],
-  iridescent: [
-    { colors: ['#B8D2F0', '#C9C3EC', '#D9C4E4', '#C7E6DE'], start: { x: 0, y: 0 }, end: { x: 1, y: 1 } },
-    { colors: ['rgba(255,255,255,0.5)', 'rgba(255,255,255,0)', 'rgba(180,220,255,0.35)'], start: { x: 0.1, y: 0 }, end: { x: 0.9, y: 1 } },
-    { colors: ['rgba(233,198,224,0)', 'rgba(233,198,224,0.5)', 'rgba(199,230,222,0)'], start: { x: 1, y: 0 }, end: { x: 0, y: 1 } },
   ],
   coral: [
     { colors: ['#F7C0B4', '#F3AFB0', '#EBA6AE'], start: { x: 0.5, y: 0 }, end: { x: 0.5, y: 1 } },

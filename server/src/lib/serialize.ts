@@ -1,6 +1,4 @@
 import type {
-  CardEntry,
-  CardTheme,
   Category,
   CommentEntry,
   CoverTheme,
@@ -16,7 +14,7 @@ import type {
   TitleFont,
 } from '../../../app/shared/types.js';
 
-type UserRow = { id: string; name: string; avatarEmoji: string };
+type UserRow = { id: string; name: string; avatarEmoji: string; avatarImage: string };
 type PlusOneRow = {
   id: string;
   name: string;
@@ -61,25 +59,7 @@ type EventRow = {
 };
 
 export function toPublicUser(u: UserRow): PublicUser {
-  return { id: u.id, name: u.name, avatarEmoji: u.avatarEmoji };
-}
-
-export function toCardEntry(card: {
-  id: string;
-  theme: string;
-  message: string;
-  createdAt: Date;
-  from: UserRow;
-  to: UserRow | null;
-}): CardEntry {
-  return {
-    id: card.id,
-    from: toPublicUser(card.from),
-    to: card.to ? toPublicUser(card.to) : null,
-    theme: card.theme as CardTheme,
-    message: card.message,
-    createdAt: card.createdAt.toISOString(),
-  };
+  return { id: u.id, name: u.name, avatarEmoji: u.avatarEmoji, avatarImage: u.avatarImage };
 }
 
 export function countRsvps(rsvps: { status: string; plusOnes: number }[]): RsvpCounts {
@@ -176,6 +156,7 @@ export function toEventDetail(
             // whatever the inviter typed.
             name: g.user?.name.trim() ? g.user.name : g.name,
             avatarEmoji: g.user?.avatarEmoji ?? '🎟️',
+            avatarImage: g.user?.avatarImage ?? '',
             userId: g.userId,
           })
         ),
