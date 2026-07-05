@@ -39,6 +39,12 @@
         {
           "photosPermission": "Hausi needs access to your photos so you can set an event cover."
         }
+      ],
+      [
+        "expo-location",
+        {
+          "locationWhenInUsePermission": "Hausi uses your location to find parties happening near you."
+        }
       ]
     ]
   }
