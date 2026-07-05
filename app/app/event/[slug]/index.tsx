@@ -22,6 +22,7 @@ import { shareText } from '../../../lib/share';
 import { colors, radius, rsvp, spacing } from '../../../lib/theme';
 import { titleFontStyle, display, kicker, uiText } from '../../../lib/fonts';
 import { CoverGradient } from '../../../components/CoverGradient';
+import { RichDescription } from '../../../components/RichDescription';
 import { ThemeBackground, themeInk } from '../../../components/themes';
 import { Glass } from '../../../components/glass';
 import { Avatar } from '../../../components/Avatar';
@@ -364,7 +365,11 @@ export default function EventScreen() {
             </Glass>
 
             {event.description ? (
-              <Text style={[styles.description, { color: ink.text }]}>{event.description}</Text>
+              <RichDescription
+                text={event.description}
+                scale={event.descriptionScale}
+                color={ink.text}
+              />
             ) : null}
 
             {/* Guest list summary — same order as the reference: heading, counts,
@@ -942,9 +947,6 @@ const styles = StyleSheet.create({
   },
   metaLine: {
     ...uiText(16, '500'),
-  },
-  description: {
-    ...uiText(16, '400', { lineHeight: 1.45 }),
   },
   sectionHead: {
     gap: spacing.xs,

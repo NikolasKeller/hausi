@@ -103,6 +103,7 @@ export default function EditEventScreen() {
       initial={{
         title: event.title,
         description: event.description,
+        descriptionScale: event.descriptionScale,
         location: event.location,
         city: event.city,
         category: event.category,

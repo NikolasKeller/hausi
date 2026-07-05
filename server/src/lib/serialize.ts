@@ -37,6 +37,7 @@ type EventRow = {
   slug: string;
   title: string;
   description: string;
+  descriptionScale: number;
   coverTheme: string;
   coverImage: string;
   titleFont: string;
@@ -151,6 +152,7 @@ export function toEventDetail(
   return {
     ...toEventSummary(event, viewerId),
     description: event.description,
+    descriptionScale: event.descriptionScale,
     costPerPerson: event.costPerPerson,
     dressCode: event.dressCode,
     maxGuests: event.maxGuests,
