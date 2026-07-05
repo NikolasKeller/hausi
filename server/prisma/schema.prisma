@@ -34,6 +34,29 @@ model User {
   crushesSent    Crush[]        @relation("CrushesSent")
   crushesGotten  Crush[]        @relation("CrushesGotten")
   plusOneAppearances PlusOne[]  @relation("PlusOneGuest")
+  partyMemories   PartyConnection[] @relation("MyPartyMemories")
+  partyMemoriesOf PartyConnection[] @relation("PartyMemoryOf")
+}
+
+// A durable "we partied together" link between two users, snapshotted the
+// moment an event is hard-deleted so the mutuals it created survive the cascade
+// that wipes its RSVPs. Directed (userId → otherUser) so each person's list
+// stands on its own. eventTitle snapshots the most recent shared party; there's
+// no slug because the event row is gone. Mutuals from LIVE events are still
+// computed on the fly — these rows only fill in the parties that no longer exist.
+model PartyConnection {
+  id          String   @id @default(cuid())
+  userId      String
+  user        User     @relation("MyPartyMemories", fields: [userId], references: [id], onDelete: Cascade)
+  otherUserId String
+  otherUser   User     @relation("PartyMemoryOf", fields: [otherUserId], references: [id], onDelete: Cascade)
+  eventTitle  String   @default("")
+  // The deleted event's date — the tie-breaker for "most recent shared party".
+  sharedAt    DateTime @default(now())
+  createdAt   DateTime @default(now())
+
+  @@unique([userId, otherUserId])
+  @@index([userId])
 }
 
 // A digital greeting card. `toId` is set when delivered in-app to a mutual;
