@@ -100,11 +100,13 @@ export const radius = {
 // the primitives). Exposed here so screens can share the same depth language.
 export const shadow = {
   card: {
+    // Partiful-calm: a whisper of a shadow, not a puffy lift. Cards and fields
+    // are separated by their hairline border; the shadow only grounds them.
     shadowColor: '#000',
-    shadowOpacity: 0.12,
-    shadowRadius: 12,
-    shadowOffset: { width: 0, height: 6 },
-    elevation: 6,
+    shadowOpacity: 0.06,
+    shadowRadius: 6,
+    shadowOffset: { width: 0, height: 2 },
+    elevation: 2,
   },
   float: {
     shadowColor: '#000',

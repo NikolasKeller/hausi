@@ -445,7 +445,7 @@ export default function EventScreen() {
                       <Text
                         style={[
                           styles.rsvpLabel,
-                          { color: active ? ink.text : ink.subtext, fontWeight: active ? '800' : '600' },
+                          { color: active ? ink.text : ink.subtext, fontWeight: active ? '700' : '600' },
                         ]}
                       >
                         {opt.status === 'GOING' && myRsvp?.status === 'WAITLIST'
@@ -809,17 +809,17 @@ const styles = StyleSheet.create({
     borderRadius: 29,
     marginHorizontal: 2,
     shadowColor: '#000',
-    shadowOpacity: 0.18,
-    shadowRadius: 8,
-    shadowOffset: { width: 0, height: 3 },
-    elevation: 4,
+    shadowOpacity: 0.08,
+    shadowRadius: 6,
+    shadowOffset: { width: 0, height: 2 },
+    elevation: 2,
   },
   barGoingCount: {
-    ...uiText(18, '800'),
+    ...uiText(18, '700'),
     color: '#111',
   },
   barGoingLabel: {
-    ...uiText(10, '700'),
+    ...uiText(10, '600'),
     color: '#555',
   },
   menuOverlay: {
@@ -934,7 +934,7 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
   },
   shareText: {
-    ...uiText(14, '700'),
+    ...uiText(14, '600'),
   },
   metaCard: {
     padding: spacing.md,
@@ -978,7 +978,7 @@ const styles = StyleSheet.create({
     fontSize: 32,
   },
   rsvpLabel: {
-    ...uiText(14, '700'),
+    ...uiText(14, '600'),
   },
   guestSummary: {
     padding: spacing.md,
@@ -994,7 +994,7 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
   },
   viewAllText: {
-    ...uiText(13, '700'),
+    ...uiText(13, '600'),
   },
   guestCountsLine: {
     ...uiText(14, '600'),
@@ -1037,14 +1037,14 @@ const styles = StyleSheet.create({
     flexShrink: 1,
   },
   plusOneShareText: {
-    ...uiText(13, '700'),
+    ...uiText(13, '600'),
   },
   addPlusOneButton: {
     paddingHorizontal: spacing.md,
     paddingVertical: 8,
   },
   addPlusOneText: {
-    ...uiText(14, '700'),
+    ...uiText(14, '600'),
   },
   plusOnesFull: {
     ...uiText(14, '600'),
@@ -1092,13 +1092,13 @@ const styles = StyleSheet.create({
     height: 26,
     borderRadius: 13,
     backgroundColor: 'rgba(0,0,0,0.12)',
-    borderWidth: 2,
+    borderWidth: 1,
     alignItems: 'center',
     justifyContent: 'center',
   },
   removeGuestText: {
     fontSize: 12,
-    fontWeight: '700',
+    fontWeight: '600',
   },
   commentRow: {
     flexDirection: 'row',
@@ -1133,12 +1133,12 @@ const styles = StyleSheet.create({
   },
   sendButton: {
     backgroundColor: colors.accentDark,
-    borderRadius: radius.pill,
+    borderRadius: radius.md,
     paddingHorizontal: spacing.lg,
     paddingVertical: 12,
   },
   sendText: {
     color: '#fff',
-    ...uiText(15, '700'),
+    ...uiText(15, '600'),
   },
 });
