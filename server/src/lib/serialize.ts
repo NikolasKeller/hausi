@@ -62,6 +62,12 @@ export function toPublicUser(u: UserRow): PublicUser {
   return { id: u.id, name: u.name, avatarEmoji: u.avatarEmoji, avatarImage: u.avatarImage };
 }
 
+// Narrow the free-form Comment.type string to the client union. Unknown values
+// fall back to a plain comment.
+export function commentType(t: string): CommentEntry['type'] {
+  return t === 'system' || t === 'blast' ? t : 'comment';
+}
+
 export function countRsvps(rsvps: { status: string; plusOnes: number }[]): RsvpCounts {
   const counts: RsvpCounts = { going: 0, maybe: 0, cant: 0, waitlist: 0 };
   for (const r of rsvps) {
@@ -187,7 +193,7 @@ export function toEventDetail(
         id: co.id,
         user: toPublicUser(co.user),
         text: co.text,
-        type: co.type === 'system' ? 'system' : 'comment',
+        type: commentType(co.type),
         createdAt: co.createdAt.toISOString(),
       })
     ),

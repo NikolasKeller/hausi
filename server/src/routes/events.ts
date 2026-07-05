@@ -5,6 +5,7 @@ import { db } from '../lib/db.js';
 import { requireAuth, type AuthVariables } from '../lib/auth.js';
 import {
   canManageEvent,
+  commentType,
   countRsvps,
   toEventDetail,
   toEventSummary,
@@ -12,6 +13,7 @@ import {
 } from '../lib/serialize.js';
 import { makeSlug } from '../lib/slug.js';
 import { normalizePhone, phoneCountry } from '../lib/phone.js';
+import { sendSms, smsEnabled } from '../lib/sms.js';
 import { unlinkImage } from '../lib/uploads.js';
 import { findMutuals, rememberPartyConnections } from '../lib/mutuals.js';
 import { ledger } from '../lib/ledger.js';
@@ -73,6 +75,10 @@ const plusOneSchema = z.union([
 
 const commentSchema = z.object({
   text: z.string().trim().min(1).max(LIMITS.comment),
+});
+
+const blastSchema = z.object({
+  text: z.string().trim().min(1).max(LIMITS.blast),
 });
 
 const cohostSchema = z.object({
@@ -744,7 +750,7 @@ eventRoutes.get('/:id/comments', async (c) => {
       id: co.id,
       user: toPublicUser(co.user),
       text: co.text,
-      type: co.type === 'system' ? 'system' : 'comment',
+      type: commentType(co.type),
       createdAt: co.createdAt.toISOString(),
     })),
   });
@@ -779,4 +785,76 @@ eventRoutes.post('/:id/comments', async (c) => {
     },
     201
   );
+});
+
+// Host "text blast": post an announcement to the event page AND text every
+// guest automatically, server-side (Twilio when configured) — no native
+// compose sheet, no per-message confirmation. Stored as a Comment with
+// type 'blast' so it rides the event page, but renders in its own
+// Announcements section rather than the Party Wall.
+eventRoutes.post('/:id/blast', async (c) => {
+  const userId = c.get('userId');
+  const eventId = c.req.param('id');
+
+  const event = await db.event.findUnique({ where: { id: eventId }, include: eventInclude });
+  if (!event) return c.json({ error: 'Event not found' }, 404);
+  if (event.canceledAt) return c.json({ error: 'This event was canceled' }, 409);
+  if (!canManageEvent(event, userId)) {
+    return c.json({ error: 'Only hosts can send a text blast' }, 403);
+  }
+
+  const parsed = blastSchema.safeParse(await c.req.json().catch(() => null));
+  if (!parsed.success) return c.json({ error: 'Write something to blast' }, 400);
+  const text = parsed.data.text;
+
+  // The sender is the host or a co-host (canManageEvent guaranteed it) — read
+  // their name/phone from the already-loaded event, no extra query.
+  const sender =
+    event.host.id === userId
+      ? event.host
+      : event.cohosts.find((ch) => ch.userId === userId)?.user ?? event.host;
+
+  const created = await db.comment.create({
+    data: { eventId, userId, text, type: 'blast' },
+    include: { user: true },
+  });
+
+  // Recipients: everyone still on the guest list (skip CANT) plus their named
+  // +1s — anyone with a phone, deduped. Texting is best-effort: a provider
+  // hiccup must not fail the blast (it's already posted to the page).
+  const recipients = new Map<string, string>();
+  for (const r of event.rsvps) {
+    if (r.status === 'CANT') continue;
+    if (r.user.phone) recipients.set(normalizePhone(r.user.phone), r.user.name);
+    for (const g of r.plusOneGuests) {
+      if (g.phone) recipients.set(normalizePhone(g.phone), g.name);
+    }
+  }
+  // Never text the sender, however their number reached the list (own RSVP, a
+  // duplicate account, or being brought as someone else's +1).
+  if (sender.phone) recipients.delete(normalizePhone(sender.phone));
+
+  // Build a tappable link from the request origin (Railway sets x-forwarded-*),
+  // falling back to APP_URL — so the text always carries a way back to the event.
+  const configured = process.env.APP_URL?.trim();
+  const fwdHost = c.req.header('x-forwarded-host') ?? c.req.header('host');
+  const fwdProto = c.req.header('x-forwarded-proto') ?? 'https';
+  const base = (configured || (fwdHost ? `${fwdProto}://${fwdHost}` : '')).replace(/\/$/, '');
+  const link = base ? `\n${base}/e/${event.slug}` : '';
+  const body = `📣 ${event.title} — from ${sender.name}\n${text}${link}`;
+
+  let sent = 0;
+  if (smsEnabled && recipients.size) {
+    const results = await Promise.allSettled(
+      [...recipients.keys()].map((phone) => sendSms(phone, body))
+    );
+    sent = results.filter((r) => r.status === 'fulfilled').length;
+  }
+
+  // Splice the just-created blast into the loaded event so the response carries
+  // it without a second full read. `notified` is who we targeted; `sent` is how
+  // many texts actually went out (0 in local dev / no SMS provider) — the
+  // composer keys its success copy off `sent`, not the recipient count.
+  event.comments.push(created);
+  return c.json({ event: toEventDetail(event, userId), notified: recipients.size, sent }, 201);
 });

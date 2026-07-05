@@ -171,15 +171,6 @@ export default function EventScreen() {
     await shareText(`You're my +1 for "${event.title}"! 🎟️ RSVP here: ${url}`, url);
   }
 
-  // "Text Blast": open the OS share/compose sheet with an update the host can
-  // fire off to the group. (A true per-guest SMS blast needs a server endpoint.)
-  async function textBlast() {
-    if (!event) return;
-    const url = Linking.createURL(`e/${event.slug}`);
-    const msg = `📣 ${event.title} — ${formatEventDate(event.date)} at ${formatEventTime(event.date)}.\nDetails & RSVP: ${url}`;
-    await shareText(msg, url);
-  }
-
   async function confirmRemoveGuest(guestId: string, guestName: string) {
     if (!event) return;
     const ok = await confirmDialog(
@@ -281,6 +272,10 @@ export default function EventScreen() {
   );
   const previewShown = previewGuests.slice(0, 7);
   const previewExtra = event.counts.going + event.counts.maybe - previewShown.length;
+  // Host "text blasts" live in their own Announcements section (newest first);
+  // the Party Wall shows only guest chatter + activity, never a blast.
+  const blasts = event.comments.filter((c) => c.type === 'blast');
+  const wallComments = event.comments.filter((c) => c.type !== 'blast');
 
   return (
     <ThemeBackground theme={event.coverTheme} effect={event.effect}>
@@ -365,6 +360,25 @@ export default function EventScreen() {
 
             {event.description ? (
               <Text style={[styles.description, { color: ink.text }]}>{event.description}</Text>
+            ) : null}
+
+            {/* Host announcements (text blasts) — prominent, above the guest list. */}
+            {blasts.length ? (
+              <View style={styles.announceSection}>
+                <View style={styles.sectionHead}>
+                  <Text style={[styles.kickerLabel, { color: ink.subtext }]}>From your host</Text>
+                  <Text style={[styles.sectionTitle, { color: ink.text }]}>Announcements 📣</Text>
+                </View>
+                {[...blasts].reverse().map((b) => (
+                  <Glass key={b.id} tint={ink.glassTint} radius={radius.md} style={styles.announceCard}>
+                    <View style={styles.announceHead}>
+                      <Ionicons name="megaphone" size={15} color={ink.subtext} />
+                      <Text style={[styles.announceAuthor, { color: ink.subtext }]}>{b.user.name}</Text>
+                    </View>
+                    <Text style={[styles.announceText, { color: ink.text }]}>{b.text}</Text>
+                  </Glass>
+                ))}
+              </View>
             ) : null}
 
             {/* Guest list summary — same order as the reference: heading, counts,
@@ -607,10 +621,10 @@ export default function EventScreen() {
               <Text style={[styles.kickerLabel, { color: ink.subtext }]}>Say hi</Text>
               <Text style={[styles.sectionTitle, { color: ink.text }]}>Party Wall 💬</Text>
             </View>
-            {event.comments.length === 0 ? (
+            {wallComments.length === 0 ? (
               <Text style={[styles.noComments, { color: ink.faint }]}>No comments yet — break the ice!</Text>
             ) : (
-              event.comments.map((c) =>
+              wallComments.map((c) =>
                 c.type === 'system' ? (
                   <Text key={c.id} style={[styles.systemEntry, { color: ink.faint }]}>
                     {c.user.avatarEmoji} {c.user.name} {c.text}
@@ -682,7 +696,12 @@ export default function EventScreen() {
             />
           ) : null}
           {event.canManage ? (
-            <BarItem icon="megaphone" label="Text Blast" color={ink.text} onPress={textBlast} />
+            <BarItem
+              icon="megaphone"
+              label="Text Blast"
+              color={ink.text}
+              onPress={() => router.push(`/event/${event.slug}/blast`)}
+            />
           ) : null}
 
           <Pressable
@@ -948,6 +967,24 @@ const styles = StyleSheet.create({
   },
   sectionHead: {
     gap: spacing.xs,
+  },
+  announceSection: {
+    gap: spacing.sm,
+  },
+  announceCard: {
+    padding: spacing.md,
+    gap: spacing.xs,
+  },
+  announceHead: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.xs,
+  },
+  announceAuthor: {
+    ...uiText(13, '700'),
+  },
+  announceText: {
+    ...uiText(16, '500', { lineHeight: 1.45 }),
   },
   kickerLabel: {
     ...kicker(),

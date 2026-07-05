@@ -155,6 +155,14 @@ function RootNavigator() {
           gestureEnabled: true,
         }}
       />
+      <Stack.Screen
+        name="event/[slug]/blast"
+        options={{
+          headerShown: false,
+          presentation: 'modal',
+          gestureEnabled: true,
+        }}
+      />
       <Stack.Screen name="e/[slug]" options={{ headerShown: false }} />
     </Stack>
   );
