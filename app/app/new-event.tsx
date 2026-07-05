@@ -7,7 +7,9 @@ import { getEventTemplate } from '../lib/eventTemplates';
 export default function CreateEventScreen() {
   const router = useRouter();
   // When launched from a Home-tab "party starter", pre-fill the form from that
-  // template. Only cosmetic/copy fields are seeded; date & logistics stay default.
+  // template. Copy/style fields are seeded, plus dress code & cost — those two
+  // live in the form's Settings sheet (the gear flags them with a dot). Date
+  // and the remaining logistics stay default.
   const { template } = useLocalSearchParams<{ template?: string }>();
   const tpl = template ? getEventTemplate(template) : undefined;
   const initial: Partial<EventFormValues> | undefined = tpl
