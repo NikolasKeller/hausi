@@ -16,9 +16,11 @@ export async function findMutuals(
         { hostId: userId },
         { cohosts: { some: { userId } } },
         { rsvps: { some: { userId } } },
+        // Events I was brought to as someone's +1 count too.
+        { rsvps: { some: { plusOneGuests: { some: { userId } } } } },
       ],
     },
-    include: { rsvps: true, cohosts: true },
+    include: { rsvps: { include: { plusOneGuests: true } }, cohosts: true },
     orderBy: { date: 'desc' },
   });
 
@@ -27,7 +29,14 @@ export async function findMutuals(
     const participantIds = new Set<string>([
       event.hostId,
       ...event.cohosts.map((c) => c.userId),
-      ...event.rsvps.filter((r) => r.status !== 'CANT').map((r) => r.userId),
+      // An attendee and their linked +1 both count — the +1 becomes a mutual of
+      // the whole party, including the person who brought them.
+      ...event.rsvps
+        .filter((r) => r.status !== 'CANT')
+        .flatMap((r) => [
+          r.userId,
+          ...r.plusOneGuests.map((g) => g.userId).filter((id): id is string => id !== null),
+        ]),
     ]);
     for (const id of participantIds) {
       if (id !== userId && !mutuals.has(id)) {
@@ -62,7 +71,7 @@ export async function rememberPartyConnections(
     title: string;
     date: Date;
     hostId: string;
-    rsvps: { userId: string; status: string }[];
+    rsvps: { userId: string; status: string; plusOneGuests: { userId: string | null }[] }[];
     cohosts: { userId: string }[];
   }
 ): Promise<void> {
@@ -70,7 +79,12 @@ export async function rememberPartyConnections(
     ...new Set<string>([
       event.hostId,
       ...event.cohosts.map((co) => co.userId),
-      ...event.rsvps.filter((r) => r.status !== 'CANT').map((r) => r.userId),
+      ...event.rsvps
+        .filter((r) => r.status !== 'CANT')
+        .flatMap((r) => [
+          r.userId,
+          ...r.plusOneGuests.map((g) => g.userId).filter((id): id is string => id !== null),
+        ]),
     ]),
   ];
   if (participants.length < 2) return;
