@@ -13,6 +13,9 @@ export const LIMITS = {
   location: 200,
   description: 4000,
   comment: 1000,
+  // A host "text blast" — an announcement posted to the event page and texted
+  // to every guest. Roomier than a comment; still SMS-sized.
+  blast: 1200,
   plusOnes: 20,
   maxGuests: 10000,
 } as const;
@@ -139,7 +142,10 @@ export interface CommentEntry {
   id: string;
   user: PublicUser;
   text: string;
-  type: 'comment' | 'system';
+  // 'comment' — guest chatter on the Party Wall. 'system' — activity entries
+  // ("X is going"). 'blast' — a host announcement (also texted to guests),
+  // shown in its own Announcements section, not the wall.
+  type: 'comment' | 'system' | 'blast';
   createdAt: string;
 }
 

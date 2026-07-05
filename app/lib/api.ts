@@ -230,4 +230,12 @@ export const api = {
       body: JSON.stringify({ text }),
     });
   },
+  // Host text blast: posts the announcement to the event page and texts every
+  // guest server-side. `notified` is how many guests it went out to.
+  sendBlast(eventId: string, text: string) {
+    return request<{ event: EventDetail; notified: number; sent: number }>(
+      `/events/${eventId}/blast`,
+      { method: 'POST', body: JSON.stringify({ text }) }
+    );
+  },
 };

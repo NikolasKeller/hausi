@@ -163,6 +163,7 @@ model PlusOne {
 }
 
 // type: "comment" (user-written) | "system" (activity entries like "X is going")
+//     | "blast" (host announcement, also texted to guests)
 model Comment {
   id        String   @id @default(cuid())
   eventId   String
