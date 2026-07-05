@@ -498,18 +498,20 @@ const styles = StyleSheet.create({
 
   // ── Shared paper surfaces (opaque; lift off the gradient with a shadow) ──
   card: {
+    // Flat paper field, Partiful-style: a thin hairline instead of a puffy
+    // drop shadow, so buttons sit calmly on the linen canvas.
     backgroundColor: colors.card,
     borderWidth: 1,
     borderColor: colors.cardBorder,
     borderRadius: radius.md,
-    ...shadow.card,
   },
   cardPressed: {
     opacity: 0.7,
   },
   cardBtnText: {
+    // Medium weight, not heavy — matches Partiful's calm field labels.
     color: colors.text,
-    ...uiText(15, '700'),
+    ...uiText(15, '600'),
   },
   inputCard: {
     backgroundColor: colors.inputBg,
@@ -586,7 +588,7 @@ const styles = StyleSheet.create({
   },
   photoRemoveText: {
     color: colors.accentDark,
-    ...uiText(14, '700'),
+    ...uiText(14, '600'),
   },
   // ── Font segmented control (inset row of the title box) ──
   fontBar: {

@@ -237,6 +237,6 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     backgroundColor: 'rgba(255,255,255,0.14)',
   },
-  stepText: { color: '#fff', fontSize: 17, fontWeight: '700' },
-  stepValue: { ...uiText(15, '800'), color: '#fff', minWidth: 40, textAlign: 'center' },
+  stepText: { color: '#fff', fontSize: 17, fontWeight: '600' },
+  stepValue: { ...uiText(15, '600'), color: '#fff', minWidth: 40, textAlign: 'center' },
 });

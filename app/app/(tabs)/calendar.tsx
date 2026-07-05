@@ -451,7 +451,7 @@ const styles = StyleSheet.create({
     paddingVertical: 6,
   },
   todayPillText: {
-    ...uiText(12, '700'),
+    ...uiText(12, '600'),
     color: colors.text,
   },
   toggleButton: {

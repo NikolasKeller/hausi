@@ -214,7 +214,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingVertical: 9,
   },
-  doneText: { ...uiText(15, '700'), color: '#fff' },
+  doneText: { ...uiText(15, '600'), color: '#fff' },
   pickerWrap: {
     paddingHorizontal: spacing.md,
     paddingTop: spacing.xs,

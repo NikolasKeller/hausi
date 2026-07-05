@@ -305,7 +305,7 @@ const styles = StyleSheet.create({
   },
   segmentTextActive: {
     color: colors.text,
-    ...uiText(14, '700'),
+    ...uiText(14, '600'),
   },
   block: {
     gap: spacing.md,
@@ -333,7 +333,7 @@ const styles = StyleSheet.create({
     backgroundColor: colors.card,
     borderWidth: 1,
     borderColor: colors.cardBorder,
-    borderRadius: radius.lg,
+    borderRadius: radius.md,
     paddingVertical: spacing.sm,
     paddingHorizontal: spacing.md,
     ...shadow.card,
@@ -342,7 +342,7 @@ const styles = StyleSheet.create({
     borderColor: colors.accent,
   },
   personName: {
-    ...uiText(16, '700'),
+    ...uiText(16, '600'),
     color: colors.text,
   },
   personMeta: {

@@ -445,7 +445,7 @@ const styles = StyleSheet.create({
   },
   welcomeBanner: {
     backgroundColor: colors.card,
-    borderRadius: radius.lg,
+    borderRadius: radius.md,
     borderWidth: 1,
     borderColor: colors.cardBorder,
     paddingVertical: spacing.md,
@@ -495,7 +495,7 @@ const styles = StyleSheet.create({
   mutualCard: {
     flexDirection: 'row',
     backgroundColor: colors.card,
-    borderRadius: radius.lg,
+    borderRadius: radius.md,
     borderWidth: 1,
     borderColor: colors.cardBorder,
     overflow: 'hidden',
@@ -557,7 +557,7 @@ const styles = StyleSheet.create({
     marginTop: spacing.xs,
   },
   seeMoreText: {
-    ...uiText(14, '700'),
+    ...uiText(14, '600'),
     color: colors.text,
   },
   recentCard: {
@@ -592,7 +592,7 @@ const styles = StyleSheet.create({
   templateCard: {
     width: 172,
     backgroundColor: colors.card,
-    borderRadius: radius.lg,
+    borderRadius: radius.md,
     borderWidth: 1,
     borderColor: colors.cardBorder,
     overflow: 'hidden',
