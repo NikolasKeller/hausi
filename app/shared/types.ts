@@ -20,6 +20,10 @@ export const LIMITS = {
   maxGuests: 10000,
 } as const;
 
+// The description's body font-size scale, as a percent of the base size (100 =
+// default). Clamped both client-side (the A−/A+ stepper) and server-side (zod).
+export const DESCRIPTION_SCALE = { min: 70, max: 160, step: 15, default: 100 } as const;
+
 export const COVER_THEMES = [
   // original six
   'sunset',
@@ -189,6 +193,7 @@ export interface ExploreEvent extends EventSummary {
 
 export interface EventDetail extends EventSummary {
   description: string;
+  descriptionScale: number;
   costPerPerson: string;
   dressCode: string;
   maxGuests: number | null;
@@ -205,6 +210,7 @@ export interface EventInput {
   // from the geocoder (never free text).
   title: string;
   description?: string;
+  descriptionScale?: number;
   coverTheme?: CoverTheme;
   coverImage?: string;
   titleFont?: TitleFont;

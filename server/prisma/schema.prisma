@@ -88,6 +88,8 @@ model Event {
   slug          String        @unique
   title         String
   description   String        @default("")
+  // Body font-size for the description, as a percent of the base size (100 = default).
+  descriptionScale Int        @default(100)
   coverTheme    String        @default("sunset")
   coverImage    String        @default("")
   titleFont     String        @default("classic")

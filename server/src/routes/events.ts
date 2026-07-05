@@ -20,6 +20,7 @@ import { ledger } from '../lib/ledger.js';
 import {
   CATEGORIES,
   COVER_THEMES,
+  DESCRIPTION_SCALE,
   EFFECTS,
   LIMITS,
   RSVP_CHOICES,
@@ -39,6 +40,12 @@ const eventInclude = {
 const eventInputSchema = z.object({
   title: z.string().trim().min(1).max(LIMITS.title),
   description: z.string().trim().max(LIMITS.description).optional(),
+  descriptionScale: z
+    .number()
+    .int()
+    .min(DESCRIPTION_SCALE.min)
+    .max(DESCRIPTION_SCALE.max)
+    .optional(),
   coverTheme: z.enum(COVER_THEMES).optional(),
   // Path to an uploaded cover image (from POST /api/uploads), e.g. /uploads/x.jpg.
   coverImage: z.string().trim().max(500).optional(),
@@ -186,6 +193,7 @@ eventRoutes.post('/', async (c) => {
       slug: makeSlug(data.title),
       title: data.title,
       description: data.description ?? '',
+      descriptionScale: data.descriptionScale ?? DESCRIPTION_SCALE.default,
       coverTheme: data.coverTheme ?? 'sunset',
       coverImage: data.coverImage ?? '',
       titleFont: data.titleFont ?? 'classic',

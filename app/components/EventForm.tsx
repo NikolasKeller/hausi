@@ -18,6 +18,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import {
+  DESCRIPTION_SCALE,
   LIMITS,
   type Category,
   type CoverTheme,
@@ -37,6 +38,7 @@ import { DateTimeSheet } from './DateTimeSheet';
 import { Glass } from './glass';
 import { ThemePicker, EffectPicker } from './themes';
 import { ScreenBackground } from './ScreenBackground';
+import { DescriptionEditor } from './DescriptionEditor';
 import { Burst } from './partiful';
 import { formatEventDate, formatEventTime } from './EventCard';
 import { ImageCropSheet } from './ImageCropSheet';
@@ -46,6 +48,7 @@ import { mediaUrl } from '../lib/api';
 export interface EventFormValues {
   title: string;
   description: string;
+  descriptionScale: number;
   location: string;
   city: string;
   category: Category;
@@ -114,6 +117,9 @@ export function EventForm({ initial, submitLabel, onSubmit, footer }: Props) {
   const { height: winHeight } = useWindowDimensions();
   const [title, setTitle] = useState(initial?.title ?? '');
   const [description, setDescription] = useState(initial?.description ?? '');
+  const [descriptionScale, setDescriptionScale] = useState<number>(
+    initial?.descriptionScale ?? DESCRIPTION_SCALE.default
+  );
   const [location, setLocation] = useState(initial?.location ?? '');
   const [city, setCity] = useState(initial?.city ?? '');
   // Category is no longer edited on the form — kept at its default (or the
@@ -142,6 +148,7 @@ export function EventForm({ initial, submitLabel, onSubmit, footer }: Props) {
   const [dateSheetOpen, setDateSheetOpen] = useState(false);
   const [themePickerOpen, setThemePickerOpen] = useState(false);
   const [effectPickerOpen, setEffectPickerOpen] = useState(false);
+  const [descriptionEditorOpen, setDescriptionEditorOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
@@ -218,6 +225,7 @@ export function EventForm({ initial, submitLabel, onSubmit, footer }: Props) {
       await onSubmit({
         title: title.trim(),
         description: description.trim(),
+        descriptionScale,
         location: location.trim(),
         city: city.trim(),
         category,
@@ -354,20 +362,22 @@ export function EventForm({ initial, submitLabel, onSubmit, footer }: Props) {
           }}
         />
 
-        <View style={{ gap: 6 }}>
+        {/* Collapsed to a compact row — tapping opens the full-screen note
+            editor (bullets, font size) instead of a big always-open box. */}
+        <View style={{ gap: spacing.xs }}>
           <SectionLabel color={ink.faint}>Description</SectionLabel>
-          <View style={styles.inputCard}>
-            <TextInput
-              value={description}
-              onChangeText={setDescription}
-              placeholder="Add a description of your event"
-              placeholderTextColor={colors.muted}
-              multiline
-              numberOfLines={4}
-              maxLength={LIMITS.description}
-              style={[styles.input, styles.descInput]}
-            />
-          </View>
+          <PaperPressable style={styles.descButton} onPress={() => setDescriptionEditorOpen(true)}>
+            <View style={styles.descButtonBody}>
+              {description.trim() ? (
+                <Text style={styles.descPreview} numberOfLines={3}>
+                  {description.trim()}
+                </Text>
+              ) : (
+                <Text style={styles.descPlaceholder}>Add a description of your event</Text>
+              )}
+            </View>
+            <Ionicons name="create-outline" size={20} color={colors.muted} />
+          </PaperPressable>
         </View>
 
         <ErrorText message={error} />
@@ -439,6 +449,15 @@ export function EventForm({ initial, submitLabel, onSubmit, footer }: Props) {
         </View>
       ) : null}
 
+      {descriptionEditorOpen ? (
+        <DescriptionEditor
+          value={description}
+          scale={descriptionScale}
+          onChangeText={setDescription}
+          onChangeScale={setDescriptionScale}
+          onClose={() => setDescriptionEditorOpen(false)}
+        />
+      ) : null}
       {themePickerOpen ? (
         <ThemePicker
           value={coverTheme}
@@ -641,10 +660,25 @@ const styles = StyleSheet.create({
     color: colors.muted,
   },
 
-  // ── Description ──
-  descInput: {
-    minHeight: 100,
-    textAlignVertical: 'top',
+  // ── Description (compact row → full-screen note editor) ──
+  descButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    paddingVertical: 14,
+    paddingHorizontal: spacing.md,
+    minHeight: 56,
+  },
+  descButtonBody: {
+    flex: 1,
+  },
+  descPreview: {
+    color: colors.text,
+    ...uiText(15, '500', { lineHeight: 1.4 }),
+  },
+  descPlaceholder: {
+    color: colors.muted,
+    ...uiText(16, '400'),
   },
 
   // ── Floating mini taskbar (Theme / Effect / Settings) ──
