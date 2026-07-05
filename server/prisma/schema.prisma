@@ -29,8 +29,6 @@ model User {
   comments       Comment[]
   cohosting      EventCohost[]
   notifications  Notification[]
-  cardsSent      Card[]         @relation("CardsSent")
-  cardsReceived  Card[]         @relation("CardsReceived")
   crushesSent    Crush[]        @relation("CrushesSent")
   crushesGotten  Crush[]        @relation("CrushesGotten")
   plusOneAppearances PlusOne[]  @relation("PlusOneGuest")
@@ -57,23 +55,6 @@ model PartyConnection {
 
   @@unique([userId, otherUserId])
   @@index([userId])
-}
-
-// A digital greeting card. `toId` is set when delivered in-app to a mutual;
-// left null for cards shared by link (the card's id is its shareable handle).
-model Card {
-  id        String   @id @default(cuid())
-  fromId    String
-  from      User     @relation("CardsSent", fields: [fromId], references: [id], onDelete: Cascade)
-  toId      String?
-  to        User?    @relation("CardsReceived", fields: [toId], references: [id], onDelete: Cascade)
-  theme     String   @default("confetti")
-  message   String
-  createdAt DateTime @default(now())
-  // Per-side archive: hides the card from that party's "My cards" list without
-  // touching the other party's copy. Set when the sender/recipient archives.
-  fromArchivedAt DateTime?
-  toArchivedAt   DateTime?
 }
 
 // One-way crush; when reciprocal, both get notified.

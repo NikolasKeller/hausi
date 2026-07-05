@@ -10,7 +10,6 @@ export interface NotificationInput {
     | 'EVENT_CANCELED'
     | 'WAITLIST_PROMOTED'
     | 'COHOST_ADDED'
-    | 'CARD_RECEIVED'
     | 'CRUSH_MATCH';
   text: string;
   eventSlug?: string;
