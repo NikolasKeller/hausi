@@ -2,6 +2,7 @@ import React, { useCallback, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
   Image,
+  PanResponder,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -127,6 +128,21 @@ function CalendarScreen() {
     return { upcoming: up, past: pa };
   }, [events]);
 
+  // Swipe up anywhere on the calendar to pull up the full list of events —
+  // the panel handle below the grid hints at the gesture. Only claim decisive
+  // upward drags so day taps and the panel's internal scroll still work.
+  const swipeUp = useMemo(
+    () =>
+      PanResponder.create({
+        onMoveShouldSetPanResponder: (_e, g) =>
+          g.dy < -10 && Math.abs(g.dy) > Math.abs(g.dx),
+        onPanResponderRelease: (_e, g) => {
+          if (g.dy < -50 || (g.dy < -20 && g.vy < -0.4)) setMode('list');
+        },
+      }),
+    []
+  );
+
   function shiftMonth(delta: number) {
     setView((v) => {
       const d = new Date(v.year, v.month + delta, 1);
@@ -204,18 +220,11 @@ function CalendarScreen() {
           <Pressable onPress={goToToday} style={styles.todayPill} hitSlop={4}>
             <Text style={styles.todayPillText}>Today</Text>
           </Pressable>
-        ) : null}
-        <Pressable
-          onPress={() => setMode((m) => (m === 'grid' ? 'list' : 'grid'))}
-          style={styles.toggleButton}
-          hitSlop={4}
-        >
-          <Ionicons
-            name={mode === 'grid' ? 'list-outline' : 'calendar-outline'}
-            size={20}
-            color={colors.text}
-          />
-        </Pressable>
+        ) : (
+          <Pressable onPress={() => setMode('grid')} style={styles.toggleButton} hitSlop={4}>
+            <Ionicons name="calendar-outline" size={20} color={colors.text} />
+          </Pressable>
+        )}
       </View>
     </View>
   );
@@ -228,7 +237,7 @@ function CalendarScreen() {
   if (mode === 'grid') {
     return (
       <SafeAreaView edges={['top']} style={styles.safe}>
-        <View style={styles.gridContent}>
+        <View style={styles.gridContent} {...swipeUp.panHandlers}>
           {header}
 
           <View style={styles.weekdayRow}>
