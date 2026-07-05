@@ -13,7 +13,6 @@ import { api } from '../../../lib/api';
 import { confirmDialog, notify } from '../../../lib/dialogs';
 import { colors, light, radius, shadow, spacing } from '../../../lib/theme';
 import { kicker, uiText } from '../../../lib/fonts';
-import { themeInk } from '../../../lib/covers';
 import { EventForm } from '../../../components/EventForm';
 import { PaperBackground } from '../../../components/partiful';
 import { Avatar } from '../../../components/Avatar';
@@ -98,10 +97,6 @@ export default function EditEventScreen() {
     );
   }
 
-  // The co-host footer renders on the full-screen theme gradient, so its
-  // floating text + CTA adapt to the theme's mood for guaranteed contrast.
-  const ink = themeInk(event.coverTheme);
-
   return (
     <EventForm
       submitLabel="Save changes"
@@ -129,11 +124,11 @@ export default function EditEventScreen() {
       }}
       footer={
         event.isHost ? (
-          <View style={[styles.cohostSection, { borderColor: ink.hairline }]}>
-            <Text style={[styles.cohostKicker, { color: ink.faint }]}>Share the load</Text>
-            <Text style={[styles.cohostTitle, { color: ink.text }]}>Co-hosts 🤝</Text>
+          <View style={styles.cohostSection}>
+            <Text style={styles.cohostKicker}>Share the load</Text>
+            <Text style={styles.cohostTitle}>Co-hosts 🤝</Text>
             {event.cohosts.length === 0 ? (
-              <Text style={[styles.cohostEmpty, { color: ink.faint }]}>
+              <Text style={styles.cohostEmpty}>
                 Co-hosts can edit the event and manage the guest list.
               </Text>
             ) : (
@@ -168,14 +163,13 @@ export default function EditEventScreen() {
                 disabled={cohostBusy || !cohostEmail.trim()}
                 style={[
                   styles.cohostAdd,
-                  { backgroundColor: ink.dark ? '#fff' : colors.ink },
                   !cohostEmail.trim() && { opacity: 0.4 },
                 ]}
               >
                 {cohostBusy ? (
-                  <ActivityIndicator color={ink.dark ? colors.ink : '#fff'} size="small" />
+                  <ActivityIndicator color="#fff" size="small" />
                 ) : (
-                  <Text style={[styles.cohostAddText, { color: ink.dark ? colors.ink : '#fff' }]}>Add</Text>
+                  <Text style={styles.cohostAddText}>Add</Text>
                 )}
               </Pressable>
             </View>
