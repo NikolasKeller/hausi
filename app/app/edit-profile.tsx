@@ -90,7 +90,7 @@ export default function EditProfileScreen() {
         <View style={styles.header}>
           <Text style={styles.kicker}>Your profile</Text>
           <Text style={styles.title}>
-            Edit <Text style={styles.titleItalic}>profile</Text>
+            Edit profile
           </Text>
         </View>
 
@@ -158,9 +158,6 @@ const styles = StyleSheet.create({
   title: {
     ...display(44),
     color: colors.text,
-  },
-  titleItalic: {
-    fontStyle: 'italic',
   },
   label: {
     ...uiText(13, '700'),

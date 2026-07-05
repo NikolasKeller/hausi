@@ -93,7 +93,7 @@ export default function NotificationsScreen() {
             <Text style={styles.emptyEmoji}>🔕</Text>
             <Text style={styles.emptyKicker}>All quiet</Text>
             <Text style={styles.emptyTitle}>
-              Nothing <Text style={styles.emptyTitleItalic}>yet</Text>
+              Nothing yet
             </Text>
             <Text style={styles.emptyText}>Go throw a party!</Text>
           </View>
@@ -176,9 +176,6 @@ const styles = StyleSheet.create({
     ...display(44),
     color: colors.text,
     textAlign: 'center',
-  },
-  emptyTitleItalic: {
-    fontStyle: 'italic',
   },
   emptyText: {
     ...uiText(16),

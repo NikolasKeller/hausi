@@ -78,7 +78,7 @@ export default function PhoneScreen() {
           >
             <Text style={styles.kicker}>Step 1 of 2</Text>
             <Text style={styles.title}>
-              Join the <Text style={styles.titleAccent}>party</Text>
+              Join the party
             </Text>
             <Text style={styles.subtitle}>Just for event updates. No spam.</Text>
 
@@ -173,10 +173,6 @@ const styles = StyleSheet.create({
     color: colors.text,
     ...display(56),
     textAlign: 'center',
-  },
-  titleAccent: {
-    ...display(56),
-    fontStyle: 'italic',
   },
   subtitle: {
     color: colors.muted,

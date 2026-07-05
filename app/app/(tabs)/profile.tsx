@@ -225,9 +225,7 @@ function ProfileScreen() {
         </View>
 
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>
-            <Text style={styles.sectionTitleItalic}>Mutuals</Text>
-          </Text>
+          <Text style={styles.sectionTitle}>Mutuals</Text>
           <Text style={styles.sectionSubtitle}>Everyone you've ever partied with</Text>
           {profile.mutuals.length === 0 ? (
             <Text style={styles.emptyText}>Party with someone to make your first mutual 🫂</Text>
@@ -385,11 +383,6 @@ const styles = StyleSheet.create({
     ...display(28),
     color: colors.text,
     paddingHorizontal: spacing.md,
-  },
-  sectionTitleItalic: {
-    ...display(28),
-    color: colors.text,
-    fontStyle: 'italic',
   },
   sectionSubtitle: {
     ...uiText(14),

@@ -329,9 +329,7 @@ function CalendarScreen() {
 
         <View style={styles.listSections}>
           <View style={styles.sectionHead}>
-            <Text style={styles.sectionTitle}>
-              <Text style={styles.sectionTitleItalic}>Upcoming</Text>
-            </Text>
+            <Text style={styles.sectionTitle}>Upcoming</Text>
           </View>
           {upcoming.length === 0 ? (
             <Text style={styles.sectionEmpty}>Nothing planned — yet 👀</Text>
@@ -573,11 +571,6 @@ const styles = StyleSheet.create({
   sectionTitle: {
     ...display(30),
     color: colors.text,
-  },
-  sectionTitleItalic: {
-    ...display(30),
-    color: colors.text,
-    fontStyle: 'italic',
   },
   sectionEmpty: {
     ...uiText(15),
