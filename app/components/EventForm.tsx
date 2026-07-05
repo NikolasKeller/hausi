@@ -347,15 +347,6 @@ export function EventForm({ initial, submitLabel, onSubmit, footer }: Props) {
           contentContainerStyle={styles.content}
           keyboardShouldPersistTaps="handled"
         >
-        <PaperPressable onPress={() => setIsPublic(!isPublic)} style={styles.publicPill}>
-          <Text style={styles.publicPillText}>
-            {isPublic ? '🌐 Public — anyone can find it' : '🔒 Private — invite only'}
-          </Text>
-          <Text style={styles.publicPillAction}>
-            {isPublic ? 'Make private' : 'Make it public'}
-          </Text>
-        </PaperPressable>
-
         {/* Title and its typeface live in ONE box — the name up top, the four
             font choices right beneath it, like the reference poster editor. */}
         <View style={styles.titleBox}>
@@ -417,6 +408,15 @@ export function EventForm({ initial, submitLabel, onSubmit, footer }: Props) {
             </Pressable>
           ) : null}
         </View>
+
+        <PaperPressable onPress={() => setIsPublic(!isPublic)} style={styles.publicPill}>
+          <Text style={styles.publicPillText}>
+            {isPublic ? '🌐 Public — anyone can find it' : '🔒 Private — invite only'}
+          </Text>
+          <Text style={styles.publicPillAction}>
+            {isPublic ? 'Make private' : 'Make it public'}
+          </Text>
+        </PaperPressable>
 
         <View style={{ gap: spacing.xs }}>
           <SectionLabel color={ink.faint}>When</SectionLabel>
@@ -601,7 +601,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
+    paddingVertical: spacing.xs,
   },
   formClose: {
     width: 36,
@@ -636,6 +636,9 @@ const styles = StyleSheet.create({
   },
   content: {
     padding: spacing.lg,
+    // Keep the top shallow so the title and the full 1:1 cover preview fit
+    // above the floating taskbar without scrolling.
+    paddingTop: spacing.sm,
     gap: spacing.lg,
     // Extra room at the end so the submit button scrolls clear of the
     // floating taskbar.
