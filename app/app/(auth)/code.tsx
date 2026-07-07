@@ -3,14 +3,16 @@ import {
   Animated,
   KeyboardAvoidingView,
   Platform,
+  Pressable,
   ScrollView,
   StyleSheet,
   Text,
   TextInput,
   View,
 } from 'react-native';
-import { useLocalSearchParams } from 'expo-router';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { Ionicons } from '@expo/vector-icons';
 import { api } from '../../lib/api';
 import type { DeliveryChannel } from '../../shared/types';
 import { useAuth } from '../../lib/auth';
@@ -28,6 +30,7 @@ export default function CodeScreen() {
     devCode?: string;
     channel?: string;
   }>();
+  const router = useRouter();
   const deliveryChannel: DeliveryChannel =
     channel === 'whatsapp' ? 'whatsapp' : channel === 'email' ? 'email' : 'sms';
   const viaEmail = deliveryChannel === 'email';
@@ -107,6 +110,14 @@ export default function CodeScreen() {
 
         <KeyboardAvoidingView style={{ flex: 1 }} behavior="padding">
           <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
+            <Pressable
+              onPress={() => (router.canGoBack() ? router.back() : router.replace('/phone'))}
+              hitSlop={10}
+              style={({ pressed }) => [styles.backLink, pressed && { opacity: 0.6 }]}
+            >
+              <Ionicons name="chevron-back" size={20} color={colors.muted} />
+              <Text style={styles.backText}>Use a different method</Text>
+            </Pressable>
             <Text
               style={styles.title}
               numberOfLines={1}
@@ -203,6 +214,17 @@ const styles = StyleSheet.create({
     padding: spacing.lg,
     paddingTop: spacing.xl * 2,
     gap: spacing.md,
+  },
+  backLink: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 2,
+    alignSelf: 'flex-start',
+    marginBottom: spacing.xs,
+  },
+  backText: {
+    color: colors.muted,
+    ...uiText(15, '500'),
   },
   title: {
     color: colors.text,
