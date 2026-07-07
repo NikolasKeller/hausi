@@ -398,7 +398,7 @@ const styles = StyleSheet.create({
   content: {
     gap: spacing.xl,
     paddingTop: spacing.sm,
-    paddingBottom: spacing.xxl,
+    paddingBottom: spacing.section,
   },
   headerRow: {
     flexDirection: 'row',
