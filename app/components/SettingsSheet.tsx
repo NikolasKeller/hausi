@@ -1,9 +1,8 @@
 import React, { type ComponentProps } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { colors, radius, spacing } from '../lib/theme';
+import { colors, light, radius, shadow, spacing } from '../lib/theme';
 import { uiText } from '../lib/fonts';
-import { Glass } from './glass';
 
 interface Option {
   icon: ComponentProps<typeof Ionicons>['name'];
@@ -21,7 +20,7 @@ interface Props {
 
 // Settings bottom sheet — the gear on the profile header opens this menu instead
 // of logging out on the spot. Log out is just one option among the rest, and it
-// shares the dark-glass chrome of the event pickers.
+// wears the warm-linen card chrome shared with the rest of the app's sheets.
 export function SettingsSheet({ onClose, onEditProfile, onShareProfile, onLogout }: Props) {
   const options: Option[] = [
     { icon: 'pencil', label: 'Edit profile', onPress: onEditProfile },
@@ -32,39 +31,38 @@ export function SettingsSheet({ onClose, onEditProfile, onShareProfile, onLogout
   return (
     <View style={styles.overlay}>
       <Pressable style={StyleSheet.absoluteFill} onPress={onClose} />
-      <View style={styles.dock}>
-        <Glass tint="dark" intensity={48} radius={radius.xl} border style={styles.sheet}>
-          <View style={styles.sheetHeader}>
-            <Text style={styles.sheetTitle}>Settings ⚙️</Text>
-            <Pressable onPress={onClose} hitSlop={10} style={styles.closeBtn}>
-              <Ionicons name="close" size={18} color="#fff" />
+      <View style={styles.sheet}>
+        <View style={styles.grabber} />
+        <View style={styles.sheetHeader}>
+          <Text style={styles.sheetTitle}>Settings ⚙️</Text>
+          <Pressable onPress={onClose} hitSlop={10} style={styles.closeBtn}>
+            <Ionicons name="close" size={18} color={colors.muted} />
+          </Pressable>
+        </View>
+        <View style={styles.rows}>
+          {options.map((opt) => (
+            <Pressable
+              key={opt.label}
+              style={({ pressed }) => [styles.row, pressed && styles.rowPressed]}
+              onPress={() => {
+                onClose();
+                opt.onPress();
+              }}
+            >
+              <View style={styles.rowLeft}>
+                <Ionicons
+                  name={opt.icon}
+                  size={18}
+                  color={opt.destructive ? colors.danger : colors.text}
+                />
+                <Text style={[styles.rowLabel, opt.destructive && styles.rowLabelDestructive]}>
+                  {opt.label}
+                </Text>
+              </View>
+              <Ionicons name="chevron-forward" size={16} color={colors.muted} />
             </Pressable>
-          </View>
-          <View style={styles.rows}>
-            {options.map((opt) => (
-              <Pressable
-                key={opt.label}
-                style={({ pressed }) => [styles.row, pressed && styles.rowPressed]}
-                onPress={() => {
-                  onClose();
-                  opt.onPress();
-                }}
-              >
-                <View style={styles.rowLeft}>
-                  <Ionicons
-                    name={opt.icon}
-                    size={18}
-                    color={opt.destructive ? colors.danger : 'rgba(255,255,255,0.9)'}
-                  />
-                  <Text style={[styles.rowLabel, opt.destructive && styles.rowLabelDestructive]}>
-                    {opt.label}
-                  </Text>
-                </View>
-                <Ionicons name="chevron-forward" size={16} color="rgba(255,255,255,0.4)" />
-              </Pressable>
-            ))}
-          </View>
-        </Glass>
+          ))}
+        </View>
       </View>
     </View>
   );
@@ -77,14 +75,21 @@ const styles = StyleSheet.create({
     justifyContent: 'flex-end',
     zIndex: 50,
   },
-  dock: {
-    maxHeight: '80%',
-  },
   sheet: {
-    flexShrink: 1,
-    paddingTop: spacing.md,
+    backgroundColor: colors.card,
+    borderTopLeftRadius: radius.xl,
+    borderTopRightRadius: radius.xl,
+    paddingTop: spacing.sm,
     paddingBottom: spacing.xl,
-    backgroundColor: 'rgba(18,16,28,0.72)',
+    ...shadow.float,
+  },
+  grabber: {
+    alignSelf: 'center',
+    width: 40,
+    height: 5,
+    borderRadius: 3,
+    backgroundColor: light.hairline,
+    marginBottom: spacing.sm,
   },
   sheetHeader: {
     flexDirection: 'row',
@@ -93,14 +98,14 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.lg,
     marginBottom: spacing.sm,
   },
-  sheetTitle: { ...uiText(20, '700'), color: '#fff' },
+  sheetTitle: { ...uiText(20, '700'), color: colors.text },
   closeBtn: {
     width: 30,
     height: 30,
     borderRadius: 15,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: 'rgba(255,255,255,0.14)',
+    backgroundColor: colors.inputBg,
   },
   rows: {
     paddingHorizontal: spacing.lg,
@@ -112,7 +117,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     minHeight: 52,
-    backgroundColor: 'rgba(255,255,255,0.08)',
+    backgroundColor: colors.inputBg,
+    borderWidth: 1,
+    borderColor: colors.cardBorder,
     borderRadius: radius.md,
     paddingHorizontal: spacing.md,
     paddingVertical: 6,
@@ -126,6 +133,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: spacing.sm,
   },
-  rowLabel: { ...uiText(15, '600'), color: '#fff' },
+  rowLabel: { ...uiText(15, '600'), color: colors.text },
   rowLabelDestructive: { color: colors.danger },
 });
