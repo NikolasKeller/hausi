@@ -22,6 +22,7 @@ import { Button } from '../../components/ui';
 import { formatEventDate } from '../../components/EventCard';
 import { withScreenBackground } from '../../components/ScreenBackground';
 import { hasLocationPermission, locateCity } from '../../lib/location';
+import { EVENT_TEMPLATES, type EventTemplate } from '../../lib/eventTemplates';
 
 export default withScreenBackground(HomeScreen);
 
@@ -225,8 +226,46 @@ function HomeScreen() {
             onPress={() => router.push('/new-event')}
           />
         </View>
+
+        <View style={styles.sectionGroup}>
+          <Text style={styles.sectionTitle}>Party starters</Text>
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.horizontalList}
+            style={styles.horizontalScroll}
+          >
+            {EVENT_TEMPLATES.map((template) => (
+              <TemplateCard key={template.id} template={template} />
+            ))}
+          </ScrollView>
+        </View>
       </ScrollView>
     </SafeAreaView>
+  );
+}
+
+// A tappable "party starter" template — a plain dark card with the template's
+// emoji; tapping opens the event form seeded from that template.
+function TemplateCard({ template }: { template: EventTemplate }) {
+  const router = useRouter();
+  return (
+    <Pressable
+      onPress={() => router.push({ pathname: '/new-event', params: { template: template.id } })}
+      style={({ pressed }) => [styles.templateCard, pressed && { opacity: 0.85 }]}
+    >
+      <View style={styles.templateCover}>
+        <Text style={styles.templateEmoji}>{template.emoji}</Text>
+      </View>
+      <View style={styles.templateBody}>
+        <Text style={styles.templateName} numberOfLines={1}>
+          {template.name}
+        </Text>
+        <Text style={styles.templateVibe} numberOfLines={2}>
+          {template.vibe}
+        </Text>
+      </View>
+    </Pressable>
   );
 }
 
@@ -441,6 +480,40 @@ const styles = StyleSheet.create({
   horizontalList: {
     paddingHorizontal: spacing.md,
     gap: spacing.sm,
+  },
+  templateCard: {
+    width: 172,
+    backgroundColor: colors.card,
+    borderRadius: radius.md,
+    borderWidth: 1,
+    borderColor: colors.cardBorder,
+    overflow: 'hidden',
+    ...shadow.card,
+  },
+  templateCover: {
+    height: 96,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: colors.inputBg,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.cardBorder,
+  },
+  templateEmoji: {
+    fontSize: 46,
+  },
+  templateBody: {
+    padding: spacing.sm,
+    gap: 2,
+    minHeight: 96,
+  },
+  templateName: {
+    ...display(16),
+    color: colors.text,
+  },
+  templateVibe: {
+    ...uiText(12),
+    color: colors.muted,
+    flex: 1,
   },
   mutualFeed: {
     gap: spacing.lg,

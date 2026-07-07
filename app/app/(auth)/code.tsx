@@ -208,6 +208,10 @@ const styles = StyleSheet.create({
     fontSize: 36,
     letterSpacing: 14,
     textAlign: 'center',
+    // letterSpacing also adds a trailing gap after the last digit, which shifts
+    // the glyphs left of true center; a matching left pad re-centers them so the
+    // "Resend code" line below lines up with the middle of the six digits.
+    paddingLeft: 14,
     fontWeight: '700',
   },
   // Kill the browser's focus ring / native input chrome on web.

@@ -9,6 +9,7 @@ import {
   View,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { colors, radius, spacing } from '../lib/theme';
 import { uiText } from '../lib/fonts';
@@ -40,10 +41,11 @@ const SPRING = { useNativeDriver: true, friction: 9, tension: 90 };
 // bar tab: it lives in a white + button floating above the bar's right edge.
 export function GlassTabBar({ state, descriptors, navigation }: TabBarProps) {
   const insets = useSafeAreaInsets();
+  const router = useRouter();
 
-  // Only the four primary destinations live in the bar; Create is the FAB.
+  // Only the four primary destinations live in the bar; Create is the FAB,
+  // which jumps straight into the event editor.
   const barRoutes = state.routes.filter((r) => r.name !== 'create');
-  const createRoute = state.routes.find((r) => r.name === 'create');
   const count = barRoutes.length;
 
   const [rowWidth, setRowWidth] = useState(0);
@@ -111,15 +113,7 @@ export function GlassTabBar({ state, descriptors, navigation }: TabBarProps) {
     });
   }
 
-  const goCreate = () => {
-    if (!createRoute) return;
-    const event = navigation.emit({
-      type: 'tabPress',
-      target: createRoute.key,
-      canPreventDefault: true,
-    });
-    if (!event.defaultPrevented) navigation.navigate('create');
-  };
+  const goCreate = () => router.push('/new-event');
 
   return (
     <View style={[styles.wrap, { paddingBottom: insets.bottom + spacing.sm }]}>
@@ -170,19 +164,18 @@ export function GlassTabBar({ state, descriptors, navigation }: TabBarProps) {
         </View>
       </View>
 
-      {/* Floating Create button — sits above the bar's right edge. */}
-      {createRoute ? (
-        <Pressable
-          onPress={goCreate}
-          style={({ pressed }) => [
-            styles.fab,
-            { bottom: insets.bottom + spacing.sm + Math.max(barHeight - 22, 28) },
-            pressed && { opacity: 0.85 },
-          ]}
-        >
-          <Ionicons name="add" size={32} color={colors.onInk} />
-        </Pressable>
-      ) : null}
+      {/* Floating Create button — sits clear above the bar's right edge so it
+          never overlaps the tab items. */}
+      <Pressable
+        onPress={goCreate}
+        style={({ pressed }) => [
+          styles.fab,
+          { bottom: insets.bottom + spacing.sm + barHeight + spacing.sm },
+          pressed && { opacity: 0.85 },
+        ]}
+      >
+        <Ionicons name="add" size={32} color={colors.onInk} />
+      </Pressable>
     </View>
   );
 }

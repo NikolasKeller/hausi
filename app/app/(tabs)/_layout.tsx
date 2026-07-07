@@ -10,7 +10,7 @@ import { GlassTabBar } from '../../components/GlassTabBar';
 export default function TabsLayout() {
   return (
     <Tabs
-      tabBar={(props) => <GlassTabBar {...(props as never)} />}
+      tabBar={(props) => <GlassTabBar {...(props as any)} />}
       screenOptions={{
         headerShown: false,
         sceneStyle: { backgroundColor: colors.bg },
@@ -35,13 +35,6 @@ export default function TabsLayout() {
           tabBarIcon: ({ color, focused }) => (
             <Ionicons name={focused ? 'calendar' : 'calendar-outline'} size={24} color={color} />
           ),
-        }}
-      />
-      <Tabs.Screen
-        name="create"
-        options={{
-          title: 'Create',
-          tabBarIcon: ({ color }) => <Ionicons name="add-circle-outline" size={28} color={color} />,
         }}
       />
       <Tabs.Screen
