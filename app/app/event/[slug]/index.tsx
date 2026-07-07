@@ -162,7 +162,7 @@ export default function EventScreen() {
   async function share() {
     if (!event) return;
     const url = Linking.createURL(`e/${event.slug}`);
-    const message = `You're invited: ${event.title} — ${formatEventDate(event.date)} at ${formatEventTime(event.date)}.\nOpen in Hausi: ${url}`;
+    const message = `You're invited: ${event.title} - ${formatEventDate(event.date)} at ${formatEventTime(event.date)}.\nOpen in Hausi: ${url}`;
     await shareText(message, url);
   }
 
@@ -480,7 +480,7 @@ export default function EventScreen() {
             {myRsvp?.status === 'WAITLIST' ? (
               <Glass tint={ink.glassTint} radius={radius.md} style={styles.lockedNote}>
                 <Text style={[styles.lockedNoteText, { color: ink.subtext }]}>
-                  ⏳ The event is full — you're #
+                  ⏳ The event is full - you're #
                   {event.rsvps.filter((r) => r.status === 'WAITLIST').findIndex(
                     (r) => r.user.id === user?.id
                   ) + 1}{' '}
@@ -627,7 +627,7 @@ export default function EventScreen() {
               <Text style={[styles.sectionTitle, { color: ink.text }]}>Party Wall 💬</Text>
             </View>
             {wallComments.length === 0 ? (
-              <Text style={[styles.noComments, { color: ink.faint }]}>No comments yet — break the ice!</Text>
+              <Text style={[styles.noComments, { color: ink.faint }]}>No comments yet - break the ice!</Text>
             ) : (
               wallComments.map((c) =>
                 c.type === 'system' ? (

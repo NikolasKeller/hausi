@@ -37,7 +37,7 @@ const CATEGORY_CHIPS: { key: Category | 'all'; emoji: string; label: string }[] 
 async function shareEvent(event: ExploreEvent) {
   const url = Linking.createURL(`e/${event.slug}`);
   await shareText(
-    `${event.title} — ${formatEventDate(event.date)} in ${event.city}.\nOpen in Hausi: ${url}`,
+    `${event.title} - ${formatEventDate(event.date)} in ${event.city}.\nOpen in Hausi: ${url}`,
     url
   );
 }
@@ -367,7 +367,6 @@ function ExploreScreen() {
               </Text>
             </CoverGradient>
 
-            <Text style={styles.sectionKicker}>New faces</Text>
             <Text style={styles.sectionTitle}>
               Meet new people
             </Text>
@@ -386,7 +385,7 @@ function ExploreScreen() {
               <View style={styles.inlineState}>
                 <Text style={styles.errorEmoji}>🫥</Text>
                 <Text style={styles.emptyText}>
-                  Nothing here yet — be the first to throw something public in{' '}
+                  Nothing here yet - be the first to throw something public in{' '}
                   {city || 'your city'}
                 </Text>
               </View>
@@ -453,7 +452,7 @@ function ExploreScreen() {
                       </View>
                     ) : suggestions.length === 0 && query.length >= 2 ? (
                       <Text style={styles.citySearchEmpty}>
-                        No city by that name — check the spelling
+                        No city by that name - check the spelling
                       </Text>
                     ) : null}
                   </>
@@ -822,7 +821,7 @@ const styles = StyleSheet.create({
   },
   cardMeta: {
     ...uiText(13, '600'),
-    color: colors.accent,
+    color: colors.muted,
   },
   cardDescription: {
     ...uiText(13),

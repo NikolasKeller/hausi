@@ -153,7 +153,7 @@ async function promoteWaitlist(tx: Prisma.TransactionClient, eventId: string) {
       data: {
         eventId,
         userId: entry.userId,
-        text: 'is off the waitlist — going! 🎉',
+        text: 'is off the waitlist - going! 🎉',
         type: 'system',
       },
     });
@@ -563,7 +563,7 @@ eventRoutes.post('/:id/plus-one', async (c) => {
       let linkedUserId: string | null;
       if ('userId' in input) {
         if (input.userId === userId) {
-          throw new HttpError("You're already going — pick someone else", 400);
+          throw new HttpError("You're already going - pick someone else", 400);
         }
         const guest = await tx.user.findUnique({ where: { id: input.userId } });
         if (!guest) throw new HttpError('That person is no longer on Hausi', 404);
@@ -575,7 +575,7 @@ eventRoutes.post('/:id/plus-one', async (c) => {
           mine.user.phone &&
           normalizePhone(guest.phone) === normalizePhone(mine.user.phone)
         ) {
-          throw new HttpError("You're already going — pick someone else", 400);
+          throw new HttpError("You're already going - pick someone else", 400);
         }
         // Linked +1s must be someone you've actually partied with. The client
         // only offers mutuals; this closes the direct-API bypass (attaching a
@@ -615,7 +615,7 @@ eventRoutes.post('/:id/plus-one', async (c) => {
         // wouldn't match and the spot would slip through as "olivia brings Olivia."
         const myPhone = mine.user.phone ? normalizePhone(mine.user.phone) : null;
         if ((myPhone && myPhone === phone) || (holder && holder.id === userId)) {
-          throw new HttpError("You're already going — you can't bring yourself", 400);
+          throw new HttpError("You're already going - you can't bring yourself", 400);
         }
         if (holder && event.rsvps.some((r) => r.userId === holder.id && r.status !== 'CANT')) {
           throw new HttpError(

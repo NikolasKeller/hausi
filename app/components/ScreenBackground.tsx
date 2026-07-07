@@ -5,20 +5,20 @@ import { colors } from '../lib/theme';
 
 // The app-wide backdrop: a violet "night sky" bleeding down from the top into
 // the near-black base, with a magenta aurora leaning in from the top-right for
-// depth — the moody, nightlife feel of the reference design. Static (no
-// animation) so scroll performance stays flat; the animated version lives in
+// depth — the moody, nightlife feel of Partiful. Static (no animation) so
+// scroll performance stays flat; the animated version lives in
 // AuroraBackground for the onboarding flow.
 export function ScreenBackground({ children }: { children?: React.ReactNode }) {
   return (
     <View style={styles.fill}>
       <LinearGradient
-        colors={['rgba(196,149,106,0.14)', 'rgba(196,149,106,0.04)', 'rgba(238,234,228,0)']}
-        locations={[0, 0.4, 1]}
+        colors={['rgba(139,92,246,0.22)', 'rgba(80,60,150,0.08)', 'rgba(17,17,17,0)']}
+        locations={[0, 0.5, 1]}
         style={styles.sky}
         pointerEvents="none"
       />
       <LinearGradient
-        colors={['rgba(212,196,178,0.22)', 'rgba(212,196,178,0)']}
+        colors={['rgba(255,79,216,0.20)', 'rgba(255,79,216,0)']}
         start={{ x: 1, y: 0 }}
         end={{ x: 0.1, y: 0.7 }}
         style={styles.aurora}

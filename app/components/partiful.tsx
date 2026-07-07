@@ -200,13 +200,13 @@ export function PaperBackground({
   children?: React.ReactNode;
   decor?: boolean;
 }) {
-  // Known aesthetic: a calm, flat warm-linen canvas with one very soft warm
-  // bloom from the top — no pastel washes, no starburst stickers.
+  // Partiful aesthetic: a near-black canvas with a soft violet→pink bloom
+  // falling from the top, like the app's lit-screen nightlife feel.
   return (
     <View style={styles.paperFill}>
       <LinearGradient
-        colors={['rgba(196,149,106,0.10)', 'rgba(238,234,228,0)']}
-        locations={[0, 1]}
+        colors={['rgba(139,92,246,0.22)', 'rgba(255,79,216,0.06)', 'rgba(17,17,17,0)']}
+        locations={[0, 0.5, 1]}
         style={styles.washTop}
         pointerEvents="none"
       />

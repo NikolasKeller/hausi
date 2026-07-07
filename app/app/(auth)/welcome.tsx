@@ -55,7 +55,7 @@ export default function WelcomeScreen() {
         <Text style={styles.footnote}>Takes 30 seconds. No email needed.</Text>
         {__DEV__ ? (
           <Text style={styles.devLink} onPress={() => router.push('/dev-login')}>
-            Skip auth — continue as Preview (dev only)
+            Skip auth - continue as Preview (dev only)
           </Text>
         ) : null}
       </SafeAreaView>

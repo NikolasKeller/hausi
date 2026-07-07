@@ -114,7 +114,7 @@ const styles = StyleSheet.create({
   },
   date: {
     ...uiText(14, '600'),
-    color: colors.accent,
+    color: colors.muted,
   },
   hostRow: {
     flexDirection: 'row',

@@ -16,7 +16,7 @@ const LOCATE_TIMEOUT_MS = 15000;
 function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
   return new Promise((resolve, reject) => {
     const timer = setTimeout(
-      () => reject(new LocateError('Took too long to find you — try again')),
+      () => reject(new LocateError('Took too long to find you - try again')),
       ms
     );
     promise.then(
@@ -66,7 +66,7 @@ async function doLocate(): Promise<LocatedCity> {
     // The web shim reports granted:false with a non-denied status when the
     // position lookup itself failed — only a real deny gets the permission copy.
     throw perm.status === Location.PermissionStatus.DENIED
-      ? new LocateError('Location is off — enable it in Settings')
+      ? new LocateError('Location is off - enable it in Settings')
       : new LocateError('Could not find your location');
   }
   const pos = await Location.getCurrentPositionAsync({

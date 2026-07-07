@@ -196,14 +196,10 @@ function CalendarScreen() {
     <View style={styles.header}>
       <View style={styles.monthRow}>
         <View style={styles.monthTitleWrap}>
-          <Text style={[styles.kicker, kicker(colors.accent)]} numberOfLines={1}>
-            {isViewingCurrentYear ? 'Your calendar' : `Your calendar · ${view.year}`}
-          </Text>
-          {/* The month name renders at one fixed size for every month — the
-              year, when off the current year, lives in the kicker above so a
-              long name like "September" never forces the title to shrink. */}
+          {/* Month name at one fixed size. When viewing another year, the year
+              is appended so it stays visible without a purple eyebrow label. */}
           <Text style={styles.monthTitle} numberOfLines={1}>
-            {MONTHS[view.month]}
+            {isViewingCurrentYear ? MONTHS[view.month] : `${MONTHS[view.month]} ${view.year}`}
           </Text>
         </View>
         {mode === 'grid' ? (
@@ -343,7 +339,7 @@ function CalendarScreen() {
             <Text style={styles.sectionTitle}>Upcoming</Text>
           </View>
           {upcoming.length === 0 ? (
-            <Text style={styles.sectionEmpty}>Nothing planned — yet 👀</Text>
+            <Text style={styles.sectionEmpty}>Nothing planned - yet 👀</Text>
           ) : (
             upcoming.map((ev) => <EventCard key={ev.id} event={ev} />)
           )}
@@ -407,7 +403,9 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   monthTitleWrap: {
-    flexShrink: 1,
+    // Fill the row so the chevrons always land at the same spot on the right,
+    // regardless of the month name's length (e.g. "May" vs "September").
+    flex: 1,
     gap: spacing.xs,
   },
   kicker: {

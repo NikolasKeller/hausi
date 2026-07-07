@@ -28,11 +28,11 @@ export default withScreenBackground(HomeScreen);
 
 // Never a plain "welcome back" — always something cheerful and party-flavored.
 const GREETINGS: Array<(name: string) => { text: string; subtext: string }> = [
-  (n) => ({ text: `Look who's back — ${n}! 🎉`, subtext: "Let's find your next party." }),
+  (n) => ({ text: `Look who's back - ${n}! 🎉`, subtext: "Let's find your next party." }),
   (n) => ({ text: `${n} has entered the chat 🎊`, subtext: 'Good vibes incoming.' }),
   (n) => ({ text: `Ayy, ${n}! 🥳`, subtext: 'Who are we celebrating today?' }),
   (n) => ({ text: `The party missed you, ${n} 💃`, subtext: "Let's get something on the calendar." }),
-  (n) => ({ text: `There they are — ${n} 🕺`, subtext: 'Ready to make plans?' }),
+  (n) => ({ text: `There they are - ${n} 🕺`, subtext: 'Ready to make plans?' }),
   (n) => ({ text: `${n} in the building ✨`, subtext: 'Time to stir something up.' }),
   (n) => ({ text: `Confetti's out for ${n} 🎈`, subtext: "What's the move tonight?" }),
 ];
@@ -168,11 +168,10 @@ function HomeScreen() {
         ) : null}
 
         <View style={styles.sectionGroup}>
-          <Text style={styles.kicker}>Your crew</Text>
           <Text style={styles.sectionTitle}>Find your mutuals</Text>
           {home.palsGoing.length === 0 ? (
             <Text style={styles.emptyNote}>
-              No mutual plans yet — RSVP to a few parties and your crew will pop up here.
+              No mutual plans yet - RSVP to a few parties and your crew will pop up here.
             </Text>
           ) : (
             <View style={styles.mutualFeed}>
@@ -193,7 +192,6 @@ function HomeScreen() {
 
         {recents.length > 0 ? (
           <View style={styles.sectionGroup}>
-            <Text style={styles.kicker}>Back to it</Text>
             <Text style={styles.sectionTitle}>Recently viewed</Text>
             <ScrollView
               horizontal
@@ -209,7 +207,6 @@ function HomeScreen() {
         ) : null}
 
         <View style={styles.sectionGroup}>
-          <Text style={styles.kicker}>Need a plan?</Text>
           <Text style={styles.sectionTitle}>
             Party starters
           </Text>
@@ -369,7 +366,6 @@ function TemplateCard({ template }: { template: EventTemplate }) {
         <Text style={styles.templateVibe} numberOfLines={2}>
           {template.vibe}
         </Text>
-        <Text style={styles.templateStart}>+ Start from this</Text>
       </View>
     </Pressable>
   );
@@ -584,7 +580,7 @@ const styles = StyleSheet.create({
   },
   recentDate: {
     ...uiText(12, '700'),
-    color: colors.accent,
+    color: colors.muted,
     padding: spacing.sm,
     paddingTop: 6,
   },

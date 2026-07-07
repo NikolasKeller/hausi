@@ -208,7 +208,7 @@ export function EventForm({ initial, submitLabel, onSubmit, footer }: Props) {
       return;
     }
     if (!location.trim()) {
-      setError('Add a location — pick a real spot from the list!');
+      setError('Add a location - pick a real spot from the list!');
       return;
     }
     const guests = maxGuests.trim() ? Number(maxGuests.trim()) : null;

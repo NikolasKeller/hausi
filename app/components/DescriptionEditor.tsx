@@ -139,7 +139,7 @@ export function DescriptionEditor({
                 setSelection(e.nativeEvent.selection);
                 setForced(null);
               }}
-              placeholder={"Write the details — who, what, and why it'll be great.\n\nTip: tap “Bullets” to make a list."}
+              placeholder={"Write the details - who, what, and why it'll be great.\n\nTip: tap “Bullets” to make a list."}
               placeholderTextColor={colors.muted}
               maxLength={LIMITS.description}
               textAlignVertical="top"

@@ -150,7 +150,7 @@ export default function AddPlusOneScreen() {
             Who are you bringing?
           </Text>
           <Text style={styles.subtitle}>
-            One guest — someone you've partied with, or a brand-new face.
+            One guest - someone you've partied with, or a brand-new face.
           </Text>
 
           <View style={styles.segment}>
@@ -191,7 +191,7 @@ export default function AddPlusOneScreen() {
                 <Text style={styles.empty}>
                   {query.trim()
                     ? 'No one by that name.'
-                    : 'No one to show yet — add your plus one under “Someone new.”'}
+                    : 'No one to show yet - add your plus one under “Someone new.”'}
                 </Text>
               ) : (
                 filtered.map((m) => {

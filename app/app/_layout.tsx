@@ -174,10 +174,10 @@ function WebFrame({ children }: { children: React.ReactNode }) {
   if (Platform.OS !== 'web') return <>{children}</>;
   return (
     <View style={frameStyles.page}>
-      {/* Warm neutral surround (no purple) so the phone column reads as a card
-          on a soft linen desk. */}
+      {/* Dark nightlife surround so the phone column reads as a lit screen
+          floating on a near-black desk with a faint violet bloom. */}
       <LinearGradient
-        colors={['#3A3531', '#2B2723', '#221F1B']}
+        colors={['#1A1524', '#141119', '#0C0A0F']}
         locations={[0, 0.5, 1]}
         start={{ x: 0.2, y: 0 }}
         end={{ x: 0.8, y: 1 }}
@@ -192,7 +192,7 @@ function WebFrame({ children }: { children: React.ReactNode }) {
 const frameStyles = StyleSheet.create({
   page: {
     flex: 1,
-    backgroundColor: '#221F1B',
+    backgroundColor: '#0C0A0F',
     alignItems: 'center',
   },
   phone: {

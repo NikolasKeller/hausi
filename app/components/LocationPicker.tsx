@@ -181,9 +181,9 @@ export function LocationPicker({ value, city, onChange, label, labelColor }: Pro
               </Pressable>
             ))}
             {!loading && errored ? (
-              <Text style={styles.noMatch}>Couldn’t reach address search — try again</Text>
+              <Text style={styles.noMatch}>Couldn’t reach address search - try again</Text>
             ) : !loading && searched && results.length === 0 ? (
-              <Text style={styles.noMatch}>No address by that name — check the spelling</Text>
+              <Text style={styles.noMatch}>No address by that name - check the spelling</Text>
             ) : null}
             {results.length > 0 ? (
               <Text style={styles.attribution}>Addresses © OpenStreetMap</Text>

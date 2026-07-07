@@ -54,7 +54,7 @@ export const EVENT_TEMPLATES: EventTemplate[] = [
     vibe: 'Easy miles, good chats',
     title: 'Run Club 🏃',
     description:
-      'Easy pace, good chats, and coffee after. All levels welcome — nobody gets left behind.',
+      'Easy pace, good chats, and coffee after. All levels welcome - nobody gets left behind.',
     category: 'sports',
     coverTheme: 'forest',
     titleFont: 'classic',
@@ -121,7 +121,7 @@ export const EVENT_TEMPLATES: EventTemplate[] = [
     vibe: 'No talent required',
     title: 'Karaoke Night 🎤',
     description:
-      'No talent required, just enthusiasm. Come sing your heart out — the worse, the better.',
+      'No talent required, just enthusiasm. Come sing your heart out - the worse, the better.',
     category: 'music',
     coverTheme: 'disco',
     titleFont: 'fancy',
@@ -147,7 +147,7 @@ export const EVENT_TEMPLATES: EventTemplate[] = [
     vibe: 'Sun, sand & snacks',
     title: 'Beach Day 🏖️',
     description:
-      "Sun, sand, and snacks. Let's claim a patch of beach for the day — bring a towel and something to share.",
+      "Sun, sand, and snacks. Let's claim a patch of beach for the day - bring a towel and something to share.",
     category: 'community',
     coverTheme: 'ocean',
     titleFont: 'classic',

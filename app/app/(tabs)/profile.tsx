@@ -75,7 +75,7 @@ function ProfileScreen() {
 
   async function shareProfile() {
     if (!profile) return;
-    await shareText(`Add me on Hausi 🎉 — ${profile.name}`);
+    await shareText(`Add me on Hausi 🎉 - ${profile.name}`);
   }
 
   async function toggleCrush(userId: string) {
@@ -323,7 +323,7 @@ const styles = StyleSheet.create({
   },
   badgeValue: {
     ...display(26),
-    color: colors.accent,
+    color: colors.text,
   },
   badgeLabel: {
     ...uiText(12),

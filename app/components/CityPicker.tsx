@@ -174,7 +174,7 @@ export function CityPicker({ value, onChange, label, labelColor }: Props) {
               </Pressable>
             ))}
             {!loading && searched && results.length === 0 ? (
-              <Text style={styles.noMatch}>No city by that name — check the spelling</Text>
+              <Text style={styles.noMatch}>No city by that name - check the spelling</Text>
             ) : null}
           </View>
         ) : null}

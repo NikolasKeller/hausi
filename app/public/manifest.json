@@ -1,7 +1,7 @@
 {
   "name": "Hausi",
   "short_name": "Hausi",
-  "description": "Parties with friends — invites, RSVPs and the Party Wall.",
+  "description": "Parties with friends - invites, RSVPs and the Party Wall.",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",

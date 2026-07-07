@@ -22,7 +22,7 @@ html = html.replace(
 );
 
 const headTags = `
-    <meta name="description" content="Parties with friends — invites, RSVPs and the Party Wall." />
+    <meta name="description" content="Parties with friends - invites, RSVPs and the Party Wall." />
     <link rel="manifest" href="/manifest.json" />
     <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png" />
     <meta name="mobile-web-app-capable" content="yes" />
