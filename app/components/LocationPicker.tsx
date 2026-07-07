@@ -220,6 +220,9 @@ const styles = StyleSheet.create({
     flex: 1,
     color: colors.text,
     fontSize: 16,
+    // Full line box (+ headroom) so the placeholder isn't clipped on web.
+    lineHeight: 22,
+    minHeight: 24,
     paddingVertical: 0,
   },
   valueText: {
