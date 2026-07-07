@@ -25,6 +25,9 @@ model User {
   // Path to an uploaded profile photo (from POST /api/uploads), '' = emoji only.
   avatarImage        String    @default("")
   city               String    @default("San Francisco")
+  // Curator / venue / promoter accounts (e.g. "YE Munich"). They host events
+  // but are not real people, so they never count as a "mutual" friend.
+  isOrganization     Boolean   @default(false)
   createdAt      DateTime       @default(now())
   events         Event[]        @relation("HostEvents")
   rsvps          Rsvp[]

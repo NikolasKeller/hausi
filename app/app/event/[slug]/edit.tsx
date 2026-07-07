@@ -290,7 +290,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   cohostAddText: {
-    color: '#fff',
     ...uiText(15, '600'),
+    color: colors.onInk,
   },
 });

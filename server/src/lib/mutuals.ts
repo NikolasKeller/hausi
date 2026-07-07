@@ -58,6 +58,16 @@ export async function findMutuals(
       mutuals.set(conn.otherUserId, { title: conn.eventTitle, slug: '' });
     }
   }
+
+  // Organizations (venues/promoters like "YE Munich") host events but aren't
+  // real people — drop them so only private-person friends show as mutuals.
+  if (mutuals.size) {
+    const orgs = await client.user.findMany({
+      where: { id: { in: [...mutuals.keys()] }, isOrganization: true },
+      select: { id: true },
+    });
+    for (const o of orgs) mutuals.delete(o.id);
+  }
   return mutuals;
 }
 

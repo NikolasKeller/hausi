@@ -14,7 +14,6 @@ import { Ionicons } from '@expo/vector-icons';
 import type { ExploreEvent, HomeFeed } from '../../shared/types';
 import { api } from '../../lib/api';
 import { useAuth } from '../../lib/auth';
-import { getRecentEvents, reconcileRecents, type RecentEvent } from '../../lib/recents';
 import { colors, radius, spacing, shadow } from '../../lib/theme';
 import { titleFontStyle, display, displayTitle, uiText, kicker } from '../../lib/fonts';
 import { CoverGradient } from '../../components/CoverGradient';
@@ -44,7 +43,6 @@ function HomeScreen() {
   const router = useRouter();
   const { welcomeBack, dismissWelcome } = useAuth();
   const [home, setHome] = useState<HomeFeed | null>(null);
-  const [recents, setRecents] = useState<RecentEvent[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [refreshing, setRefreshing] = useState(false);
   const [showAllMutuals, setShowAllMutuals] = useState(false);
@@ -58,24 +56,7 @@ function HomeScreen() {
     return () => clearTimeout(t);
   }, [welcomeBack, dismissWelcome]);
 
-  const fetchAll = useCallback(async () => {
-    const [homeRes, storedRecents] = await Promise.all([
-      api.home(),
-      getRecentEvents(),
-    ]);
-    // Recents are cached locally per device, so prune any whose event has since
-    // been deleted server-side. Keep the cached list on a network hiccup.
-    let recentList = storedRecents;
-    if (storedRecents.length > 0) {
-      try {
-        const { slugs } = await api.existingEvents(storedRecents.map((r) => r.slug));
-        recentList = await reconcileRecents(slugs);
-      } catch {
-        // Leave recents as-is rather than blanking the section.
-      }
-    }
-    return { homeRes, recentList };
-  }, []);
+  const fetchAll = useCallback(() => api.home(), []);
 
   useFocusEffect(
     useCallback(() => {
@@ -83,8 +64,7 @@ function HomeScreen() {
       fetchAll()
         .then((res) => {
           if (!active) return;
-          setHome(res.homeRes);
-          setRecents(res.recentList);
+          setHome(res);
           setError(null);
         })
         .catch((e) => {
@@ -99,9 +79,7 @@ function HomeScreen() {
   async function onRefresh() {
     setRefreshing(true);
     try {
-      const res = await fetchAll();
-      setHome(res.homeRes);
-      setRecents(res.recentList);
+      setHome(await fetchAll());
       setError(null);
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Could not refresh');
@@ -204,22 +182,6 @@ function HomeScreen() {
             >
               {trending.list.map((event) => (
                 <TrendingCard key={event.id} event={event} />
-              ))}
-            </ScrollView>
-          </View>
-        ) : null}
-
-        {recents.length > 0 ? (
-          <View style={styles.sectionGroup}>
-            <Text style={styles.sectionTitle}>Recently viewed</Text>
-            <ScrollView
-              horizontal
-              showsHorizontalScrollIndicator={false}
-              contentContainerStyle={styles.horizontalList}
-              style={styles.horizontalScroll}
-            >
-              {recents.map((recent) => (
-                <RecentCard key={recent.slug} recent={recent} />
               ))}
             </ScrollView>
           </View>
@@ -357,23 +319,6 @@ function TrendingCard({ event }: { event: ExploreEvent }) {
           <Text style={styles.trendingInterested}>{event.interested} interested</Text>
         ) : null}
       </View>
-    </Pressable>
-  );
-}
-
-function RecentCard({ recent }: { recent: RecentEvent }) {
-  const router = useRouter();
-  return (
-    <Pressable
-      onPress={() => router.push(`/event/${recent.slug}`)}
-      style={({ pressed }) => [styles.recentCard, pressed && { opacity: 0.85 }]}
-    >
-      <CoverGradient theme={recent.coverTheme} image={recent.coverImage} style={styles.recentCover} emojiOpacity={0.25}>
-        <Text style={[styles.recentTitle, titleFontStyle(recent.titleFont)]} numberOfLines={2}>
-          {recent.title}
-        </Text>
-      </CoverGradient>
-      <Text style={styles.recentDate}>{formatEventDate(recent.date)}</Text>
     </Pressable>
   );
 }
@@ -583,12 +528,6 @@ const styles = StyleSheet.create({
     textShadowColor: 'rgba(0,0,0,0.35)',
     textShadowOffset: { width: 0, height: 1 },
     textShadowRadius: 4,
-  },
-  recentDate: {
-    ...uiText(12, '700'),
-    color: colors.muted,
-    padding: spacing.sm,
-    paddingTop: 6,
   },
   trendingMeta: {
     padding: spacing.sm,

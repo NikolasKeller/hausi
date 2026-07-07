@@ -6,7 +6,6 @@ import { Ionicons } from '@expo/vector-icons';
 import { colors, radius, shadow, spacing } from '../../lib/theme';
 import { display, uiText } from '../../lib/fonts';
 import { withScreenBackground } from '../../components/ScreenBackground';
-import { CoverGradient } from '../../components/CoverGradient';
 import { EVENT_TEMPLATES, type EventTemplate } from '../../lib/eventTemplates';
 
 export default withScreenBackground(CreateScreen);
@@ -64,9 +63,9 @@ function TemplateCard({ template }: { template: EventTemplate }) {
       onPress={() => router.push({ pathname: '/new-event', params: { template: template.id } })}
       style={({ pressed }) => [styles.templateCard, pressed && { opacity: 0.85 }]}
     >
-      <CoverGradient theme={template.coverTheme} style={styles.templateCover} emojiOpacity={0.22}>
+      <View style={styles.templateCover}>
         <Text style={styles.templateEmoji}>{template.emoji}</Text>
-      </CoverGradient>
+      </View>
       <View style={styles.templateBody}>
         <Text style={styles.templateName} numberOfLines={1}>
           {template.name}
@@ -164,12 +163,12 @@ const styles = StyleSheet.create({
     height: 96,
     alignItems: 'center',
     justifyContent: 'center',
+    backgroundColor: colors.inputBg,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.cardBorder,
   },
   templateEmoji: {
     fontSize: 46,
-    textShadowColor: 'rgba(0,0,0,0.3)',
-    textShadowOffset: { width: 0, height: 2 },
-    textShadowRadius: 6,
   },
   templateBody: {
     padding: spacing.sm,

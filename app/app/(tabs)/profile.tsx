@@ -15,7 +15,7 @@ import { Ionicons } from '@expo/vector-icons';
 import type { MyProfile } from '../../shared/types';
 import { api, mediaUrl } from '../../lib/api';
 import { useAuth } from '../../lib/auth';
-import { confirmDialog, notify } from '../../lib/dialogs';
+import { confirmDialog } from '../../lib/dialogs';
 import { shareText } from '../../lib/share';
 import { colors, radius, shadow, spacing } from '../../lib/theme';
 import { display, uiText } from '../../lib/fonts';
@@ -42,7 +42,6 @@ function ProfileScreen() {
   const { logout } = useAuth();
   const [profile, setProfile] = useState<MyProfile | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [crushBusy, setCrushBusy] = useState<string | null>(null);
   const [settingsOpen, setSettingsOpen] = useState(false);
 
   const load = useCallback(async () => {
@@ -83,31 +82,6 @@ function ProfileScreen() {
   async function shareProfile() {
     if (!profile) return;
     await shareText(`Add me on Now 🎉 - ${profile.name}`);
-  }
-
-  async function toggleCrush(userId: string) {
-    if (crushBusy) return;
-    setCrushBusy(userId);
-    try {
-      const res = await api.toggleCrush(userId);
-      setProfile((prev) =>
-        prev
-          ? {
-              ...prev,
-              mutuals: prev.mutuals.map((m) =>
-                m.user.id === userId ? { ...m, crushed: res.crushed } : m
-              ),
-            }
-          : prev
-      );
-      if (res.matched) {
-        notify("It's a match 💘", 'They crushed on you too. Go say hi!');
-      }
-    } catch (e) {
-      notify('Crush failed', e instanceof Error ? e.message : 'Try again');
-    } finally {
-      setCrushBusy(null);
-    }
   }
 
   if (error && !profile) {
@@ -218,21 +192,7 @@ function ProfileScreen() {
                     <Text style={styles.mutualName} numberOfLines={1}>
                       {m.user.name}
                     </Text>
-                    <Text style={styles.mutualShared} numberOfLines={1}>
-                      {m.sharedEventTitle}
-                    </Text>
                   </View>
-                  <Pressable
-                    onPress={() => toggleCrush(m.user.id)}
-                    disabled={crushBusy === m.user.id}
-                    style={({ pressed }) => [styles.heartButton, pressed && styles.pressed]}
-                  >
-                    <Ionicons
-                      name={m.crushed ? 'heart' : 'heart-outline'}
-                      size={20}
-                      color={m.crushed ? colors.danger : colors.muted}
-                    />
-                  </Pressable>
                 </View>
               ))}
             </View>
@@ -417,19 +377,5 @@ const styles = StyleSheet.create({
   mutualName: {
     ...uiText(14, '700'),
     color: colors.text,
-  },
-  mutualShared: {
-    ...uiText(12),
-    color: colors.muted,
-  },
-  heartButton: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: colors.card,
-    borderWidth: 1,
-    borderColor: colors.cardBorder,
-    alignItems: 'center',
-    justifyContent: 'center',
   },
 });

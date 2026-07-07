@@ -339,6 +339,7 @@ async function main() {
       passwordHash,
       avatarEmoji: '🎧',
       city: 'Munich',
+      isOrganization: true,
     },
   });
 

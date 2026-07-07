@@ -12,7 +12,7 @@ import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 import { Ionicons } from '@expo/vector-icons';
 import { DESCRIPTION_SCALE, LIMITS } from '../shared/types';
 import { colors, light, radius, shadow, spacing } from '../lib/theme';
-import { kicker, uiText } from '../lib/fonts';
+import { DISPLAY_FONT, kicker, uiText } from '../lib/fonts';
 import { Glass } from './glass';
 import { BULLET } from './RichDescription';
 
@@ -235,7 +235,7 @@ const styles = StyleSheet.create({
   },
   doneText: {
     ...uiText(15, '600'),
-    color: '#fff',
+    color: colors.onInk,
   },
   body: { flex: 1 },
   sheet: {
@@ -252,6 +252,7 @@ const styles = StyleSheet.create({
   input: {
     flex: 1,
     color: colors.text,
+    fontFamily: DISPLAY_FONT,
   },
   toolbarWrap: {
     paddingHorizontal: spacing.lg,
@@ -280,7 +281,7 @@ const styles = StyleSheet.create({
     color: colors.text,
   },
   toolLabelActive: {
-    color: '#fff',
+    color: colors.onInk,
   },
   sizeGroup: {
     flexDirection: 'row',

@@ -126,9 +126,6 @@ export function DateTimeSheet({
         <View style={styles.pickerWrap}>
           {Platform.OS === 'web' ? (
             <View style={styles.webRow}>
-              <Text style={styles.webValue}>
-                {formatEventDate(date.toISOString())} · {formatEventTime(date.toISOString())}
-              </Text>
               {React.createElement('input', {
                 type: 'datetime-local',
                 value: toLocalInputValue(date),
@@ -238,7 +235,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingVertical: 9,
   },
-  doneText: { ...uiText(15, '600'), color: '#fff' },
+  doneText: { ...uiText(15, '600'), color: colors.onInk },
   pickerWrap: {
     paddingHorizontal: spacing.md,
     paddingTop: spacing.xs,
@@ -272,5 +269,4 @@ const styles = StyleSheet.create({
     paddingVertical: spacing.sm,
     paddingHorizontal: spacing.sm,
   },
-  webValue: { ...uiText(16, '700'), color: colors.text, textAlign: 'center' },
 });

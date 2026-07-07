@@ -353,7 +353,7 @@ function ExploreScreen() {
               })}
             </ScrollView>
 
-            <CoverGradient theme="midnight" style={styles.hero} emojiOpacity={0}>
+            <CoverGradient theme="lava" style={styles.hero} emojiOpacity={0}>
               <Text style={styles.heroKicker}>Get out there</Text>
               <Text style={styles.heroTitle}>
                 The streets are calling

@@ -27,7 +27,7 @@ import { ThemeBackground, themeInk } from '../../../components/themes';
 import { Glass } from '../../../components/glass';
 import { Avatar } from '../../../components/Avatar';
 import { Button } from '../../../components/ui';
-import { Burst, PillBadge } from '../../../components/partiful';
+import { PillBadge } from '../../../components/partiful';
 import { formatEventDate, formatEventTime } from '../../../components/EventCard';
 
 const RSVP_OPTIONS: { status: RsvpStatus; label: string; emoji: string }[] = [
@@ -291,11 +291,7 @@ export default function EventScreen() {
                 theme={event.coverTheme}
                 image={event.coverImage}
                 style={styles.poster}
-              >
-                <Burst size={60} rays={8} color={colors.helio} rotate={-14} style={styles.heroBurst} />
-                <Burst size={38} rays={6} color={colors.accent} rotate={12} style={styles.heroBurst2} />
-                <Text style={styles.heroKicker}>You're invited</Text>
-              </CoverGradient>
+              />
               <Text
                 style={[styles.heroTitleBelow, titleFontStyle(event.titleFont), { color: ink.text }]}
               >
@@ -304,7 +300,6 @@ export default function EventScreen() {
             </View>
           ) : (
             <View style={styles.heroBlock}>
-              <Text style={[styles.heroKickerPlain, { color: ink.subtext }]}>You're invited</Text>
               <Text
                 style={[
                   styles.heroTitlePlain,
@@ -906,27 +901,6 @@ const styles = StyleSheet.create({
     paddingTop: 100,
     paddingBottom: spacing.md,
     gap: spacing.sm,
-  },
-  heroBurst: {
-    position: 'absolute',
-    top: 24,
-    right: 24,
-  },
-  heroBurst2: {
-    position: 'absolute',
-    top: 84,
-    right: 84,
-  },
-  heroKicker: {
-    ...kicker(),
-    color: 'rgba(255,255,255,0.92)',
-    marginBottom: spacing.sm,
-    textShadowColor: 'rgba(0,0,0,0.35)',
-    textShadowOffset: { width: 0, height: 1 },
-    textShadowRadius: 4,
-  },
-  heroKickerPlain: {
-    ...kicker(),
   },
   heroTitlePlain: {
     fontSize: 56,
