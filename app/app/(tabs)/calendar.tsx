@@ -201,10 +201,11 @@ function CalendarScreen() {
         <View style={styles.monthTitleWrap}>
           <Text style={[styles.kicker, kicker(colors.accent)]}>Your calendar</Text>
           <Text
-            style={styles.monthTitle}
+            // adjustsFontSizeToFit ratchets below its minimum inside flex
+            // containers on iOS, leaving an unreadable ~6px title — size
+            // deterministically by name length instead.
+            style={[styles.monthTitle, display(monthTitle.length > 12 ? 26 : monthTitle.length > 8 ? 32 : 40)]}
             numberOfLines={1}
-            adjustsFontSizeToFit
-            minimumFontScale={0.7}
           >
             {monthTitle}
           </Text>
