@@ -231,7 +231,7 @@ function HomeScreen() {
           </Text>
           <Button
             title="Create an event"
-            variant="primary"
+            variant="vibrant"
             style={styles.ctaButton}
             onPress={() => router.push('/new-event')}
           />
@@ -449,6 +449,9 @@ const styles = StyleSheet.create({
     borderRadius: radius.md,
     borderWidth: 1,
     borderColor: colors.cardBorder,
+    // Orange accent stripe down the left edge.
+    borderLeftWidth: 4,
+    borderLeftColor: colors.accent,
     paddingVertical: spacing.md,
     paddingHorizontal: spacing.md,
     gap: spacing.xs,
@@ -554,7 +557,7 @@ const styles = StyleSheet.create({
     color: colors.text,
   },
   recentCard: {
-    width: 150,
+    width: 178,
     backgroundColor: colors.card,
     borderRadius: radius.md,
     borderWidth: 1,
@@ -563,13 +566,18 @@ const styles = StyleSheet.create({
     ...shadow.card,
   },
   recentCover: {
-    height: 96,
+    height: 124,
     padding: spacing.sm,
     justifyContent: 'flex-end',
   },
   recentTitle: {
     color: '#fff',
-    fontSize: 18,
+    fontSize: 20,
+    lineHeight: 22,
+    // Reserve exactly two lines and top-align, so every card's title starts on
+    // the same horizontal line regardless of one- vs two-line length.
+    height: 44,
+    textAlignVertical: 'top',
     fontWeight: '800',
     letterSpacing: -0.3,
     textShadowColor: 'rgba(0,0,0,0.35)',

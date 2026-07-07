@@ -1,17 +1,19 @@
 import React, { useCallback, useState } from 'react';
 import {
   ActivityIndicator,
+  Image,
   Pressable,
   ScrollView,
   StyleSheet,
   Text,
   View,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
+import { LinearGradient } from 'expo-linear-gradient';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import type { MyProfile } from '../../shared/types';
-import { api } from '../../lib/api';
+import { api, mediaUrl } from '../../lib/api';
 import { useAuth } from '../../lib/auth';
 import { confirmDialog, notify } from '../../lib/dialogs';
 import { shareText } from '../../lib/share';
@@ -22,16 +24,21 @@ import { Button } from '../../components/ui';
 import { SettingsSheet } from '../../components/SettingsSheet';
 import { withScreenBackground } from '../../components/ScreenBackground';
 
-function joinedLabel(iso: string): string {
-  const date = new Date(iso);
-  const month = date.toLocaleDateString(undefined, { month: 'short' });
-  return `${month} '${String(date.getFullYear()).slice(-2)}`;
+// A centered stat tile — small label above a big number (0 when empty).
+function Stat({ label, value }: { label: string; value: number }) {
+  return (
+    <View style={styles.stat}>
+      <Text style={styles.statLabel}>{label}</Text>
+      <Text style={styles.statValue}>{value}</Text>
+    </View>
+  );
 }
 
 export default withScreenBackground(ProfileScreen);
 
 function ProfileScreen() {
   const router = useRouter();
+  const insets = useSafeAreaInsets();
   const { logout } = useAuth();
   const [profile, setProfile] = useState<MyProfile | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -124,39 +131,66 @@ function ProfileScreen() {
     );
   }
 
-  const metaLine = [
-    profile.city ? `📍 ${profile.city}` : null,
-    `💥 Joined ${joinedLabel(profile.joinedAt)}`,
-  ]
-    .filter(Boolean)
-    .join(' · ');
+  const joinedYear = new Date(profile.joinedAt).getFullYear();
+  const photo = mediaUrl(profile.avatarImage);
 
   return (
-    <SafeAreaView style={styles.safe} edges={['top']}>
+    <View style={styles.safe}>
       <ScrollView contentContainerStyle={styles.container}>
-        <View style={styles.header}>
-          <Pressable
-            onPress={() => setSettingsOpen(true)}
-            style={({ pressed }) => [styles.roundButton, pressed && styles.pressed]}
-          >
-            <Ionicons name="settings-sharp" size={18} color={colors.text} />
-          </Pressable>
-        </View>
-
         <View style={styles.hero}>
-          <View style={styles.avatarStack}>
-            <Avatar name={profile.name} image={profile.avatarImage} size={120} />
+          {photo ? (
+            <Image source={{ uri: photo }} style={StyleSheet.absoluteFill} resizeMode="cover" />
+          ) : (
+            <View style={styles.heroFallback}>
+              <Avatar name={profile.name} image={null} size={160} />
+            </View>
+          )}
+          {/* Top scrim keeps the buttons legible over a bright photo. */}
+          <LinearGradient
+            colors={['rgba(0,0,0,0.45)', 'transparent']}
+            style={styles.topScrim}
+            pointerEvents="none"
+          />
+          {/* Lower half fades into the page background. */}
+          <LinearGradient
+            colors={['transparent', 'transparent', colors.bg]}
+            locations={[0, 0.45, 1]}
+            style={StyleSheet.absoluteFill}
+            pointerEvents="none"
+          />
+
+          <View style={[styles.heroButtons, { top: insets.top + spacing.sm }]}>
+            <Pressable
+              onPress={shareProfile}
+              style={({ pressed }) => [styles.roundButton, pressed && styles.pressed]}
+            >
+              <Ionicons name="share-outline" size={18} color={colors.text} />
+            </Pressable>
+            <Pressable
+              onPress={() => setSettingsOpen(true)}
+              style={({ pressed }) => [styles.roundButton, pressed && styles.pressed]}
+            >
+              <Ionicons name="settings-sharp" size={18} color={colors.text} />
+            </Pressable>
           </View>
-          <Text style={styles.bigName}>{profile.name}</Text>
+
+          <View style={styles.heroContent}>
+            <Text style={styles.bigName} numberOfLines={2}>
+              {profile.name}
+            </Text>
+            <View style={styles.joinedPill}>
+              <Ionicons name="sparkles" size={13} color={colors.accent} />
+              <Text style={styles.joinedText}>joined {joinedYear}</Text>
+            </View>
+            <View style={styles.statsRow}>
+              <Stat label="Mutuals" value={profile.mutuals.length} />
+              <Stat label="Badges" value={profile.badges.length} />
+            </View>
+          </View>
         </View>
 
-        <Text style={styles.metaLine}>{metaLine}</Text>
-
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Badges</Text>
-          {profile.badges.length === 0 ? (
-            <Text style={styles.emptyText}>Go to a party to earn your first badge ✨</Text>
-          ) : (
+        {profile.badges.length > 0 ? (
+          <View style={styles.section}>
             <ScrollView
               horizontal
               showsHorizontalScrollIndicator={false}
@@ -170,15 +204,12 @@ function ProfileScreen() {
                 </View>
               ))}
             </ScrollView>
-          )}
-        </View>
+          </View>
+        ) : null}
 
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Mutuals</Text>
-          <Text style={styles.sectionSubtitle}>Everyone you've ever partied with</Text>
-          {profile.mutuals.length === 0 ? (
-            <Text style={styles.emptyText}>Party with someone to make your first mutual 🫂</Text>
-          ) : (
+        {profile.mutuals.length > 0 ? (
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>Mutuals</Text>
             <View style={styles.mutualsGrid}>
               {profile.mutuals.map((m) => (
                 <View key={m.user.id} style={styles.mutualItem}>
@@ -205,8 +236,8 @@ function ProfileScreen() {
                 </View>
               ))}
             </View>
-          )}
-        </View>
+          </View>
+        ) : null}
       </ScrollView>
       {settingsOpen ? (
         <SettingsSheet
@@ -216,7 +247,7 @@ function ProfileScreen() {
           onLogout={confirmLogout}
         />
       ) : null}
-    </SafeAreaView>
+    </View>
   );
 }
 
@@ -240,71 +271,107 @@ const styles = StyleSheet.create({
   container: {
     paddingBottom: spacing.xxl,
   },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
+  pressed: {
+    opacity: 0.7,
+  },
+  // Full-bleed photo hero; content sits at the bottom where the photo fades
+  // into the page background.
+  hero: {
+    height: 500,
+    width: '100%',
     justifyContent: 'flex-end',
-    paddingHorizontal: spacing.md,
-    paddingTop: spacing.sm,
+    backgroundColor: colors.bg,
+    overflow: 'hidden',
+  },
+  heroFallback: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: colors.card,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingBottom: 120,
+  },
+  topScrim: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    height: 120,
+  },
+  heroButtons: {
+    position: 'absolute',
+    right: spacing.md,
+    flexDirection: 'row',
     gap: spacing.sm,
+    zIndex: 2,
   },
   roundButton: {
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: colors.card,
+    backgroundColor: 'rgba(0,0,0,0.35)',
     borderWidth: 1,
-    borderColor: colors.cardBorder,
+    borderColor: 'rgba(255,255,255,0.18)',
     alignItems: 'center',
     justifyContent: 'center',
   },
-  pressed: {
-    opacity: 0.7,
-  },
-  hero: {
+  heroContent: {
     alignItems: 'center',
-    marginTop: spacing.xl,
-    gap: spacing.lg,
-  },
-  avatarStack: {
-    alignItems: 'center',
-    justifyContent: 'center',
+    gap: spacing.md,
+    paddingHorizontal: spacing.lg,
+    paddingBottom: spacing.xl,
   },
   bigName: {
-    ...display(48),
+    ...display(44),
     color: colors.text,
     textAlign: 'center',
-    paddingHorizontal: spacing.lg,
   },
-  metaLine: {
-    ...uiText(14),
+  joinedPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: 'rgba(255,255,255,0.10)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.14)',
+    borderRadius: radius.pill,
+    paddingHorizontal: spacing.md,
+    paddingVertical: 6,
+  },
+  joinedText: {
+    ...uiText(13, '600'),
+    color: colors.text,
+  },
+  statsRow: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    gap: spacing.xxl,
+    marginTop: spacing.xs,
+  },
+  stat: {
+    alignItems: 'center',
+    gap: 2,
+  },
+  statLabel: {
+    ...uiText(13),
     color: colors.muted,
-    textAlign: 'center',
-    marginTop: spacing.lg,
+  },
+  statValue: {
+    ...display(28),
+    color: colors.text,
   },
   section: {
-    marginTop: spacing.xxl,
+    marginTop: spacing.xl,
     gap: spacing.sm,
   },
   sectionTitle: {
     ...display(28),
     color: colors.text,
-    paddingHorizontal: spacing.md,
-  },
-  sectionSubtitle: {
-    ...uiText(14),
-    color: colors.muted,
-    paddingHorizontal: spacing.md,
-    marginTop: spacing.xs,
-  },
-  emptyText: {
-    ...uiText(14),
-    color: colors.muted,
-    paddingHorizontal: spacing.md,
+    textAlign: 'center',
   },
   badgeRow: {
     gap: spacing.sm,
     paddingHorizontal: spacing.md,
+    flexGrow: 1,
+    justifyContent: 'center',
   },
   badgeChip: {
     backgroundColor: colors.card,

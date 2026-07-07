@@ -82,20 +82,22 @@ export default function PhoneScreen() {
             </Text>
 
             <View style={styles.phoneRow}>
-              <Pressable style={styles.countryPill} onPress={() => setPickerOpen(!pickerOpen)}>
-                <Text style={styles.countryText}>
-                  {country.flag} {country.code}
-                </Text>
-                <Text style={styles.countryCaret}>▾</Text>
+              <Pressable
+                style={styles.countryInline}
+                onPress={() => setPickerOpen(!pickerOpen)}
+                hitSlop={10}
+              >
+                <Text style={styles.phonePrefix}>{country.code}</Text>
+                <Text style={styles.phoneCaret}>▾</Text>
               </Pressable>
               <TextInput
                 value={digits}
                 onChangeText={(t) => setDigits(t.replace(/[^0-9 ]/g, ''))}
-                placeholder="Phone number"
+                placeholder="(123) 456-7890"
                 placeholderTextColor={colors.muted}
                 keyboardType="phone-pad"
                 autoFocus
-                style={styles.phoneInput}
+                style={styles.phoneInputInline}
                 maxLength={16}
               />
             </View>
@@ -165,26 +167,31 @@ const styles = StyleSheet.create({
   },
   phoneRow: {
     flexDirection: 'row',
+    alignItems: 'center',
     gap: spacing.sm,
   },
-  countryPill: {
+  // Borderless inline country prefix (e.g. "+1 ▾") — no box/bubble.
+  countryInline: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
-    backgroundColor: colors.inputBg,
-    borderWidth: 1,
-    borderColor: colors.cardBorder,
-    borderRadius: radius.sm,
-    paddingHorizontal: spacing.md,
-    paddingVertical: 13,
+    paddingVertical: 6,
   },
-  countryText: {
+  phonePrefix: {
     color: colors.text,
-    ...uiText(16, '600'),
+    ...uiText(24),
   },
-  countryCaret: {
+  phoneCaret: {
     color: colors.muted,
     fontSize: 12,
+  },
+  // Borderless inline phone field — plain text on the canvas, no box.
+  phoneInputInline: {
+    flex: 1,
+    ...uiText(24),
+    color: colors.text,
+    lineHeight: 30,
+    paddingVertical: 6,
   },
   phoneInput: {
     flex: 1,

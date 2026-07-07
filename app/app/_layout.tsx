@@ -175,9 +175,9 @@ function WebFrame({ children }: { children: React.ReactNode }) {
   return (
     <View style={frameStyles.page}>
       {/* Dark nightlife surround so the phone column reads as a lit screen
-          floating on a near-black desk with a faint violet bloom. */}
+          floating on a near-black desk with a faint warm/orange bloom. */}
       <LinearGradient
-        colors={['#1A1524', '#141119', '#0C0A0F']}
+        colors={['#241811', '#17110D', '#0D0A08']}
         locations={[0, 0.5, 1]}
         start={{ x: 0.2, y: 0 }}
         end={{ x: 0.8, y: 1 }}
@@ -201,7 +201,7 @@ const frameStyles = StyleSheet.create({
     maxWidth: 430,
     backgroundColor: colors.bg,
     ...(Platform.OS === 'web'
-      ? { boxShadow: '0 0 64px rgba(210,65,250,0.22), 0 0 24px rgba(0,0,0,0.5)' }
+      ? { boxShadow: '0 0 64px rgba(255,106,43,0.28), 0 0 24px rgba(0,0,0,0.5)' }
       : null),
   },
 });

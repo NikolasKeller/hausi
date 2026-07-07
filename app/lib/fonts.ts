@@ -2,44 +2,40 @@ import type { TextStyle } from 'react-native';
 import { PlayfairDisplay_700Bold } from '@expo-google-fonts/playfair-display';
 import { Pacifico_400Regular } from '@expo-google-fonts/pacifico';
 import { Bungee_400Regular } from '@expo-google-fonts/bungee';
-import { LeagueGothic_400Regular } from '@expo-google-fonts/league-gothic';
 import type { TitleFont } from '../shared/types';
 
-// The app is set entirely in League Gothic (The League of Moveable Type) — a
-// tall, tightly-condensed grotesque used as the single voice across every
-// surface. It ships one optical cut, so all "weights" map to the same family.
-const LEAGUE = 'LeagueGothic_400Regular';
+// The app is set entirely in Reglo Bold (Sebastien Sanfilippo, OFL) — a
+// geometric sans bundled locally as the single voice across every surface. It
+// ships one weight, so all "weights" map to the same family.
+const REGLO = 'Reglo-Bold';
 
-// League Gothic is tightly condensed, so it reads smaller than a normal
-// sans at the same px. Scale every size up app-wide for legibility. UI/body
-// text gets the bigger bump; big display headlines a gentler one so layouts
-// don't blow out. A hard floor keeps even the smallest labels (dates, meta)
-// comfortably readable.
-const TEXT_SCALE = 1.3;
-const DISPLAY_SCALE = 1.15;
-const MIN_UI_SIZE = 15;
+// Reglo is a normal-width geometric sans, so it needs only a light size bump
+// for comfort (no condensed-font compensation). A modest floor keeps the
+// smallest labels (dates, meta) readable.
+const TEXT_SCALE = 1.1;
+const DISPLAY_SCALE = 1.05;
+const MIN_UI_SIZE = 13;
 
 export const FONTS_TO_LOAD = {
-  LeagueGothic_400Regular,
+  'Reglo-Bold': require('../assets/fonts/Reglo-Bold.otf'),
   // Kept for the opt-in per-event title fonts (Literary / Fancy / Eclectic).
   PlayfairDisplay_700Bold,
   Pacifico_400Regular,
   Bungee_400Regular,
 };
 
-// League Gothic has a single cut, so every requested weight resolves to it.
+// Reglo has a single cut, so every requested weight resolves to it.
 function uiFamily(_weight?: TextStyle['fontWeight']): string {
-  return LEAGUE;
+  return REGLO;
 }
 
-// The app's one and only voice. Titles are set tight (negative tracking) and
-// near-solid line-height.
-export const DISPLAY_FONT = LEAGUE;
-export const DISPLAY_FONT_HEAVY = LEAGUE; // poster/cover weight (same cut)
+// The app's one and only voice.
+export const DISPLAY_FONT = REGLO;
+export const DISPLAY_FONT_HEAVY = REGLO; // poster/cover weight (same cut)
 export const SERIF_FONT = 'PlayfairDisplay_700Bold'; // opt-in literary title only
 export const displayTitle: TextStyle = { fontFamily: DISPLAY_FONT, fontWeight: 'normal' };
 
-// Statement type: League Gothic at tight negative tracking. The `weight` opt is
+// Statement type: Reglo Bold at tight negative tracking. The `weight` opt is
 // kept for call-site compatibility but resolves to the same cut. letterSpacing
 // is absolute px in RN, so it scales with the font size.
 export function display(
@@ -48,10 +44,8 @@ export function display(
 ): TextStyle {
   const size = Math.round(rawSize * DISPLAY_SCALE);
   const family = opts?.weight ? DISPLAY_FONT_HEAVY : DISPLAY_FONT;
-  // League Gothic is condensed, so a hair of positive tracking (instead of the
-  // tight negative default) keeps big headlines from feeling cramped.
-  const tracking = opts?.tracking ?? 0.01;
-  const lh = opts?.lineHeight ?? (size >= 56 ? 1.0 : size >= 32 ? 1.08 : 1.15);
+  const tracking = opts?.tracking ?? -0.02;
+  const lh = opts?.lineHeight ?? (size >= 56 ? 0.98 : size >= 32 ? 1.05 : 1.12);
   return {
     fontFamily: family,
     fontWeight: 'normal',
@@ -62,24 +56,21 @@ export function display(
   } as TextStyle;
 }
 
-// Interface text — League Gothic, the single UI voice. Slight negative
-// tracking, generous line-height. The weight arg is accepted for compatibility
-// but every value resolves to the one League Gothic cut.
+// Interface text — Reglo Bold, the single UI voice. The weight arg is accepted
+// for compatibility but every value resolves to the one Reglo cut.
 export function uiText(
   rawSize: number,
   weight: TextStyle['fontWeight'] = '400',
   opts?: { tracking?: number; lineHeight?: number }
 ): TextStyle {
   const size = Math.max(Math.round(rawSize * TEXT_SCALE), MIN_UI_SIZE);
-  // Positive tracking spreads the condensed letters so body/label text reads
-  // wider and less cramped.
-  const tracking = opts?.tracking ?? 0.03;
+  const tracking = opts?.tracking ?? 0;
   return {
     fontFamily: uiFamily(weight),
     fontSize: size,
     fontWeight: 'normal',
     letterSpacing: Math.round(size * tracking * 100) / 100,
-    lineHeight: Math.round(size * (opts?.lineHeight ?? 1.45)),
+    lineHeight: Math.round(size * (opts?.lineHeight ?? 1.4)),
   };
 }
 
@@ -87,7 +78,7 @@ export function uiText(
 // display headlines the way Partiful labels its sections.
 export function kicker(color?: string): TextStyle {
   return {
-    fontFamily: LEAGUE,
+    fontFamily: REGLO,
     fontSize: Math.round(12 * TEXT_SCALE),
     fontWeight: 'normal',
     letterSpacing: 1.5,
@@ -103,7 +94,7 @@ export const TITLE_FONT_LABELS: Record<TitleFont, string> = {
   eclectic: 'Eclectic',
 };
 
-// Style for big event titles per font choice. `classic` is League Gothic (the
+// Style for big event titles per font choice. `classic` is Reglo Bold (the
 // app-wide default); Literary/Fancy/Eclectic stay as opt-in decorative faces.
 // The loaded faces carry their weight in the family name, so fontWeight resets.
 export const TITLE_FONT_STYLES: Record<TitleFont, TextStyle> = {
