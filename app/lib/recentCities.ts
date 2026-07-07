@@ -1,6 +1,6 @@
 import { storage } from './storage';
 
-const KEY = 'hausi.recentCities';
+const KEY = 'now.recentCities';
 const MAX = 5;
 
 export async function getRecentCities(): Promise<string[]> {

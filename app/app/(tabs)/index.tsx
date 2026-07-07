@@ -15,9 +15,8 @@ import type { ExploreEvent, HomeFeed } from '../../shared/types';
 import { api } from '../../lib/api';
 import { useAuth } from '../../lib/auth';
 import { getRecentEvents, reconcileRecents, type RecentEvent } from '../../lib/recents';
-import { EVENT_TEMPLATES, type EventTemplate } from '../../lib/eventTemplates';
 import { colors, radius, spacing, shadow } from '../../lib/theme';
-import { titleFontStyle, display, uiText, kicker } from '../../lib/fonts';
+import { titleFontStyle, display, displayTitle, uiText, kicker } from '../../lib/fonts';
 import { CoverGradient } from '../../components/CoverGradient';
 import { Avatar } from '../../components/Avatar';
 import { Button } from '../../components/ui';
@@ -114,7 +113,7 @@ function HomeScreen() {
   const header = (
     <View style={styles.headerRow}>
       <View style={styles.wordmarkWrap}>
-        <Text style={styles.wordmark}>Hausi</Text>
+        <Text style={styles.wordmark}>Now</Text>
       </View>
     </View>
   );
@@ -230,22 +229,6 @@ function HomeScreen() {
           </View>
         ) : null}
 
-        <View style={styles.sectionGroup}>
-          <Text style={styles.sectionTitle}>
-            Party starters
-          </Text>
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            contentContainerStyle={styles.horizontalList}
-            style={styles.horizontalScroll}
-          >
-            {EVENT_TEMPLATES.map((template) => (
-              <TemplateCard key={template.id} template={template} />
-            ))}
-          </ScrollView>
-        </View>
-
         <View style={[styles.sectionGroup, styles.ctaGroup]}>
           <Text style={styles.ctaTitle}>
             Throw{'\n'}something
@@ -295,7 +278,7 @@ function MutualCard({ event }: { event: ExploreEvent }) {
     <View style={styles.mutualEntry}>
       {event.friendGoing ? (
         <View style={styles.mutualAttrib}>
-          <Avatar emoji={event.friendGoing.avatarEmoji} image={event.friendGoing.avatarImage} size={28} />
+          <Avatar name={event.friendGoing.name} image={event.friendGoing.avatarImage} size={28} />
           <Text style={styles.mutualAttribText} numberOfLines={1}>
             <Text style={styles.mutualName}>{event.friendGoing.name}</Text>
             <Text style={styles.mutualGoing}> is going</Text> 👍
@@ -324,7 +307,7 @@ function MutualCard({ event }: { event: ExploreEvent }) {
       </Pressable>
 
       <View style={styles.mutualFooter}>
-        {faces.length > 0 ? <AvatarCluster emojis={faces} /> : null}
+        {faces.length > 0 ? <AvatarCluster faces={faces} /> : null}
         <Text style={styles.mutualInterested}>{interested} interested</Text>
         <View style={{ flex: 1 }} />
         <Pressable
@@ -343,13 +326,13 @@ function MutualCard({ event }: { event: ExploreEvent }) {
   );
 }
 
-// Overlapping row of attendee avatar emoji.
-function AvatarCluster({ emojis }: { emojis: string[] }) {
+// Overlapping row of attendee faces.
+function AvatarCluster({ faces }: { faces: { name: string; avatarImage: string }[] }) {
   return (
     <View style={styles.cluster}>
-      {emojis.map((emoji, i) => (
+      {faces.map((f, i) => (
         <View key={i} style={[styles.clusterChip, i > 0 && { marginLeft: -10 }]}>
-          <Text style={styles.clusterEmoji}>{emoji}</Text>
+          <Avatar name={f.name} image={f.avatarImage} size={26} />
         </View>
       ))}
     </View>
@@ -366,7 +349,7 @@ function TrendingCard({ event }: { event: ExploreEvent }) {
       style={({ pressed }) => [styles.recentCard, pressed && { opacity: 0.85 }]}
     >
       <CoverGradient theme={event.coverTheme} image={event.coverImage} style={styles.recentCover} emojiOpacity={0.25}>
-        <Text style={[styles.recentTitle, titleFontStyle(event.titleFont)]} numberOfLines={2}>
+        <Text style={[styles.recentTitle, displayTitle]} numberOfLines={2}>
           {event.title}
         </Text>
       </CoverGradient>
@@ -395,28 +378,6 @@ function RecentCard({ recent }: { recent: RecentEvent }) {
         </Text>
       </CoverGradient>
       <Text style={styles.recentDate}>{formatEventDate(recent.date)}</Text>
-    </Pressable>
-  );
-}
-
-function TemplateCard({ template }: { template: EventTemplate }) {
-  const router = useRouter();
-  return (
-    <Pressable
-      onPress={() => router.push({ pathname: '/new-event', params: { template: template.id } })}
-      style={({ pressed }) => [styles.templateCard, pressed && { opacity: 0.85 }]}
-    >
-      <CoverGradient theme={template.coverTheme} style={styles.templateCover} emojiOpacity={0.22}>
-        <Text style={styles.templateEmoji}>{template.emoji}</Text>
-      </CoverGradient>
-      <View style={styles.templateBody}>
-        <Text style={styles.templateName} numberOfLines={1}>
-          {template.name}
-        </Text>
-        <Text style={styles.templateVibe} numberOfLines={2}>
-          {template.vibe}
-        </Text>
-      </View>
     </Pressable>
   );
 }
@@ -459,6 +420,9 @@ const styles = StyleSheet.create({
   wordmark: {
     ...display(38),
     color: colors.text,
+    textShadowColor: 'rgba(255,106,43,0.6)',
+    textShadowOffset: { width: 0, height: 0 },
+    textShadowRadius: 14,
   },
   sectionGroup: {
     gap: spacing.md,
@@ -580,17 +544,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   clusterChip: {
-    width: 26,
-    height: 26,
-    borderRadius: 13,
-    backgroundColor: colors.card,
+    borderRadius: 999,
     borderWidth: 1.5,
     borderColor: colors.bg,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  clusterEmoji: {
-    fontSize: 14,
   },
   seeMore: {
     alignSelf: 'center',
@@ -646,44 +602,5 @@ const styles = StyleSheet.create({
   trendingInterested: {
     ...uiText(12, '700'),
     color: colors.accent,
-  },
-  templateCard: {
-    width: 172,
-    backgroundColor: colors.card,
-    borderRadius: radius.md,
-    borderWidth: 1,
-    borderColor: colors.cardBorder,
-    overflow: 'hidden',
-    ...shadow.card,
-  },
-  templateCover: {
-    height: 96,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  templateEmoji: {
-    fontSize: 46,
-    textShadowColor: 'rgba(0,0,0,0.3)',
-    textShadowOffset: { width: 0, height: 2 },
-    textShadowRadius: 6,
-  },
-  templateBody: {
-    padding: spacing.sm,
-    gap: 2,
-    minHeight: 96,
-  },
-  templateName: {
-    ...display(16),
-    color: colors.text,
-  },
-  templateVibe: {
-    ...uiText(12),
-    color: colors.muted,
-    flex: 1,
-  },
-  templateStart: {
-    ...uiText(12, '700'),
-    color: colors.accent,
-    marginTop: spacing.xs,
   },
 });

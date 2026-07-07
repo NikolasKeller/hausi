@@ -80,7 +80,7 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
   try {
     res = await fetch(`${API_URL}${path}`, { ...options, headers });
   } catch {
-    throw new ApiError(0, 'Cannot reach the Hausi server. Is it running?');
+    throw new ApiError(0, 'Cannot reach the Now server. Is it running?');
   }
 
   const body = await res.json().catch(() => ({}));

@@ -34,7 +34,7 @@ export function SettingsSheet({ onClose, onEditProfile, onShareProfile, onLogout
       <View style={styles.sheet}>
         <View style={styles.grabber} />
         <View style={styles.sheetHeader}>
-          <Text style={styles.sheetTitle}>Settings ⚙️</Text>
+          <Text style={styles.sheetTitle}>Settings</Text>
           <Pressable onPress={onClose} hitSlop={10} style={styles.closeBtn}>
             <Ionicons name="close" size={18} color={colors.muted} />
           </Pressable>

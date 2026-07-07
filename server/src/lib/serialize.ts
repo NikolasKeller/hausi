@@ -124,7 +124,7 @@ export function toExploreEvent(
       )
     : undefined;
   // A few faces for the interested cluster: mutuals first, then anyone else
-  // who's GOING/MAYBE, skipping the viewer and de-duping emoji.
+  // who's GOING/MAYBE, skipping the viewer and de-duping by user.
   const interestedRsvps = event.rsvps.filter(
     (r) => (r.status === 'GOING' || r.status === 'MAYBE') && r.userId !== viewerId
   );
@@ -135,11 +135,12 @@ export function toExploreEvent(
     // GOING ahead of MAYBE within each group.
     return (a.status === 'GOING' ? 0 : 1) - (b.status === 'GOING' ? 0 : 1);
   });
-  const interestedAvatars: string[] = [];
+  const interestedAvatars: { name: string; avatarImage: string }[] = [];
+  const seen = new Set<string>();
   for (const r of interestedRsvps) {
-    if (!interestedAvatars.includes(r.user.avatarEmoji)) {
-      interestedAvatars.push(r.user.avatarEmoji);
-    }
+    if (seen.has(r.userId)) continue;
+    seen.add(r.userId);
+    interestedAvatars.push({ name: r.user.name, avatarImage: r.user.avatarImage });
     if (interestedAvatars.length >= 5) break;
   }
   return {

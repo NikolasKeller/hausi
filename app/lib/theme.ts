@@ -1,26 +1,25 @@
-// Hausi design system — a faithful clone of Partiful's look: a near-black
-// (#111) canvas, white type in a tight neo-grotesque (Inter ≈ TWK Lausanne),
-// translucent white surfaces/hairlines, and a vibrant pink→violet→blue party
-// gradient as the signature accent. Dark, playful, nightlife-flavored.
+// Now design system — a stark near-black (#111) canvas, white League Gothic
+// type, translucent white surfaces/hairlines, and a single warm orange as the
+// signature accent (glowing white-on-black look). Dark, bold, nightlife-flavored.
 
-// ── App palette (dark "midnight" canvas) ─────────────────────────────────────
+// ── App palette (dark canvas) ────────────────────────────────────────────────
 export const colors = {
   // Surfaces
-  bg: '#111111',        // Partiful near-black canvas
+  bg: '#111111',        // near-black canvas
   card: '#1C1C1E',      // elevated dark card
   cardBorder: 'rgba(255,255,255,0.10)', // hairline on dark
   inputBg: 'rgba(255,255,255,0.07)',    // translucent field fill
   // Type
   text: '#FFFFFF',      // white ink
   muted: 'rgba(255,255,255,0.56)',      // dimmed white
-  // Brand / accent — Partiful hot pink
-  accent: '#FF3B9A',
-  accentDark: '#D42177',
-  violet: '#B15CFF',    // party violet
-  helio: '#FF3B9A',     // same as accent
+  // Brand / accent — warm glowing orange
+  accent: '#FF6A2B',
+  accentDark: '#D2491A',
+  violet: '#FF8A3D',    // warm secondary (kept name for back-compat)
+  helio: '#FF6A2B',     // same as accent
   // High-contrast solid fill (a white pill on the dark canvas)
   ink: '#FFFFFF',
-  // Text on the pink/gradient accent fill
+  // Text on the orange/gradient accent fill
   onAccent: '#FFFFFF',
   // Text on a white solid fill
   onInk: '#111111',
@@ -58,14 +57,14 @@ export const light = {
 export const dusk = ['#E8927C', '#B76E9B', '#6E4E8E', '#3B2E5E', '#241B3A'] as const;
 
 export const brand = {
-  // The signature Partiful party gradient — heliotrope → hot pink → electric blue.
-  party: ['#D241FA', '#FF4FD8', '#4B7BFF'] as const,
-  // Soft pastel washes for light section backgrounds.
-  partyPink: ['#F8C4FF', '#F0B6E0'] as const,
-  periwinkle: ['rgba(150,196,255,0.28)', 'rgba(255,255,255,0)'] as const,
-  spearmint: ['#85DADC', '#C0E2E2'] as const,
-  // Neon pink → violet — the primary action gradient.
-  glow: ['#FF4FD8', '#8B5CF6'] as const,
+  // The signature gradient — warm amber → orange → deep ember.
+  party: ['#FFB061', '#FF6A2B', '#D2491A'] as const,
+  // Soft warm washes for light section backgrounds.
+  partyPink: ['#FFD8B0', '#FFC089'] as const,
+  periwinkle: ['rgba(255,138,61,0.28)', 'rgba(255,255,255,0)'] as const,
+  spearmint: ['#FFC089', '#FFE0C2'] as const,
+  // Amber → orange — the primary action gradient.
+  glow: ['#FF8A3D', '#E24E12'] as const,
 };
 
 // Kept for back-compat (the primary action gradient).

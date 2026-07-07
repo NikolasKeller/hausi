@@ -10,14 +10,12 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFocusEffect, useRouter } from 'expo-router';
-import * as Linking from 'expo-linking';
 import { Ionicons } from '@expo/vector-icons';
 import { CATEGORIES, CATEGORY_META, type Category, type ExploreEvent } from '../../shared/types';
 import { api } from '../../lib/api';
 import { searchCities } from '../../lib/geocoding';
 import { hasLocationPermission, locateCity, type LocatedCity } from '../../lib/location';
 import { getRecentCities, recordRecentCity } from '../../lib/recentCities';
-import { shareText } from '../../lib/share';
 import { colors, radius, spacing, shadow } from '../../lib/theme';
 import { titleFontStyle, display, uiText, kicker } from '../../lib/fonts';
 import { CoverGradient } from '../../components/CoverGradient';
@@ -34,14 +32,6 @@ const CATEGORY_CHIPS: { key: Category | 'all'; emoji: string; label: string }[] 
   })),
 ];
 
-async function shareEvent(event: ExploreEvent) {
-  const url = Linking.createURL(`e/${event.slug}`);
-  await shareText(
-    `${event.title} - ${formatEventDate(event.date)} in ${event.city}.\nOpen in Hausi: ${url}`,
-    url
-  );
-}
-
 function ExploreCard({ event }: { event: ExploreEvent }) {
   const router = useRouter();
   return (
@@ -57,7 +47,6 @@ function ExploreCard({ event }: { event: ExploreEvent }) {
       <View style={styles.cardBody}>
         {event.friendGoing ? (
           <Text style={styles.friendStrip} numberOfLines={1}>
-            {event.friendGoing.avatarEmoji}{' '}
             <Text style={styles.friendName}>{event.friendGoing.name}</Text> is interested
           </Text>
         ) : null}
@@ -72,12 +61,6 @@ function ExploreCard({ event }: { event: ExploreEvent }) {
             {event.description}
           </Text>
         ) : null}
-        <View style={styles.cardFooter}>
-          <Text style={styles.interested}>⭐ {event.interested} Interested</Text>
-          <Pressable onPress={() => shareEvent(event)} hitSlop={10}>
-            <Ionicons name="share-outline" size={18} color={colors.muted} />
-          </Pressable>
-        </View>
       </View>
     </Pressable>
   );
@@ -163,9 +146,26 @@ function ExploreScreen() {
       try {
         let target = city;
         if (target === null) {
-          // First load: default to the user's own city from the home feed.
-          const feed = await api.home().catch(() => null);
-          target = feed?.city ?? '';
+          // First load: prefer where the user actually is right now. Only when
+          // location permission is already granted, so opening Explore never
+          // triggers a surprise prompt; otherwise fall back to their saved city.
+          let located: string | null = null;
+          try {
+            if (await hasLocationPermission()) {
+              const loc = await locateCity();
+              located = loc.city;
+              myLocationRef.current = loc;
+              setMyLocation(loc);
+            }
+          } catch {
+            // GPS/reverse-geocode failed — fall back to the saved city below.
+          }
+          if (located) {
+            target = located;
+          } else {
+            const feed = await api.home().catch(() => null);
+            target = feed?.city ?? '';
+          }
         }
         const res = await api.explore(target || undefined, category);
         if (!isActive()) return;
@@ -357,7 +357,7 @@ function ExploreScreen() {
               })}
             </ScrollView>
 
-            <CoverGradient theme="midnight" style={styles.hero} emojiOpacity={0.2}>
+            <CoverGradient theme="midnight" style={styles.hero} emojiOpacity={0}>
               <Text style={styles.heroKicker}>Get out there</Text>
               <Text style={styles.heroTitle}>
                 The streets are calling
@@ -715,8 +715,8 @@ const styles = StyleSheet.create({
     color: colors.text,
   },
   chipLabelActive: {
-    // Sits on the black active pill — white is intentional here.
-    color: colors.onAccent,
+    // Sits on the white active pill (colors.ink) — needs dark ink to stay legible.
+    color: colors.onInk,
   },
   hero: {
     minHeight: 200,
@@ -826,15 +826,5 @@ const styles = StyleSheet.create({
   cardDescription: {
     ...uiText(13),
     color: colors.muted,
-  },
-  cardFooter: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginTop: spacing.xs,
-  },
-  interested: {
-    ...uiText(13, '600'),
-    color: colors.text,
   },
 });

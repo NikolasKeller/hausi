@@ -156,7 +156,7 @@ authRoutes.post('/phone/request', async (c) => {
 
   if (smsEnabled) {
     try {
-      await sendSms(phone, `${code} is your Hausi verification code`);
+      await sendSms(phone, `${code} is your Now verification code`);
     } catch (e) {
       console.error('SMS send failed:', e);
       return c.json({ error: 'Could not send the code - check the number and try again' }, 502);

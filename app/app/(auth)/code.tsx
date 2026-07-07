@@ -14,7 +14,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { api } from '../../lib/api';
 import { useAuth } from '../../lib/auth';
 import { colors, radius, shadow, spacing } from '../../lib/theme';
-import { display, kicker, uiText } from '../../lib/fonts';
+import { display, uiText } from '../../lib/fonts';
 import { AuroraBackground } from '../../components/AuroraBackground';
 import { Button, ErrorText } from '../../components/ui';
 
@@ -84,9 +84,9 @@ export default function CodeScreen() {
               <Text style={{ fontSize: 18 }}>💬</Text>
             </View>
             <View style={{ flex: 1 }}>
-              <Text style={styles.bannerFrom}>Hausi (dev preview)</Text>
+              <Text style={styles.bannerFrom}>Now (dev preview)</Text>
               <Text style={styles.bannerText}>
-                {currentDevCode} is your Hausi verification code
+                {currentDevCode} is your Now verification code
               </Text>
             </View>
             <Text style={styles.bannerNow}>now</Text>
@@ -95,7 +95,6 @@ export default function CodeScreen() {
 
         <KeyboardAvoidingView style={{ flex: 1 }} behavior="padding">
           <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
-            <Text style={styles.kicker}>Step 2 of 2</Text>
             <Text style={styles.title}>
               Verify your phone
             </Text>
@@ -186,10 +185,6 @@ const styles = StyleSheet.create({
     padding: spacing.lg,
     paddingTop: spacing.xl * 2,
     gap: spacing.md,
-  },
-  kicker: {
-    ...kicker(colors.muted),
-    textAlign: 'center',
   },
   title: {
     color: colors.text,

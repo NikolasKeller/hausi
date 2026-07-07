@@ -38,15 +38,23 @@ const MONTHS = [
 
 const WEEKDAYS_SHORT = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
-const WEEKDAYS_LONG = [
-  'Sunday',
-  'Monday',
-  'Tuesday',
-  'Wednesday',
-  'Thursday',
-  'Friday',
-  'Saturday',
+// Empty-day messages — rotated per day so a blank calendar doesn't always read
+// the exact same line. Keyed off the date so it's stable within a given day.
+const EMPTY_MESSAGES: { title: string; subtitle: string }[] = [
+  { title: 'Free as a bird', subtitle: 'No commitments today. Do whatever you want' },
+  { title: 'Wide open', subtitle: 'Not a single plan in sight. Enjoy the quiet' },
+  { title: 'Gloriously empty', subtitle: 'Zero obligations. Peak main-character energy' },
+  { title: 'Nothing on the books', subtitle: 'A blank page is a beautiful thing' },
+  { title: 'Off the grid', subtitle: 'No plans, no problems' },
+  { title: 'Living the dream', subtitle: 'An empty schedule is a flex, honestly' },
+  { title: 'Touch some grass day', subtitle: 'Nothing planned — go outside, maybe?' },
+  { title: 'Certified chill', subtitle: 'Your calendar is as free as it gets' },
 ];
+
+function emptyMessageFor(date: Date): { title: string; subtitle: string } {
+  const dayIndex = Math.floor(date.getTime() / 86_400_000);
+  return EMPTY_MESSAGES[((dayIndex % EMPTY_MESSAGES.length) + EMPTY_MESSAGES.length) % EMPTY_MESSAGES.length];
+}
 
 const PAST_GRACE_MS = 6 * 60 * 60 * 1000;
 
@@ -301,18 +309,18 @@ function CalendarScreen() {
             <Text style={styles.panelTitle}>
               {selectedIsToday ? <Text style={styles.panelStrong}>Today </Text> : null}
               <Text style={selectedIsToday ? styles.panelMuted : styles.panelStrong}>
-                {WEEKDAYS_LONG[selected.getDay()]} · {MONTHS[selected.getMonth()]}{' '}
-                {selected.getDate()}
+                {`${String(selected.getDate()).padStart(2, '0')}/${String(
+                  selected.getMonth() + 1
+                ).padStart(2, '0')}/${selected.getFullYear()}`}
               </Text>
             </Text>
 
             {selectedEvents.length === 0 ? (
               <View style={styles.emptyState}>
                 <View style={styles.emptyBody}>
-                  <Text style={styles.emptyEmoji}>🕊️</Text>
-                  <Text style={styles.emptyTitle}>Free as a bird</Text>
+                  <Text style={styles.emptyTitle}>{emptyMessageFor(selected).title}</Text>
                   <Text style={styles.emptySubtitle}>
-                    No commitments today. Do whatever you want
+                    {emptyMessageFor(selected).subtitle}
                   </Text>
                 </View>
                 <Button
@@ -577,9 +585,6 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     gap: spacing.sm,
     overflow: 'hidden',
-  },
-  emptyEmoji: {
-    fontSize: 48,
   },
   emptyTitle: {
     ...display(24),

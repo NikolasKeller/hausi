@@ -1,11 +1,13 @@
 import React from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { colors, radius, shadow, spacing } from '../../lib/theme';
 import { display, uiText } from '../../lib/fonts';
 import { withScreenBackground } from '../../components/ScreenBackground';
+import { CoverGradient } from '../../components/CoverGradient';
+import { EVENT_TEMPLATES, type EventTemplate } from '../../lib/eventTemplates';
 
 export default withScreenBackground(CreateScreen);
 
@@ -36,8 +38,44 @@ function CreateScreen() {
             <Ionicons name="chevron-forward" size={20} color={colors.muted} />
           </Pressable>
         </View>
+
+        <View style={styles.sectionGroup}>
+          <Text style={styles.sectionTitle}>Party starters</Text>
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.horizontalList}
+            style={styles.horizontalScroll}
+          >
+            {EVENT_TEMPLATES.map((template) => (
+              <TemplateCard key={template.id} template={template} />
+            ))}
+          </ScrollView>
+        </View>
       </View>
     </SafeAreaView>
+  );
+}
+
+function TemplateCard({ template }: { template: EventTemplate }) {
+  const router = useRouter();
+  return (
+    <Pressable
+      onPress={() => router.push({ pathname: '/new-event', params: { template: template.id } })}
+      style={({ pressed }) => [styles.templateCard, pressed && { opacity: 0.85 }]}
+    >
+      <CoverGradient theme={template.coverTheme} style={styles.templateCover} emojiOpacity={0.22}>
+        <Text style={styles.templateEmoji}>{template.emoji}</Text>
+      </CoverGradient>
+      <View style={styles.templateBody}>
+        <Text style={styles.templateName} numberOfLines={1}>
+          {template.name}
+        </Text>
+        <Text style={styles.templateVibe} numberOfLines={2}>
+          {template.vibe}
+        </Text>
+      </View>
+    </Pressable>
   );
 }
 
@@ -98,5 +136,53 @@ const styles = StyleSheet.create({
   rowSubtitle: {
     ...uiText(14),
     color: colors.muted,
+  },
+  sectionGroup: {
+    gap: spacing.md,
+  },
+  sectionTitle: {
+    ...display(30),
+    color: colors.text,
+  },
+  horizontalScroll: {
+    marginHorizontal: -spacing.lg,
+  },
+  horizontalList: {
+    paddingHorizontal: spacing.lg,
+    gap: spacing.sm,
+  },
+  templateCard: {
+    width: 172,
+    backgroundColor: colors.card,
+    borderRadius: radius.md,
+    borderWidth: 1,
+    borderColor: colors.cardBorder,
+    overflow: 'hidden',
+    ...shadow.card,
+  },
+  templateCover: {
+    height: 96,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  templateEmoji: {
+    fontSize: 46,
+    textShadowColor: 'rgba(0,0,0,0.3)',
+    textShadowOffset: { width: 0, height: 2 },
+    textShadowRadius: 6,
+  },
+  templateBody: {
+    padding: spacing.sm,
+    gap: 2,
+    minHeight: 96,
+  },
+  templateName: {
+    ...display(16),
+    color: colors.text,
+  },
+  templateVibe: {
+    ...uiText(12),
+    color: colors.muted,
+    flex: 1,
   },
 });

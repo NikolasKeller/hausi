@@ -23,7 +23,7 @@ app.use('/api/*', cors());
 // The API lives under /api so it can never collide with the web app's own
 // client-side routes.
 const api = new Hono();
-api.get('/health', (c) => c.json({ name: 'Hausi API', ok: true }));
+api.get('/health', (c) => c.json({ name: 'Now API', ok: true }));
 // Public client config — lets the app know whether to ask for an invite code.
 api.get('/config', (c) => c.json({ inviteRequired: INVITE_CODE != null }));
 api.route('/auth', authRoutes);
@@ -68,7 +68,7 @@ if (existsSync(join(webRoot, 'index.html'))) {
   // SPA fallback: /welcome, /e/:slug etc. only exist client-side.
   app.get('*', serveStatic({ path: join(webRoot, 'index.html'), onFound: cacheHeaders }));
 } else {
-  app.get('/', (c) => c.json({ name: 'Hausi API', ok: true, web: 'not bundled' }));
+  app.get('/', (c) => c.json({ name: 'Now API', ok: true, web: 'not bundled' }));
 }
 
 app.onError((err, c) => {
@@ -96,5 +96,5 @@ try {
 
 const port = Number(process.env.PORT ?? 3001);
 serve({ fetch: app.fetch, port }, (info) => {
-  console.log(`Hausi listening on port ${info.port}`);
+  console.log(`Now listening on port ${info.port}`);
 });

@@ -162,7 +162,7 @@ export default function EventScreen() {
   async function share() {
     if (!event) return;
     const url = Linking.createURL(`e/${event.slug}`);
-    const message = `You're invited: ${event.title} - ${formatEventDate(event.date)} at ${formatEventTime(event.date)}.\nOpen in Hausi: ${url}`;
+    const message = `You're invited: ${event.title} - ${formatEventDate(event.date)} at ${formatEventTime(event.date)}.\nOpen in Now: ${url}`;
     await shareText(message, url);
   }
 
@@ -319,7 +319,7 @@ export default function EventScreen() {
 
           <View style={styles.section}>
             <View style={styles.hostRow}>
-              <Avatar emoji={event.host.avatarEmoji} image={event.host.avatarImage} size={44} />
+              <Avatar name={event.host.name} image={event.host.avatarImage} size={44} />
               <View style={{ flex: 1 }}>
                 <Text style={[styles.hostedBy, { color: ink.faint }]}>Hosted by</Text>
                 <Text style={[styles.hostName, { color: ink.text }]}>
@@ -410,7 +410,7 @@ export default function EventScreen() {
                 <View style={styles.avatarStack}>
                   {previewShown.map((r, i) => (
                     <View key={r.user.id} style={i > 0 ? { marginLeft: -10 } : undefined}>
-                      <Avatar emoji={r.user.avatarEmoji} image={r.user.avatarImage} size={40} />
+                      <Avatar name={r.user.name} image={r.user.avatarImage} size={40} />
                     </View>
                   ))}
                   {previewExtra > 0 ? (
@@ -494,12 +494,12 @@ export default function EventScreen() {
                 <Text style={[styles.plusOnesLabel, { color: ink.text }]}>Your plus one</Text>
                 {myPlusOne ? (
                   <View style={styles.plusOneChip}>
-                    <Avatar emoji={myPlusOne.avatarEmoji} image={myPlusOne.avatarImage} size={24} />
+                    <Avatar name={myPlusOne.name} image={myPlusOne.avatarImage} size={24} />
                     <Text style={[styles.plusOneChipName, { color: ink.text }]} numberOfLines={1}>
                       {myPlusOne.name}
                     </Text>
                     {myPlusOne.userId == null ? (
-                      // Not on Hausi yet — resurface the invite link to text them.
+                      // Not on Now yet — resurface the invite link to text them.
                       <Pressable onPress={sharePlusOneInvite} hitSlop={8}>
                         <Text style={[styles.plusOneShareText, { color: ink.text }]}>Share invite</Text>
                       </Pressable>
@@ -567,7 +567,7 @@ export default function EventScreen() {
                     return (
                       <View key={r.user.id} style={{ gap: spacing.sm }}>
                         <Glass tint={ink.glassTint} radius={radius.md} style={styles.guestRow}>
-                          <Avatar emoji={r.user.avatarEmoji} image={r.user.avatarImage} size={32} />
+                          <Avatar name={r.user.name} image={r.user.avatarImage} size={32} />
                           <Text style={[styles.guestName, { flex: 1, color: ink.text }]}>
                             {r.user.name}
                             {r.user.id === event.host.id ? '  👑' : isCohost ? '  🤝' : ''}
@@ -591,7 +591,7 @@ export default function EventScreen() {
                                 radius={radius.md}
                                 style={[styles.guestRow, styles.plusOneGuestRow]}
                               >
-                                <Avatar emoji={g.avatarEmoji} image={g.avatarImage} size={26} />
+                                <Avatar name={g.name} image={g.avatarImage} size={26} />
                                 <Text
                                   style={[styles.plusOneGuestName, { flex: 1, color: ink.text }]}
                                   numberOfLines={1}
@@ -632,11 +632,11 @@ export default function EventScreen() {
               wallComments.map((c) =>
                 c.type === 'system' ? (
                   <Text key={c.id} style={[styles.systemEntry, { color: ink.faint }]}>
-                    {c.user.avatarEmoji} {c.user.name} {c.text}
+                    {c.user.name} {c.text}
                   </Text>
                 ) : (
                   <View key={c.id} style={styles.commentRow}>
-                    <Avatar emoji={c.user.avatarEmoji} image={c.user.avatarImage} size={32} />
+                    <Avatar name={c.user.name} image={c.user.avatarImage} size={32} />
                     <Glass tint={ink.glassTint} radius={radius.md} style={styles.commentBubble}>
                       <Text style={[styles.commentAuthor, { color: ink.text }]}>{c.user.name}</Text>
                       <Text style={[styles.commentText, { color: ink.text }]}>{c.text}</Text>

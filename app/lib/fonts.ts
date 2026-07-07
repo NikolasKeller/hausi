@@ -2,62 +2,37 @@ import type { TextStyle } from 'react-native';
 import { PlayfairDisplay_700Bold } from '@expo-google-fonts/playfair-display';
 import { Pacifico_400Regular } from '@expo-google-fonts/pacifico';
 import { Bungee_400Regular } from '@expo-google-fonts/bungee';
-import {
-  Inter_400Regular,
-  Inter_500Medium,
-  Inter_600SemiBold,
-  Inter_700Bold,
-  Inter_800ExtraBold,
-  Inter_900Black,
-} from '@expo-google-fonts/inter';
+import { LeagueGothic_400Regular } from '@expo-google-fonts/league-gothic';
 import type { TitleFont } from '../shared/types';
 
-// Partiful's real typography is TWK Lausanne — a tight neo-grotesque — with a
-// custom "Partiful Display" for titles. Those faces are proprietary, so we
-// substitute Inter, the closest freely-licensable neo-grotesque, across the
-// whole UI. Weights map 1:1 to Inter's optical weights so nothing renders as a
-// browser-synthesized faux-bold.
+// The app is set entirely in League Gothic (The League of Moveable Type) — a
+// tall, tightly-condensed grotesque used as the single voice across every
+// surface. It ships one optical cut, so all "weights" map to the same family.
+const LEAGUE = 'LeagueGothic_400Regular';
+
 export const FONTS_TO_LOAD = {
-  Inter_400Regular,
-  Inter_500Medium,
-  Inter_600SemiBold,
-  Inter_700Bold,
-  Inter_800ExtraBold,
-  Inter_900Black,
+  LeagueGothic_400Regular,
+  // Kept for the opt-in per-event title fonts (Literary / Fancy / Eclectic).
   PlayfairDisplay_700Bold,
   Pacifico_400Regular,
   Bungee_400Regular,
 };
 
-// Map a react-native fontWeight to the matching Inter family, so every weight
-// picks the real cut instead of a synthesized one.
-const UI_FAMILY: Record<string, string> = {
-  '300': 'Inter_400Regular',
-  '400': 'Inter_400Regular',
-  normal: 'Inter_400Regular',
-  '500': 'Inter_500Medium',
-  '600': 'Inter_600SemiBold',
-  '700': 'Inter_700Bold',
-  bold: 'Inter_700Bold',
-  '800': 'Inter_800ExtraBold',
-  '900': 'Inter_900Black',
-};
-
-function uiFamily(weight?: TextStyle['fontWeight']): string {
-  return UI_FAMILY[String(weight ?? '400')] ?? 'Inter_400Regular';
+// League Gothic has a single cut, so every requested weight resolves to it.
+function uiFamily(_weight?: TextStyle['fontWeight']): string {
+  return LEAGUE;
 }
 
-// The app's display voice — Inter at its heaviest cut, standing in for TWK
-// Lausanne 850. Titles are set tight (negative tracking) and near-solid
-// line-height, exactly like Partiful's big grotesque headlines.
-export const DISPLAY_FONT = 'Inter_800ExtraBold';
-export const DISPLAY_FONT_HEAVY = 'Inter_900Black'; // poster/cover weight
+// The app's one and only voice. Titles are set tight (negative tracking) and
+// near-solid line-height.
+export const DISPLAY_FONT = LEAGUE;
+export const DISPLAY_FONT_HEAVY = LEAGUE; // poster/cover weight (same cut)
 export const SERIF_FONT = 'PlayfairDisplay_700Bold'; // opt-in literary title only
 export const displayTitle: TextStyle = { fontFamily: DISPLAY_FONT, fontWeight: 'normal' };
 
-// Statement type: heavy Inter grotesque at tight negative tracking. Pass
-// weight:'heavy'/'black' for poster/cover-grade Inter Black. letterSpacing is
-// absolute px in RN, so it scales with the font size.
+// Statement type: League Gothic at tight negative tracking. The `weight` opt is
+// kept for call-site compatibility but resolves to the same cut. letterSpacing
+// is absolute px in RN, so it scales with the font size.
 export function display(
   size: number,
   opts?: { weight?: 'black' | 'heavy'; lineHeight?: number; tracking?: number }
@@ -75,9 +50,9 @@ export function display(
   } as TextStyle;
 }
 
-// Interface text — Inter, the neo-grotesque UI voice (≈ TWK Lausanne). Slight
-// negative tracking, generous line-height. The weight also selects the real
-// Inter cut so it never renders as a faux-bold.
+// Interface text — League Gothic, the single UI voice. Slight negative
+// tracking, generous line-height. The weight arg is accepted for compatibility
+// but every value resolves to the one League Gothic cut.
 export function uiText(
   size: number,
   weight: TextStyle['fontWeight'] = '400',
@@ -97,7 +72,7 @@ export function uiText(
 // display headlines the way Partiful labels its sections.
 export function kicker(color?: string): TextStyle {
   return {
-    fontFamily: 'Inter_700Bold',
+    fontFamily: LEAGUE,
     fontSize: 12,
     fontWeight: 'normal',
     letterSpacing: 1.5,
@@ -113,9 +88,9 @@ export const TITLE_FONT_LABELS: Record<TitleFont, string> = {
   eclectic: 'Eclectic',
 };
 
-// Style for big event titles per font choice. `classic` is the heavy Inter
-// grotesque (Partiful's default title look). The loaded faces carry their
-// weight in the family name, so fontWeight resets to normal.
+// Style for big event titles per font choice. `classic` is League Gothic (the
+// app-wide default); Literary/Fancy/Eclectic stay as opt-in decorative faces.
+// The loaded faces carry their weight in the family name, so fontWeight resets.
 export const TITLE_FONT_STYLES: Record<TitleFont, TextStyle> = {
   classic: { fontFamily: DISPLAY_FONT, fontWeight: 'normal', letterSpacing: -1 },
   literary: { fontFamily: 'PlayfairDisplay_700Bold', fontWeight: 'normal', letterSpacing: 0 },

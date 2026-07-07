@@ -41,7 +41,7 @@ export function CoverGradient({ theme, style, children, emojiOpacity = 0.45, ima
           {/* Scrim keeps overlaid title text legible on bright photos. */}
           <View style={[StyleSheet.absoluteFill, styles.scrim]} pointerEvents="none" />
         </>
-      ) : (
+      ) : emojiOpacity > 0 ? (
         <View style={StyleSheet.absoluteFill} pointerEvents="none">
           {SCATTER.map((s, i) => (
             <Text
@@ -59,7 +59,7 @@ export function CoverGradient({ theme, style, children, emojiOpacity = 0.45, ima
             </Text>
           ))}
         </View>
-      )}
+      ) : null}
       {children}
     </LinearGradient>
   );

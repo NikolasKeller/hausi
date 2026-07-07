@@ -19,24 +19,15 @@ import { display, kicker, uiText } from '../lib/fonts';
 import { Avatar } from '../components/Avatar';
 import { Button, ErrorText } from '../components/ui';
 
-// One face at a time: tapping the big face cycles through a short list
-// instead of presenting a grid to scan.
-const FACES = ['🎉', '😎', '🦄', '🔥', '🌈', '🪩'] as const;
-
 export default function SetupScreen() {
   const router = useRouter();
   const { user, updateUser } = useAuth();
 
-  const [faceIndex, setFaceIndex] = useState(() =>
-    Math.max(0, FACES.indexOf((user?.avatarEmoji ?? '') as (typeof FACES)[number]))
-  );
   const [photo, setPhoto] = useState(user?.avatarImage ?? '');
   const [uploading, setUploading] = useState(false);
   const [name, setName] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
-
-  const face = FACES[faceIndex];
 
   async function addPhoto(source: 'library' | 'camera') {
     if (uploading) return;
@@ -67,8 +58,8 @@ export default function SetupScreen() {
     setBusy(true);
     setError(null);
     try {
-      await api.updateProfile({ name: trimmed, avatarEmoji: face, avatarImage: photo });
-      updateUser({ ...user!, name: trimmed, avatarEmoji: face, avatarImage: photo });
+      await api.updateProfile({ name: trimmed, avatarImage: photo });
+      updateUser({ ...user!, name: trimmed, avatarImage: photo });
       router.replace('/');
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Could not save your profile');
@@ -92,19 +83,17 @@ export default function SetupScreen() {
 
             <View style={styles.faceWrap}>
               <Pressable
-                onPress={() =>
-                  photo ? addPhoto('library') : setFaceIndex((i) => (i + 1) % FACES.length)
-                }
+                onPress={() => addPhoto('library')}
                 style={({ pressed }) => [pressed && styles.facePressed]}
               >
-                <Avatar emoji={face} image={photo} size={168} />
+                <Avatar name={name} image={photo} size={168} />
               </Pressable>
               <Text style={styles.hint}>
                 {uploading
                   ? 'Uploading your fabulous face…'
                   : photo
                     ? 'Lookin’ ready to party ✨'
-                    : 'Tap the face to change it'}
+                    : 'Add a photo, or skip for now'}
               </Text>
               <View style={styles.photoActions}>
                 {/* Native only: web's "camera" is the same file dialog as the
@@ -124,7 +113,7 @@ export default function SetupScreen() {
                   style={photoPillStyle}
                 >
                   <Text style={styles.photoPillText}>
-                    {photo ? '🖼️ Swap photo' : '🖼️ Add a photo'}
+                    {photo ? 'Swap photo' : 'Add a photo'}
                   </Text>
                 </Pressable>
                 {!!photo && (
@@ -133,7 +122,7 @@ export default function SetupScreen() {
                     disabled={uploading}
                     style={photoPillStyle}
                   >
-                    <Text style={styles.photoPillText}>✕ Use an emoji</Text>
+                    <Text style={styles.photoPillText}>✕ Remove photo</Text>
                   </Pressable>
                 )}
               </View>
@@ -160,7 +149,7 @@ export default function SetupScreen() {
               title="Continue"
               onPress={finish}
               loading={busy}
-              disabled={uploading}
+              disabled={uploading || !name.trim()}
               variant="primary"
             />
           </ScrollView>
