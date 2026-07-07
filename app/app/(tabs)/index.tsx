@@ -143,6 +143,14 @@ function HomeScreen() {
     );
   }
 
+  // Surface the discover feed's trending events. Prefer the geo-local list;
+  // fall back to the global "trending now" when we have no nearby signal.
+  const nearby = home.trendingNearby ?? [];
+  const trending =
+    nearby.length > 0
+      ? { title: 'Trending near you', list: nearby }
+      : { title: 'Trending now', list: home.trendingNow ?? [] };
+
   return (
     <SafeAreaView edges={['top']} style={styles.screen}>
       <ScrollView
@@ -189,6 +197,22 @@ function HomeScreen() {
             </View>
           )}
         </View>
+
+        {trending.list.length > 0 ? (
+          <View style={styles.sectionGroup}>
+            <Text style={styles.sectionTitle}>{trending.title}</Text>
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={styles.horizontalList}
+              style={styles.horizontalScroll}
+            >
+              {trending.list.map((event) => (
+                <TrendingCard key={event.id} event={event} />
+              ))}
+            </ScrollView>
+          </View>
+        ) : null}
 
         {recents.length > 0 ? (
           <View style={styles.sectionGroup}>
@@ -329,6 +353,32 @@ function AvatarCluster({ emojis }: { emojis: string[] }) {
         </View>
       ))}
     </View>
+  );
+}
+
+// A trending event from the discover feed: cover poster, date, and how many
+// people are interested — tap through to the event page.
+function TrendingCard({ event }: { event: ExploreEvent }) {
+  const router = useRouter();
+  return (
+    <Pressable
+      onPress={() => router.push(`/event/${event.slug}`)}
+      style={({ pressed }) => [styles.recentCard, pressed && { opacity: 0.85 }]}
+    >
+      <CoverGradient theme={event.coverTheme} image={event.coverImage} style={styles.recentCover} emojiOpacity={0.25}>
+        <Text style={[styles.recentTitle, titleFontStyle(event.titleFont)]} numberOfLines={2}>
+          {event.title}
+        </Text>
+      </CoverGradient>
+      <View style={styles.trendingMeta}>
+        <Text style={styles.trendingDate} numberOfLines={1}>
+          {formatEventDate(event.date)}
+        </Text>
+        {event.interested > 0 ? (
+          <Text style={styles.trendingInterested}>{event.interested} interested</Text>
+        ) : null}
+      </View>
+    </Pressable>
   );
 }
 
@@ -583,6 +633,19 @@ const styles = StyleSheet.create({
     color: colors.muted,
     padding: spacing.sm,
     paddingTop: 6,
+  },
+  trendingMeta: {
+    padding: spacing.sm,
+    paddingTop: 6,
+    gap: 2,
+  },
+  trendingDate: {
+    ...uiText(12, '700'),
+    color: colors.muted,
+  },
+  trendingInterested: {
+    ...uiText(12, '700'),
+    color: colors.accent,
   },
   templateCard: {
     width: 172,

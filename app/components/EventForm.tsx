@@ -20,6 +20,7 @@ import { useRouter } from 'expo-router';
 import {
   DESCRIPTION_SCALE,
   LIMITS,
+  TITLE_FONTS,
   type Category,
   type CoverTheme,
   type Effect,
@@ -28,7 +29,7 @@ import {
 } from '../shared/types';
 import { colors, light, radius, shadow, spacing } from '../lib/theme';
 import { coverFor } from '../lib/covers';
-import { titleFontStyle, kicker, uiText } from '../lib/fonts';
+import { titleFontStyle, kicker, uiText, TITLE_FONT_LABELS } from '../lib/fonts';
 import { CoverGradient } from './CoverGradient';
 import { EFFECT_META, EffectOverlay } from './EffectOverlay';
 import { Button, ErrorText } from './ui';
@@ -136,7 +137,7 @@ export function EventForm({ initial, submitLabel, onSubmit, footer }: Props) {
   const [cropSrc, setCropSrc] = useState<{ uri: string; width?: number; height?: number } | null>(
     null
   );
-  const titleFont: TitleFont = initial?.titleFont ?? 'classic';
+  const [titleFont, setTitleFont] = useState<TitleFont>(initial?.titleFont ?? 'classic');
   const [effect, setEffect] = useState<Effect>(initial?.effect ?? 'none');
   // null until the host actually opens the When picker — "When" is a required
   // field, so we don't silently pre-fill it. The sheet opens at defaultDate().
@@ -292,7 +293,8 @@ export function EventForm({ initial, submitLabel, onSubmit, footer }: Props) {
           contentContainerStyle={styles.content}
           keyboardShouldPersistTaps="handled"
         >
-        {/* Just the event name — type it and go. */}
+        {/* The event name plus its title font — one unit, so the picker
+            previews each face on the name itself. */}
         <View style={styles.titleBox}>
           <TextInput
             value={title}
@@ -302,6 +304,31 @@ export function EventForm({ initial, submitLabel, onSubmit, footer }: Props) {
             maxLength={LIMITS.title}
             style={[styles.titleInput, titleFontStyle(titleFont)]}
           />
+          <View style={styles.fontRow}>
+            {TITLE_FONTS.map((f) => {
+              const selected = f === titleFont;
+              return (
+                <Pressable
+                  key={f}
+                  onPress={() => setTitleFont(f)}
+                  style={[styles.fontChip, selected && styles.fontChipActive]}
+                >
+                  <Text
+                    style={[
+                      styles.fontChipText,
+                      titleFontStyle(f),
+                      selected && styles.fontChipTextActive,
+                    ]}
+                    numberOfLines={1}
+                    adjustsFontSizeToFit
+                    minimumFontScale={0.7}
+                  >
+                    {TITLE_FONT_LABELS[f]}
+                  </Text>
+                </Pressable>
+              );
+            })}
+          </View>
         </View>
 
         {/* The cover the guest will see — framed against the full-screen theme. */}
@@ -602,6 +629,33 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     paddingHorizontal: spacing.md,
     paddingVertical: 8,
+  },
+  // Inline font picker: one chip per title font, each labelled in its own face.
+  fontRow: {
+    flexDirection: 'row',
+    gap: spacing.xs,
+  },
+  fontChip: {
+    flex: 1,
+    paddingVertical: 8,
+    paddingHorizontal: spacing.xs,
+    borderRadius: radius.sm,
+    borderWidth: 1,
+    borderColor: colors.cardBorder,
+    backgroundColor: colors.inputBg,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  fontChipActive: {
+    borderColor: colors.accent,
+    backgroundColor: 'rgba(255,59,154,0.14)',
+  },
+  fontChipText: {
+    color: colors.muted,
+    fontSize: 15,
+  },
+  fontChipTextActive: {
+    color: colors.text,
   },
   sectionLabel: {
     ...kicker(light.text3),
