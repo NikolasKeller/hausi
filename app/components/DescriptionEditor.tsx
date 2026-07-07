@@ -234,7 +234,7 @@ const styles = StyleSheet.create({
     ...shadow.card,
   },
   doneText: {
-    ...uiText(15, '700'),
+    ...uiText(15, '600'),
     color: '#fff',
   },
   body: { flex: 1 },
@@ -262,7 +262,7 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingVertical: 8,
     paddingHorizontal: spacing.sm,
-    ...shadow.float,
+    ...shadow.card,
   },
   toolBtn: {
     flexDirection: 'row',
@@ -276,7 +276,7 @@ const styles = StyleSheet.create({
     backgroundColor: colors.ink,
   },
   toolLabel: {
-    ...uiText(14, '700'),
+    ...uiText(14, '600'),
     color: colors.text,
   },
   toolLabelActive: {
@@ -302,11 +302,11 @@ const styles = StyleSheet.create({
     opacity: 0.4,
   },
   sizeSmall: {
-    ...uiText(13, '800'),
+    ...uiText(13, '600'),
     color: colors.text,
   },
   sizeBig: {
-    ...uiText(20, '800'),
+    ...uiText(20, '600'),
     color: colors.text,
   },
   sizePct: {

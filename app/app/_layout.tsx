@@ -43,7 +43,7 @@ function ModalClose() {
         pressed && { opacity: 0.7, transform: [{ scale: 0.94 }] },
       ]}
     >
-      <Text style={{ color: colors.text, fontSize: 15, fontWeight: '800' }}>✕</Text>
+      <Text style={{ color: colors.text, fontSize: 15, fontWeight: '600' }}>✕</Text>
     </Pressable>
   );
 }
