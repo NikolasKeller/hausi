@@ -50,6 +50,14 @@ const WEEKDAYS_LONG = [
 
 const PAST_GRACE_MS = 6 * 60 * 60 * 1000;
 
+// Months span 4, 5 or 6 week rows. We lay the grid out at a constant height for
+// the tallest case (6 rows) and let each row flex to fill it, so a long month
+// like a 1st-to-31st never grows the grid and squeezes the panel below (which
+// would push the empty-state emoji into the title and the CTA off screen).
+const MAX_WEEK_ROWS = 6;
+const GRID_ROW_HEIGHT = 46;
+const GRID_HEIGHT = MAX_WEEK_ROWS * GRID_ROW_HEIGHT;
+
 // Cells for a month grid: leading/trailing nulls pad to full weeks.
 function buildMonthCells(year: number, month: number): (Date | null)[] {
   const startPad = new Date(year, month, 1).getDay();
@@ -300,11 +308,13 @@ function CalendarScreen() {
 
             {selectedEvents.length === 0 ? (
               <View style={styles.emptyState}>
-                <Text style={styles.emptyEmoji}>🕊️</Text>
-                <Text style={styles.emptyTitle}>Free as a bird</Text>
-                <Text style={styles.emptySubtitle}>
-                  No commitments today. Do whatever you want
-                </Text>
+                <View style={styles.emptyBody}>
+                  <Text style={styles.emptyEmoji}>🕊️</Text>
+                  <Text style={styles.emptyTitle}>Free as a bird</Text>
+                  <Text style={styles.emptySubtitle}>
+                    No commitments today. Do whatever you want
+                  </Text>
+                </View>
                 <Button
                   title="Plan something"
                   variant="primary"
@@ -472,9 +482,13 @@ const styles = StyleSheet.create({
     color: colors.muted,
   },
   grid: {
-    gap: spacing.sm,
+    // Constant height for every month (see MAX_WEEK_ROWS). Rows flex to share
+    // it, so 4/5/6-week months all keep the grid the same size and leave the
+    // panel below the same room.
+    height: GRID_HEIGHT,
   },
   weekRow: {
+    flex: 1,
     flexDirection: 'row',
   },
   dayCell: {
@@ -552,9 +566,17 @@ const styles = StyleSheet.create({
   },
   emptyState: {
     flex: 1,
+    gap: spacing.sm,
+  },
+  // The decorative block takes the space left above the pinned CTA and centers
+  // its content. overflow: hidden means that if the panel is ever too short it
+  // clips gracefully instead of spilling over the title above or the button.
+  emptyBody: {
+    flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
     gap: spacing.sm,
+    overflow: 'hidden',
   },
   emptyEmoji: {
     fontSize: 48,
@@ -569,7 +591,6 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   planButton: {
-    marginTop: spacing.sm,
     alignSelf: 'stretch',
   },
   listSections: {
