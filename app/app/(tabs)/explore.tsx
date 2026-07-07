@@ -541,7 +541,8 @@ const styles = StyleSheet.create({
     gap: spacing.xs,
   },
   headerTitle: {
-    ...display(44),
+    // Match the calendar's month title size so the tab headers feel consistent.
+    ...display(32),
     color: colors.text,
   },
   cityPill: {
