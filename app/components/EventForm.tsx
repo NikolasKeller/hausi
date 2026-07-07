@@ -544,9 +544,10 @@ const styles = StyleSheet.create({
   },
   content: {
     padding: spacing.lg,
-    // Keep the top shallow so the title and the full 1:1 cover preview fit
-    // above the floating taskbar without scrolling.
-    paddingTop: spacing.sm,
+    // Enough breathing room under the close button so the title card's top
+    // edge doesn't crowd the ✕ — but still shallow enough that the title and
+    // the full 1:1 cover preview fit above the floating taskbar.
+    paddingTop: spacing.md,
     gap: spacing.lg,
     // Extra room at the end so the submit button scrolls clear of the
     // floating taskbar.
