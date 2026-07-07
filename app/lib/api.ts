@@ -4,6 +4,7 @@ import type {
   AuthResponse,
   Category,
   CommentEntry,
+  DeliveryChannel,
   EventDetail,
   EventInput,
   EventSummary,
@@ -80,7 +81,7 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
   try {
     res = await fetch(`${API_URL}${path}`, { ...options, headers });
   } catch {
-    throw new ApiError(0, 'Cannot reach the Now server. Is it running?');
+    throw new ApiError(0, 'Cannot reach the iykyk server. Is it running?');
   }
 
   const body = await res.json().catch(() => ({}));
@@ -101,16 +102,35 @@ export const api = {
       body: JSON.stringify({ data, contentType }),
     });
   },
-  requestPhoneCode(phone: string, invite?: string) {
+  // `contact` is a phone number for sms/whatsapp and an email address for the
+  // email channel; the server picks the right field based on the channel.
+  requestPhoneCode(
+    contact: string,
+    opts: { invite?: string; channel?: DeliveryChannel } = {}
+  ) {
+    const isEmail = opts.channel === 'email';
+    const payload: {
+      phone?: string;
+      email?: string;
+      invite?: string;
+      channel?: DeliveryChannel;
+    } = isEmail ? { email: contact } : { phone: contact };
+    if (opts.invite) payload.invite = opts.invite;
+    // Only send a channel when opting out of the SMS default, keeping the
+    // payload identical to the old behavior for plain SMS requests.
+    if (opts.channel && opts.channel !== 'sms') payload.channel = opts.channel;
     return request<PhoneRequestResponse>('/auth/phone/request', {
       method: 'POST',
-      body: JSON.stringify(invite ? { phone, invite } : { phone }),
+      body: JSON.stringify(payload),
     });
   },
-  verifyPhoneCode(phone: string, code: string) {
+  verifyPhoneCode(contact: string, code: string, channel: DeliveryChannel = 'sms') {
+    const payload: { phone?: string; email?: string; code: string; channel?: DeliveryChannel } =
+      channel === 'email' ? { email: contact, code } : { phone: contact, code };
+    if (channel !== 'sms') payload.channel = channel;
     return request<PhoneVerifyResponse>('/auth/phone/verify', {
       method: 'POST',
-      body: JSON.stringify({ phone, code }),
+      body: JSON.stringify(payload),
     });
   },
   // Restore a session from the durable server cookie (web) when local storage

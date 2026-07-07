@@ -1,6 +1,6 @@
 import { storage } from './storage';
 
-const KEY = 'now.recentEvents';
+const KEY = 'iykyk.recentEvents';
 const MAX = 8;
 
 export interface RecentEvent {

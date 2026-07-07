@@ -19,7 +19,7 @@ import { uiText } from '../lib/fonts';
 
 // ── ThemeBackground ───────────────────────────────────────────────────────────
 // The event page surface. Rather than a per-event colourful gradient, this now
-// renders the Now corporate canvas: a near-black backdrop with a warm orange
+// renders the iykyk corporate canvas: a near-black backdrop with a warm orange
 // bloom at the top (our signature white-on-black glow). An optional effect
 // overlay still drifts across. Content floats on top in dark glass.
 export function ThemeBackground({

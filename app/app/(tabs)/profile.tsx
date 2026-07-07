@@ -81,7 +81,7 @@ function ProfileScreen() {
 
   async function shareProfile() {
     if (!profile) return;
-    await shareText(`Add me on Now 🎉 - ${profile.name}`);
+    await shareText(`Add me on iykyk 🎉 - ${profile.name}`);
   }
 
   if (error && !profile) {

@@ -1,20 +1,20 @@
 {
   "expo": {
-    "name": "Now",
-    "slug": "now",
+    "name": "iykyk",
+    "slug": "iykyk",
     "version": "0.1.0",
-    "scheme": "now",
+    "scheme": "iykyk",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "dark",
     "backgroundColor": "#0E0B16",
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.now.app",
+      "bundleIdentifier": "com.iykyk.app",
       "appleTeamId": "XVLYVZN7Q3"
     },
     "android": {
-      "package": "com.now.app",
+      "package": "com.iykyk.app",
       "adaptiveIcon": {
         "backgroundColor": "#0E0B16",
         "foregroundImage": "./assets/android-icon-foreground.png",
@@ -37,13 +37,13 @@
       [
         "expo-image-picker",
         {
-          "photosPermission": "Now needs access to your photos so you can set an event cover."
+          "photosPermission": "iykyk needs access to your photos so you can set an event cover."
         }
       ],
       [
         "expo-location",
         {
-          "locationWhenInUsePermission": "Now uses your location to find parties happening near you."
+          "locationWhenInUsePermission": "iykyk uses your location to find parties happening near you."
         }
       ]
     ]

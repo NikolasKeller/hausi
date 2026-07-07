@@ -38,23 +38,7 @@ const MONTHS = [
 
 const WEEKDAYS_SHORT = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
-// Empty-day messages — rotated per day so a blank calendar doesn't always read
-// the exact same line. Keyed off the date so it's stable within a given day.
-const EMPTY_MESSAGES: { title: string; subtitle: string }[] = [
-  { title: 'Free as a bird', subtitle: 'No commitments today. Do whatever you want' },
-  { title: 'Wide open', subtitle: 'Not a single plan in sight. Enjoy the quiet' },
-  { title: 'Gloriously empty', subtitle: 'Zero obligations. Peak main-character energy' },
-  { title: 'Nothing on the books', subtitle: 'A blank page is a beautiful thing' },
-  { title: 'Off the grid', subtitle: 'No plans, no problems' },
-  { title: 'Living the dream', subtitle: 'An empty schedule is a flex, honestly' },
-  { title: 'Touch some grass day', subtitle: 'Nothing planned — go outside, maybe?' },
-  { title: 'Certified chill', subtitle: 'Your calendar is as free as it gets' },
-];
-
-function emptyMessageFor(date: Date): { title: string; subtitle: string } {
-  const dayIndex = Math.floor(date.getTime() / 86_400_000);
-  return EMPTY_MESSAGES[((dayIndex % EMPTY_MESSAGES.length) + EMPTY_MESSAGES.length) % EMPTY_MESSAGES.length];
-}
+const EMPTY_TITLE = 'Nothing planned yet';
 
 const PAST_GRACE_MS = 6 * 60 * 60 * 1000;
 
@@ -318,7 +302,7 @@ function CalendarScreen() {
             {selectedEvents.length === 0 ? (
               <View style={styles.emptyState}>
                 <View style={styles.emptyBody}>
-                  <Text style={styles.emptyTitle}>{emptyMessageFor(selected).title}</Text>
+                  <Text style={styles.emptyTitle}>{EMPTY_TITLE}</Text>
                 </View>
                 <Button
                   title="Plan something"

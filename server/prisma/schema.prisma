@@ -149,7 +149,7 @@ model Rsvp {
 }
 
 // A named guest an attendee brings along ("+1"). Attached to the host's Rsvp;
-// counts as one extra head via Rsvp.plusOnes. userId links it to a Now user
+// counts as one extra head via Rsvp.plusOnes. userId links it to an iykyk user
 // when the +1 was picked from mutuals; a manually-added +1 stores name + phone
 // only (no account, no login). We cap it at one per Rsvp in the route layer.
 model PlusOne {

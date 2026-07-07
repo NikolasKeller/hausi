@@ -28,7 +28,7 @@ const headTags = `
     <meta name="mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-    <meta name="apple-mobile-web-app-title" content="Now" />
+    <meta name="apple-mobile-web-app-title" content="iykyk" />
     <style>
       html, body { background-color: #0E0B16; }
       body { overscroll-behavior-y: none; }
@@ -56,7 +56,7 @@ writeFileSync(file, html);
 console.log('postexport: injected PWA tags into dist/index.html');
 
 // Pin the service worker cache to this build. sw.js ships with a
-// `now-__BUILD_ID__` placeholder; replace it with a hash of the exported JS
+// `iykyk-__BUILD_ID__` placeholder; replace it with a hash of the exported JS
 // so every code change yields a new cache name (see public/sw.js for why a
 // static name would strand installed PWAs on stale bundles). Redeploying
 // identical code keeps the same id, so users aren't churned needlessly.
@@ -93,10 +93,10 @@ try {
   console.error('postexport: no dist/sw.js — public/ not copied by export?');
   process.exit(1);
 }
-const marker = "const CACHE = 'now-__BUILD_ID__';";
+const marker = "const CACHE = 'iykyk-__BUILD_ID__';";
 if (!sw.includes(marker)) {
   console.error('postexport: sw.js CACHE placeholder missing — already stamped or template changed?');
   process.exit(1);
 }
-writeFileSync(swFile, sw.replace(marker, `const CACHE = 'now-${buildId}';`));
-console.log(`postexport: pinned service worker cache to now-${buildId}`);
+writeFileSync(swFile, sw.replace(marker, `const CACHE = 'iykyk-${buildId}';`));
+console.log(`postexport: pinned service worker cache to iykyk-${buildId}`);

@@ -93,7 +93,7 @@ export default function AddPlusOneScreen() {
     try {
       await api.addPlusOne(eventId, guest);
       router.back();
-      // A manual invitee isn't on Now yet — jump straight into Messages with
+      // A manual invitee isn't on iykyk yet — jump straight into Messages with
       // their number and the invite pre-filled so the host can text them in one
       // tap. Signing up with that number links the spot to their account. Fired
       // after navigating back and not awaited: a blocked composer must never

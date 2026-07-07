@@ -1,20 +1,25 @@
 import React, { createContext, useContext, useEffect, useMemo, useState } from 'react';
 import { Platform } from 'react-native';
 import { storage } from './storage';
-import type { AuthResponse } from '../shared/types';
+import type { AuthResponse, DeliveryChannel } from '../shared/types';
 import { api, setAuthToken, setOnUnauthorized } from './api';
 
-const TOKEN_KEY = 'now.token';
-const USER_KEY = 'now.user';
+const TOKEN_KEY = 'iykyk.token';
+const USER_KEY = 'iykyk.user';
 
 type SessionUser = AuthResponse['user'];
 
 interface AuthContextValue {
   user: SessionUser | null;
   initializing: boolean;
-  // Phone OTP flow: request a code, then verify it. Returns isNew so the
+  // OTP flow: request a code, then verify it. `contact` is a phone number
+  // (sms/whatsapp) or an email address (email channel). Returns isNew so the
   // app can run profile setup for first-timers.
-  verifyPhone: (phone: string, code: string) => Promise<{ isNew: boolean }>;
+  verifyPhone: (
+    contact: string,
+    code: string,
+    channel?: DeliveryChannel
+  ) => Promise<{ isNew: boolean }>;
   // Dev-only shortcut past auth while the SMS flow is under construction.
   // Works only while the server runs without a real SMS provider.
   devSignIn: () => Promise<void>;
@@ -101,8 +106,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return {
       user,
       initializing,
-      verifyPhone: async (phone, code) => {
-        const res = await api.verifyPhoneCode(phone, code);
+      verifyPhone: async (contact, code, channel = 'sms') => {
+        const res = await api.verifyPhoneCode(contact, code, channel);
         await persist(res);
         return { isNew: res.isNew };
       },
