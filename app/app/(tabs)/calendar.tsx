@@ -190,24 +190,20 @@ function CalendarScreen() {
   const selectedIsToday = selectedKey === todayKey;
   const selectedEvents = eventsByDay.get(selectedKey) ?? [];
   const weeks = chunkWeeks(buildMonthCells(view.year, view.month));
-  const monthTitle =
-    view.year === today.getFullYear()
-      ? MONTHS[view.month]
-      : `${MONTHS[view.month]} ${view.year}`;
+  const isViewingCurrentYear = view.year === today.getFullYear();
 
   const header = (
     <View style={styles.header}>
       <View style={styles.monthRow}>
         <View style={styles.monthTitleWrap}>
-          <Text style={[styles.kicker, kicker(colors.accent)]}>Your calendar</Text>
-          <Text
-            // adjustsFontSizeToFit ratchets below its minimum inside flex
-            // containers on iOS, leaving an unreadable ~6px title — size
-            // deterministically by name length instead.
-            style={[styles.monthTitle, display(monthTitle.length > 12 ? 26 : monthTitle.length > 8 ? 32 : 40)]}
-            numberOfLines={1}
-          >
-            {monthTitle}
+          <Text style={[styles.kicker, kicker(colors.accent)]} numberOfLines={1}>
+            {isViewingCurrentYear ? 'Your calendar' : `Your calendar · ${view.year}`}
+          </Text>
+          {/* The month name renders at one fixed size for every month — the
+              year, when off the current year, lives in the kicker above so a
+              long name like "September" never forces the title to shrink. */}
+          <Text style={styles.monthTitle} numberOfLines={1}>
+            {MONTHS[view.month]}
           </Text>
         </View>
         {mode === 'grid' ? (
@@ -418,7 +414,10 @@ const styles = StyleSheet.create({
     color: colors.accent,
   },
   monthTitle: {
-    ...display(40),
+    // One fixed size for all 12 months. 32 is the size that fits the longest
+    // name ("September") in the row alongside the chevrons, so every month
+    // matches it and the title never resizes as you page through months.
+    ...display(32),
     color: colors.text,
     flexShrink: 1,
   },
