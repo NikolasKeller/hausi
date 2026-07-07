@@ -8,7 +8,6 @@ import {
   StyleSheet,
   Text,
   TextInput,
-  useWindowDimensions,
   View,
   type StyleProp,
   type ViewStyle,
@@ -30,14 +29,13 @@ import { colors, light, radius, shadow, spacing } from '../lib/theme';
 import { coverFor } from '../lib/covers';
 import { titleFontStyle, kicker, uiText } from '../lib/fonts';
 import { CoverGradient } from './CoverGradient';
-import { EFFECT_META, EffectOverlay } from './EffectOverlay';
+import { EFFECT_META } from './EffectOverlay';
 import { Button, ErrorText } from './ui';
 import { LocationPicker } from './LocationPicker';
 import { EventSettingsSheet } from './EventSettingsSheet';
 import { DateTimeSheet } from './DateTimeSheet';
 import { Glass } from './glass';
-import { ThemePicker, EffectPicker } from './themes';
-import { ScreenBackground } from './ScreenBackground';
+import { ThemePicker, EffectPicker, ThemeBackground } from './themes';
 import { DescriptionEditor } from './DescriptionEditor';
 import { Burst } from './partiful';
 import { formatEventDate, formatEventTime } from './EventCard';
@@ -72,11 +70,11 @@ interface Props {
 }
 
 // ── Local "paper" primitives ──────────────────────────────────────────────────
-// The form sits on the calm warm "linen" surface shared with the rest of the
-// app, so every control is a solid, opaque paper card (near-black ink on warm
-// white) that lifts off the canvas with a soft shadow. The chosen theme shows
-// only in the live-preview cover, its taskbar swatch, and the picker — never as
-// a full-screen wash.
+// The form sits on the selected THEME rendered as the full-page background
+// (same ThemeBackground as the live event page), so hosts see exactly what
+// guests will get. Controls stay solid, opaque dark cards on top. The square
+// preview only appears once a cover photo is uploaded — the theme itself is
+// the page, not the square.
 
 function SectionLabel({ children, color }: { children: React.ReactNode; color?: string }) {
   return <Text style={[styles.sectionLabel, color ? { color } : null]}>{children}</Text>;
@@ -114,7 +112,6 @@ function defaultDate(): Date {
 
 export function EventForm({ initial, submitLabel, onSubmit, footer }: Props) {
   const router = useRouter();
-  const { height: winHeight } = useWindowDimensions();
   const [title, setTitle] = useState(initial?.title ?? '');
   const [description, setDescription] = useState(initial?.description ?? '');
   const [descriptionScale, setDescriptionScale] = useState<number>(
@@ -270,7 +267,7 @@ export function EventForm({ initial, submitLabel, onSubmit, footer }: Props) {
   }
 
   return (
-    <ScreenBackground>
+    <ThemeBackground theme={coverTheme} effect={effect === 'none' ? undefined : effect}>
       <SafeAreaView edges={['top']} style={{ backgroundColor: 'transparent' }}>
         <View style={styles.formHeader}>
           <Pressable
@@ -303,11 +300,14 @@ export function EventForm({ initial, submitLabel, onSubmit, footer }: Props) {
           />
         </View>
 
-        {/* The cover the guest will see — framed against the full-screen theme. */}
-        <CoverGradient theme={coverTheme} image={coverImage} style={styles.preview}>
-          <Burst size={44} rays={8} color="rgba(255,255,255,0.9)" rotate={-12} style={styles.previewBurst} />
-          <Text style={styles.previewKicker}>Live preview</Text>
-        </CoverGradient>
+        {/* The theme lives on the page background itself; the square is only
+            for an uploaded cover photo, so it appears once there is one. */}
+        {coverImage ? (
+          <CoverGradient theme={coverTheme} image={coverImage} style={styles.preview}>
+            <Burst size={44} rays={8} color="rgba(255,255,255,0.9)" rotate={-12} style={styles.previewBurst} />
+            <Text style={styles.previewKicker}>Live preview</Text>
+          </CoverGradient>
+        ) : null}
 
         <View style={styles.photoRow}>
           <PaperPressable style={styles.photoBtn} onPress={onPickPhoto} disabled={uploadingCover}>
@@ -440,14 +440,6 @@ export function EventForm({ initial, submitLabel, onSubmit, footer }: Props) {
       </View>
       )}
 
-      {/* Full-screen effect: drifts over everything (pointerEvents none, so it
-          never blocks taps and never obscures the opaque controls). */}
-      {effect !== 'none' ? (
-        <View pointerEvents="none" style={StyleSheet.absoluteFill}>
-          <EffectOverlay effect={effect} height={winHeight} count={16} />
-        </View>
-      ) : null}
-
       {descriptionEditorOpen ? (
         <DescriptionEditor
           value={description}
@@ -509,7 +501,7 @@ export function EventForm({ initial, submitLabel, onSubmit, footer }: Props) {
           onClose={() => setSettingsOpen(false)}
         />
       ) : null}
-    </ScreenBackground>
+    </ThemeBackground>
   );
 }
 
