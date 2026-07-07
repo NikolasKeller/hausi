@@ -11,9 +11,10 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import type { ExploreEvent, HomeFeed } from '../../shared/types';
+import type { ExploreEvent, HomeFeed, PendingCohostInvite } from '../../shared/types';
 import { api } from '../../lib/api';
 import { useAuth } from '../../lib/auth';
+import { notify } from '../../lib/dialogs';
 import { colors, radius, spacing, shadow } from '../../lib/theme';
 import { titleFontStyle, display, displayTitle, uiText, kicker } from '../../lib/fonts';
 import { CoverGradient } from '../../components/CoverGradient';
@@ -47,6 +48,7 @@ function HomeScreen() {
   const [error, setError] = useState<string | null>(null);
   const [refreshing, setRefreshing] = useState(false);
   const [showAllMutuals, setShowAllMutuals] = useState(false);
+  const [cohostInvites, setCohostInvites] = useState<PendingCohostInvite[]>([]);
   // Greet a returning user once, on app open, then let it fade.
   const [welcome, setWelcome] = useState<{ text: string } | null>(null);
   useEffect(() => {
@@ -80,6 +82,18 @@ function HomeScreen() {
 
   const fetchAll = useCallback(() => api.home(), []);
 
+  // Pending co-host invites addressed to me — surfaced at the top so I can
+  // Accept/Decline without hunting for the event. Best-effort: a failure here
+  // never blocks the main feed.
+  const loadInvites = useCallback(async () => {
+    try {
+      const res = await api.myCohostInvites();
+      setCohostInvites(res.invites);
+    } catch {
+      // Ignore — the feed is the priority.
+    }
+  }, []);
+
   useFocusEffect(
     useCallback(() => {
       let active = true;
@@ -92,16 +106,33 @@ function HomeScreen() {
         .catch((e) => {
           if (active) setError(e instanceof Error ? e.message : 'Could not load your feed');
         });
+      loadInvites();
       return () => {
         active = false;
       };
-    }, [fetchAll])
+    }, [fetchAll, loadInvites])
   );
+
+  async function respondToInvite(invite: PendingCohostInvite, accept: boolean) {
+    try {
+      if (accept) {
+        await api.acceptCohostInvite(invite.id);
+        notify("You're a co-host! 🤝", `You can now help run ${invite.event.title}.`);
+      } else {
+        await api.declineCohostInvite(invite.id);
+      }
+    } catch (e) {
+      notify('Something went wrong', e instanceof Error ? e.message : 'Try again');
+      return;
+    }
+    setCohostInvites((list) => list.filter((i) => i.id !== invite.id));
+  }
 
   async function onRefresh() {
     setRefreshing(true);
     try {
       setHome(await fetchAll());
+      loadInvites();
       setError(null);
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Could not refresh');
@@ -172,6 +203,57 @@ function HomeScreen() {
               <Text style={styles.welcomeText}>{welcome.text}</Text>
             </View>
           </Pressable>
+        ) : null}
+
+        {cohostInvites.length > 0 ? (
+          <View style={styles.sectionGroup}>
+            <Text style={styles.sectionTitle}>Co-host invites</Text>
+            <View style={styles.inviteFeed}>
+              {cohostInvites.map((invite) => (
+                <View key={invite.id} style={styles.inviteCard}>
+                  <Pressable
+                    onPress={() => router.push(`/event/${invite.event.slug}`)}
+                    style={({ pressed }) => [styles.inviteHead, pressed && { opacity: 0.85 }]}
+                  >
+                    <CoverGradient
+                      theme={invite.event.coverTheme}
+                      image={invite.event.coverImage}
+                      style={styles.inviteCover}
+                      emojiOpacity={0.3}
+                    />
+                    <View style={{ flex: 1 }}>
+                      <Text
+                        style={[styles.inviteEventTitle, titleFontStyle(invite.event.titleFont)]}
+                        numberOfLines={2}
+                      >
+                        {invite.event.title}
+                      </Text>
+                      <Text style={styles.inviteBy} numberOfLines={1}>
+                        {invite.invitedBy.name} invited you to co-host 🤝
+                      </Text>
+                    </View>
+                  </Pressable>
+                  <View style={styles.inviteActions}>
+                    <View style={{ flex: 1 }}>
+                      <Button
+                        title="Accept"
+                        variant="primary"
+                        onPress={() => respondToInvite(invite, true)}
+                      />
+                    </View>
+                    <View style={{ flex: 1 }}>
+                      <Button
+                        title="Decline"
+                        variant="ghost"
+                        tone="paper"
+                        onPress={() => respondToInvite(invite, false)}
+                      />
+                    </View>
+                  </View>
+                </View>
+              ))}
+            </View>
+          </View>
         ) : null}
 
         {home.palsGoing.length > 0 ? (
@@ -410,6 +492,42 @@ const styles = StyleSheet.create({
   },
   horizontalList: {
     paddingHorizontal: spacing.md,
+    gap: spacing.sm,
+  },
+  inviteFeed: {
+    gap: spacing.md,
+  },
+  inviteCard: {
+    backgroundColor: colors.card,
+    borderRadius: radius.md,
+    borderWidth: 1,
+    borderColor: colors.accent,
+    padding: spacing.md,
+    gap: spacing.md,
+    ...shadow.card,
+  },
+  inviteHead: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.md,
+  },
+  inviteCover: {
+    width: 56,
+    height: 56,
+    borderRadius: radius.sm,
+    overflow: 'hidden',
+  },
+  inviteEventTitle: {
+    ...display(20),
+    color: colors.text,
+  },
+  inviteBy: {
+    ...uiText(13, '600'),
+    color: colors.muted,
+    marginTop: 2,
+  },
+  inviteActions: {
+    flexDirection: 'row',
     gap: spacing.sm,
   },
   mutualFeed: {

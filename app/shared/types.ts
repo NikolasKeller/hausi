@@ -20,6 +20,12 @@ export const LIMITS = {
   maxGuests: 10000,
 } as const;
 
+// Hard ceiling on how many plus-ones a single attendee can bring, regardless of
+// an event's per-event `plusOneLimit`. The effective allowance is
+// min(plusOneLimit, MAX_PLUS_ONES). Shared by the server (enforcement) and the
+// app (hides the add button once reached).
+export const MAX_PLUS_ONES = 5;
+
 // The description's body font-size scale, as a percent of the base size (100 =
 // default). Clamped both client-side (the A−/A+ stepper) and server-side (zod).
 export const DESCRIPTION_SCALE = { min: 70, max: 160, step: 15, default: 100 } as const;
@@ -166,6 +172,36 @@ export interface RsvpCounts {
   waitlist: number;
 }
 
+export type CohostInviteStatus = 'PENDING' | 'ACCEPTED' | 'DECLINED';
+
+// A pending co-host invitation as shown to the host on the edit screen. The
+// invited phone numbers are private, so these are only populated for people
+// who can manage the event (host / co-hosts).
+export interface CohostInvite {
+  id: string;
+  phone: string;
+  status: CohostInviteStatus;
+  createdAt: string;
+}
+
+// A pending co-host invite addressed to the current viewer — surfaced so they
+// can accept or decline. `event` carries just enough to render a link/card.
+export interface PendingCohostInvite {
+  id: string;
+  invitedBy: PublicUser;
+  createdAt: string;
+  event: {
+    id: string;
+    slug: string;
+    title: string;
+    coverTheme: CoverTheme;
+    coverImage: string;
+    titleFont: TitleFont;
+    date: string;
+    canceledAt: string | null;
+  };
+}
+
 export interface EventSummary {
   id: string;
   slug: string;
@@ -207,6 +243,12 @@ export interface EventDetail extends EventSummary {
   plusOneLimit: number;
   rsvpsOpen: boolean;
   cohosts: PublicUser[];
+  // Pending co-host invitations (host-visible only; empty for regular guests,
+  // since the invited phone numbers are private).
+  cohostInvites: CohostInvite[];
+  // Set when the current viewer has a pending co-host invite for this event, so
+  // the event page can show an Accept / Decline banner.
+  myCohostInvite: { id: string; invitedBy: PublicUser } | null;
   rsvps: RsvpEntry[];
   comments: CommentEntry[];
 }

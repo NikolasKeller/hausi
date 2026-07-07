@@ -139,15 +139,6 @@ export function EventSettingsSheet({
             </View>
 
             <InputRow
-              icon="cash-outline"
-              label="Cost per person"
-              value={costPerPerson}
-              onChangeText={onChangeCostPerPerson}
-              placeholder="Free"
-              maxLength={60}
-            />
-
-            <InputRow
               icon="shirt-outline"
               label="Dress code"
               value={dressCode}
