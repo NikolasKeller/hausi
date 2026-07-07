@@ -18,11 +18,14 @@ import { colors, radius, spacing } from '../lib/theme';
 import { uiText } from '../lib/fonts';
 
 // ── ThemeBackground ───────────────────────────────────────────────────────────
-// The event page surface. Rather than a per-event colourful gradient, this now
-// renders the iykyk corporate canvas: a near-black backdrop with a warm orange
-// bloom at the top (our signature white-on-black glow). An optional effect
-// overlay still drifts across. Content floats on top in dark glass.
+// The event page surface. Renders the event's SELECTED theme as the full-page
+// background — a rich, all-dark multi-stop gradient from `coverFor(theme)`. On
+// top we keep a subtle bottom-deepening scrim (so content stays legible) plus
+// our signature warm orange bloom at the top edge. An optional effect overlay
+// still drifts across. This is intentionally separate from the square uploaded
+// cover photo, which is rendered elsewhere via `CoverGradient`.
 export function ThemeBackground({
+  theme,
   effect,
   children,
   style,
@@ -33,21 +36,30 @@ export function ThemeBackground({
   style?: StyleProp<ViewStyle>;
 }) {
   const { height } = useWindowDimensions();
+  const cover = coverFor(theme ?? 'noir');
   return (
     <View style={[styles.fill, { backgroundColor: colors.bg }, style]}>
-      {/* Subtle warm-to-black vertical ramp so the canvas isn't flat. */}
+      {/* The theme itself: full-screen, opaque, diagonal multi-stop gradient. */}
       <LinearGradient
-        colors={['#1E1712', '#141210', colors.bg]}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 0, y: 1 }}
+        colors={cover.colors}
+        start={{ x: 0.15, y: 0 }}
+        end={{ x: 0.85, y: 1 }}
         style={StyleSheet.absoluteFill}
         pointerEvents="none"
       />
-      {/* Orange bloom fading out toward the middle of the screen. */}
+      {/* Deepen the bottom so foreground glass + text stay readable on any theme. */}
       <LinearGradient
-        colors={['rgba(255,106,43,0.22)', 'rgba(255,106,43,0)']}
+        colors={['rgba(0,0,0,0)', 'rgba(0,0,0,0.28)', 'rgba(0,0,0,0.58)']}
+        start={{ x: 0.5, y: 0.35 }}
+        end={{ x: 0.5, y: 1 }}
+        style={StyleSheet.absoluteFill}
+        pointerEvents="none"
+      />
+      {/* Signature warm orange bloom fading out toward the middle. */}
+      <LinearGradient
+        colors={['rgba(255,106,43,0.16)', 'rgba(255,106,43,0)']}
         start={{ x: 0.5, y: 0 }}
-        end={{ x: 0.5, y: 0.5 }}
+        end={{ x: 0.5, y: 0.42 }}
         style={StyleSheet.absoluteFill}
         pointerEvents="none"
       />

@@ -11,6 +11,7 @@ import type {
   ExploreEvent,
   HomeFeed,
   MyProfile,
+  PendingCohostInvite,
   PhoneRequestResponse,
   PhoneVerifyResponse,
   RsvpStatus,
@@ -176,16 +177,36 @@ export const api = {
   cancelEvent(id: string) {
     return request<{ event: EventDetail }>(`/events/${id}/cancel`, { method: 'POST' });
   },
-  addCohost(eventId: string, email: string) {
-    return request<{ event: EventDetail }>(`/events/${eventId}/cohosts`, {
-      method: 'POST',
-      body: JSON.stringify({ email }),
-    });
+  // Invite a co-host by phone number. The server creates a pending invite and
+  // texts them an event link; `sent` is whether the SMS went out, `devLink` is
+  // the invite URL surfaced when no SMS provider is configured (local dev).
+  addCohost(eventId: string, phone: string) {
+    return request<{ event: EventDetail; sent: boolean; devLink?: string }>(
+      `/events/${eventId}/cohosts`,
+      { method: 'POST', body: JSON.stringify({ phone }) }
+    );
   },
   removeCohost(eventId: string, userId: string) {
     return request<{ event: EventDetail }>(
       `/events/${eventId}/cohosts/${encodeURIComponent(userId)}`,
       { method: 'DELETE' }
+    );
+  },
+  // Pending co-host invitations addressed to me (matched on my phone number).
+  myCohostInvites() {
+    return request<{ invites: PendingCohostInvite[] }>('/me/cohost-invites');
+  },
+  // Accept a co-host invite → I become a co-host (returns the refreshed event).
+  acceptCohostInvite(inviteId: string) {
+    return request<{ event: EventDetail }>(
+      `/me/cohost-invites/${encodeURIComponent(inviteId)}/accept`,
+      { method: 'POST' }
+    );
+  },
+  declineCohostInvite(inviteId: string) {
+    return request<{ ok: boolean }>(
+      `/me/cohost-invites/${encodeURIComponent(inviteId)}/decline`,
+      { method: 'POST' }
     );
   },
   home() {

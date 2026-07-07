@@ -1,5 +1,6 @@
 import type {
   Category,
+  CohostInvite,
   CommentEntry,
   CoverTheme,
   Effect,
@@ -13,6 +14,7 @@ import type {
   RsvpStatus,
   TitleFont,
 } from '../../../app/shared/types.js';
+import { normalizePhone } from './phone.js';
 
 type UserRow = { id: string; name: string; avatarEmoji: string; avatarImage: string };
 type PlusOneRow = {
@@ -32,6 +34,13 @@ type RsvpRow = {
 };
 type CommentRow = { id: string; text: string; type: string; createdAt: Date; user: UserRow };
 type CohostRow = { userId: string; user: UserRow };
+type CohostInviteRow = {
+  id: string;
+  phone: string;
+  status: string;
+  createdAt: Date;
+  invitedBy: UserRow;
+};
 type EventRow = {
   id: string;
   slug: string;
@@ -57,6 +66,9 @@ type EventRow = {
   host: UserRow;
   rsvps: RsvpRow[];
   cohosts: CohostRow[];
+  // Present only on detail queries that include the relation; summary/explore
+  // reads skip it.
+  cohostInvites?: CohostInviteRow[];
 };
 
 export function toPublicUser(u: UserRow): PublicUser {
@@ -160,8 +172,34 @@ export function toExploreEvent(
 
 export function toEventDetail(
   event: EventRow & { comments: CommentRow[] },
-  viewerId: string
+  viewerId: string,
+  // The viewer's own phone (E.164), when known — lets us surface a pending
+  // co-host invite addressed to them so the event page can offer Accept/Decline.
+  viewerPhone?: string | null
 ): EventDetail {
+  const isManager = canManageEvent(event, viewerId);
+  const pendingInvites = (event.cohostInvites ?? []).filter((i) => i.status === 'PENDING');
+
+  // Co-host invites carry private phone numbers, so only hosts/co-hosts see the
+  // full pending list.
+  const cohostInvites: CohostInvite[] = isManager
+    ? pendingInvites.map((i) => ({
+        id: i.id,
+        phone: i.phone,
+        status: 'PENDING',
+        createdAt: i.createdAt.toISOString(),
+      }))
+    : [];
+
+  // The viewer's own pending invite (matched on canonicalized phone), if any.
+  const normalizedViewer = viewerPhone ? normalizePhone(viewerPhone) : null;
+  const mine = normalizedViewer
+    ? pendingInvites.find((i) => normalizePhone(i.phone) === normalizedViewer)
+    : undefined;
+  const myCohostInvite = mine
+    ? { id: mine.id, invitedBy: toPublicUser(mine.invitedBy) }
+    : null;
+
   return {
     ...toEventSummary(event, viewerId),
     description: event.description,
@@ -172,6 +210,8 @@ export function toEventDetail(
     plusOneLimit: event.plusOneLimit,
     rsvpsOpen: event.rsvpsOpen,
     cohosts: event.cohosts.map((c) => toPublicUser(c.user)),
+    cohostInvites,
+    myCohostInvite,
     // Waitlist entries are ordered by when they joined the queue (the FIFO key);
     // everything else keeps the incoming createdAt order.
     rsvps: [

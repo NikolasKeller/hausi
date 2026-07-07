@@ -22,7 +22,7 @@ export default function EditEventScreen() {
   const router = useRouter();
   const [event, setEvent] = useState<EventDetail | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [cohostEmail, setCohostEmail] = useState('');
+  const [cohostPhone, setCohostPhone] = useState('');
   const [cohostBusy, setCohostBusy] = useState(false);
 
   useFocusEffect(
@@ -47,14 +47,21 @@ export default function EditEventScreen() {
   );
 
   async function addCohost() {
-    if (!event || !cohostEmail.trim() || cohostBusy) return;
+    if (!event || !cohostPhone.trim() || cohostBusy) return;
     setCohostBusy(true);
     try {
-      const res = await api.addCohost(event.id, cohostEmail.trim());
+      const res = await api.addCohost(event.id, cohostPhone.trim());
       setEvent(res.event);
-      setCohostEmail('');
+      setCohostPhone('');
+      // No SMS provider (local dev): surface the invite link so it can be
+      // shared manually — same idea as the login-code dev preview.
+      if (!res.sent && res.devLink) {
+        notify('Invite ready', `SMS is off — share this link:\n${res.devLink}`);
+      } else {
+        notify('Invite sent', 'They can accept it once they open the link.');
+      }
     } catch (e) {
-      notify('Could not add co-host', e instanceof Error ? e.message : 'Try again');
+      notify('Could not invite co-host', e instanceof Error ? e.message : 'Try again');
     } finally {
       setCohostBusy(false);
     }
@@ -128,9 +135,10 @@ export default function EditEventScreen() {
           <View style={styles.cohostSection}>
             <Text style={styles.cohostKicker}>Share the load</Text>
             <Text style={styles.cohostTitle}>Co-hosts 🤝</Text>
-            {event.cohosts.length === 0 ? (
+            {event.cohosts.length === 0 && event.cohostInvites.length === 0 ? (
               <Text style={styles.cohostEmpty}>
-                Co-hosts can edit the event and manage the guest list.
+                Invite a co-host by phone. They can edit the event and manage the
+                guest list once they accept.
               </Text>
             ) : (
               event.cohosts.map((ch) => (
@@ -147,30 +155,43 @@ export default function EditEventScreen() {
                 </View>
               ))
             )}
+
+            {/* Numbers that have been invited but haven't accepted yet. */}
+            {event.cohostInvites.map((inv) => (
+              <View key={inv.id} style={styles.cohostRow}>
+                <View style={styles.pendingDot}>
+                  <Text style={styles.pendingDotText}>🤝</Text>
+                </View>
+                <Text style={styles.cohostName}>{inv.phone}</Text>
+                <Text style={styles.pendingTag}>Pending</Text>
+              </View>
+            ))}
+
             <View style={styles.cohostInputRow}>
               <View style={styles.cohostInputWrap}>
                 <TextInput
-                  value={cohostEmail}
-                  onChangeText={setCohostEmail}
-                  placeholder="friend@example.com"
+                  value={cohostPhone}
+                  onChangeText={setCohostPhone}
+                  placeholder="+1 555 123 4567"
                   placeholderTextColor={colors.muted}
                   autoCapitalize="none"
-                  keyboardType="email-address"
+                  keyboardType="phone-pad"
+                  maxLength={20}
                   style={styles.cohostInput}
                 />
               </View>
               <Pressable
                 onPress={addCohost}
-                disabled={cohostBusy || !cohostEmail.trim()}
+                disabled={cohostBusy || !cohostPhone.trim()}
                 style={[
                   styles.cohostAdd,
-                  !cohostEmail.trim() && { opacity: 0.4 },
+                  !cohostPhone.trim() && { opacity: 0.4 },
                 ]}
               >
                 {cohostBusy ? (
                   <ActivityIndicator color="#fff" size="small" />
                 ) : (
-                  <Text style={styles.cohostAddText}>Add</Text>
+                  <Text style={styles.cohostAddText}>Invite</Text>
                 )}
               </Pressable>
             </View>
@@ -248,6 +269,22 @@ const styles = StyleSheet.create({
     color: light.text2,
     ...uiText(15, '500'),
     flex: 1,
+  },
+  pendingDot: {
+    width: 30,
+    height: 30,
+    borderRadius: 15,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: colors.inputBg,
+    borderWidth: 1,
+    borderColor: colors.cardBorder,
+  },
+  pendingDotText: {
+    fontSize: 14,
+  },
+  pendingTag: {
+    ...kicker(colors.accent),
   },
   cohostRemove: {
     width: 26,

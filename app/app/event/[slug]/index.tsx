@@ -13,7 +13,7 @@ import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import * as Linking from 'expo-linking';
-import { LIMITS, type EventDetail, type RsvpStatus } from '../../../shared/types';
+import { LIMITS, MAX_PLUS_ONES, type EventDetail, type RsvpStatus } from '../../../shared/types';
 import { api } from '../../../lib/api';
 import { useAuth } from '../../../lib/auth';
 import { confirmDialog, notify } from '../../../lib/dialogs';
@@ -110,6 +110,7 @@ export default function EventScreen() {
   const [sendingComment, setSendingComment] = useState(false);
   const [showAllGuests, setShowAllGuests] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
+  const [inviteBusy, setInviteBusy] = useState(false);
 
   const load = useCallback(async () => {
     if (!slug) return;
@@ -170,6 +171,33 @@ export default function EventScreen() {
     if (!event) return;
     const url = Linking.createURL(`e/${event.slug}`);
     await shareText(`You're my +1 for "${event.title}"! 🎟️ RSVP here: ${url}`, url);
+  }
+
+  async function acceptCohostInvite() {
+    if (!event?.myCohostInvite || inviteBusy) return;
+    setInviteBusy(true);
+    try {
+      const res = await api.acceptCohostInvite(event.myCohostInvite.id);
+      setEvent(res.event);
+      notify("You're a co-host! 🤝", 'You can now edit the event and manage the guest list.');
+    } catch (e) {
+      notify('Could not accept', e instanceof Error ? e.message : 'Try again');
+    } finally {
+      setInviteBusy(false);
+    }
+  }
+
+  async function declineCohostInvite() {
+    if (!event?.myCohostInvite || inviteBusy) return;
+    setInviteBusy(true);
+    try {
+      await api.declineCohostInvite(event.myCohostInvite.id);
+      await load();
+    } catch (e) {
+      notify('Could not decline', e instanceof Error ? e.message : 'Try again');
+    } finally {
+      setInviteBusy(false);
+    }
   }
 
   async function confirmRemoveGuest(guestId: string, guestName: string) {
@@ -256,7 +284,10 @@ export default function EventScreen() {
   const ink = themeInk('noir');
 
   const myRsvp = event.rsvps.find((r) => r.user.id === user?.id);
-  const myPlusOne = myRsvp?.guests?.[0] ?? null;
+  const myGuests = myRsvp?.guests ?? [];
+  // Effective +1 allowance: the host's per-event limit, clamped to the global
+  // hard cap. The add button hides once the user reaches it.
+  const maxPlusOnes = Math.min(event.plusOneLimit, MAX_PLUS_ONES);
   const spotsLeft =
     event.maxGuests != null ? Math.max(0, event.maxGuests - event.counts.going) : null;
   const canAddPlusOne = spotsLeft == null || spotsLeft > 0;
@@ -316,6 +347,37 @@ export default function EventScreen() {
           )}
 
           <View style={styles.section}>
+            {event.myCohostInvite ? (
+              <Glass tint={ink.glassTint} radius={radius.md} style={styles.inviteBanner}>
+                <Text style={[styles.inviteKicker, { color: ink.subtext }]}>Co-host invite 🤝</Text>
+                <Text style={[styles.inviteTitle, { color: ink.text }]}>
+                  {event.myCohostInvite.invitedBy.name} invited you to co-host
+                </Text>
+                <Text style={[styles.inviteBody, { color: ink.subtext }]}>
+                  Accept to help edit this event and manage the guest list.
+                </Text>
+                <View style={styles.inviteButtons}>
+                  <View style={{ flex: 1 }}>
+                    <Button
+                      title="Accept"
+                      variant="primary"
+                      onPress={acceptCohostInvite}
+                      loading={inviteBusy}
+                    />
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <Button
+                      title="Decline"
+                      variant="ghost"
+                      tone={ink.dark ? 'paper' : 'ink'}
+                      onPress={declineCohostInvite}
+                      disabled={inviteBusy}
+                    />
+                  </View>
+                </View>
+              </Glass>
+            ) : null}
+
             <View style={styles.hostRow}>
               <Avatar name={event.host.name} image={event.host.avatarImage} size={44} />
               <View style={{ flex: 1 }}>
@@ -400,10 +462,17 @@ export default function EventScreen() {
                   </Glass>
                 </Pressable>
               </View>
-              <Text style={[styles.guestCountsLine, { color: ink.subtext }]}>
-                {event.counts.going} Going · {event.counts.maybe} Maybe
-                {event.counts.waitlist > 0 ? ` · ${event.counts.waitlist} Waitlist` : ''}
-              </Text>
+              {event.counts.going > 0 || event.counts.maybe > 0 || event.counts.waitlist > 0 ? (
+                <Text style={[styles.guestCountsLine, { color: ink.subtext }]}>
+                  {[
+                    event.counts.going > 0 ? `${event.counts.going} Going` : null,
+                    event.counts.maybe > 0 ? `${event.counts.maybe} Maybe` : null,
+                    event.counts.waitlist > 0 ? `${event.counts.waitlist} Waitlist` : null,
+                  ]
+                    .filter(Boolean)
+                    .join(' · ')}
+                </Text>
+              ) : null}
               {previewShown.length ? (
                 <View style={styles.avatarStack}>
                   {previewShown.map((r, i) => (
@@ -487,29 +556,37 @@ export default function EventScreen() {
               </Glass>
             ) : null}
 
-            {myRsvp?.status === 'GOING' && event.plusOneLimit > 0 && (myPlusOne != null || !rsvpLocked) ? (
-              <Glass tint={ink.glassTint} radius={radius.md} style={styles.plusOnesRow}>
-                <Text style={[styles.plusOnesLabel, { color: ink.text }]}>Your plus one</Text>
-                {myPlusOne ? (
-                  <View style={styles.plusOneChip}>
-                    <Avatar name={myPlusOne.name} image={myPlusOne.avatarImage} size={24} />
+            {myRsvp?.status === 'GOING' && event.plusOneLimit > 0 && (myGuests.length > 0 || !rsvpLocked) ? (
+              <Glass tint={ink.glassTint} radius={radius.md} style={styles.plusOnesCard}>
+                <Text style={[styles.plusOnesLabel, { color: ink.text }]}>
+                  {maxPlusOnes > 1 ? 'Your plus ones' : 'Your plus one'}
+                </Text>
+                {myGuests.map((g) => (
+                  <View key={g.id} style={styles.plusOneChip}>
+                    <Avatar name={g.name} image={g.avatarImage} size={24} />
                     <Text style={[styles.plusOneChipName, { color: ink.text }]} numberOfLines={1}>
-                      {myPlusOne.name}
+                      {g.name}
                     </Text>
-                    {myPlusOne.userId == null ? (
+                    {g.userId == null ? (
                       // Not on iykyk yet — resurface the invite link to text them.
                       <Pressable onPress={sharePlusOneInvite} hitSlop={8}>
                         <Text style={[styles.plusOneShareText, { color: ink.text }]}>Share invite</Text>
                       </Pressable>
                     ) : null}
                     <Pressable
-                      onPress={() => dropPlusOne(myPlusOne.id)}
+                      onPress={() => dropPlusOne(g.id)}
                       hitSlop={8}
                       style={[styles.removeGuest, { borderColor: ink.hairline }]}
                     >
                       <Text style={[styles.removeGuestText, { color: ink.subtext }]}>✕</Text>
                     </Pressable>
                   </View>
+                ))}
+                {myGuests.length >= maxPlusOnes ? (
+                  // Reached the allowance — hide the add button, note the cap.
+                  <Text style={[styles.plusOnesFull, { color: ink.faint }]}>
+                    {`Max ${maxPlusOnes} plus ${maxPlusOnes === 1 ? 'one' : 'ones'}`}
+                  </Text>
                 ) : canAddPlusOne ? (
                   <Pressable
                     onPress={() =>
@@ -541,17 +618,23 @@ export default function EventScreen() {
             <View style={styles.sectionHead}>
               <Text style={[styles.kickerLabel, { color: ink.subtext }]}>Who's coming</Text>
               <Text style={[styles.sectionTitle, { color: ink.text }]}>Guest list</Text>
-              <View style={styles.countPills}>
-                <PillBadge label={`${event.counts.going} going`} bg={rsvp.going.bg} color={rsvp.going.text} />
-                <PillBadge label={`${event.counts.maybe} maybe`} bg={rsvp.maybe.bg} color={rsvp.maybe.text} />
-                {event.counts.waitlist > 0 ? (
-                  <PillBadge
-                    label={`${event.counts.waitlist} waitlist`}
-                    bg={rsvp.waitlist.bg}
-                    color={rsvp.waitlist.text}
-                  />
-                ) : null}
-              </View>
+              {event.counts.going > 0 || event.counts.maybe > 0 || event.counts.waitlist > 0 ? (
+                <View style={styles.countPills}>
+                  {event.counts.going > 0 ? (
+                    <PillBadge label={`${event.counts.going} going`} bg={rsvp.going.bg} color={rsvp.going.text} />
+                  ) : null}
+                  {event.counts.maybe > 0 ? (
+                    <PillBadge label={`${event.counts.maybe} maybe`} bg={rsvp.maybe.bg} color={rsvp.maybe.text} />
+                  ) : null}
+                  {event.counts.waitlist > 0 ? (
+                    <PillBadge
+                      label={`${event.counts.waitlist} waitlist`}
+                      bg={rsvp.waitlist.bg}
+                      color={rsvp.waitlist.text}
+                    />
+                  ) : null}
+                </View>
+              ) : null}
             </View>
             {STATUS_SECTIONS.map(({ status, title }) => {
               const guests = event.rsvps.filter((r) => r.status === status);
@@ -921,6 +1004,26 @@ const styles = StyleSheet.create({
     padding: spacing.lg,
     gap: spacing.lg,
   },
+  inviteBanner: {
+    padding: spacing.md,
+    gap: spacing.xs,
+    borderWidth: 1,
+    borderColor: colors.accent,
+  },
+  inviteKicker: {
+    ...kicker(),
+  },
+  inviteTitle: {
+    ...uiText(18, '800'),
+  },
+  inviteBody: {
+    ...uiText(14, '500'),
+    marginBottom: spacing.xs,
+  },
+  inviteButtons: {
+    flexDirection: 'row',
+    gap: spacing.sm,
+  },
   hostRow: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -1034,12 +1137,10 @@ const styles = StyleSheet.create({
   guestEmpty: {
     ...uiText(14, '500'),
   },
-  plusOnesRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    padding: spacing.sm,
-    paddingHorizontal: spacing.md,
+  plusOnesCard: {
+    alignItems: 'flex-start',
+    gap: spacing.sm,
+    padding: spacing.md,
   },
   plusOnesLabel: {
     ...uiText(15, '600'),
@@ -1048,7 +1149,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing.xs,
-    maxWidth: '60%',
+    maxWidth: '100%',
   },
   plusOneChipName: {
     ...uiText(15, '700'),

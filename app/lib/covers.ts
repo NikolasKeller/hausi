@@ -22,26 +22,30 @@ export interface CoverSpec {
   mood: 'light' | 'dark';
 }
 
+// Curated, premium, ALL-DARK theme set. Every palette is a rich multi-stop
+// gradient that reads white-on-dark (mood: 'dark'), tuned to sit next to the
+// warm orange accent. Keys are STABLE for backwards compatibility — seed data
+// and existing events reference them — so we only refine the palettes/labels.
 export const COVERS: Record<CoverTheme, CoverSpec> = {
-  sunset: { key: 'sunset', label: 'Sunset', colors: ['#FF9966', '#FF5E62', '#8F4BDE'], emoji: '🌅', category: 'trending', mood: 'dark' },
-  ocean: { key: 'ocean', label: 'Ocean', colors: ['#2E3192', '#1BAFD0', '#1BFFFF'], emoji: '🌊', category: 'trending', mood: 'dark' },
-  candy: { key: 'candy', label: 'Candy', colors: ['#FF6EC4', '#A78BFA', '#7873F5'], emoji: '🍬', category: 'fun', mood: 'dark' },
-  midnight: { key: 'midnight', label: 'Midnight', colors: ['#0F0C29', '#302B63', '#24243E'], emoji: '🌙', category: 'dark', mood: 'dark' },
-  forest: { key: 'forest', label: 'Forest', colors: ['#134E5E', '#3D8B63', '#71B280'], emoji: '🌿', category: 'seasonal', mood: 'dark' },
-  disco: { key: 'disco', label: 'Disco', colors: ['#B721FF', '#6B4EFF', '#21D4FD'], emoji: '🪩', category: 'fun', mood: 'dark' },
-  cloud: { key: 'cloud', label: 'Cloud', colors: ['#AEC3E8', '#C9C2E6', '#E8C6D0', '#F5D9BE'], emoji: '☁️', category: 'light', mood: 'light' },
-  lava: { key: 'lava', label: 'Lava', colors: ['#7A2E10', '#C2410C', '#E8763A'], emoji: '🌋', category: 'trending', mood: 'dark' },
-  aurora: { key: 'aurora', label: 'Aurora', colors: ['#02111B', '#0E4D64', '#1FA98C'], emoji: '🌌', category: 'dark', mood: 'dark' },
-  noir: { key: 'noir', label: 'Noir', colors: ['#0A0A0A', '#1A1A1A', '#2B2B2B'], emoji: '🖤', category: 'dark', mood: 'dark' },
-  cottoncandy: { key: 'cottoncandy', label: 'Cotton Candy', colors: ['#FBC2EB', '#A6C1EE', '#C2E9FB'], emoji: '🍭', category: 'fun', mood: 'light' },
-  peach: { key: 'peach', label: 'Peach', colors: ['#FFE5D9', '#FFCFC0', '#FFB89E'], emoji: '🍑', category: 'light', mood: 'light' },
-  lavender: { key: 'lavender', label: 'Lavender', colors: ['#ECE6FA', '#D8CCF0', '#C3B1E1'], emoji: '💜', category: 'light', mood: 'light' },
-  matcha: { key: 'matcha', label: 'Matcha', colors: ['#E4EED0', '#B7D19A', '#8FB56A'], emoji: '🍵', category: 'light', mood: 'light' },
-  gold: { key: 'gold', label: 'Gold', colors: ['#2E2408', '#8A6D1F', '#D4AF37'], emoji: '🏆', category: 'trending', mood: 'dark' },
-  berry: { key: 'berry', label: 'Berry', colors: ['#2A0A2E', '#6A1B4D', '#B0306E'], emoji: '🫐', category: 'dark', mood: 'dark' },
-  storm: { key: 'storm', label: 'Storm', colors: ['#1C2331', '#3A4A63', '#6B7A99'], emoji: '⛈️', category: 'dark', mood: 'dark' },
-  blossom: { key: 'blossom', label: 'Blossom', colors: ['#FFF0F5', '#FBD3E0', '#F7A8C4'], emoji: '🌸', category: 'seasonal', mood: 'light' },
-  halloween: { key: 'halloween', label: 'Halloween', colors: ['#0B0613', '#3B1053', '#E8590C'], emoji: '🎃', category: 'seasonal', mood: 'dark' },
+  sunset: { key: 'sunset', label: 'Ember', colors: ['#0B0603', '#3A1206', '#8A2E10', '#D6541C', '#160A05'], emoji: '🌅', category: 'trending', mood: 'dark' },
+  ocean: { key: 'ocean', label: 'Abyss', colors: ['#010A12', '#052430', '#0A4C5E', '#0E7C86', '#02101A'], emoji: '🌊', category: 'trending', mood: 'dark' },
+  candy: { key: 'candy', label: 'Neon', colors: ['#0C0518', '#2A0C40', '#5E1C6E', '#B02C7A', '#0A0410'], emoji: '🍬', category: 'fun', mood: 'dark' },
+  midnight: { key: 'midnight', label: 'Midnight', colors: ['#04050E', '#0D1130', '#20264F', '#3A3F72', '#04050C'], emoji: '🌙', category: 'dark', mood: 'dark' },
+  forest: { key: 'forest', label: 'Pinewood', colors: ['#030F0A', '#092A1D', '#134C34', '#1F7A50', '#03100A'], emoji: '🌿', category: 'seasonal', mood: 'dark' },
+  disco: { key: 'disco', label: 'Voltage', colors: ['#08041A', '#231052', '#5324A0', '#8E3AD6', '#0A0616'], emoji: '🪩', category: 'fun', mood: 'dark' },
+  cloud: { key: 'cloud', label: 'Slate', colors: ['#070A10', '#141A26', '#28323F', '#44515F', '#070A10'], emoji: '☁️', category: 'light', mood: 'dark' },
+  lava: { key: 'lava', label: 'Lava', colors: ['#0D0402', '#3E0E04', '#8A2408', '#D64A12', '#0E0402'], emoji: '🌋', category: 'trending', mood: 'dark' },
+  aurora: { key: 'aurora', label: 'Aurora', colors: ['#02070F', '#052A34', '#0A5A54', '#159E7A', '#04121A'], emoji: '🌌', category: 'dark', mood: 'dark' },
+  noir: { key: 'noir', label: 'Noir', colors: ['#000000', '#0A0A0A', '#161616', '#242424', '#050505'], emoji: '🖤', category: 'dark', mood: 'dark' },
+  cottoncandy: { key: 'cottoncandy', label: 'Dusk', colors: ['#0A0714', '#241338', '#4E205C', '#9E3A72', '#0A0510'], emoji: '🍭', category: 'fun', mood: 'dark' },
+  peach: { key: 'peach', label: 'Rosewood', colors: ['#0E0605', '#341210', '#6E2A1E', '#B85238', '#100604'], emoji: '🍑', category: 'light', mood: 'dark' },
+  lavender: { key: 'lavender', label: 'Violet', colors: ['#08060F', '#1D1440', '#392574', '#5E42A6', '#08050E'], emoji: '💜', category: 'light', mood: 'dark' },
+  matcha: { key: 'matcha', label: 'Evergreen', colors: ['#060E09', '#102A1A', '#1E4E30', '#367E4C', '#060E0A'], emoji: '🍵', category: 'light', mood: 'dark' },
+  gold: { key: 'gold', label: 'Bullion', colors: ['#0C0802', '#2E2108', '#6E521A', '#C29434', '#0E0A03'], emoji: '🏆', category: 'trending', mood: 'dark' },
+  berry: { key: 'berry', label: 'Berry', colors: ['#0E030B', '#33082A', '#661648', '#A82C6C', '#0C0309'], emoji: '🫐', category: 'dark', mood: 'dark' },
+  storm: { key: 'storm', label: 'Storm', colors: ['#060810', '#141C2C', '#28374F', '#495A76', '#060810'], emoji: '⛈️', category: 'dark', mood: 'dark' },
+  blossom: { key: 'blossom', label: 'Nightbloom', colors: ['#0E060C', '#320E28', '#661F4A', '#B03C74', '#0C0410'], emoji: '🌸', category: 'seasonal', mood: 'dark' },
+  halloween: { key: 'halloween', label: 'Halloween', colors: ['#080410', '#280C3E', '#5E1C52', '#C2461A', '#070410'], emoji: '🎃', category: 'seasonal', mood: 'dark' },
 };
 
 export const COVER_LIST: CoverSpec[] = Object.values(COVERS);

@@ -23,13 +23,15 @@ import {
   DESCRIPTION_SCALE,
   EFFECTS,
   LIMITS,
+  MAX_PLUS_ONES,
   RSVP_CHOICES,
   TITLE_FONTS,
 } from '../../../app/shared/types.js';
 
-const eventInclude = {
+export const eventInclude = {
   host: true,
   cohosts: { include: { user: true } },
+  cohostInvites: { include: { invitedBy: true } },
   rsvps: {
     include: { user: true, plusOneGuests: { include: { user: true } } },
     orderBy: { createdAt: 'asc' as const },
@@ -92,8 +94,13 @@ const blastSchema = z.object({
   text: z.string().trim().min(1).max(LIMITS.blast),
 });
 
+// Co-hosts are now invited by phone number (E.164-ish, same shape as auth),
+// mirroring the phone-first sign-in flow.
 const cohostSchema = z.object({
-  email: z.string().trim().toLowerCase().email(),
+  phone: z
+    .string()
+    .trim()
+    .regex(/^\+?[0-9 ()\-]{6,20}$/, 'Enter a phone number like +14155551234'),
 });
 
 class HttpError extends Error {
@@ -227,13 +234,17 @@ eventRoutes.post('/', async (c) => {
 });
 
 eventRoutes.get('/by-slug/:slug', async (c) => {
+  const userId = c.get('userId');
   const event = await db.event.findUnique({
     where: { slug: c.req.param('slug') },
     include: eventInclude,
   });
   // Canceled events are treated as gone — the page 404s like a deleted one.
   if (!event || event.canceledAt) return c.json({ error: 'Event not found' }, 404);
-  return c.json({ event: toEventDetail(event, c.get('userId')) });
+  // The viewer's phone lets toEventDetail surface a pending co-host invite
+  // addressed to them (Accept/Decline banner on the event page).
+  const viewer = await db.user.findUnique({ where: { id: userId }, select: { phone: true } });
+  return c.json({ event: toEventDetail(event, userId, viewer?.phone) });
 });
 
 // Given a list of slugs, return the subset that still exists. The app caches
@@ -254,12 +265,14 @@ eventRoutes.post('/exists', async (c) => {
 });
 
 eventRoutes.get('/:id', async (c) => {
+  const userId = c.get('userId');
   const event = await db.event.findUnique({
     where: { id: c.req.param('id') },
     include: eventInclude,
   });
   if (!event || event.canceledAt) return c.json({ error: 'Event not found' }, 404);
-  return c.json({ event: toEventDetail(event, c.get('userId')) });
+  const viewer = await db.user.findUnique({ where: { id: userId }, select: { phone: true } });
+  return c.json({ event: toEventDetail(event, userId, viewer?.phone) });
 });
 
 eventRoutes.patch('/:id', async (c) => {
@@ -521,9 +534,10 @@ eventRoutes.delete('/:id/rsvp/:userId', async (c) => {
   return c.json({ event: toEventDetail(updated, me) });
 });
 
-// Bring a +1 to an event you're going to. Exactly one is allowed per guest —
-// either an iykyk user picked from your mutuals, or a manual name + phone. The
-// +1 counts as one extra head toward capacity via Rsvp.plusOnes.
+// Bring a +1 to an event you're going to — either an iykyk user picked from
+// your mutuals, or a manual name + phone. A guest may bring several, up to
+// min(event.plusOneLimit, MAX_PLUS_ONES). Each +1 counts as one extra head
+// toward capacity via Rsvp.plusOnes.
 eventRoutes.post('/:id/plus-one', async (c) => {
   const userId = c.get('userId');
   const eventId = c.req.param('id');
@@ -550,8 +564,16 @@ eventRoutes.post('/:id/plus-one', async (c) => {
       }
       if (!event.rsvpsOpen && !isManager) throw new HttpError('RSVPs are closed', 409);
       if (event.plusOneLimit <= 0) throw new HttpError('No plus ones for this event', 400);
-      if (mine.plusOneGuests.length >= 1) {
-        throw new HttpError('You can only bring one plus one', 409);
+      // Effective allowance = the host's per-event limit, capped at the global
+      // hard max so nobody can pack in more than MAX_PLUS_ONES.
+      const maxPlusOnes = Math.min(event.plusOneLimit, MAX_PLUS_ONES);
+      if (mine.plusOneGuests.length >= maxPlusOnes) {
+        throw new HttpError(
+          maxPlusOnes === 1
+            ? 'You can only bring one plus one'
+            : `You can bring at most ${maxPlusOnes} plus ones`,
+          409
+        );
       }
       // The +1 adds one head; a full event has no room for it (no waitlisting).
       if (event.maxGuests != null && countRsvps(event.rsvps).going + 1 > event.maxGuests) {
@@ -643,10 +665,6 @@ eventRoutes.post('/:id/plus-one', async (c) => {
     });
   } catch (e) {
     if (e instanceof HttpError) return c.json({ error: e.message }, e.code);
-    // Lost a race for the one-+1 slot (unique [rsvpId]).
-    if (e && typeof e === 'object' && (e as { code?: string }).code === 'P2002') {
-      return c.json({ error: 'You can only bring one plus one' }, 409);
-    }
     throw e;
   }
 
@@ -690,43 +708,91 @@ eventRoutes.delete('/:id/plus-one/:plusOneId', async (c) => {
   return c.json({ event: toEventDetail(updated, userId) });
 });
 
-// Cohost management — creator only.
+// Cohost management — creator only. Inviting is by phone: we create a PENDING
+// CohostInvite and text the invitee an event link. They become an actual
+// co-host only once they sign in and accept (see the /me/cohost-invites routes).
 eventRoutes.post('/:id/cohosts', async (c) => {
   const me = c.get('userId');
   const eventId = c.req.param('id');
   const event = await db.event.findUnique({
     where: { id: eventId },
-    include: { cohosts: true },
+    include: { cohosts: { include: { user: true } }, host: true },
   });
   if (!event) return c.json({ error: 'Event not found' }, 404);
   if (event.hostId !== me) return c.json({ error: 'Only the host can add co-hosts' }, 403);
   if (event.canceledAt) return c.json({ error: "Canceled events can't get new co-hosts" }, 409);
 
   const parsed = cohostSchema.safeParse(await c.req.json().catch(() => null));
-  if (!parsed.success) return c.json({ error: 'Enter a valid email' }, 400);
+  if (!parsed.success) return c.json({ error: 'Enter a valid phone number' }, 400);
 
-  const user = await db.user.findUnique({ where: { email: parsed.data.email } });
-  if (!user) return c.json({ error: 'No iykyk account with that email' }, 404);
-  if (user.id === event.hostId) return c.json({ error: "You're already the host" }, 409);
-  if (event.cohosts.some((ch) => ch.userId === user.id)) {
-    return c.json({ error: `${user.name} is already a co-host` }, 409);
+  // Canonicalize to E.164, folding a bare national number using the host's own
+  // country — the same treatment sign-in gives numbers, so the invite matches
+  // the account the invitee eventually creates.
+  const phone = normalizePhone(parsed.data.phone, phoneCountry(event.host.phone));
+  if (!/^\+[0-9]{7,15}$/.test(phone)) {
+    return c.json({ error: 'Enter a valid phone number, like +14155551234' }, 400);
   }
 
-  await db.$transaction(async (tx) => {
-    await tx.eventCohost.create({ data: { eventId, userId: user.id } });
-    // Co-hosts are at their own party; don't run the capacity check for them.
-    await tx.rsvp.upsert({
-      where: { eventId_userId: { eventId, userId: user.id } },
-      create: { eventId, userId: user.id, status: 'GOING' },
-      update: { status: 'GOING' },
-    });
+  // Can't invite yourself (the host), whether typed as your own number or not.
+  if (event.host.phone && normalizePhone(event.host.phone) === phone) {
+    return c.json({ error: "You're already the host" }, 409);
+  }
+  // Already a co-host (match on the account's canonicalized phone).
+  const existingCohost = event.cohosts.find(
+    (ch) => ch.user.phone && normalizePhone(ch.user.phone) === phone
+  );
+  if (existingCohost) {
+    return c.json({ error: `${existingCohost.user.name || 'They'} is already a co-host` }, 409);
+  }
+
+  // One open invite per number: reuse the row (a prior decline flips back to
+  // PENDING) so re-inviting is idempotent and never trips the unique constraint.
+  const prior = await db.cohostInvite.findUnique({
+    where: { eventId_phone: { eventId, phone } },
   });
+  if (prior && prior.status === 'PENDING') {
+    return c.json({ error: 'That number already has a pending invite' }, 409);
+  }
+  await db.cohostInvite.upsert({
+    where: { eventId_phone: { eventId, phone } },
+    create: { eventId, phone, invitedById: me, status: 'PENDING' },
+    update: { status: 'PENDING', invitedById: me },
+  });
+
+  // Build a tappable link back to the event (same origin logic as text blasts),
+  // falling back to APP_URL. Sent over SMS when Twilio is configured; otherwise
+  // returned for the on-screen dev preview, mirroring the login-code flow.
+  const configured = process.env.APP_URL?.trim();
+  const fwdHost = c.req.header('x-forwarded-host') ?? c.req.header('host');
+  const fwdProto = c.req.header('x-forwarded-proto') ?? 'https';
+  const base = (configured || (fwdHost ? `${fwdProto}://${fwdHost}` : '')).replace(/\/$/, '');
+  const link = base ? `${base}/e/${event.slug}` : '';
+  const body = `${event.host.name || 'A host'} invited you to co-host "${event.title}" on iykyk 🤝${
+    link ? `\nAccept here: ${link}` : ''
+  }`;
+
+  let sent = false;
+  if (smsEnabled) {
+    try {
+      await sendSms(phone, body);
+      sent = true;
+    } catch (e) {
+      console.error('Co-host invite SMS failed:', e);
+      // The invite row still exists — surface a soft warning rather than failing
+      // the whole request (the host can re-send / share the link manually).
+    }
+  }
 
   const updated = await db.event.findUniqueOrThrow({
     where: { id: eventId },
     include: eventInclude,
   });
-  return c.json({ event: toEventDetail(updated, me) }, 201);
+  // devLink lets local dev / no-SMS deploys show the invite link on screen,
+  // exactly like the login-code devCode fallback.
+  return c.json(
+    { event: toEventDetail(updated, me), sent, devLink: sent ? undefined : link || undefined },
+    201
+  );
 });
 
 eventRoutes.delete('/:id/cohosts/:userId', async (c) => {

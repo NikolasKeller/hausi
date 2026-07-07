@@ -33,6 +33,7 @@ model User {
   rsvps          Rsvp[]
   comments       Comment[]
   cohosting      EventCohost[]
+  cohostInvitesSent CohostInvite[] @relation("CohostInvitesSent")
   crushesSent    Crush[]        @relation("CrushesSent")
   crushesGotten  Crush[]        @relation("CrushesGotten")
   plusOneAppearances PlusOne[]  @relation("PlusOneGuest")
@@ -114,6 +115,31 @@ model Event {
   rsvps         Rsvp[]
   comments      Comment[]
   cohosts       EventCohost[]
+  cohostInvites CohostInvite[]
+}
+
+// A pending co-host invitation, addressed to a phone number (the invitee may
+// not have an account yet). The host invites by phone; the recipient signs in
+// via the normal phone-verification flow and then must ACCEPT — only on accept
+// do we create the EventCohost (+ GOING rsvp). status: PENDING | ACCEPTED |
+// DECLINED (SQLite has no enums, so it's a String, mirroring Rsvp.status).
+// Unique per (event, phone) so a number can't hold two open invites; a
+// re-invite after a decline just flips the same row back to PENDING.
+model CohostInvite {
+  id          String   @id @default(cuid())
+  eventId     String
+  event       Event    @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  // Normalized (E.164) phone the invite was sent to — matched against the
+  // invitee's account phone once they sign in.
+  phone       String
+  invitedById String
+  invitedBy   User     @relation("CohostInvitesSent", fields: [invitedById], references: [id], onDelete: Cascade)
+  status      String   @default("PENDING")
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@unique([eventId, phone])
+  @@index([phone])
 }
 
 model EventCohost {
@@ -151,7 +177,8 @@ model Rsvp {
 // A named guest an attendee brings along ("+1"). Attached to the host's Rsvp;
 // counts as one extra head via Rsvp.plusOnes. userId links it to an iykyk user
 // when the +1 was picked from mutuals; a manually-added +1 stores name + phone
-// only (no account, no login). We cap it at one per Rsvp in the route layer.
+// only (no account, no login). An attendee may bring several (up to
+// min(plusOneLimit, MAX_PLUS_ONES)); the cap is enforced in the route layer.
 model PlusOne {
   id        String   @id @default(cuid())
   rsvpId    String
@@ -162,9 +189,7 @@ model PlusOne {
   user      User?    @relation("PlusOneGuest", fields: [userId], references: [id], onDelete: SetNull)
   createdAt DateTime @default(now())
 
-  // One +1 per RSVP — enforced at the DB so a double-submit race can't create
-  // two (the route also checks, but that check-then-act isn't atomic).
-  @@unique([rsvpId])
+  @@index([rsvpId])
 }
 
 // type: "comment" (user-written) | "system" (activity entries like "X is going")
