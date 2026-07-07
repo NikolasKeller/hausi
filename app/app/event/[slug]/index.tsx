@@ -457,7 +457,7 @@ export default function EventScreen() {
                         tint={ink.glassTint}
                         radius={999}
                         fill={active ? (ink.dark ? 'rgba(255,255,255,0.22)' : 'rgba(255,255,255,0.42)') : undefined}
-                        style={[styles.rsvpCircle, active && { borderColor: ink.text, borderWidth: 2 }]}
+                        style={[styles.rsvpCircle, active && { borderColor: ink.text, borderWidth: 1 }]}
                       >
                         <Text style={styles.rsvpEmoji}>{opt.emoji}</Text>
                       </Glass>

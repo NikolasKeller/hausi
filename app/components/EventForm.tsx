@@ -535,7 +535,7 @@ const styles = StyleSheet.create({
   },
   formCloseText: {
     fontSize: 16,
-    fontWeight: '700',
+    fontWeight: '600',
     color: colors.text,
   },
   container: {

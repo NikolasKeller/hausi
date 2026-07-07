@@ -170,7 +170,6 @@ function HomeScreen() {
         <View style={styles.sectionGroup}>
           <Text style={styles.kicker}>Your crew</Text>
           <Text style={styles.sectionTitle}>Find your mutuals</Text>
-          <Text style={styles.sectionBlurb}>See which parties your people are hitting.</Text>
           {home.palsGoing.length === 0 ? (
             <Text style={styles.emptyNote}>
               No mutual plans yet — RSVP to a few parties and your crew will pop up here.

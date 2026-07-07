@@ -370,7 +370,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  doneText: { ...uiText(15, '700'), color: '#141210' },
+  doneText: { ...uiText(15, '600'), color: '#141210' },
   loading: {
     alignItems: 'center',
     justifyContent: 'center',
