@@ -15,10 +15,12 @@ if (html.includes('rel="manifest"')) {
 }
 
 // viewport-fit=cover lets the installed app extend under the notch; the CSS
-// below pads the shell back out of it.
+// below pads the shell back out of it. maximum-scale=1 + user-scalable=no stop
+// iOS Safari from auto-zooming into a focused input (which would push the
+// screen title out of view) — this is an app-like PWA, not a scrollable doc.
 html = html.replace(
   'width=device-width, initial-scale=1, shrink-to-fit=no',
-  'width=device-width, initial-scale=1, shrink-to-fit=no, viewport-fit=cover'
+  'width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, shrink-to-fit=no, viewport-fit=cover'
 );
 
 const headTags = `
