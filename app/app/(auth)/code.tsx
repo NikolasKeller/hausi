@@ -14,7 +14,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { api } from '../../lib/api';
 import { useAuth } from '../../lib/auth';
 import { colors, radius, shadow, spacing } from '../../lib/theme';
-import { display, kicker, uiText } from '../../lib/fonts';
+import { display, uiText } from '../../lib/fonts';
 import { AuroraBackground } from '../../components/AuroraBackground';
 import { Button, ErrorText } from '../../components/ui';
 
@@ -84,9 +84,9 @@ export default function CodeScreen() {
               <Text style={{ fontSize: 18 }}>💬</Text>
             </View>
             <View style={{ flex: 1 }}>
-              <Text style={styles.bannerFrom}>Hausi (dev preview)</Text>
+              <Text style={styles.bannerFrom}>Now (dev preview)</Text>
               <Text style={styles.bannerText}>
-                {currentDevCode} is your Hausi verification code
+                {currentDevCode} is your Now verification code
               </Text>
             </View>
             <Text style={styles.bannerNow}>now</Text>
@@ -95,30 +95,32 @@ export default function CodeScreen() {
 
         <KeyboardAvoidingView style={{ flex: 1 }} behavior="padding">
           <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
-            <Text style={styles.kicker}>Step 2 of 2</Text>
-            <Text style={styles.title}>
+            <Text
+              style={styles.title}
+              numberOfLines={1}
+              adjustsFontSizeToFit
+              minimumFontScale={0.6}
+            >
               Verify your phone
             </Text>
             <Text style={styles.subtitle}>We sent {phone} a code via SMS</Text>
 
-            <View style={styles.card}>
-              <TextInput
-                value={code}
-                onChangeText={(t) => {
-                  const clean = t.replace(/[^0-9]/g, '').slice(0, 6);
-                  setCode(clean);
-                  if (clean.length === 6) submit(clean);
-                }}
-                placeholder="000000"
-                placeholderTextColor={colors.muted}
-                keyboardType="number-pad"
-                autoFocus
-                style={styles.codeInput}
-                maxLength={6}
-                textContentType="oneTimeCode"
-                autoComplete="one-time-code"
-              />
-            </View>
+            <TextInput
+              value={code}
+              onChangeText={(t) => {
+                const clean = t.replace(/[^0-9]/g, '').slice(0, 6);
+                setCode(clean);
+                if (clean.length === 6) submit(clean);
+              }}
+              placeholder="000000"
+              placeholderTextColor={colors.muted}
+              keyboardType="number-pad"
+              autoFocus
+              style={[styles.codeInput, styles.noOutline]}
+              maxLength={6}
+              textContentType="oneTimeCode"
+              autoComplete="one-time-code"
+            />
 
             <Text style={styles.resend} onPress={resend}>
               {resendIn > 0
@@ -187,13 +189,9 @@ const styles = StyleSheet.create({
     paddingTop: spacing.xl * 2,
     gap: spacing.md,
   },
-  kicker: {
-    ...kicker(colors.muted),
-    textAlign: 'center',
-  },
   title: {
     color: colors.text,
-    ...display(56),
+    ...display(40),
     textAlign: 'center',
   },
   subtitle: {
@@ -202,22 +200,25 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     marginBottom: spacing.lg,
   },
-  card: {
-    backgroundColor: colors.card,
-    borderWidth: 1,
-    borderColor: colors.cardBorder,
-    borderRadius: radius.lg,
-    paddingVertical: spacing.md,
-    ...shadow.card,
-  },
   codeInput: {
     color: colors.text,
-    paddingVertical: spacing.sm,
+    backgroundColor: 'transparent',
+    borderWidth: 0,
+    paddingVertical: spacing.md,
     fontSize: 36,
     letterSpacing: 14,
     textAlign: 'center',
+    // letterSpacing also adds a trailing gap after the last digit, which shifts
+    // the glyphs left of true center; a matching left pad re-centers them so the
+    // "Resend code" line below lines up with the middle of the six digits.
+    paddingLeft: 14,
     fontWeight: '700',
   },
+  // Kill the browser's focus ring / native input chrome on web.
+  noOutline:
+    Platform.OS === 'web'
+      ? ({ outlineStyle: 'none', outlineWidth: 0, appearance: 'none', border: 'none', background: 'transparent' } as any)
+      : {},
   resend: {
     color: colors.muted,
     ...uiText(14, '500'),

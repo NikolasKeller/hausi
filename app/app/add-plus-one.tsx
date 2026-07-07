@@ -93,7 +93,7 @@ export default function AddPlusOneScreen() {
     try {
       await api.addPlusOne(eventId, guest);
       router.back();
-      // A manual invitee isn't on Hausi yet — jump straight into Messages with
+      // A manual invitee isn't on Now yet — jump straight into Messages with
       // their number and the invite pre-filled so the host can text them in one
       // tap. Signing up with that number links the spot to their account. Fired
       // after navigating back and not awaited: a blocked composer must never
@@ -150,7 +150,7 @@ export default function AddPlusOneScreen() {
             Who are you bringing?
           </Text>
           <Text style={styles.subtitle}>
-            One guest — someone you've partied with, or a brand-new face.
+            One guest - someone you've partied with, or a brand-new face.
           </Text>
 
           <View style={styles.segment}>
@@ -191,7 +191,7 @@ export default function AddPlusOneScreen() {
                 <Text style={styles.empty}>
                   {query.trim()
                     ? 'No one by that name.'
-                    : 'No one to show yet — add your plus one under “Someone new.”'}
+                    : 'No one to show yet - add your plus one under “Someone new.”'}
                 </Text>
               ) : (
                 filtered.map((m) => {
@@ -205,7 +205,7 @@ export default function AddPlusOneScreen() {
                       }}
                       style={[styles.personRow, selected && styles.personRowSelected]}
                     >
-                      <Avatar emoji={m.user.avatarEmoji} image={m.user.avatarImage} size={44} />
+                      <Avatar name={m.user.name} image={m.user.avatarImage} size={44} />
                       <View style={{ flex: 1 }}>
                         <Text style={styles.personName} numberOfLines={1}>
                           {m.user.name}

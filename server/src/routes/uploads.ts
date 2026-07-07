@@ -19,7 +19,7 @@ uploadRoutes.use('*', async (c, next) => {
   hits.push(now);
   recent.set(ip, hits);
   if (hits.length > UPLOAD_LIMIT) {
-    return c.json({ error: 'Too many uploads — slow down a moment' }, 429);
+    return c.json({ error: 'Too many uploads - slow down a moment' }, 429);
   }
   await next();
 });

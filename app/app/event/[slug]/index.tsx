@@ -27,7 +27,7 @@ import { ThemeBackground, themeInk } from '../../../components/themes';
 import { Glass } from '../../../components/glass';
 import { Avatar } from '../../../components/Avatar';
 import { Button } from '../../../components/ui';
-import { Burst, PillBadge } from '../../../components/partiful';
+import { PillBadge } from '../../../components/partiful';
 import { formatEventDate, formatEventTime } from '../../../components/EventCard';
 
 const RSVP_OPTIONS: { status: RsvpStatus; label: string; emoji: string }[] = [
@@ -162,7 +162,7 @@ export default function EventScreen() {
   async function share() {
     if (!event) return;
     const url = Linking.createURL(`e/${event.slug}`);
-    const message = `You're invited: ${event.title} — ${formatEventDate(event.date)} at ${formatEventTime(event.date)}.\nOpen in Hausi: ${url}`;
+    const message = `You're invited: ${event.title} - ${formatEventDate(event.date)} at ${formatEventTime(event.date)}.\nOpen in Now: ${url}`;
     await shareText(message, url);
   }
 
@@ -250,7 +250,10 @@ export default function EventScreen() {
     );
   }
 
-  const ink = themeInk(event.coverTheme);
+  // The page now sits on the corporate dark canvas (see ThemeBackground), so
+  // content always uses the dark-surface ink (white type, dark glass) instead
+  // of a palette that flipped with the per-event theme.
+  const ink = themeInk('noir');
 
   const myRsvp = event.rsvps.find((r) => r.user.id === user?.id);
   const myPlusOne = myRsvp?.guests?.[0] ?? null;
@@ -291,11 +294,7 @@ export default function EventScreen() {
                 theme={event.coverTheme}
                 image={event.coverImage}
                 style={styles.poster}
-              >
-                <Burst size={60} rays={8} color={colors.helio} rotate={-14} style={styles.heroBurst} />
-                <Burst size={38} rays={6} color={colors.accent} rotate={12} style={styles.heroBurst2} />
-                <Text style={styles.heroKicker}>You're invited</Text>
-              </CoverGradient>
+              />
               <Text
                 style={[styles.heroTitleBelow, titleFontStyle(event.titleFont), { color: ink.text }]}
               >
@@ -304,7 +303,6 @@ export default function EventScreen() {
             </View>
           ) : (
             <View style={styles.heroBlock}>
-              <Text style={[styles.heroKickerPlain, { color: ink.subtext }]}>You're invited</Text>
               <Text
                 style={[
                   styles.heroTitlePlain,
@@ -319,7 +317,7 @@ export default function EventScreen() {
 
           <View style={styles.section}>
             <View style={styles.hostRow}>
-              <Avatar emoji={event.host.avatarEmoji} image={event.host.avatarImage} size={44} />
+              <Avatar name={event.host.name} image={event.host.avatarImage} size={44} />
               <View style={{ flex: 1 }}>
                 <Text style={[styles.hostedBy, { color: ink.faint }]}>Hosted by</Text>
                 <Text style={[styles.hostName, { color: ink.text }]}>
@@ -410,7 +408,7 @@ export default function EventScreen() {
                 <View style={styles.avatarStack}>
                   {previewShown.map((r, i) => (
                     <View key={r.user.id} style={i > 0 ? { marginLeft: -10 } : undefined}>
-                      <Avatar emoji={r.user.avatarEmoji} image={r.user.avatarImage} size={40} />
+                      <Avatar name={r.user.name} image={r.user.avatarImage} size={40} />
                     </View>
                   ))}
                   {previewExtra > 0 ? (
@@ -424,7 +422,7 @@ export default function EventScreen() {
               )}
             </Glass>
 
-            {rsvpLocked ? (
+            {event.isHost ? null : rsvpLocked ? (
               <View style={{ gap: spacing.sm }}>
                 <Glass tint={ink.glassTint} radius={radius.md} style={styles.lockedNote}>
                   <Text style={[styles.lockedNoteText, { color: ink.subtext }]}>
@@ -480,7 +478,7 @@ export default function EventScreen() {
             {myRsvp?.status === 'WAITLIST' ? (
               <Glass tint={ink.glassTint} radius={radius.md} style={styles.lockedNote}>
                 <Text style={[styles.lockedNoteText, { color: ink.subtext }]}>
-                  ⏳ The event is full — you're #
+                  ⏳ The event is full - you're #
                   {event.rsvps.filter((r) => r.status === 'WAITLIST').findIndex(
                     (r) => r.user.id === user?.id
                   ) + 1}{' '}
@@ -494,12 +492,12 @@ export default function EventScreen() {
                 <Text style={[styles.plusOnesLabel, { color: ink.text }]}>Your plus one</Text>
                 {myPlusOne ? (
                   <View style={styles.plusOneChip}>
-                    <Avatar emoji={myPlusOne.avatarEmoji} image={myPlusOne.avatarImage} size={24} />
+                    <Avatar name={myPlusOne.name} image={myPlusOne.avatarImage} size={24} />
                     <Text style={[styles.plusOneChipName, { color: ink.text }]} numberOfLines={1}>
                       {myPlusOne.name}
                     </Text>
                     {myPlusOne.userId == null ? (
-                      // Not on Hausi yet — resurface the invite link to text them.
+                      // Not on Now yet — resurface the invite link to text them.
                       <Pressable onPress={sharePlusOneInvite} hitSlop={8}>
                         <Text style={[styles.plusOneShareText, { color: ink.text }]}>Share invite</Text>
                       </Pressable>
@@ -567,7 +565,7 @@ export default function EventScreen() {
                     return (
                       <View key={r.user.id} style={{ gap: spacing.sm }}>
                         <Glass tint={ink.glassTint} radius={radius.md} style={styles.guestRow}>
-                          <Avatar emoji={r.user.avatarEmoji} image={r.user.avatarImage} size={32} />
+                          <Avatar name={r.user.name} image={r.user.avatarImage} size={32} />
                           <Text style={[styles.guestName, { flex: 1, color: ink.text }]}>
                             {r.user.name}
                             {r.user.id === event.host.id ? '  👑' : isCohost ? '  🤝' : ''}
@@ -591,7 +589,7 @@ export default function EventScreen() {
                                 radius={radius.md}
                                 style={[styles.guestRow, styles.plusOneGuestRow]}
                               >
-                                <Avatar emoji={g.avatarEmoji} image={g.avatarImage} size={26} />
+                                <Avatar name={g.name} image={g.avatarImage} size={26} />
                                 <Text
                                   style={[styles.plusOneGuestName, { flex: 1, color: ink.text }]}
                                   numberOfLines={1}
@@ -627,16 +625,16 @@ export default function EventScreen() {
               <Text style={[styles.sectionTitle, { color: ink.text }]}>Party Wall 💬</Text>
             </View>
             {wallComments.length === 0 ? (
-              <Text style={[styles.noComments, { color: ink.faint }]}>No comments yet — break the ice!</Text>
+              <Text style={[styles.noComments, { color: ink.faint }]}>No comments yet - break the ice!</Text>
             ) : (
               wallComments.map((c) =>
                 c.type === 'system' ? (
                   <Text key={c.id} style={[styles.systemEntry, { color: ink.faint }]}>
-                    {c.user.avatarEmoji} {c.user.name} {c.text}
+                    {c.user.name} {c.text}
                   </Text>
                 ) : (
                   <View key={c.id} style={styles.commentRow}>
-                    <Avatar emoji={c.user.avatarEmoji} image={c.user.avatarImage} size={32} />
+                    <Avatar name={c.user.name} image={c.user.avatarImage} size={32} />
                     <Glass tint={ink.glassTint} radius={radius.md} style={styles.commentBubble}>
                       <Text style={[styles.commentAuthor, { color: ink.text }]}>{c.user.name}</Text>
                       <Text style={[styles.commentText, { color: ink.text }]}>{c.text}</Text>
@@ -711,9 +709,11 @@ export default function EventScreen() {
 
           <Pressable
             onPress={() => {
-              if (!rsvpLocked) setRsvp('GOING');
+              // The host organizes the event — the pill is a guest count for
+              // them, not a personal RSVP.
+              if (!event.isHost && !rsvpLocked) setRsvp('GOING');
             }}
-            disabled={rsvpBusy}
+            disabled={rsvpBusy || event.isHost}
             style={({ pressed }) => [styles.barGoing, pressed && { opacity: 0.85 }]}
           >
             <Text style={styles.barGoingCount}>{event.counts.going}</Text>
@@ -904,27 +904,6 @@ const styles = StyleSheet.create({
     paddingTop: 100,
     paddingBottom: spacing.md,
     gap: spacing.sm,
-  },
-  heroBurst: {
-    position: 'absolute',
-    top: 24,
-    right: 24,
-  },
-  heroBurst2: {
-    position: 'absolute',
-    top: 84,
-    right: 84,
-  },
-  heroKicker: {
-    ...kicker(),
-    color: 'rgba(255,255,255,0.92)',
-    marginBottom: spacing.sm,
-    textShadowColor: 'rgba(0,0,0,0.35)',
-    textShadowOffset: { width: 0, height: 1 },
-    textShadowRadius: 4,
-  },
-  heroKickerPlain: {
-    ...kicker(),
   },
   heroTitlePlain: {
     fontSize: 56,

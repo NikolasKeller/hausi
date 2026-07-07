@@ -38,17 +38,33 @@ const MONTHS = [
 
 const WEEKDAYS_SHORT = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
-const WEEKDAYS_LONG = [
-  'Sunday',
-  'Monday',
-  'Tuesday',
-  'Wednesday',
-  'Thursday',
-  'Friday',
-  'Saturday',
+// Empty-day messages — rotated per day so a blank calendar doesn't always read
+// the exact same line. Keyed off the date so it's stable within a given day.
+const EMPTY_MESSAGES: { title: string; subtitle: string }[] = [
+  { title: 'Free as a bird', subtitle: 'No commitments today. Do whatever you want' },
+  { title: 'Wide open', subtitle: 'Not a single plan in sight. Enjoy the quiet' },
+  { title: 'Gloriously empty', subtitle: 'Zero obligations. Peak main-character energy' },
+  { title: 'Nothing on the books', subtitle: 'A blank page is a beautiful thing' },
+  { title: 'Off the grid', subtitle: 'No plans, no problems' },
+  { title: 'Living the dream', subtitle: 'An empty schedule is a flex, honestly' },
+  { title: 'Touch some grass day', subtitle: 'Nothing planned — go outside, maybe?' },
+  { title: 'Certified chill', subtitle: 'Your calendar is as free as it gets' },
 ];
 
+function emptyMessageFor(date: Date): { title: string; subtitle: string } {
+  const dayIndex = Math.floor(date.getTime() / 86_400_000);
+  return EMPTY_MESSAGES[((dayIndex % EMPTY_MESSAGES.length) + EMPTY_MESSAGES.length) % EMPTY_MESSAGES.length];
+}
+
 const PAST_GRACE_MS = 6 * 60 * 60 * 1000;
+
+// Months span 4, 5 or 6 week rows. We lay the grid out at a constant height for
+// the tallest case (6 rows) and let each row flex to fill it, so a long month
+// like a 1st-to-31st never grows the grid and squeezes the panel below (which
+// would push the empty-state emoji into the title and the CTA off screen).
+const MAX_WEEK_ROWS = 6;
+const GRID_ROW_HEIGHT = 46;
+const GRID_HEIGHT = MAX_WEEK_ROWS * GRID_ROW_HEIGHT;
 
 // Cells for a month grid: leading/trailing nulls pad to full weeks.
 function buildMonthCells(year: number, month: number): (Date | null)[] {
@@ -196,14 +212,10 @@ function CalendarScreen() {
     <View style={styles.header}>
       <View style={styles.monthRow}>
         <View style={styles.monthTitleWrap}>
-          <Text style={[styles.kicker, kicker(colors.accent)]} numberOfLines={1}>
-            {isViewingCurrentYear ? 'Your calendar' : `Your calendar · ${view.year}`}
-          </Text>
-          {/* The month name renders at one fixed size for every month — the
-              year, when off the current year, lives in the kicker above so a
-              long name like "September" never forces the title to shrink. */}
+          {/* Month name at one fixed size. When viewing another year, the year
+              is appended so it stays visible without a purple eyebrow label. */}
           <Text style={styles.monthTitle} numberOfLines={1}>
-            {MONTHS[view.month]}
+            {isViewingCurrentYear ? MONTHS[view.month] : `${MONTHS[view.month]} ${view.year}`}
           </Text>
         </View>
         {mode === 'grid' ? (
@@ -297,18 +309,17 @@ function CalendarScreen() {
             <Text style={styles.panelTitle}>
               {selectedIsToday ? <Text style={styles.panelStrong}>Today </Text> : null}
               <Text style={selectedIsToday ? styles.panelMuted : styles.panelStrong}>
-                {WEEKDAYS_LONG[selected.getDay()]} · {MONTHS[selected.getMonth()]}{' '}
-                {selected.getDate()}
+                {`${String(selected.getDate()).padStart(2, '0')}/${String(
+                  selected.getMonth() + 1
+                ).padStart(2, '0')}/${selected.getFullYear()}`}
               </Text>
             </Text>
 
             {selectedEvents.length === 0 ? (
               <View style={styles.emptyState}>
-                <Text style={styles.emptyEmoji}>🕊️</Text>
-                <Text style={styles.emptyTitle}>Free as a bird</Text>
-                <Text style={styles.emptySubtitle}>
-                  No commitments today. Do whatever you want
-                </Text>
+                <View style={styles.emptyBody}>
+                  <Text style={styles.emptyTitle}>{emptyMessageFor(selected).title}</Text>
+                </View>
                 <Button
                   title="Plan something"
                   variant="primary"
@@ -343,7 +354,7 @@ function CalendarScreen() {
             <Text style={styles.sectionTitle}>Upcoming</Text>
           </View>
           {upcoming.length === 0 ? (
-            <Text style={styles.sectionEmpty}>Nothing planned — yet 👀</Text>
+            <Text style={styles.sectionEmpty}>Nothing planned - yet 👀</Text>
           ) : (
             upcoming.map((ev) => <EventCard key={ev.id} event={ev} />)
           )}
@@ -407,7 +418,9 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   monthTitleWrap: {
-    flexShrink: 1,
+    // Fill the row so the chevrons always land at the same spot on the right,
+    // regardless of the month name's length (e.g. "May" vs "September").
+    flex: 1,
     gap: spacing.xs,
   },
   kicker: {
@@ -474,9 +487,13 @@ const styles = StyleSheet.create({
     color: colors.muted,
   },
   grid: {
-    gap: spacing.sm,
+    // Constant height for every month (see MAX_WEEK_ROWS). Rows flex to share
+    // it, so 4/5/6-week months all keep the grid the same size and leave the
+    // panel below the same room.
+    height: GRID_HEIGHT,
   },
   weekRow: {
+    flex: 1,
     flexDirection: 'row',
   },
   dayCell: {
@@ -554,24 +571,24 @@ const styles = StyleSheet.create({
   },
   emptyState: {
     flex: 1,
+    gap: spacing.sm,
+  },
+  // The decorative block takes the space left above the pinned CTA and centers
+  // its content. overflow: hidden means that if the panel is ever too short it
+  // clips gracefully instead of spilling over the title above or the button.
+  emptyBody: {
+    flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
     gap: spacing.sm,
-  },
-  emptyEmoji: {
-    fontSize: 48,
+    overflow: 'hidden',
   },
   emptyTitle: {
-    ...display(24),
+    ...display(36),
     color: colors.text,
-  },
-  emptySubtitle: {
-    ...uiText(15),
-    color: colors.muted,
     textAlign: 'center',
   },
   planButton: {
-    marginTop: spacing.sm,
     alignSelf: 'stretch',
   },
   listSections: {

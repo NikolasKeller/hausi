@@ -136,7 +136,7 @@ export function EventForm({ initial, submitLabel, onSubmit, footer }: Props) {
   const [cropSrc, setCropSrc] = useState<{ uri: string; width?: number; height?: number } | null>(
     null
   );
-  const titleFont: TitleFont = initial?.titleFont ?? 'classic';
+  const [titleFont] = useState<TitleFont>(initial?.titleFont ?? 'classic');
   const [effect, setEffect] = useState<Effect>(initial?.effect ?? 'none');
   // null until the host actually opens the When picker — "When" is a required
   // field, so we don't silently pre-fill it. The sheet opens at defaultDate().
@@ -208,7 +208,7 @@ export function EventForm({ initial, submitLabel, onSubmit, footer }: Props) {
       return;
     }
     if (!location.trim()) {
-      setError('Add a location — pick a real spot from the list!');
+      setError('Add a location - pick a real spot from the list!');
       return;
     }
     const guests = maxGuests.trim() ? Number(maxGuests.trim()) : null;
@@ -292,7 +292,6 @@ export function EventForm({ initial, submitLabel, onSubmit, footer }: Props) {
           contentContainerStyle={styles.content}
           keyboardShouldPersistTaps="handled"
         >
-        {/* Just the event name — type it and go. */}
         <View style={styles.titleBox}>
           <TextInput
             value={title}
@@ -316,8 +315,8 @@ export function EventForm({ initial, submitLabel, onSubmit, footer }: Props) {
               {uploadingCover
                 ? 'Uploading…'
                 : coverImage
-                  ? '🖼  Change photo'
-                  : '🖼  Add cover photo'}
+                  ? 'Change photo'
+                  : 'Add cover photo'}
             </Text>
           </PaperPressable>
           {coverImage && !uploadingCover ? (
@@ -400,11 +399,11 @@ export function EventForm({ initial, submitLabel, onSubmit, footer }: Props) {
         style={[styles.taskbarWrap, { bottom: insets.bottom + spacing.sm }]}
       >
         <Glass
-          tint={ink.glassTint}
+          tint="dark"
           intensity={40}
           radius={radius.pill}
           border
-          fill={ink.dark ? 'rgba(15,12,24,0.45)' : 'rgba(255,255,255,0.5)'}
+          fill="rgba(24,24,27,0.94)"
           style={styles.taskbar}
         >
           <Pressable style={styles.taskbarItem} onPress={() => setThemePickerOpen(true)}>

@@ -9,7 +9,7 @@ import { db } from './db.js';
 if (process.env.NODE_ENV === 'production' && !process.env.JWT_SECRET) {
   throw new Error('JWT_SECRET must be set in production');
 }
-const JWT_SECRET = process.env.JWT_SECRET ?? 'hausi-dev-secret-change-me';
+const JWT_SECRET = process.env.JWT_SECRET ?? 'now-dev-secret-change-me';
 const TOKEN_TTL_SECONDS = 60 * 60 * 24 * 30; // 30 days
 
 export async function createToken(userId: string): Promise<string> {
@@ -20,7 +20,7 @@ export async function createToken(userId: string): Promise<string> {
 // Same JWT, also stored as a first-party cookie. On iOS Safari, server-set
 // cookies survive far longer than script-writable storage (localStorage is
 // capped/evicted by ITP), so this keeps web/PWA users logged in across reopens.
-export const SESSION_COOKIE = 'hausi_session';
+export const SESSION_COOKIE = 'now_session';
 
 export function setSessionCookie(c: Context, token: string): void {
   setCookie(c, SESSION_COOKIE, token, {

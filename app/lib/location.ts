@@ -9,14 +9,18 @@ export interface LocatedCity {
 // All failures from locateCity() carry a user-presentable message.
 export class LocateError extends Error {}
 
-const LOCATE_TIMEOUT_MS = 15000;
+const LOCATE_TIMEOUT_MS = 8000;
+
+// A cached fix from the last ~10 min is plenty for city-level detection and
+// returns instantly, so try it before firing up the GPS.
+const LAST_KNOWN_MAX_AGE_MS = 10 * 60 * 1000;
 
 // Browser geolocation prompts can pend forever when dismissed (not denied),
 // which would otherwise leave callers stuck in a loading state.
 function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
   return new Promise((resolve, reject) => {
     const timer = setTimeout(
-      () => reject(new LocateError('Took too long to find you — try again')),
+      () => reject(new LocateError('Took too long to find you - try again')),
       ms
     );
     promise.then(
@@ -43,6 +47,20 @@ async function getLocationModule() {
 }
 
 export async function hasLocationPermission(): Promise<boolean> {
+  // On web, query the browser Permissions API directly — the expo-location web
+  // shim can stall, which would hang the Explore first-load that awaits this.
+  if (Platform.OS === 'web') {
+    try {
+      const perms = (globalThis as any).navigator?.permissions;
+      if (perms?.query) {
+        const status = await perms.query({ name: 'geolocation' });
+        return status.state === 'granted';
+      }
+    } catch {
+      // Permissions API unsupported — treat as not-yet-granted.
+    }
+    return false;
+  }
   try {
     const Location = await getLocationModule();
     return (await Location.getForegroundPermissionsAsync()).granted;
@@ -59,23 +77,55 @@ export async function locateCity(): Promise<LocatedCity> {
   }
 }
 
-async function doLocate(): Promise<LocatedCity> {
+// Web: use the browser Geolocation API directly. expo-location's web shim is
+// unreliable — its permission flow can hang and never resolve — whereas the
+// native API gives us a real timeout and honors a cached fix.
+function locateCoordsWeb(): Promise<{ latitude: number; longitude: number }> {
+  return new Promise((resolve, reject) => {
+    const geo = (globalThis as any).navigator?.geolocation;
+    if (!geo) {
+      reject(new LocateError('Location is not available in this browser'));
+      return;
+    }
+    geo.getCurrentPosition(
+      (p: any) => resolve({ latitude: p.coords.latitude, longitude: p.coords.longitude }),
+      (err: any) =>
+        reject(
+          err && err.code === 1 // 1 = PERMISSION_DENIED
+            ? new LocateError('Location is off - allow it in your browser')
+            : new LocateError('Could not find your location')
+        ),
+      { enableHighAccuracy: false, timeout: LOCATE_TIMEOUT_MS, maximumAge: LAST_KNOWN_MAX_AGE_MS }
+    );
+  });
+}
+
+async function locateCoordsNative(): Promise<{ latitude: number; longitude: number }> {
   const Location = await getLocationModule();
   const perm = await Location.requestForegroundPermissionsAsync();
   if (!perm.granted) {
-    // The web shim reports granted:false with a non-denied status when the
-    // position lookup itself failed — only a real deny gets the permission copy.
     throw perm.status === Location.PermissionStatus.DENIED
-      ? new LocateError('Location is off — enable it in Settings')
+      ? new LocateError('Location is off - enable it in Settings')
       : new LocateError('Could not find your location');
   }
-  const pos = await Location.getCurrentPositionAsync({
-    accuracy: Location.Accuracy.Balanced,
-  });
-  const { latitude, longitude } = pos.coords;
+  // A recent cached fix is instant and plenty for city-level detection.
+  try {
+    const last = await Location.getLastKnownPositionAsync({ maxAge: LAST_KNOWN_MAX_AGE_MS });
+    if (last) return { latitude: last.coords.latitude, longitude: last.coords.longitude };
+  } catch {
+    // No cached fix — fall through to a live, low-accuracy lookup.
+  }
+  const pos = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Low });
+  return { latitude: pos.coords.latitude, longitude: pos.coords.longitude };
+}
+
+async function doLocate(): Promise<LocatedCity> {
+  const { latitude, longitude } =
+    Platform.OS === 'web' ? await locateCoordsWeb() : await locateCoordsNative();
 
   if (Platform.OS !== 'web') {
     try {
+      const Location = await getLocationModule();
       const [first] = await Location.reverseGeocodeAsync({ latitude, longitude });
       const city = first?.city ?? first?.subregion ?? first?.region;
       if (city) {

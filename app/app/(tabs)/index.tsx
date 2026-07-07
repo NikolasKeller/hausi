@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Pressable,
@@ -14,27 +14,27 @@ import { Ionicons } from '@expo/vector-icons';
 import type { ExploreEvent, HomeFeed } from '../../shared/types';
 import { api } from '../../lib/api';
 import { useAuth } from '../../lib/auth';
-import { getRecentEvents, reconcileRecents, type RecentEvent } from '../../lib/recents';
-import { EVENT_TEMPLATES, type EventTemplate } from '../../lib/eventTemplates';
 import { colors, radius, spacing, shadow } from '../../lib/theme';
-import { titleFontStyle, display, uiText, kicker } from '../../lib/fonts';
+import { titleFontStyle, display, displayTitle, uiText, kicker } from '../../lib/fonts';
 import { CoverGradient } from '../../components/CoverGradient';
 import { Avatar } from '../../components/Avatar';
 import { Button } from '../../components/ui';
 import { formatEventDate } from '../../components/EventCard';
 import { withScreenBackground } from '../../components/ScreenBackground';
+import { hasLocationPermission, locateCity } from '../../lib/location';
+import { EVENT_TEMPLATES, type EventTemplate } from '../../lib/eventTemplates';
 
 export default withScreenBackground(HomeScreen);
 
 // Never a plain "welcome back" — always something cheerful and party-flavored.
-const GREETINGS: Array<(name: string) => { text: string; subtext: string }> = [
-  (n) => ({ text: `Look who's back — ${n}! 🎉`, subtext: "Let's find your next party." }),
-  (n) => ({ text: `${n} has entered the chat 🎊`, subtext: 'Good vibes incoming.' }),
-  (n) => ({ text: `Ayy, ${n}! 🥳`, subtext: 'Who are we celebrating today?' }),
-  (n) => ({ text: `The party missed you, ${n} 💃`, subtext: "Let's get something on the calendar." }),
-  (n) => ({ text: `There they are — ${n} 🕺`, subtext: 'Ready to make plans?' }),
-  (n) => ({ text: `${n} in the building ✨`, subtext: 'Time to stir something up.' }),
-  (n) => ({ text: `Confetti's out for ${n} 🎈`, subtext: "What's the move tonight?" }),
+const GREETINGS: Array<(name: string) => { text: string }> = [
+  (n) => ({ text: `Look who's back - ${n}! 🎉` }),
+  (n) => ({ text: `${n} has entered the chat 🎊` }),
+  (n) => ({ text: `Ayy, ${n}! 🥳` }),
+  (n) => ({ text: `The party missed you, ${n} 💃` }),
+  (n) => ({ text: `There they are - ${n} 🕺` }),
+  (n) => ({ text: `${n} in the building ✨` }),
+  (n) => ({ text: `Confetti's out for ${n} 🎈` }),
 ];
 
 function pickGreeting(name: string) {
@@ -45,12 +45,11 @@ function HomeScreen() {
   const router = useRouter();
   const { welcomeBack, dismissWelcome } = useAuth();
   const [home, setHome] = useState<HomeFeed | null>(null);
-  const [recents, setRecents] = useState<RecentEvent[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [refreshing, setRefreshing] = useState(false);
   const [showAllMutuals, setShowAllMutuals] = useState(false);
   // Greet a returning user once, on app open, then let it fade.
-  const [welcome, setWelcome] = useState<{ text: string; subtext: string } | null>(null);
+  const [welcome, setWelcome] = useState<{ text: string } | null>(null);
   useEffect(() => {
     if (!welcomeBack) return;
     setWelcome(pickGreeting(welcomeBack));
@@ -59,24 +58,28 @@ function HomeScreen() {
     return () => clearTimeout(t);
   }, [welcomeBack, dismissWelcome]);
 
-  const fetchAll = useCallback(async () => {
-    const [homeRes, storedRecents] = await Promise.all([
-      api.home(),
-      getRecentEvents(),
-    ]);
-    // Recents are cached locally per device, so prune any whose event has since
-    // been deleted server-side. Keep the cached list on a network hiccup.
-    let recentList = storedRecents;
-    if (storedRecents.length > 0) {
+  // Keep the user's city in sync with where they actually are, so the feed
+  // localizes ("Trending in Munich") for returning users too — not just fresh
+  // onboarders. Best-effort and silent: only runs when location is already
+  // granted (never prompts here), and only writes when the city changed.
+  const locationSynced = useRef(false);
+  useEffect(() => {
+    if (locationSynced.current) return;
+    locationSynced.current = true;
+    (async () => {
       try {
-        const { slugs } = await api.existingEvents(storedRecents.map((r) => r.slug));
-        recentList = await reconcileRecents(slugs);
+        if (!(await hasLocationPermission())) return;
+        const { city } = await locateCity();
+        if (!city) return;
+        await api.updateProfile({ city });
+        setHome(await api.home());
       } catch {
-        // Leave recents as-is rather than blanking the section.
+        // Ignore — keep whatever city we already have.
       }
-    }
-    return { homeRes, recentList };
+    })();
   }, []);
+
+  const fetchAll = useCallback(() => api.home(), []);
 
   useFocusEffect(
     useCallback(() => {
@@ -84,8 +87,7 @@ function HomeScreen() {
       fetchAll()
         .then((res) => {
           if (!active) return;
-          setHome(res.homeRes);
-          setRecents(res.recentList);
+          setHome(res);
           setError(null);
         })
         .catch((e) => {
@@ -100,9 +102,7 @@ function HomeScreen() {
   async function onRefresh() {
     setRefreshing(true);
     try {
-      const res = await fetchAll();
-      setHome(res.homeRes);
-      setRecents(res.recentList);
+      setHome(await fetchAll());
       setError(null);
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Could not refresh');
@@ -114,7 +114,7 @@ function HomeScreen() {
   const header = (
     <View style={styles.headerRow}>
       <View style={styles.wordmarkWrap}>
-        <Text style={styles.wordmark}>Hausi</Text>
+        <Text style={styles.wordmark}>Now</Text>
       </View>
     </View>
   );
@@ -143,6 +143,15 @@ function HomeScreen() {
     );
   }
 
+  // Surface the discover feed's trending events. Prefer the geo-local list
+  // (titled with the user's city); fall back to the global list otherwise.
+  const city = home.city?.trim();
+  const nearby = home.trendingNearby ?? [];
+  const trending =
+    nearby.length > 0
+      ? { title: city ? `Trending in ${city}` : 'Trending near you', list: nearby }
+      : { title: 'Trending now', list: home.trendingNow ?? [] };
+
   return (
     <SafeAreaView edges={['top']} style={styles.screen}>
       <ScrollView
@@ -162,19 +171,13 @@ function HomeScreen() {
           <Pressable onPress={() => setWelcome(null)} style={styles.sectionGroup}>
             <View style={styles.welcomeBanner}>
               <Text style={styles.welcomeText}>{welcome.text}</Text>
-              <Text style={styles.welcomeSubtext}>{welcome.subtext}</Text>
             </View>
           </Pressable>
         ) : null}
 
-        <View style={styles.sectionGroup}>
-          <Text style={styles.kicker}>Your crew</Text>
-          <Text style={styles.sectionTitle}>Find your mutuals</Text>
-          {home.palsGoing.length === 0 ? (
-            <Text style={styles.emptyNote}>
-              No mutual plans yet — RSVP to a few parties and your crew will pop up here.
-            </Text>
-          ) : (
+        {home.palsGoing.length > 0 ? (
+          <View style={styles.sectionGroup}>
+            <Text style={styles.sectionTitle}>Find your mutuals</Text>
             <View style={styles.mutualFeed}>
               {(showAllMutuals ? home.palsGoing : home.palsGoing.slice(0, 3)).map((event) => (
                 <MutualCard key={event.id} event={event} />
@@ -188,31 +191,44 @@ function HomeScreen() {
                 </Pressable>
               ) : null}
             </View>
-          )}
-        </View>
+          </View>
+        ) : null}
 
-        {recents.length > 0 ? (
+        {trending.list.length > 0 ? (
           <View style={styles.sectionGroup}>
-            <Text style={styles.kicker}>Back to it</Text>
-            <Text style={styles.sectionTitle}>Recently viewed</Text>
+            <Text style={styles.sectionTitle}>{trending.title}</Text>
             <ScrollView
               horizontal
               showsHorizontalScrollIndicator={false}
               contentContainerStyle={styles.horizontalList}
               style={styles.horizontalScroll}
             >
-              {recents.map((recent) => (
-                <RecentCard key={recent.slug} recent={recent} />
+              {trending.list.map((event) => (
+                <TrendingCard key={event.id} event={event} />
               ))}
             </ScrollView>
           </View>
         ) : null}
 
-        <View style={styles.sectionGroup}>
-          <Text style={styles.kicker}>Need a plan?</Text>
-          <Text style={styles.sectionTitle}>
-            Party starters
+        <View style={[styles.sectionGroup, styles.ctaGroup]}>
+          <Text
+            style={styles.ctaTitle}
+            numberOfLines={1}
+            adjustsFontSizeToFit
+            minimumFontScale={0.6}
+          >
+            Throw something
           </Text>
+          <Button
+            title="Create an event"
+            variant="vibrant"
+            style={styles.ctaButton}
+            onPress={() => router.push('/new-event')}
+          />
+        </View>
+
+        <View style={styles.sectionGroup}>
+          <Text style={styles.sectionTitle}>Party starters</Text>
           <ScrollView
             horizontal
             showsHorizontalScrollIndicator={false}
@@ -224,20 +240,32 @@ function HomeScreen() {
             ))}
           </ScrollView>
         </View>
-
-        <View style={[styles.sectionGroup, styles.ctaGroup]}>
-          <Text style={styles.ctaTitle}>
-            Throw{'\n'}something
-          </Text>
-          <Button
-            title="Create an event"
-            variant="primary"
-            style={styles.ctaButton}
-            onPress={() => router.push('/new-event')}
-          />
-        </View>
       </ScrollView>
     </SafeAreaView>
+  );
+}
+
+// A tappable "party starter" template — a plain dark card with the template's
+// emoji; tapping opens the event form seeded from that template.
+function TemplateCard({ template }: { template: EventTemplate }) {
+  const router = useRouter();
+  return (
+    <Pressable
+      onPress={() => router.push({ pathname: '/new-event', params: { template: template.id } })}
+      style={({ pressed }) => [styles.templateCard, pressed && { opacity: 0.85 }]}
+    >
+      <View style={styles.templateCover}>
+        <Text style={styles.templateEmoji}>{template.emoji}</Text>
+      </View>
+      <View style={styles.templateBody}>
+        <Text style={styles.templateName} numberOfLines={1}>
+          {template.name}
+        </Text>
+        <Text style={styles.templateVibe} numberOfLines={2}>
+          {template.vibe}
+        </Text>
+      </View>
+    </Pressable>
   );
 }
 
@@ -274,7 +302,7 @@ function MutualCard({ event }: { event: ExploreEvent }) {
     <View style={styles.mutualEntry}>
       {event.friendGoing ? (
         <View style={styles.mutualAttrib}>
-          <Avatar emoji={event.friendGoing.avatarEmoji} image={event.friendGoing.avatarImage} size={28} />
+          <Avatar name={event.friendGoing.name} image={event.friendGoing.avatarImage} size={28} />
           <Text style={styles.mutualAttribText} numberOfLines={1}>
             <Text style={styles.mutualName}>{event.friendGoing.name}</Text>
             <Text style={styles.mutualGoing}> is going</Text> 👍
@@ -303,7 +331,7 @@ function MutualCard({ event }: { event: ExploreEvent }) {
       </Pressable>
 
       <View style={styles.mutualFooter}>
-        {faces.length > 0 ? <AvatarCluster emojis={faces} /> : null}
+        {faces.length > 0 ? <AvatarCluster faces={faces} /> : null}
         <Text style={styles.mutualInterested}>{interested} interested</Text>
         <View style={{ flex: 1 }} />
         <Pressable
@@ -322,54 +350,40 @@ function MutualCard({ event }: { event: ExploreEvent }) {
   );
 }
 
-// Overlapping row of attendee avatar emoji.
-function AvatarCluster({ emojis }: { emojis: string[] }) {
+// Overlapping row of attendee faces.
+function AvatarCluster({ faces }: { faces: { name: string; avatarImage: string }[] }) {
   return (
     <View style={styles.cluster}>
-      {emojis.map((emoji, i) => (
+      {faces.map((f, i) => (
         <View key={i} style={[styles.clusterChip, i > 0 && { marginLeft: -10 }]}>
-          <Text style={styles.clusterEmoji}>{emoji}</Text>
+          <Avatar name={f.name} image={f.avatarImage} size={26} />
         </View>
       ))}
     </View>
   );
 }
 
-function RecentCard({ recent }: { recent: RecentEvent }) {
+// A trending event from the discover feed: cover poster, date, and how many
+// people are interested — tap through to the event page.
+function TrendingCard({ event }: { event: ExploreEvent }) {
   const router = useRouter();
   return (
     <Pressable
-      onPress={() => router.push(`/event/${recent.slug}`)}
+      onPress={() => router.push(`/event/${event.slug}`)}
       style={({ pressed }) => [styles.recentCard, pressed && { opacity: 0.85 }]}
     >
-      <CoverGradient theme={recent.coverTheme} image={recent.coverImage} style={styles.recentCover} emojiOpacity={0.25}>
-        <Text style={[styles.recentTitle, titleFontStyle(recent.titleFont)]} numberOfLines={2}>
-          {recent.title}
+      <CoverGradient theme={event.coverTheme} image={event.coverImage} style={styles.recentCover} emojiOpacity={0.25}>
+        <Text style={[styles.recentTitle, displayTitle]} numberOfLines={2}>
+          {event.title}
         </Text>
       </CoverGradient>
-      <Text style={styles.recentDate}>{formatEventDate(recent.date)}</Text>
-    </Pressable>
-  );
-}
-
-function TemplateCard({ template }: { template: EventTemplate }) {
-  const router = useRouter();
-  return (
-    <Pressable
-      onPress={() => router.push({ pathname: '/new-event', params: { template: template.id } })}
-      style={({ pressed }) => [styles.templateCard, pressed && { opacity: 0.85 }]}
-    >
-      <CoverGradient theme={template.coverTheme} style={styles.templateCover} emojiOpacity={0.22}>
-        <Text style={styles.templateEmoji}>{template.emoji}</Text>
-      </CoverGradient>
-      <View style={styles.templateBody}>
-        <Text style={styles.templateName} numberOfLines={1}>
-          {template.name}
+      <View style={styles.trendingMeta}>
+        <Text style={styles.trendingDate} numberOfLines={1}>
+          {formatEventDate(event.date)}
         </Text>
-        <Text style={styles.templateVibe} numberOfLines={2}>
-          {template.vibe}
-        </Text>
-        <Text style={styles.templateStart}>+ Start from this</Text>
+        {event.interested > 0 ? (
+          <Text style={styles.trendingInterested}>{event.interested} interested</Text>
+        ) : null}
       </View>
     </Pressable>
   );
@@ -403,7 +417,7 @@ const styles = StyleSheet.create({
   headerRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
+    justifyContent: 'center',
     paddingHorizontal: spacing.md,
     paddingTop: spacing.sm,
   },
@@ -413,6 +427,10 @@ const styles = StyleSheet.create({
   wordmark: {
     ...display(38),
     color: colors.text,
+    textAlign: 'center',
+    textShadowColor: 'rgba(255,106,43,0.6)',
+    textShadowOffset: { width: 0, height: 0 },
+    textShadowRadius: 14,
   },
   sectionGroup: {
     gap: spacing.md,
@@ -426,18 +444,15 @@ const styles = StyleSheet.create({
     ...display(30),
     color: colors.text,
   },
-  emptyNote: {
-    ...uiText(14),
-    color: colors.muted,
-  },
   ctaGroup: {
     marginTop: spacing.lg,
     alignItems: 'flex-start',
   },
   ctaTitle: {
-    ...display(52),
+    ...display(40),
     color: colors.text,
     marginBottom: spacing.md,
+    alignSelf: 'stretch',
   },
   ctaButton: {
     alignSelf: 'stretch',
@@ -447,6 +462,9 @@ const styles = StyleSheet.create({
     borderRadius: radius.md,
     borderWidth: 1,
     borderColor: colors.cardBorder,
+    // Orange accent stripe down the left edge.
+    borderLeftWidth: 4,
+    borderLeftColor: colors.accent,
     paddingVertical: spacing.md,
     paddingHorizontal: spacing.md,
     gap: spacing.xs,
@@ -456,16 +474,46 @@ const styles = StyleSheet.create({
     ...display(22),
     color: colors.text,
   },
-  welcomeSubtext: {
-    ...uiText(14),
-    color: colors.muted,
-  },
   horizontalScroll: {
     marginHorizontal: -spacing.md,
   },
   horizontalList: {
     paddingHorizontal: spacing.md,
     gap: spacing.sm,
+  },
+  templateCard: {
+    width: 172,
+    backgroundColor: colors.card,
+    borderRadius: radius.md,
+    borderWidth: 1,
+    borderColor: colors.cardBorder,
+    overflow: 'hidden',
+    ...shadow.card,
+  },
+  templateCover: {
+    height: 96,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: colors.inputBg,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.cardBorder,
+  },
+  templateEmoji: {
+    fontSize: 46,
+  },
+  templateBody: {
+    padding: spacing.sm,
+    gap: 2,
+    minHeight: 96,
+  },
+  templateName: {
+    ...display(16),
+    color: colors.text,
+  },
+  templateVibe: {
+    ...uiText(12),
+    color: colors.muted,
+    flex: 1,
   },
   mutualFeed: {
     gap: spacing.lg,
@@ -534,17 +582,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   clusterChip: {
-    width: 26,
-    height: 26,
-    borderRadius: 13,
-    backgroundColor: colors.card,
+    borderRadius: 999,
     borderWidth: 1.5,
     borderColor: colors.bg,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  clusterEmoji: {
-    fontSize: 14,
   },
   seeMore: {
     alignSelf: 'center',
@@ -560,7 +600,7 @@ const styles = StyleSheet.create({
     color: colors.text,
   },
   recentCard: {
-    width: 150,
+    width: 178,
     backgroundColor: colors.card,
     borderRadius: radius.md,
     borderWidth: 1,
@@ -569,62 +609,35 @@ const styles = StyleSheet.create({
     ...shadow.card,
   },
   recentCover: {
-    height: 96,
+    height: 124,
     padding: spacing.sm,
     justifyContent: 'flex-end',
   },
   recentTitle: {
     color: '#fff',
-    fontSize: 14,
+    fontSize: 20,
+    lineHeight: 22,
+    // Reserve exactly two lines and top-align, so every card's title starts on
+    // the same horizontal line regardless of one- vs two-line length.
+    height: 44,
+    textAlignVertical: 'top',
     fontWeight: '800',
     letterSpacing: -0.3,
     textShadowColor: 'rgba(0,0,0,0.35)',
     textShadowOffset: { width: 0, height: 1 },
     textShadowRadius: 4,
   },
-  recentDate: {
-    ...uiText(12, '700'),
-    color: colors.accent,
+  trendingMeta: {
     padding: spacing.sm,
     paddingTop: 6,
-  },
-  templateCard: {
-    width: 172,
-    backgroundColor: colors.card,
-    borderRadius: radius.md,
-    borderWidth: 1,
-    borderColor: colors.cardBorder,
-    overflow: 'hidden',
-    ...shadow.card,
-  },
-  templateCover: {
-    height: 96,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  templateEmoji: {
-    fontSize: 46,
-    textShadowColor: 'rgba(0,0,0,0.3)',
-    textShadowOffset: { width: 0, height: 2 },
-    textShadowRadius: 6,
-  },
-  templateBody: {
-    padding: spacing.sm,
     gap: 2,
-    minHeight: 96,
   },
-  templateName: {
-    ...display(16),
-    color: colors.text,
-  },
-  templateVibe: {
-    ...uiText(12),
+  trendingDate: {
+    ...uiText(12, '700'),
     color: colors.muted,
-    flex: 1,
   },
-  templateStart: {
+  trendingInterested: {
     ...uiText(12, '700'),
     color: colors.accent,
-    marginTop: spacing.xs,
   },
 });

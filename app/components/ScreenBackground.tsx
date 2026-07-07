@@ -1,32 +1,10 @@
 import React from 'react';
 import { StyleSheet, View } from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
 import { colors } from '../lib/theme';
 
-// The app-wide backdrop: a violet "night sky" bleeding down from the top into
-// the near-black base, with a magenta aurora leaning in from the top-right for
-// depth — the moody, nightlife feel of the reference design. Static (no
-// animation) so scroll performance stays flat; the animated version lives in
-// AuroraBackground for the onboarding flow.
+// The app-wide backdrop: a flat near-black base.
 export function ScreenBackground({ children }: { children?: React.ReactNode }) {
-  return (
-    <View style={styles.fill}>
-      <LinearGradient
-        colors={['rgba(196,149,106,0.14)', 'rgba(196,149,106,0.04)', 'rgba(238,234,228,0)']}
-        locations={[0, 0.4, 1]}
-        style={styles.sky}
-        pointerEvents="none"
-      />
-      <LinearGradient
-        colors={['rgba(212,196,178,0.22)', 'rgba(212,196,178,0)']}
-        start={{ x: 1, y: 0 }}
-        end={{ x: 0.1, y: 0.7 }}
-        style={styles.aurora}
-        pointerEvents="none"
-      />
-      {children}
-    </View>
-  );
+  return <View style={styles.fill}>{children}</View>;
 }
 
 // Wraps a screen so it carries its own opaque backdrop. On web the tab
@@ -56,19 +34,5 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: colors.bg,
     overflow: 'hidden',
-  },
-  sky: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    height: 460,
-  },
-  aurora: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    height: 300,
   },
 });

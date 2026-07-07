@@ -4,7 +4,7 @@ import { useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { AuroraBackground } from '../../components/AuroraBackground';
 import { Button } from '../../components/ui';
-import { display, kicker, uiText } from '../../lib/fonts';
+import { display, uiText } from '../../lib/fonts';
 import { colors, spacing } from '../../lib/theme';
 
 // react-native-web has no native driver; silence its fallback warning.
@@ -44,20 +44,13 @@ export default function WelcomeScreen() {
             },
           ]}
         >
-          <Text style={styles.kicker}>You're invited</Text>
-          <Text style={styles.wordmark}>Hausi</Text>
+          <Text style={styles.wordmark}>Now</Text>
           <Text style={styles.tagline}>Parties worth showing up for</Text>
         </Animated.View>
 
         <View style={{ flex: 1 }} />
 
         <Button title="Get started" variant="primary" onPress={() => router.push('/phone')} />
-        <Text style={styles.footnote}>Takes 30 seconds. No email needed.</Text>
-        {__DEV__ ? (
-          <Text style={styles.devLink} onPress={() => router.push('/dev-login')}>
-            Skip auth — continue as Preview (dev only)
-          </Text>
-        ) : null}
       </SafeAreaView>
     </AuroraBackground>
   );
@@ -73,29 +66,17 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: spacing.md,
   },
-  kicker: {
-    ...kicker(colors.muted),
-  },
   wordmark: {
     color: colors.text,
     ...display(96),
+    // Warm orange bloom behind the white wordmark — the glowing look.
+    textShadowColor: 'rgba(255,106,43,0.65)',
+    textShadowOffset: { width: 0, height: 0 },
+    textShadowRadius: 28,
   },
   tagline: {
     color: colors.muted,
     ...uiText(18, '400'),
     textAlign: 'center',
-  },
-  footnote: {
-    color: colors.muted,
-    ...uiText(13, '400'),
-    textAlign: 'center',
-    marginTop: spacing.md,
-  },
-  devLink: {
-    color: colors.muted,
-    ...uiText(12, '400'),
-    textAlign: 'center',
-    marginTop: spacing.lg,
-    textDecorationLine: 'underline',
   },
 });

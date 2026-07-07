@@ -1,77 +1,81 @@
-// Hausi design system — warm cream + black ink, clean grotesque sans (Archivo).
-// Inspired by the "Known" aesthetic: off-white linen backgrounds, near-black
-// text, warm caramel accent, no purple or neon. Clean and quiet-luxury.
+// Now design system — a stark near-black (#111) canvas, white League Gothic
+// type, translucent white surfaces/hairlines, and a single warm orange as the
+// signature accent (glowing white-on-black look). Dark, bold, nightlife-flavored.
 
-// ── App palette (warm cream / "linen") ───────────────────────────────────────
+// ── App palette (dark canvas) ────────────────────────────────────────────────
 export const colors = {
   // Surfaces
-  bg: '#EEEAE4',        // warm linen — replaces dark purple
-  card: '#F9F6F1',      // warm white card
-  cardBorder: '#DDD8D0', // soft warm hairline
-  inputBg: '#F4F1EB',   // slightly warmer input bg
+  bg: '#111111',        // near-black canvas
+  card: '#1C1C1E',      // elevated dark card
+  cardBorder: 'rgba(255,255,255,0.10)', // hairline on dark
+  inputBg: 'rgba(255,255,255,0.07)',    // translucent field fill
   // Type
-  text: '#1A1714',      // near-black — replaces near-white
-  muted: '#9A9088',     // warm gray — replaces cold purple-gray
-  // Brand / accent — warm caramel/tan instead of neon pink
-  accent: '#C4956A',
-  accentDark: '#9A7050',
-  violet: '#8A7060',    // warm taupe (keeps the name for compat)
-  helio: '#C4956A',     // same as accent
-  // Pure black — structural ink
-  ink: '#000000',
-  // Text on the caramel accent fill
+  text: '#FFFFFF',      // white ink
+  muted: 'rgba(255,255,255,0.56)',      // dimmed white
+  // Brand / accent — warm glowing orange
+  accent: '#FF6A2B',
+  accentDark: '#D2491A',
+  violet: '#FF8A3D',    // warm secondary (kept name for back-compat)
+  helio: '#FF6A2B',     // same as accent
+  // High-contrast solid fill (a white pill on the dark canvas)
+  ink: '#FFFFFF',
+  // Text on the orange/gradient accent fill
   onAccent: '#FFFFFF',
+  // Text on a white solid fill
+  onInk: '#111111',
   // Semantics
-  danger: '#C0392B',
-  success: '#2D6A4F',
-  warning: '#C4956A',
+  danger: '#FF5A5F',
+  success: '#31C46B',
+  warning: '#FFB020',
 };
 
-// ── LIGHT public palette (the Partiful "paper" surface) ──────────────────────
+// ── Elevated dark surfaces (was the "paper" light palette) ────────────────────
+// Kept under the `light` name for back-compat with the many callers, but now a
+// dark-on-dark surface scheme so "paper" cards read as Partiful's dark panels.
 export const light = {
-  // Surfaces (aligned to the warm "linen" app palette)
-  bg: '#EEEAE4', // warm linen canvas
-  paper: '#F9F6F1', // warm white cards / panels
-  // Ink & type ramp (Midnight Ink → Ash)
-  ink: '#000000',
-  text: '#000000',
-  text2: '#333333', // graphite
-  text3: '#666666', // slate
-  muted: '#999999', // ash
-  disabled: '#B3B3B3', // fog
-  border: '#000000', // heavy structural border = black
-  hairline: '#CCCCCC', // silver — soft dividers
-  inputBg: '#FFFFFF',
+  // Surfaces
+  bg: '#111111', // dark canvas
+  paper: '#1C1C1E', // elevated dark card / panel
+  // Ink & type ramp (white → dim)
+  ink: '#FFFFFF',
+  text: '#FFFFFF',
+  text2: 'rgba(255,255,255,0.80)', // bright secondary
+  text3: 'rgba(255,255,255,0.60)', // tertiary
+  muted: 'rgba(255,255,255,0.45)', // faint
+  disabled: 'rgba(255,255,255,0.30)',
+  border: 'rgba(255,255,255,0.14)', // structural hairline
+  hairline: 'rgba(255,255,255,0.10)', // soft divider
+  inputBg: 'rgba(255,255,255,0.07)',
   // Accents
-  sand: '#D9C58B', // warm sand (active nav)
-  midnight: '#001666', // deep blue accent
-  onInk: '#FFFFFF', // text on the black action fill
+  sand: '#D9C58B', // warm sand (kept for active nav highlights)
+  midnight: '#4F7BFF', // electric blue accent
+  onInk: '#111111', // text on a white solid fill
 };
 
 // ── Vibrant brand gradients (the festive party surface) ──────────────────────
-// The signature dusk ramp (dark hero backgrounds).
+// A dusk→night ramp for dark hero backgrounds.
 export const dusk = ['#E8927C', '#B76E9B', '#6E4E8E', '#3B2E5E', '#241B3A'] as const;
 
 export const brand = {
-  // Bold, in-your-face party gradient — heliotrope → hot pink → electric blue.
-  party: ['#D241FA', '#FF4FD8', '#4B7BFF'] as const,
-  // Soft pastel washes for light section backgrounds.
-  partyPink: ['#F8C4FF', '#F0B6E0'] as const,
-  periwinkle: ['rgba(150,196,255,0.28)', 'rgba(255,255,255,0)'] as const,
-  spearmint: ['#85DADC', '#C0E2E2'] as const,
-  // Neon pink → violet — the legacy action gradient, kept for dark-mode CTAs.
-  glow: ['#FF4FD8', '#8B5CF6'] as const,
+  // The signature gradient — warm amber → orange → deep ember.
+  party: ['#FFB061', '#FF6A2B', '#D2491A'] as const,
+  // Soft warm washes for light section backgrounds.
+  partyPink: ['#FFD8B0', '#FFC089'] as const,
+  periwinkle: ['rgba(255,138,61,0.28)', 'rgba(255,255,255,0)'] as const,
+  spearmint: ['#FFC089', '#FFE0C2'] as const,
+  // Amber → orange — the primary action gradient.
+  glow: ['#FF8A3D', '#E24E12'] as const,
 };
 
-// Kept for back-compat (was the primary action gradient).
+// Kept for back-compat (the primary action gradient).
 export const brandGradient = brand.glow;
 
 // RSVP / semantic pills (shared across schemes).
 export const rsvp = {
-  going: { bg: '#31C431', text: '#FFFFFF' },
+  going: { bg: '#31C431', text: '#0A1A0A' },
   maybe: { bg: '#FFAE00', text: '#1A1022' },
   no: { bg: '#E5484D', text: '#FFFFFF' },
-  waitlist: { bg: 'rgba(0,0,0,0.2)', text: '#FFFFFF' },
+  waitlist: { bg: 'rgba(255,255,255,0.16)', text: '#FFFFFF' },
 };
 
 // Partiful spacing ramp: 4 6 8 10 12 16 20 24 40 60 80.
@@ -96,23 +100,22 @@ export const radius = {
   pill: 999,
 };
 
-// Layered card elevation (web box-shadow strings + native shadow props live in
-// the primitives). Exposed here so screens can share the same depth language.
+// Layered elevation. On the dark canvas shadows read faintly; surfaces are
+// mostly separated by their translucent hairline border, with a soft shadow to
+// ground floating elements (RSVP bar, sheets).
 export const shadow = {
   card: {
-    // Partiful-calm: a whisper of a shadow, not a puffy lift. Cards and fields
-    // are separated by their hairline border; the shadow only grounds them.
     shadowColor: '#000',
-    shadowOpacity: 0.06,
-    shadowRadius: 6,
-    shadowOffset: { width: 0, height: 2 },
-    elevation: 2,
+    shadowOpacity: 0.35,
+    shadowRadius: 10,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 3,
   },
   float: {
     shadowColor: '#000',
-    shadowOpacity: 0.18,
-    shadowRadius: 20,
-    shadowOffset: { width: 0, height: 10 },
-    elevation: 10,
+    shadowOpacity: 0.5,
+    shadowRadius: 24,
+    shadowOffset: { width: 0, height: 12 },
+    elevation: 12,
   },
 };

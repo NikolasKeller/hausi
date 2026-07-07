@@ -22,13 +22,13 @@ html = html.replace(
 );
 
 const headTags = `
-    <meta name="description" content="Parties with friends — invites, RSVPs and the Party Wall." />
+    <meta name="description" content="Parties with friends - invites, RSVPs and the Party Wall." />
     <link rel="manifest" href="/manifest.json" />
     <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png" />
     <meta name="mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-    <meta name="apple-mobile-web-app-title" content="Hausi" />
+    <meta name="apple-mobile-web-app-title" content="Now" />
     <style>
       html, body { background-color: #0E0B16; }
       body { overscroll-behavior-y: none; }
@@ -56,7 +56,7 @@ writeFileSync(file, html);
 console.log('postexport: injected PWA tags into dist/index.html');
 
 // Pin the service worker cache to this build. sw.js ships with a
-// `hausi-__BUILD_ID__` placeholder; replace it with a hash of the exported JS
+// `now-__BUILD_ID__` placeholder; replace it with a hash of the exported JS
 // so every code change yields a new cache name (see public/sw.js for why a
 // static name would strand installed PWAs on stale bundles). Redeploying
 // identical code keeps the same id, so users aren't churned needlessly.
@@ -93,10 +93,10 @@ try {
   console.error('postexport: no dist/sw.js — public/ not copied by export?');
   process.exit(1);
 }
-const marker = "const CACHE = 'hausi-__BUILD_ID__';";
+const marker = "const CACHE = 'now-__BUILD_ID__';";
 if (!sw.includes(marker)) {
   console.error('postexport: sw.js CACHE placeholder missing — already stamped or template changed?');
   process.exit(1);
 }
-writeFileSync(swFile, sw.replace(marker, `const CACHE = 'hausi-${buildId}';`));
-console.log(`postexport: pinned service worker cache to hausi-${buildId}`);
+writeFileSync(swFile, sw.replace(marker, `const CACHE = 'now-${buildId}';`));
+console.log(`postexport: pinned service worker cache to now-${buildId}`);

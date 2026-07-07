@@ -31,7 +31,7 @@ export const MAX_UPLOAD_BYTES = 6 * 1024 * 1024; // 6 MB after decode
 // Throws on unsupported type, empty data, or oversize.
 export async function saveImage(base64: string, contentType: string): Promise<string> {
   const ext = EXT_BY_TYPE[contentType];
-  if (!ext) throw new Error('Unsupported image type — use JPEG, PNG or WebP');
+  if (!ext) throw new Error('Unsupported image type - use JPEG, PNG or WebP');
 
   const buffer = Buffer.from(base64, 'base64');
   if (buffer.length === 0) throw new Error('Empty image');

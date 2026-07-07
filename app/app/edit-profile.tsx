@@ -20,14 +20,11 @@ import { Avatar } from '../components/Avatar';
 import { Button, ErrorText, Field } from '../components/ui';
 import { CityPicker } from '../components/CityPicker';
 
-const AVATARS = ['🎉', '🦄', '🕺', '🌸', '🐙', '🪩', '🌈', '🍕', '👽', '🔥', '🐸', '💫'];
-
 export default function EditProfileScreen() {
   const router = useRouter();
   const { user, updateUser } = useAuth();
   const [loaded, setLoaded] = useState(false);
   const [name, setName] = useState('');
-  const [avatarEmoji, setAvatarEmoji] = useState('🎉');
   const [avatarImage, setAvatarImage] = useState('');
   const [uploading, setUploading] = useState(false);
   const [city, setCity] = useState('');
@@ -41,7 +38,6 @@ export default function EditProfileScreen() {
         const res = await api.myProfile();
         if (!active) return;
         setName(res.profile.name);
-        setAvatarEmoji(res.profile.avatarEmoji);
         setAvatarImage(res.profile.avatarImage);
         setCity(res.profile.city);
         setLoaded(true);
@@ -82,7 +78,6 @@ export default function EditProfileScreen() {
     try {
       const res = await api.updateProfile({
         name: name.trim(),
-        avatarEmoji,
         avatarImage,
         city: city.trim(),
       });
@@ -90,7 +85,6 @@ export default function EditProfileScreen() {
         updateUser({
           ...user,
           name: res.user.name,
-          avatarEmoji: res.user.avatarEmoji,
           avatarImage: res.user.avatarImage,
         });
       }
@@ -139,7 +133,7 @@ export default function EditProfileScreen() {
           <Text style={styles.label}>Profile pic</Text>
           <View style={styles.photoRow}>
             <View>
-              <Avatar emoji={avatarEmoji} image={avatarImage} size={72} />
+              <Avatar name={name} image={avatarImage} size={72} />
               {uploading && (
                 <View style={styles.photoSpinner}>
                   <ActivityIndicator color={colors.accent} />
@@ -171,33 +165,10 @@ export default function EditProfileScreen() {
                   disabled={uploading}
                   style={photoPillStyle}
                 >
-                  <Text style={styles.photoPillText}>✕ Back to emoji</Text>
+                  <Text style={styles.photoPillText}>✕ Remove photo</Text>
                 </Pressable>
               )}
             </View>
-          </View>
-        </View>
-
-        <View style={{ gap: spacing.sm }}>
-          <Text style={styles.label}>Or go full emoji</Text>
-          <View style={styles.avatarGrid}>
-            {AVATARS.map((emoji) => (
-              <Pressable
-                key={emoji}
-                onPress={() => {
-                  setAvatarEmoji(emoji);
-                  // Picking an emoji is an explicit "use this instead" —
-                  // otherwise the choice would be invisible behind the photo.
-                  setAvatarImage('');
-                }}
-                style={[
-                  styles.avatarChip,
-                  avatarEmoji === emoji && !avatarImage && styles.avatarChipActive,
-                ]}
-              >
-                <Text style={{ fontSize: 26 }}>{emoji}</Text>
-              </Pressable>
-            ))}
           </View>
         </View>
 
@@ -281,24 +252,5 @@ const styles = StyleSheet.create({
   photoPillText: {
     ...uiText(14, '600'),
     color: colors.text,
-  },
-  avatarGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: spacing.sm,
-  },
-  avatarChip: {
-    width: 48,
-    height: 48,
-    borderRadius: radius.md,
-    backgroundColor: colors.inputBg,
-    borderWidth: 1,
-    borderColor: colors.cardBorder,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  avatarChipActive: {
-    borderColor: colors.accent,
-    backgroundColor: colors.card,
   },
 });

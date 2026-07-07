@@ -14,29 +14,21 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { api } from '../lib/api';
 import { useAuth } from '../lib/auth';
 import { pickAvatarImage } from '../lib/imageUpload';
+import { locateCity } from '../lib/location';
 import { colors, radius, shadow, spacing } from '../lib/theme';
-import { display, kicker, uiText } from '../lib/fonts';
+import { display, uiText } from '../lib/fonts';
 import { Avatar } from '../components/Avatar';
 import { Button, ErrorText } from '../components/ui';
-
-// One face at a time: tapping the big face cycles through a short list
-// instead of presenting a grid to scan.
-const FACES = ['🎉', '😎', '🦄', '🔥', '🌈', '🪩'] as const;
 
 export default function SetupScreen() {
   const router = useRouter();
   const { user, updateUser } = useAuth();
 
-  const [faceIndex, setFaceIndex] = useState(() =>
-    Math.max(0, FACES.indexOf((user?.avatarEmoji ?? '') as (typeof FACES)[number]))
-  );
   const [photo, setPhoto] = useState(user?.avatarImage ?? '');
   const [uploading, setUploading] = useState(false);
   const [name, setName] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
-
-  const face = FACES[faceIndex];
 
   async function addPhoto(source: 'library' | 'camera') {
     if (uploading) return;
@@ -66,9 +58,17 @@ export default function SetupScreen() {
     }
     setBusy(true);
     setError(null);
+    // Grab the user's city on onboarding so their home feed is local from the
+    // start. Best-effort: if they deny/skip location, keep the default city.
+    let city: string | undefined;
     try {
-      await api.updateProfile({ name: trimmed, avatarEmoji: face, avatarImage: photo });
-      updateUser({ ...user!, name: trimmed, avatarEmoji: face, avatarImage: photo });
+      city = (await locateCity()).city;
+    } catch {
+      // No location permission / lookup failed — proceed without it.
+    }
+    try {
+      await api.updateProfile({ name: trimmed, avatarImage: photo, ...(city ? { city } : {}) });
+      updateUser({ ...user!, name: trimmed, avatarImage: photo });
       router.replace('/');
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Could not save your profile');
@@ -85,27 +85,17 @@ export default function SetupScreen() {
             keyboardShouldPersistTaps="handled"
             showsVerticalScrollIndicator={false}
           >
-            <Text style={styles.kicker}>Welcome</Text>
             <Text style={styles.title}>
               Pick your look
             </Text>
 
             <View style={styles.faceWrap}>
               <Pressable
-                onPress={() =>
-                  photo ? addPhoto('library') : setFaceIndex((i) => (i + 1) % FACES.length)
-                }
+                onPress={() => addPhoto('library')}
                 style={({ pressed }) => [pressed && styles.facePressed]}
               >
-                <Avatar emoji={face} image={photo} size={168} />
+                <Avatar name={name} image={photo} size={168} />
               </Pressable>
-              <Text style={styles.hint}>
-                {uploading
-                  ? 'Uploading your fabulous face…'
-                  : photo
-                    ? 'Lookin’ ready to party ✨'
-                    : 'Tap the face to change it'}
-              </Text>
               <View style={styles.photoActions}>
                 {/* Native only: web's "camera" is the same file dialog as the
                     library, so it'd just be a confusing duplicate button. */}
@@ -124,7 +114,7 @@ export default function SetupScreen() {
                   style={photoPillStyle}
                 >
                   <Text style={styles.photoPillText}>
-                    {photo ? '🖼️ Swap photo' : '🖼️ Add a photo'}
+                    {photo ? 'Swap photo' : 'Add a photo'}
                   </Text>
                 </Pressable>
                 {!!photo && (
@@ -133,7 +123,7 @@ export default function SetupScreen() {
                     disabled={uploading}
                     style={photoPillStyle}
                   >
-                    <Text style={styles.photoPillText}>✕ Use an emoji</Text>
+                    <Text style={styles.photoPillText}>✕ Remove photo</Text>
                   </Pressable>
                 )}
               </View>
@@ -160,7 +150,7 @@ export default function SetupScreen() {
               title="Continue"
               onPress={finish}
               loading={busy}
-              disabled={uploading}
+              disabled={uploading || !name.trim()}
               variant="primary"
             />
           </ScrollView>
@@ -184,10 +174,6 @@ const styles = StyleSheet.create({
     paddingTop: spacing.xl * 2,
     gap: spacing.lg,
   },
-  kicker: {
-    ...kicker(colors.muted),
-    textAlign: 'center',
-  },
   title: {
     ...display(56),
     color: colors.text,
@@ -200,10 +186,6 @@ const styles = StyleSheet.create({
   },
   facePressed: {
     transform: [{ scale: 0.96 }],
-  },
-  hint: {
-    ...uiText(14, '600'),
-    color: colors.muted,
   },
   photoActions: {
     flexDirection: 'row',

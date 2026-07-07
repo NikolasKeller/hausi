@@ -2,6 +2,7 @@ import React from 'react';
 import { Tabs } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { colors } from '../../lib/theme';
+import { GlassTabBar } from '../../components/GlassTabBar';
 
 // Each tab screen paints its own opaque backdrop (see withScreenBackground), so
 // the sceneStyle stays opaque here too: on web the navigator stacks every
@@ -9,16 +10,10 @@ import { colors } from '../../lib/theme';
 export default function TabsLayout() {
   return (
     <Tabs
+      tabBar={(props) => <GlassTabBar {...(props as any)} />}
       screenOptions={{
         headerShown: false,
         sceneStyle: { backgroundColor: colors.bg },
-        tabBarStyle: {
-          backgroundColor: colors.card,
-          borderTopColor: colors.cardBorder,
-          borderTopWidth: 1,
-          height: 62,
-          paddingTop: 6,
-        },
         tabBarActiveTintColor: colors.ink,
         tabBarInactiveTintColor: colors.muted,
         tabBarShowLabel: false,
@@ -40,13 +35,6 @@ export default function TabsLayout() {
           tabBarIcon: ({ color, focused }) => (
             <Ionicons name={focused ? 'calendar' : 'calendar-outline'} size={24} color={color} />
           ),
-        }}
-      />
-      <Tabs.Screen
-        name="create"
-        options={{
-          title: 'Create',
-          tabBarIcon: ({ color }) => <Ionicons name="add-circle-outline" size={28} color={color} />,
         }}
       />
       <Tabs.Screen

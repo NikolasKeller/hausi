@@ -10,14 +10,12 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFocusEffect, useRouter } from 'expo-router';
-import * as Linking from 'expo-linking';
 import { Ionicons } from '@expo/vector-icons';
 import { CATEGORIES, CATEGORY_META, type Category, type ExploreEvent } from '../../shared/types';
 import { api } from '../../lib/api';
 import { searchCities } from '../../lib/geocoding';
 import { hasLocationPermission, locateCity, type LocatedCity } from '../../lib/location';
 import { getRecentCities, recordRecentCity } from '../../lib/recentCities';
-import { shareText } from '../../lib/share';
 import { colors, radius, spacing, shadow } from '../../lib/theme';
 import { titleFontStyle, display, uiText, kicker } from '../../lib/fonts';
 import { CoverGradient } from '../../components/CoverGradient';
@@ -34,14 +32,6 @@ const CATEGORY_CHIPS: { key: Category | 'all'; emoji: string; label: string }[] 
   })),
 ];
 
-async function shareEvent(event: ExploreEvent) {
-  const url = Linking.createURL(`e/${event.slug}`);
-  await shareText(
-    `${event.title} — ${formatEventDate(event.date)} in ${event.city}.\nOpen in Hausi: ${url}`,
-    url
-  );
-}
-
 function ExploreCard({ event }: { event: ExploreEvent }) {
   const router = useRouter();
   return (
@@ -57,7 +47,6 @@ function ExploreCard({ event }: { event: ExploreEvent }) {
       <View style={styles.cardBody}>
         {event.friendGoing ? (
           <Text style={styles.friendStrip} numberOfLines={1}>
-            {event.friendGoing.avatarEmoji}{' '}
             <Text style={styles.friendName}>{event.friendGoing.name}</Text> is interested
           </Text>
         ) : null}
@@ -65,19 +54,8 @@ function ExploreCard({ event }: { event: ExploreEvent }) {
           {event.title}
         </Text>
         <Text style={styles.cardMeta} numberOfLines={1}>
-          {formatEventDate(event.date)} · {event.city}
+          {formatEventDate(event.date)}
         </Text>
-        {event.description ? (
-          <Text style={styles.cardDescription} numberOfLines={2}>
-            {event.description}
-          </Text>
-        ) : null}
-        <View style={styles.cardFooter}>
-          <Text style={styles.interested}>⭐ {event.interested} Interested</Text>
-          <Pressable onPress={() => shareEvent(event)} hitSlop={10}>
-            <Ionicons name="share-outline" size={18} color={colors.muted} />
-          </Pressable>
-        </View>
       </View>
     </Pressable>
   );
@@ -163,9 +141,25 @@ function ExploreScreen() {
       try {
         let target = city;
         if (target === null) {
-          // First load: default to the user's own city from the home feed.
-          const feed = await api.home().catch(() => null);
-          target = feed?.city ?? '';
+          // First load: default to where the user actually is. We ask for
+          // location here (once — city is only null on the very first open), so
+          // Explore opens on the user's real city instead of a saved default.
+          // If they deny or it fails, fall back to their saved city below.
+          let located: string | null = null;
+          try {
+            const loc = await locateCity();
+            located = loc.city;
+            myLocationRef.current = loc;
+            setMyLocation(loc);
+          } catch {
+            // Denied / GPS failed — fall back to the saved city below.
+          }
+          if (located) {
+            target = located;
+          } else {
+            const feed = await api.home().catch(() => null);
+            target = feed?.city ?? '';
+          }
         }
         const res = await api.explore(target || undefined, category);
         if (!isActive()) return;
@@ -357,21 +351,6 @@ function ExploreScreen() {
               })}
             </ScrollView>
 
-            <CoverGradient theme="midnight" style={styles.hero} emojiOpacity={0.2}>
-              <Text style={styles.heroKicker}>Get out there</Text>
-              <Text style={styles.heroTitle}>
-                The streets are calling
-              </Text>
-              <Text style={styles.heroSubtitle}>
-                {city ? `See what's happening in ${city}` : "See what's happening everywhere"}
-              </Text>
-            </CoverGradient>
-
-            <Text style={styles.sectionKicker}>New faces</Text>
-            <Text style={styles.sectionTitle}>
-              Meet new people
-            </Text>
-
             {error ? (
               <View style={styles.inlineState}>
                 <Text style={styles.errorEmoji}>🫠</Text>
@@ -386,7 +365,7 @@ function ExploreScreen() {
               <View style={styles.inlineState}>
                 <Text style={styles.errorEmoji}>🫥</Text>
                 <Text style={styles.emptyText}>
-                  Nothing here yet — be the first to throw something public in{' '}
+                  Nothing here yet - be the first to throw something public in{' '}
                   {city || 'your city'}
                 </Text>
               </View>
@@ -453,7 +432,7 @@ function ExploreScreen() {
                       </View>
                     ) : suggestions.length === 0 && query.length >= 2 ? (
                       <Text style={styles.citySearchEmpty}>
-                        No city by that name — check the spelling
+                        No city by that name - check the spelling
                       </Text>
                     ) : null}
                   </>
@@ -716,50 +695,8 @@ const styles = StyleSheet.create({
     color: colors.text,
   },
   chipLabelActive: {
-    // Sits on the black active pill — white is intentional here.
-    color: colors.onAccent,
-  },
-  hero: {
-    minHeight: 200,
-    justifyContent: 'flex-end',
-    padding: spacing.lg,
-    gap: spacing.xs,
-    marginTop: spacing.sm,
-    marginHorizontal: spacing.md,
-    borderRadius: radius.lg,
-    borderWidth: 1,
-    borderColor: colors.cardBorder,
-    overflow: 'hidden',
-    ...shadow.card,
-  },
-  // White text below sits ON the dark "midnight" photo hero — intentional.
-  heroKicker: {
-    ...kicker('#fff'),
-    opacity: 0.9,
-  },
-  heroTitle: {
-    ...display(38),
-    color: '#fff',
-    textShadowColor: 'rgba(0,0,0,0.4)',
-    textShadowOffset: { width: 0, height: 2 },
-    textShadowRadius: 8,
-  },
-  heroSubtitle: {
-    ...uiText(15),
-    color: '#fff',
-    opacity: 0.85,
-  },
-  sectionKicker: {
-    ...kicker(colors.accent),
-    marginHorizontal: spacing.md,
-    marginTop: spacing.xl,
-  },
-  sectionTitle: {
-    ...display(28),
-    color: colors.text,
-    marginHorizontal: spacing.md,
-    marginTop: spacing.xs,
-    marginBottom: spacing.md,
+    // Sits on the white active pill (colors.ink) — needs dark ink to stay legible.
+    color: colors.onInk,
   },
   inlineState: {
     alignItems: 'center',
@@ -795,7 +732,7 @@ const styles = StyleSheet.create({
   },
   posterTitle: {
     color: '#fff',
-    fontSize: 20,
+    fontSize: 24,
     fontWeight: '700',
     letterSpacing: -0.5,
     textAlign: 'center',
@@ -822,20 +759,6 @@ const styles = StyleSheet.create({
   },
   cardMeta: {
     ...uiText(13, '600'),
-    color: colors.accent,
-  },
-  cardDescription: {
-    ...uiText(13),
     color: colors.muted,
-  },
-  cardFooter: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginTop: spacing.xs,
-  },
-  interested: {
-    ...uiText(13, '600'),
-    color: colors.text,
   },
 });

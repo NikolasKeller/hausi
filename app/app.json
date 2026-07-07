@@ -1,20 +1,20 @@
 {
   "expo": {
-    "name": "Hausi",
-    "slug": "hausi",
+    "name": "Now",
+    "slug": "now",
     "version": "0.1.0",
-    "scheme": "hausi",
+    "scheme": "now",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "dark",
     "backgroundColor": "#0E0B16",
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.hausi.app",
+      "bundleIdentifier": "com.now.app",
       "appleTeamId": "XVLYVZN7Q3"
     },
     "android": {
-      "package": "com.hausi.app",
+      "package": "com.now.app",
       "adaptiveIcon": {
         "backgroundColor": "#0E0B16",
         "foregroundImage": "./assets/android-icon-foreground.png",
@@ -37,13 +37,13 @@
       [
         "expo-image-picker",
         {
-          "photosPermission": "Hausi needs access to your photos so you can set an event cover."
+          "photosPermission": "Now needs access to your photos so you can set an event cover."
         }
       ],
       [
         "expo-location",
         {
-          "locationWhenInUsePermission": "Hausi uses your location to find parties happening near you."
+          "locationWhenInUsePermission": "Now uses your location to find parties happening near you."
         }
       ]
     ]

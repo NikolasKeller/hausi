@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import {
   KeyboardAvoidingView,
+  Platform,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -11,8 +12,8 @@ import {
 import { useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { api } from '../../lib/api';
-import { colors, radius, shadow, spacing } from '../../lib/theme';
-import { display, kicker, uiText } from '../../lib/fonts';
+import { colors, radius, spacing } from '../../lib/theme';
+import { display, uiText } from '../../lib/fonts';
 import { AuroraBackground } from '../../components/AuroraBackground';
 import { Button, ErrorText } from '../../components/ui';
 
@@ -76,71 +77,66 @@ export default function PhoneScreen() {
             contentContainerStyle={styles.content}
             keyboardShouldPersistTaps="handled"
           >
-            <Text style={styles.kicker}>Step 1 of 2</Text>
+            <View style={{ flex: 0.5 }} />
             <Text style={styles.title}>
               Join the party
             </Text>
-            <Text style={styles.subtitle}>Just for event updates. No spam.</Text>
 
-            <View style={styles.card}>
-              <View style={styles.phoneRow}>
-                <Pressable style={styles.countryPill} onPress={() => setPickerOpen(!pickerOpen)}>
-                  <Text style={styles.countryText}>
-                    {country.flag} {country.code}
-                  </Text>
-                  <Text style={styles.countryCaret}>▾</Text>
-                </Pressable>
-                <TextInput
-                  value={digits}
-                  onChangeText={(t) => setDigits(t.replace(/[^0-9 ]/g, ''))}
-                  placeholder="Phone number"
-                  placeholderTextColor={colors.muted}
-                  keyboardType="phone-pad"
-                  autoFocus
-                  style={styles.phoneInput}
-                  maxLength={16}
-                />
-              </View>
-
-              {pickerOpen ? (
-                <View style={styles.picker}>
-                  {COUNTRY_CODES.map((c, i) => (
-                    <Pressable
-                      key={c.code}
-                      onPress={() => {
-                        setCountryIndex(i);
-                        setPickerOpen(false);
-                      }}
-                      style={[styles.pickerItem, i === countryIndex && styles.pickerItemActive]}
-                    >
-                      <Text style={styles.pickerText}>
-                        {c.flag} {c.code}
-                      </Text>
-                    </Pressable>
-                  ))}
-                </View>
-              ) : null}
-
-              {inviteRequired ? (
-                <TextInput
-                  value={invite}
-                  onChangeText={setInvite}
-                  placeholder="Invite code"
-                  placeholderTextColor={colors.muted}
-                  autoCapitalize="none"
-                  autoCorrect={false}
-                  style={styles.phoneInput}
-                />
-              ) : null}
+            <View style={styles.phoneRow}>
+              <Pressable
+                style={styles.countryInline}
+                onPress={() => setPickerOpen(!pickerOpen)}
+                hitSlop={10}
+              >
+                <Text style={styles.phonePrefix}>{country.code}</Text>
+                <Text style={styles.phoneCaret}>▾</Text>
+              </Pressable>
+              <TextInput
+                value={digits}
+                onChangeText={(t) => setDigits(t.replace(/[^0-9 ]/g, ''))}
+                placeholder="(123) 456-7890"
+                placeholderTextColor={colors.muted}
+                keyboardType="phone-pad"
+                autoFocus
+                style={[styles.phoneInputInline, styles.noOutline]}
+                maxLength={16}
+              />
             </View>
+
+            {pickerOpen ? (
+              <View style={styles.picker}>
+                {COUNTRY_CODES.map((c, i) => (
+                  <Pressable
+                    key={c.code}
+                    onPress={() => {
+                      setCountryIndex(i);
+                      setPickerOpen(false);
+                    }}
+                    style={[styles.pickerItem, i === countryIndex && styles.pickerItemActive]}
+                  >
+                    <Text style={styles.pickerText}>
+                      {c.flag} {c.code}
+                    </Text>
+                  </Pressable>
+                ))}
+              </View>
+            ) : null}
+
+            {inviteRequired ? (
+              <TextInput
+                value={invite}
+                onChangeText={setInvite}
+                placeholder="Invite code"
+                placeholderTextColor={colors.muted}
+                autoCapitalize="none"
+                autoCorrect={false}
+                style={styles.phoneInput}
+              />
+            ) : null}
 
             <ErrorText message={error} />
             <View style={{ flex: 1 }} />
 
-            <Text style={styles.smallPrint}>
-              By tapping “Send code” you agree to get a one-time text with your login code.
-              Message and data rates may apply.
-            </Text>
             <Button
               title={sending ? 'Sending…' : 'Send code'}
               variant="primary"
@@ -162,66 +158,58 @@ const styles = StyleSheet.create({
   content: {
     flexGrow: 1,
     padding: spacing.lg,
-    paddingTop: spacing.xl * 2,
     gap: spacing.md,
-  },
-  kicker: {
-    ...kicker(colors.muted),
-    textAlign: 'center',
   },
   title: {
     color: colors.text,
     ...display(56),
     textAlign: 'center',
-  },
-  subtitle: {
-    color: colors.muted,
-    ...uiText(16, '400'),
-    textAlign: 'center',
     marginBottom: spacing.lg,
-  },
-  card: {
-    backgroundColor: colors.card,
-    borderWidth: 1,
-    borderColor: colors.cardBorder,
-    borderRadius: radius.lg,
-    padding: spacing.lg,
-    gap: spacing.md,
-    ...shadow.card,
   },
   phoneRow: {
     flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
     gap: spacing.sm,
   },
-  countryPill: {
+  // Borderless inline country prefix (e.g. "+1 ▾") — no box/bubble.
+  countryInline: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
-    backgroundColor: colors.inputBg,
-    borderWidth: 1,
-    borderColor: colors.cardBorder,
-    borderRadius: radius.sm,
-    paddingHorizontal: spacing.md,
-    paddingVertical: 13,
+    paddingVertical: 6,
   },
-  countryText: {
+  phonePrefix: {
     color: colors.text,
-    ...uiText(16, '600'),
+    ...uiText(30),
   },
-  countryCaret: {
+  phoneCaret: {
     color: colors.muted,
-    fontSize: 12,
+    fontSize: 14,
   },
+  // Borderless inline phone field — plain text on the canvas, no box.
+  phoneInputInline: {
+    flex: 1,
+    ...uiText(30),
+    color: colors.text,
+    lineHeight: 38,
+    textAlign: 'center',
+    paddingVertical: 6,
+  },
+  // Kill the browser's blue focus ring on web (react-native-web maps these).
+  noOutline: Platform.OS === 'web' ? ({ outlineStyle: 'none', outlineWidth: 0 } as any) : {},
   phoneInput: {
     flex: 1,
     backgroundColor: colors.inputBg,
     borderWidth: 1,
     borderColor: colors.cardBorder,
     borderRadius: radius.sm,
-    color: colors.text,
     paddingHorizontal: spacing.md,
-    fontSize: 18,
-    paddingVertical: 12,
+    ...uiText(18),
+    color: colors.text,
+    // Keep the box height comfortable; uiText's lineHeight can clip on web.
+    lineHeight: 22,
+    paddingVertical: 14,
   },
   picker: {
     backgroundColor: colors.inputBg,
@@ -240,11 +228,6 @@ const styles = StyleSheet.create({
   pickerText: {
     color: colors.text,
     ...uiText(15, '500'),
-  },
-  smallPrint: {
-    color: colors.muted,
-    ...uiText(12, '400', { lineHeight: 1.4 }),
-    textAlign: 'center',
   },
   buttonDisabled: {
     opacity: 0.5,

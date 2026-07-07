@@ -9,18 +9,20 @@ import {
   type TextInputProps,
   type ViewStyle,
 } from 'react-native';
-import { colors, light, radius, spacing } from '../lib/theme';
+import { LinearGradient } from 'expo-linear-gradient';
+import { brand, colors, radius, spacing } from '../lib/theme';
+import { uiText } from '../lib/fonts';
 
 export type ButtonVariant = 'primary' | 'vibrant' | 'paper' | 'ghost' | 'danger';
 
-// The Partiful button family:
-//   primary  — solid BLACK fill, white text. The signature action; pops on the
-//              light paper canvas and on top of vibrant gradients.
-//   vibrant  — party gradient fill (heliotrope→pink→blue). Hero CTA for dark
-//              screens where a black fill would vanish.
-//   paper    — white fill, black text. Primary CTA on dark surfaces.
-//   ghost    — transparent + a heavy 2px border. `tone` sets ink (black) or
-//              paper (white) for the border + label.
+// The Partiful button family (on the dark canvas):
+//   primary  — solid WHITE pill, dark text. The high-contrast action, like
+//              Partiful's "Sign in" / "See more on the app".
+//   vibrant  — the party gradient fill (heliotrope→pink→blue), white text. The
+//              hero CTA ("Create invite").
+//   paper    — same white fill / dark text (kept for callers).
+//   ghost    — transparent + a hairline border. `tone` sets the ink/label to
+//              white (default) — used on top of vibrant surfaces too.
 //   danger   — transparent + red border/label for destructive actions.
 export function Button({
   title,
@@ -28,7 +30,7 @@ export function Button({
   loading,
   disabled,
   variant = 'primary',
-  tone = 'ink',
+  tone = 'paper',
   style,
 }: {
   title: string;
@@ -48,12 +50,27 @@ export function Button({
       <Text style={[styles.buttonText, { color }]}>{title}</Text>
     );
 
-  // 'vibrant' used to render a party gradient; now the whole app is light/cream
-  // so treat it the same as primary (solid black) — keeps all callers working.
-  const effectiveVariant = variant === 'vibrant' ? 'primary' : variant;
+  // Vibrant: the signature party gradient CTA.
+  if (variant === 'vibrant') {
+    return (
+      <Pressable
+        onPress={onPress}
+        disabled={isDisabled}
+        style={({ pressed }) => [pressed && styles.pressed, isDisabled && styles.disabled, style]}
+      >
+        <LinearGradient
+          colors={[...brand.party]}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={[styles.button, styles.solid]}
+        >
+          {label(colors.onAccent)}
+        </LinearGradient>
+      </Pressable>
+    );
+  }
 
-  if (effectiveVariant === 'primary' || effectiveVariant === 'paper') {
-    const filled = effectiveVariant === 'primary';
+  if (variant === 'primary' || variant === 'paper') {
     return (
       <Pressable
         onPress={onPress}
@@ -61,19 +78,19 @@ export function Button({
         style={({ pressed }) => [
           styles.button,
           styles.solid,
-          { backgroundColor: filled ? colors.ink : light.paper },
+          { backgroundColor: colors.ink },
           pressed && styles.pressed,
           isDisabled && styles.disabled,
           style,
         ]}
       >
-        {label(filled ? '#fff' : colors.ink)}
+        {label(colors.onInk)}
       </Pressable>
     );
   }
 
   // ghost / danger — bordered, transparent.
-  const edge = effectiveVariant === 'danger' ? colors.danger : tone === 'paper' ? '#fff' : colors.ink;
+  const edge = variant === 'danger' ? colors.danger : tone === 'ink' ? colors.onInk : '#fff';
   return (
     <Pressable
       onPress={onPress}
@@ -98,15 +115,12 @@ export function Field({
   style,
   ...props
 }: TextInputProps & { label?: string; tone?: 'dark' | 'light'; style?: TextInputProps['style'] }) {
-  const isLight = tone === 'light';
   return (
     <View style={{ gap: spacing.xs }}>
-      {labelText ? (
-        <Text style={[styles.label, isLight && { color: light.text3 }]}>{labelText}</Text>
-      ) : null}
+      {labelText ? <Text style={styles.label}>{labelText}</Text> : null}
       <TextInput
-        placeholderTextColor={isLight ? light.muted : colors.muted}
-        style={[styles.input, isLight && styles.inputLight, style]}
+        placeholderTextColor={colors.muted}
+        style={[styles.input, style]}
         {...props}
       />
     </View>
@@ -127,57 +141,44 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   solid: {
-    // A gentle, close lift — Partiful buttons sit near-flat on the page,
-    // not puffy. Soft shadow instead of the heavy card elevation.
     shadowColor: '#000',
-    shadowOpacity: 0.08,
-    shadowRadius: 6,
-    shadowOffset: { width: 0, height: 2 },
-    elevation: 2,
+    shadowOpacity: 0.3,
+    shadowRadius: 10,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 3,
   },
   ghost: {
     borderWidth: 1.5,
     backgroundColor: 'transparent',
   },
   pressed: {
-    opacity: 0.8,
+    opacity: 0.85,
     transform: [{ scale: 0.98 }],
   },
   disabled: {
     opacity: 0.45,
   },
   buttonText: {
-    // Partiful labels are medium-weight, not heavy — calmer, less shouty.
-    fontSize: 16,
-    fontWeight: '600',
-    letterSpacing: -0.2,
+    ...uiText(16, '600'),
   },
   label: {
+    ...uiText(13, '600'),
     color: colors.muted,
-    fontSize: 13,
-    fontWeight: '600',
     textTransform: 'uppercase',
     letterSpacing: 1,
   },
   input: {
     backgroundColor: colors.inputBg,
-    borderWidth: 1.5,
+    borderWidth: 1,
     borderColor: colors.cardBorder,
     borderRadius: radius.sm,
     color: colors.text,
     paddingHorizontal: spacing.md,
     paddingVertical: 13,
-    fontSize: 16,
-  },
-  inputLight: {
-    backgroundColor: light.paper,
-    borderWidth: 2,
-    borderColor: light.ink,
-    color: light.text,
+    ...uiText(16, '400'),
   },
   error: {
+    ...uiText(14, '700'),
     color: colors.danger,
-    fontSize: 14,
-    fontWeight: '700',
   },
 });

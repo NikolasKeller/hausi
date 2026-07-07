@@ -4,6 +4,8 @@ dist/
 web-build/
 *.tsbuildinfo
 .DS_Store
+# local-only: relaxes Cursor's agent command sandbox for this workspace
+.cursor/sandbox.json
 .env
 .env.*
 *.db

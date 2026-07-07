@@ -4,8 +4,8 @@ import { storage } from './storage';
 import type { AuthResponse } from '../shared/types';
 import { api, setAuthToken, setOnUnauthorized } from './api';
 
-const TOKEN_KEY = 'hausi.token';
-const USER_KEY = 'hausi.user';
+const TOKEN_KEY = 'now.token';
+const USER_KEY = 'now.user';
 
 type SessionUser = AuthResponse['user'];
 

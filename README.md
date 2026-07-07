@@ -1,4 +1,4 @@
-# Hausi 🏠🎉
+# Now 🏠🎉
 
 A Partiful-style party app: create events, invite friends with a link, collect RSVPs, and chat on the Party Wall. One codebase, native on iOS **and** Android.
 
@@ -27,7 +27,7 @@ run against any non-SQLite database.)
 ### Event ledger (Supabase)
 
 Every event lifecycle action — created / updated / canceled / deleted — is
-appended to the `EventLedger` table in the Hausi Supabase project (what kind
+appended to the `EventLedger` table in the Now Supabase project (what kind
 of event, public or private, by whom, when). The server writes it through
 PostgREST using `SUPABASE_URL` + `SUPABASE_SERVICE_ROLE_KEY` from
 `server/.env` (gitignored; see `.env.example`). Writes are fire-and-forget so
@@ -51,14 +51,14 @@ EXPO_PUBLIC_API_URL=http://192.168.x.x:3001 npx expo start
 
 | Email | Password |
 | --- | --- |
-| `demo@hausi.app` | `hausi123` |
-| `mia@hausi.app` / `leo@hausi.app` / `zoe@hausi.app` | `hausi123` |
+| `demo@now.app` | `now123` |
+| `mia@now.app` / `leo@now.app` / `zoe@now.app` | `now123` |
 
 ## Features
 
 - **Auth** – signup/login with email + password (JWT in `expo-secure-store`), emoji avatars
 - **Events** – create, edit, delete; six gradient/emoji cover themes, four title fonts (Classic/Literary/Fancy/Eclectic) and animated effects (confetti/sparkles/balloons) with live preview; date/time picker; optional guest cap
-- **Invite links** – native share sheet; the invite deep link opens the event directly, signed-out guests are routed through signup first. In Expo Go the Share button emits a working `exp://<host>:8081/--/e/<slug>` link; the `hausi://e/<slug>` scheme takes effect in a development/standalone build (`npx expo run:ios`)
+- **Invite links** – native share sheet; the invite deep link opens the event directly, signed-out guests are routed through signup first. In Expo Go the Share button emits a working `exp://<host>:8081/--/e/<slug>` link; the `now://e/<slug>` scheme takes effect in a development/standalone build (`npx expo run:ios`)
 - **RSVPs** – Going / Maybe / Can't with plus-ones; per-event plus-one limit; hosts can open/close RSVPs
 - **Waitlist** – full events queue GOING requests; freed spots auto-promote FIFO with a notification
 - **Guest list** – emoji avatars grouped by status with live counters (going/maybe/waitlist); hosts can remove guests
@@ -70,7 +70,7 @@ EXPO_PUBLIC_API_URL=http://192.168.x.x:3001 npx expo start
 
 ## Try the main flow
 
-1. Start server + app, log in as `demo@hausi.app`.
+1. Start server + app, log in as `demo@now.app`.
 2. Create an event, pick a cover theme, save.
 3. Tap **Share link** and open the shared link as another user to RSVP and comment. To simulate an invite in Expo Go on the iOS simulator:
 
@@ -125,7 +125,7 @@ screen, installable via "Add to Home Screen") alongside the API under `/api`.
    without it, data resets on every deploy).
 3. Set the **`JWT_SECRET`** variable (e.g. `openssl rand -hex 32`); the server
    refuses to boot in production without it. `DATABASE_URL` defaults to
-   `file:/data/hausi.db` — override only if you mount the volume elsewhere.
+   `file:/data/now.db` — override only if you mount the volume elsewhere.
 4. *(Recommended for a public link)* set **`INVITE_CODE`** to a shared passcode.
    Because there is no SMS provider, the login code is shown on screen, so
    without a gate anyone with the URL could sign in as any phone number. With
@@ -144,7 +144,7 @@ full-screen app. Android/Chrome offers "Install app" automatically.
 
 ## Native device builds (EAS)
 
-The repo also ships `app/eas.json` and bundle identifiers (`com.hausi.app`) for
+The repo also ships `app/eas.json` and bundle identifiers (`com.now.app`) for
 real native builds:
 
 1. **Point the app at your server** — build with
@@ -159,7 +159,7 @@ real native builds:
    eas submit --platform ios                       # TestFlight
    ```
 
-   The `hausi://e/<slug>` invite deep link becomes fully functional in these builds.
+   The `now://e/<slug>` invite deep link becomes fully functional in these builds.
 
 ## Out of scope (by design)
 

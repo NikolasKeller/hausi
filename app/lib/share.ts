@@ -7,19 +7,32 @@ import { notify } from './dialogs';
 // (react-native-web's Share.share rejects on browsers without navigator.share,
 // i.e. most desktops).
 export async function shareText(message: string, url?: string) {
-  try {
-    if (Platform.OS === 'web') {
-      if (navigator.share) {
-        await navigator.share(url ? { text: message, url } : { text: message });
-      } else {
-        await navigator.clipboard.writeText(url ?? message);
-        notify('Copied to clipboard', url ?? message);
+  if (Platform.OS === 'web') {
+    const nav = (globalThis as any).navigator;
+    // Try the native share sheet first (mobile browsers / some desktops).
+    if (nav?.share) {
+      try {
+        await nav.share(url ? { text: message, url } : { text: message });
+        return;
+      } catch (e: any) {
+        // User dismissed the sheet — done. Anything else (unsupported in this
+        // browser, insecure context, embedded webview) → fall back to copy.
+        if (e?.name === 'AbortError') return;
       }
-    } else {
-      await Share.share({ message });
     }
+    // Fallback: copy the link so pressing the button always does *something*.
+    try {
+      await nav?.clipboard?.writeText(url ?? message);
+      notify('Link copied', url ?? message);
+    } catch {
+      notify('Copy this link', url ?? message);
+    }
+    return;
+  }
+  try {
+    await Share.share({ message });
   } catch {
-    // Share sheet dismissed or clipboard blocked — nothing to report.
+    // Share sheet dismissed — nothing to report.
   }
 }
 

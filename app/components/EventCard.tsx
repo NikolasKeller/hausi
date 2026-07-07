@@ -50,7 +50,7 @@ export function EventCard({ event }: { event: EventSummary }) {
             {formatEventDate(event.date)} · {formatEventTime(event.date)}
           </Text>
           <View style={styles.hostRow}>
-            <Avatar emoji={event.host.avatarEmoji} image={event.host.avatarImage} size={26} />
+            <Avatar name={event.host.name} image={event.host.avatarImage} size={26} />
             <Text style={styles.hostName} numberOfLines={1}>
               {event.isHost ? 'You are hosting' : `Hosted by ${event.host.name}`}
             </Text>
@@ -114,7 +114,7 @@ const styles = StyleSheet.create({
   },
   date: {
     ...uiText(14, '600'),
-    color: colors.accent,
+    color: colors.muted,
   },
   hostRow: {
     flexDirection: 'row',

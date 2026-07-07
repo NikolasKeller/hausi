@@ -123,7 +123,7 @@ export interface PhoneVerifyResponse extends AuthResponse {
   isNew: boolean;
 }
 
-// A named +1 an attendee brings. Linked to a Hausi user (picked from mutuals)
+// A named +1 an attendee brings. Linked to a Now user (picked from mutuals)
 // or a standalone name+phone entry. avatarEmoji falls back to a ticket when
 // there's no linked account.
 export interface PlusOneGuest {
@@ -186,9 +186,10 @@ export interface ExploreEvent extends EventSummary {
   description: string;
   interested: number;
   friendGoing: PublicUser | null;
-  // A handful of attendee avatar emoji (mutuals first) for the interested-face
-  // cluster on discovery cards. Up to 5; may be empty.
-  interestedAvatars: string[];
+  // A handful of attendee faces (mutuals first) for the interested-face cluster
+  // on discovery cards. Up to 5; may be empty. Each carries a name (for the
+  // initials fallback) and an optional uploaded photo.
+  interestedAvatars: { name: string; avatarImage: string }[];
 }
 
 export interface EventDetail extends EventSummary {

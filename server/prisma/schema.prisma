@@ -25,6 +25,9 @@ model User {
   // Path to an uploaded profile photo (from POST /api/uploads), '' = emoji only.
   avatarImage        String    @default("")
   city               String    @default("San Francisco")
+  // Curator / venue / promoter accounts (e.g. "YE Munich"). They host events
+  // but are not real people, so they never count as a "mutual" friend.
+  isOrganization     Boolean   @default(false)
   createdAt      DateTime       @default(now())
   events         Event[]        @relation("HostEvents")
   rsvps          Rsvp[]
@@ -146,7 +149,7 @@ model Rsvp {
 }
 
 // A named guest an attendee brings along ("+1"). Attached to the host's Rsvp;
-// counts as one extra head via Rsvp.plusOnes. userId links it to a Hausi user
+// counts as one extra head via Rsvp.plusOnes. userId links it to a Now user
 // when the +1 was picked from mutuals; a manually-added +1 stores name + phone
 // only (no account, no login). We cap it at one per Rsvp in the route layer.
 model PlusOne {

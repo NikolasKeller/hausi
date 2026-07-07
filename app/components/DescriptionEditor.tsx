@@ -11,8 +11,8 @@ import {
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { DESCRIPTION_SCALE, LIMITS } from '../shared/types';
-import { colors, light, radius, shadow, spacing } from '../lib/theme';
-import { kicker, uiText } from '../lib/fonts';
+import { colors, radius, shadow, spacing } from '../lib/theme';
+import { DISPLAY_FONT, kicker, uiText } from '../lib/fonts';
 import { Glass } from './glass';
 import { BULLET } from './RichDescription';
 
@@ -139,7 +139,7 @@ export function DescriptionEditor({
                 setSelection(e.nativeEvent.selection);
                 setForced(null);
               }}
-              placeholder={"Write the details — who, what, and why it'll be great.\n\nTip: tap “Bullets” to make a list."}
+              placeholder={"Write the details - who, what, and why it'll be great.\n\nTip: tap “Bullets” to make a list."}
               placeholderTextColor={colors.muted}
               maxLength={LIMITS.description}
               textAlignVertical="top"
@@ -149,11 +149,11 @@ export function DescriptionEditor({
 
           <View style={[styles.toolbarWrap, { paddingBottom: insets.bottom + spacing.sm }]}>
             <Glass
-              tint="light"
+              tint="dark"
               intensity={40}
               radius={radius.pill}
               border
-              fill="rgba(255,255,255,0.6)"
+              fill="rgba(24,24,27,0.94)"
               style={styles.toolbar}
             >
               <Pressable
@@ -163,7 +163,7 @@ export function DescriptionEditor({
                 <Ionicons
                   name="list"
                   size={20}
-                  color={bulletsActive ? '#fff' : colors.text}
+                  color={bulletsActive ? colors.onInk : colors.text}
                 />
                 <Text style={[styles.toolLabel, bulletsActive && styles.toolLabelActive]}>
                   Bullets
@@ -177,7 +177,7 @@ export function DescriptionEditor({
                   hitSlop={8}
                   style={[styles.sizeBtn, !canShrink && styles.sizeBtnOff]}
                 >
-                  <Text style={styles.sizeSmall}>A</Text>
+                  <Text style={styles.sizeSymbol}>−</Text>
                 </Pressable>
                 <Text style={styles.sizePct}>{scale}%</Text>
                 <Pressable
@@ -186,7 +186,7 @@ export function DescriptionEditor({
                   hitSlop={8}
                   style={[styles.sizeBtn, !canGrow && styles.sizeBtnOff]}
                 >
-                  <Text style={styles.sizeBig}>A</Text>
+                  <Text style={styles.sizeSymbol}>+</Text>
                 </Pressable>
               </View>
             </Glass>
@@ -235,7 +235,7 @@ const styles = StyleSheet.create({
   },
   doneText: {
     ...uiText(15, '600'),
-    color: '#fff',
+    color: colors.onInk,
   },
   body: { flex: 1 },
   sheet: {
@@ -252,6 +252,7 @@ const styles = StyleSheet.create({
   input: {
     flex: 1,
     color: colors.text,
+    fontFamily: DISPLAY_FONT,
   },
   toolbarWrap: {
     paddingHorizontal: spacing.lg,
@@ -280,7 +281,7 @@ const styles = StyleSheet.create({
     color: colors.text,
   },
   toolLabelActive: {
-    color: '#fff',
+    color: colors.onInk,
   },
   sizeGroup: {
     flexDirection: 'row',
@@ -301,16 +302,13 @@ const styles = StyleSheet.create({
   sizeBtnOff: {
     opacity: 0.4,
   },
-  sizeSmall: {
-    ...uiText(13, '600'),
+  sizeSymbol: {
+    ...uiText(22, '600'),
     color: colors.text,
-  },
-  sizeBig: {
-    ...uiText(20, '600'),
-    color: colors.text,
+    lineHeight: 24,
   },
   sizePct: {
-    ...kicker(light.text3),
+    ...kicker(colors.muted),
     minWidth: 40,
     textAlign: 'center',
   },

@@ -30,7 +30,7 @@ COPY --from=web /build/app/dist ./public
 
 ENV NODE_ENV=production
 # Mount a persistent volume at /data or the database resets on each deploy.
-ENV DATABASE_URL="file:/data/hausi.db"
+ENV DATABASE_URL="file:/data/now.db"
 
 # `db push` is idempotent: it creates/updates the sqlite schema on boot.
 # --accept-data-loss lets db push apply destructive schema changes (e.g. a

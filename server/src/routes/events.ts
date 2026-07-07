@@ -74,7 +74,7 @@ const rsvpSchema = z.object({
   status: z.enum(RSVP_CHOICES),
 });
 
-// A +1 is either an existing Hausi user (picked from mutuals) or a manual
+// A +1 is either an existing Now user (picked from mutuals) or a manual
 // name + phone entry. Extra keys are ignored, so { userId } wins if both appear.
 const plusOneSchema = z.union([
   z.object({ userId: z.string().min(1) }),
@@ -153,7 +153,7 @@ async function promoteWaitlist(tx: Prisma.TransactionClient, eventId: string) {
       data: {
         eventId,
         userId: entry.userId,
-        text: 'is off the waitlist — going! 🎉',
+        text: 'is off the waitlist - going! 🎉',
         type: 'system',
       },
     });
@@ -209,8 +209,8 @@ eventRoutes.post('/', async (c) => {
       plusOneLimit: data.plusOneLimit ?? 1,
       rsvpsOpen: data.rsvpsOpen ?? true,
       hostId: userId,
-      // The host is going to their own party.
-      rsvps: { create: { userId, status: 'GOING' } },
+      // The host organizes the event; they are not a "going" guest, so no
+      // self-RSVP is created. Their event still shows in their feed via hostId.
     },
     include: eventInclude,
   });
@@ -522,7 +522,7 @@ eventRoutes.delete('/:id/rsvp/:userId', async (c) => {
 });
 
 // Bring a +1 to an event you're going to. Exactly one is allowed per guest —
-// either a Hausi user picked from your mutuals, or a manual name + phone. The
+// either a Now user picked from your mutuals, or a manual name + phone. The
 // +1 counts as one extra head toward capacity via Rsvp.plusOnes.
 eventRoutes.post('/:id/plus-one', async (c) => {
   const userId = c.get('userId');
@@ -563,10 +563,10 @@ eventRoutes.post('/:id/plus-one', async (c) => {
       let linkedUserId: string | null;
       if ('userId' in input) {
         if (input.userId === userId) {
-          throw new HttpError("You're already going — pick someone else", 400);
+          throw new HttpError("You're already going - pick someone else", 400);
         }
         const guest = await tx.user.findUnique({ where: { id: input.userId } });
-        if (!guest) throw new HttpError('That person is no longer on Hausi', 404);
+        if (!guest) throw new HttpError('That person is no longer on Now', 404);
         // Also block a duplicate account of yourself (same number, different id):
         // picking it links a +1 to your own person and collapses to a self-+1
         // once the two accounts are deduped.
@@ -575,7 +575,7 @@ eventRoutes.post('/:id/plus-one', async (c) => {
           mine.user.phone &&
           normalizePhone(guest.phone) === normalizePhone(mine.user.phone)
         ) {
-          throw new HttpError("You're already going — pick someone else", 400);
+          throw new HttpError("You're already going - pick someone else", 400);
         }
         // Linked +1s must be someone you've actually partied with. The client
         // only offers mutuals; this closes the direct-API bypass (attaching a
@@ -615,7 +615,7 @@ eventRoutes.post('/:id/plus-one', async (c) => {
         // wouldn't match and the spot would slip through as "olivia brings Olivia."
         const myPhone = mine.user.phone ? normalizePhone(mine.user.phone) : null;
         if ((myPhone && myPhone === phone) || (holder && holder.id === userId)) {
-          throw new HttpError("You're already going — you can't bring yourself", 400);
+          throw new HttpError("You're already going - you can't bring yourself", 400);
         }
         if (holder && event.rsvps.some((r) => r.userId === holder.id && r.status !== 'CANT')) {
           throw new HttpError(
@@ -706,7 +706,7 @@ eventRoutes.post('/:id/cohosts', async (c) => {
   if (!parsed.success) return c.json({ error: 'Enter a valid email' }, 400);
 
   const user = await db.user.findUnique({ where: { email: parsed.data.email } });
-  if (!user) return c.json({ error: 'No Hausi account with that email' }, 404);
+  if (!user) return c.json({ error: 'No Now account with that email' }, 404);
   if (user.id === event.hostId) return c.json({ error: "You're already the host" }, 409);
   if (event.cohosts.some((ch) => ch.userId === user.id)) {
     return c.json({ error: `${user.name} is already a co-host` }, 409);

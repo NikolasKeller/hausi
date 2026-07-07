@@ -135,7 +135,7 @@ export default function EditEventScreen() {
             ) : (
               event.cohosts.map((ch) => (
                 <View key={ch.id} style={styles.cohostRow}>
-                  <Avatar emoji={ch.avatarEmoji} image={ch.avatarImage} size={30} />
+                  <Avatar name={ch.name} image={ch.avatarImage} size={30} />
                   <Text style={styles.cohostName}>{ch.name}</Text>
                   <Pressable
                     onPress={() => removeCohost(ch.id, ch.name)}
@@ -290,7 +290,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   cohostAddText: {
-    color: '#fff',
     ...uiText(15, '600'),
+    color: colors.onInk,
   },
 });

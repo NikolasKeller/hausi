@@ -69,7 +69,7 @@ export default function BlastScreen() {
         'Blast sent 📣',
         res.sent > 0
           ? `${res.sent} guest${res.sent === 1 ? '' : 's'} just got a text 🎉`
-          : 'Posted to your event page — everyone will see it.'
+          : 'Posted to your event page - everyone will see it.'
       );
       close();
     } catch (e) {
@@ -99,7 +99,7 @@ export default function BlastScreen() {
             <Text style={styles.title}>Send an update</Text>
             {event ? (
               <Text style={styles.sub}>
-                Everyone on “{event.title}” gets this as a text — no need to open Messages. It also
+                Everyone on “{event.title}” gets this as a text - no need to open Messages. It also
                 lands on the event page.
               </Text>
             ) : null}
@@ -117,7 +117,7 @@ export default function BlastScreen() {
                 <TextInput
                   value={text}
                   onChangeText={setText}
-                  placeholder="Running 15 min late — grab a drink and settle in! 🍹"
+                  placeholder="Running 15 min late - grab a drink and settle in! 🍹"
                   placeholderTextColor={colors.muted}
                   multiline
                   maxLength={LIMITS.blast}
