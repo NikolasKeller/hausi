@@ -1,4 +1,4 @@
-// Now design system — a stark near-black (#111) canvas, white League Gothic
+// iykyk design system — a stark near-black (#111) canvas, white League Gothic
 // type, translucent white surfaces/hairlines, and a single warm orange as the
 // signature accent (glowing white-on-black look). Dark, bold, nightlife-flavored.
 

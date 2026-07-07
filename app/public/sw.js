@@ -8,7 +8,7 @@
 // bundle. This is required because Expo's `entry-<hash>.js` filename is NOT
 // content-derived — the same filename can ship different code across deploys,
 // so a static cache name would pin installed PWAs to stale JS forever.
-const CACHE = 'now-__BUILD_ID__';
+const CACHE = 'iykyk-__BUILD_ID__';
 
 self.addEventListener('install', (event) => {
   event.waitUntil(

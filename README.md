@@ -1,4 +1,4 @@
-# Now 🏠🎉
+# iykyk 🏠🎉
 
 A Partiful-style party app: create events, invite friends with a link, collect RSVPs, and chat on the Party Wall. One codebase, native on iOS **and** Android.
 
@@ -27,7 +27,7 @@ run against any non-SQLite database.)
 ### Event ledger (Supabase)
 
 Every event lifecycle action — created / updated / canceled / deleted — is
-appended to the `EventLedger` table in the Now Supabase project (what kind
+appended to the `EventLedger` table in the iykyk Supabase project (what kind
 of event, public or private, by whom, when). The server writes it through
 PostgREST using `SUPABASE_URL` + `SUPABASE_SERVICE_ROLE_KEY` from
 `server/.env` (gitignored; see `.env.example`). Writes are fire-and-forget so
@@ -51,14 +51,14 @@ EXPO_PUBLIC_API_URL=http://192.168.x.x:3001 npx expo start
 
 | Email | Password |
 | --- | --- |
-| `demo@now.app` | `now123` |
-| `mia@now.app` / `leo@now.app` / `zoe@now.app` | `now123` |
+| `demo@iykyk.app` | `iykyk123` |
+| `mia@iykyk.app` / `leo@iykyk.app` / `zoe@iykyk.app` | `iykyk123` |
 
 ## Features
 
 - **Auth** – signup/login with email + password (JWT in `expo-secure-store`), emoji avatars
 - **Events** – create, edit, delete; six gradient/emoji cover themes, four title fonts (Classic/Literary/Fancy/Eclectic) and animated effects (confetti/sparkles/balloons) with live preview; date/time picker; optional guest cap
-- **Invite links** – native share sheet; the invite deep link opens the event directly, signed-out guests are routed through signup first. In Expo Go the Share button emits a working `exp://<host>:8081/--/e/<slug>` link; the `now://e/<slug>` scheme takes effect in a development/standalone build (`npx expo run:ios`)
+- **Invite links** – native share sheet; the invite deep link opens the event directly, signed-out guests are routed through signup first. In Expo Go the Share button emits a working `exp://<host>:8081/--/e/<slug>` link; the `iykyk://e/<slug>` scheme takes effect in a development/standalone build (`npx expo run:ios`)
 - **RSVPs** – Going / Maybe / Can't with plus-ones; per-event plus-one limit; hosts can open/close RSVPs
 - **Waitlist** – full events queue GOING requests; freed spots auto-promote FIFO with a notification
 - **Guest list** – emoji avatars grouped by status with live counters (going/maybe/waitlist); hosts can remove guests
@@ -70,7 +70,7 @@ EXPO_PUBLIC_API_URL=http://192.168.x.x:3001 npx expo start
 
 ## Try the main flow
 
-1. Start server + app, log in as `demo@now.app`.
+1. Start server + app, log in as `demo@iykyk.app`.
 2. Create an event, pick a cover theme, save.
 3. Tap **Share link** and open the shared link as another user to RSVP and comment. To simulate an invite in Expo Go on the iOS simulator:
 
@@ -144,7 +144,7 @@ full-screen app. Android/Chrome offers "Install app" automatically.
 
 ## Native device builds (EAS)
 
-The repo also ships `app/eas.json` and bundle identifiers (`com.now.app`) for
+The repo also ships `app/eas.json` and bundle identifiers (`com.iykyk.app`) for
 real native builds:
 
 1. **Point the app at your server** — build with
@@ -159,7 +159,7 @@ real native builds:
    eas submit --platform ios                       # TestFlight
    ```
 
-   The `now://e/<slug>` invite deep link becomes fully functional in these builds.
+   The `iykyk://e/<slug>` invite deep link becomes fully functional in these builds.
 
 ## Out of scope (by design)
 

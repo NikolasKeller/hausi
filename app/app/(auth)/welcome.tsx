@@ -44,13 +44,14 @@ export default function WelcomeScreen() {
             },
           ]}
         >
-          <Text style={styles.wordmark}>Now</Text>
+          <Text style={styles.wordmark}>iykyk</Text>
           <Text style={styles.tagline}>Parties worth showing up for</Text>
         </Animated.View>
 
         <View style={{ flex: 1 }} />
 
         <Button title="Get started" variant="primary" onPress={() => router.push('/phone')} />
+        <View style={{ height: spacing.xl }} />
       </SafeAreaView>
     </AuroraBackground>
   );
@@ -68,11 +69,8 @@ const styles = StyleSheet.create({
   },
   wordmark: {
     color: colors.text,
-    ...display(96),
-    // Warm orange bloom behind the white wordmark — the glowing look.
-    textShadowColor: 'rgba(255,106,43,0.65)',
-    textShadowOffset: { width: 0, height: 0 },
-    textShadowRadius: 28,
+    ...display(56),
+    textAlign: 'center',
   },
   tagline: {
     color: colors.muted,

@@ -74,7 +74,7 @@ const rsvpSchema = z.object({
   status: z.enum(RSVP_CHOICES),
 });
 
-// A +1 is either an existing Now user (picked from mutuals) or a manual
+// A +1 is either an existing iykyk user (picked from mutuals) or a manual
 // name + phone entry. Extra keys are ignored, so { userId } wins if both appear.
 const plusOneSchema = z.union([
   z.object({ userId: z.string().min(1) }),
@@ -522,7 +522,7 @@ eventRoutes.delete('/:id/rsvp/:userId', async (c) => {
 });
 
 // Bring a +1 to an event you're going to. Exactly one is allowed per guest —
-// either a Now user picked from your mutuals, or a manual name + phone. The
+// either an iykyk user picked from your mutuals, or a manual name + phone. The
 // +1 counts as one extra head toward capacity via Rsvp.plusOnes.
 eventRoutes.post('/:id/plus-one', async (c) => {
   const userId = c.get('userId');
@@ -566,7 +566,7 @@ eventRoutes.post('/:id/plus-one', async (c) => {
           throw new HttpError("You're already going - pick someone else", 400);
         }
         const guest = await tx.user.findUnique({ where: { id: input.userId } });
-        if (!guest) throw new HttpError('That person is no longer on Now', 404);
+        if (!guest) throw new HttpError('That person is no longer on iykyk', 404);
         // Also block a duplicate account of yourself (same number, different id):
         // picking it links a +1 to your own person and collapses to a self-+1
         // once the two accounts are deduped.
@@ -706,7 +706,7 @@ eventRoutes.post('/:id/cohosts', async (c) => {
   if (!parsed.success) return c.json({ error: 'Enter a valid email' }, 400);
 
   const user = await db.user.findUnique({ where: { email: parsed.data.email } });
-  if (!user) return c.json({ error: 'No Now account with that email' }, 404);
+  if (!user) return c.json({ error: 'No iykyk account with that email' }, 404);
   if (user.id === event.hostId) return c.json({ error: "You're already the host" }, 409);
   if (event.cohosts.some((ch) => ch.userId === user.id)) {
     return c.json({ error: `${user.name} is already a co-host` }, 409);

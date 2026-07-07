@@ -12,26 +12,36 @@ import {
 } from '../lib/auth.js';
 import { normalizePhone } from '../lib/phone.js';
 import {
+  channelEnabled,
   checkVerification,
-  sendSms,
-  smsEnabled,
+  sendMessage,
   startVerification,
   verifyEnabled,
 } from '../lib/sms.js';
-import type { AuthResponse } from '../../../app/shared/types.js';
+import type { AuthResponse, DeliveryChannel } from '../../../app/shared/types.js';
 
 const CODE_TTL_MS = 10 * 60 * 1000;
 
-const phoneSchema = z.object({
-  // E.164-ish: +, 7-15 digits.
-  phone: z
-    .string()
-    .trim()
-    .regex(/^\+[0-9]{7,15}$/, 'Enter a phone number like +14155551234'),
+// E.164-ish: +, 7-15 digits.
+const phoneField = z
+  .string()
+  .trim()
+  .regex(/^\+[0-9]{7,15}$/, 'Enter a phone number like +14155551234');
+const emailField = z.string().trim().toLowerCase().email();
+
+// The contact is a phone number for the sms/whatsapp channels and an email
+// address for the email channel; the handler validates the right one per channel.
+const requestSchema = z.object({
+  phone: phoneField.optional(),
+  email: emailField.optional(),
+  channel: z.enum(['sms', 'whatsapp', 'email']).optional(),
 });
 
-const verifySchema = phoneSchema.extend({
+const verifySchema = z.object({
+  phone: phoneField.optional(),
+  email: emailField.optional(),
   code: z.string().trim().regex(/^[0-9]{6}$/),
+  channel: z.enum(['sms', 'whatsapp', 'email']).optional(),
 });
 
 const loginSchema = z.object({
@@ -124,17 +134,53 @@ authRoutes.post('/phone/request', async (c) => {
   if (INVITE_CODE && (body as { invite?: string } | null)?.invite?.trim() !== INVITE_CODE) {
     return c.json({ error: 'Wrong invite code - ask the host for it' }, 403);
   }
-  const parsed = phoneSchema.safeParse(body);
-  if (!parsed.success) return c.json({ error: 'Enter a valid phone number' }, 400);
+  const parsed = requestSchema.safeParse(body);
+  if (!parsed.success) return c.json({ error: 'Enter a valid phone number or email' }, 400);
+  const channel: DeliveryChannel = parsed.data.channel ?? 'sms';
+
+  // Email goes through Twilio Verify only (its SendGrid integration) and targets
+  // an email address rather than a phone number, so it has its own branch.
+  if (channel === 'email') {
+    const email = parsed.data.email;
+    if (!email) return c.json({ error: 'Enter a valid email' }, 400);
+
+    if (verifyEnabled) {
+      await db.user.upsert({ where: { email }, create: { email }, update: {} });
+      try {
+        await startVerification(email, 'email');
+      } catch (e) {
+        console.error('Verify (email) start failed:', e);
+        const detail = e instanceof Error ? e.message : 'unknown error';
+        return c.json({ error: `Could not send the code - ${detail}` }, 502);
+      }
+      return c.json({ sent: true });
+    }
+
+    // No Verify service configured → email can't actually be sent (the Messages
+    // API doesn't do email). Fall back to the on-screen dev-code preview, storing
+    // the code against the email account so the verify step can check it.
+    const code = String(randomInt(0, 1000000)).padStart(6, '0');
+    const expiresAt = new Date(Date.now() + CODE_TTL_MS);
+    await db.user.upsert({
+      where: { email },
+      create: { email, phoneCode: code, phoneCodeExpiresAt: expiresAt },
+      update: { phoneCode: code, phoneCodeExpiresAt: expiresAt },
+    });
+    return c.json({ sent: true, devCode: code });
+  }
+
+  // Phone channels (sms / whatsapp).
+  if (!parsed.data.phone) return c.json({ error: 'Enter a valid phone number' }, 400);
   // Canonicalize to E.164 so "+49 0176…" and "+49 176…" resolve to one account.
   const phone = normalizePhone(parsed.data.phone);
 
   // Twilio Verify owns the code end-to-end — we only make sure a profile row
-  // exists for this phone and let Twilio send. Nothing is stored on our side.
+  // exists for this phone and let Twilio send (over SMS or WhatsApp). Nothing
+  // is stored on our side.
   if (verifyEnabled) {
     await db.user.upsert({ where: { phone }, create: { phone }, update: {} });
     try {
-      await startVerification(phone);
+      await startVerification(phone, channel);
     } catch (e) {
       console.error('Verify start failed:', e);
       const detail = e instanceof Error ? e.message : 'unknown error';
@@ -143,8 +189,8 @@ authRoutes.post('/phone/request', async (c) => {
     return c.json({ sent: true });
   }
 
-  // Otherwise we generate and store our own code (texted via Messages API, or
-  // returned on screen in dev).
+  // Otherwise we generate and store our own code (sent via the Messages API on
+  // the requested channel, or returned on screen in dev).
   const code = String(randomInt(0, 1000000)).padStart(6, '0');
   const expiresAt = new Date(Date.now() + CODE_TTL_MS);
 
@@ -154,11 +200,11 @@ authRoutes.post('/phone/request', async (c) => {
     update: { phoneCode: code, phoneCodeExpiresAt: expiresAt },
   });
 
-  if (smsEnabled) {
+  if (channelEnabled(channel)) {
     try {
-      await sendSms(phone, `${code} is your Now verification code`);
+      await sendMessage(phone, `${code} is your iykyk verification code`, channel);
     } catch (e) {
-      console.error('SMS send failed:', e);
+      console.error('Code send failed:', e);
       return c.json({ error: 'Could not send the code - check the number and try again' }, 502);
     }
     return c.json({ sent: true });
@@ -208,6 +254,47 @@ authRoutes.post('/phone/verify', async (c) => {
   const parsed = verifySchema.safeParse(await c.req.json().catch(() => null));
   if (!parsed.success) return c.json({ error: 'Enter the 6-digit code' }, 400);
   const { code } = parsed.data;
+  const channel: DeliveryChannel = parsed.data.channel ?? 'sms';
+
+  // Email verification is keyed off the email address (Twilio Verify checks it,
+  // or we compare our stored dev code) — no phone / +1 claiming involved.
+  if (channel === 'email') {
+    const email = parsed.data.email;
+    if (!email) return c.json({ error: 'Enter your email' }, 400);
+
+    if (verifyEnabled) {
+      let approved = false;
+      try {
+        approved = await checkVerification(email, code);
+      } catch (e) {
+        console.error('Verify (email) check failed:', e);
+        const detail = e instanceof Error ? e.message : 'unknown error';
+        return c.json({ error: `Could not verify the code - ${detail}` }, 502);
+      }
+      if (!approved) return c.json({ error: 'Wrong or expired code - try again' }, 401);
+      const user = await db.user.upsert({ where: { email }, create: { email }, update: {} });
+      return sessionJson(c, user, { isNew: user.name.trim() === '' });
+    }
+
+    const emailUser = await db.user.findUnique({ where: { email } });
+    if (
+      !emailUser ||
+      !emailUser.phoneCode ||
+      !emailUser.phoneCodeExpiresAt ||
+      emailUser.phoneCodeExpiresAt < new Date() ||
+      emailUser.phoneCode !== code
+    ) {
+      return c.json({ error: 'Wrong or expired code - try again' }, 401);
+    }
+    const clearedEmailUser = await db.user.update({
+      where: { id: emailUser.id },
+      data: { phoneCode: null, phoneCodeExpiresAt: null },
+    });
+    return sessionJson(c, clearedEmailUser, { isNew: clearedEmailUser.name.trim() === '' });
+  }
+
+  // Phone channels (sms / whatsapp).
+  if (!parsed.data.phone) return c.json({ error: 'Enter your phone number' }, 400);
   // Must match the canonicalization used when the code was requested.
   const phone = normalizePhone(parsed.data.phone);
 

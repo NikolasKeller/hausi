@@ -329,7 +329,7 @@ async function main() {
   await db.event.deleteMany();
   await db.user.deleteMany();
 
-  const passwordHash = await bcrypt.hash('now123', 10);
+  const passwordHash = await bcrypt.hash('iykyk123', 10);
 
   // The official curator account that hosts every featured event.
   const ye = await db.user.create({
@@ -348,7 +348,7 @@ async function main() {
   await db.user.create({
     data: {
       name: 'Demo',
-      email: 'demo@now.app',
+      email: 'demo@iykyk.app',
       phone: '+14155550100',
       passwordHash,
       avatarEmoji: '🙂',
@@ -380,7 +380,7 @@ async function main() {
   }
 
   console.log(`Seeded ${events.length} featured Munich events (all public).`);
-  console.log('Dev login: demo@now.app / now123');
+  console.log('Dev login: demo@iykyk.app / iykyk123');
 }
 
 main()

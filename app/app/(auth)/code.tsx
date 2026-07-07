@@ -12,6 +12,7 @@ import {
 import { useLocalSearchParams } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { api } from '../../lib/api';
+import type { DeliveryChannel } from '../../shared/types';
 import { useAuth } from '../../lib/auth';
 import { colors, radius, shadow, spacing } from '../../lib/theme';
 import { display, uiText } from '../../lib/fonts';
@@ -21,7 +22,18 @@ import { Button, ErrorText } from '../../components/ui';
 const RESEND_SECONDS = 30;
 
 export default function CodeScreen() {
-  const { phone, devCode } = useLocalSearchParams<{ phone: string; devCode?: string }>();
+  const { phone, email, devCode, channel } = useLocalSearchParams<{
+    phone: string;
+    email?: string;
+    devCode?: string;
+    channel?: string;
+  }>();
+  const deliveryChannel: DeliveryChannel =
+    channel === 'whatsapp' ? 'whatsapp' : channel === 'email' ? 'email' : 'sms';
+  const viaEmail = deliveryChannel === 'email';
+  // The contact used to verify: an email for the email channel, else the phone.
+  const contact = viaEmail ? email ?? '' : phone;
+  const channelLabel = viaEmail ? 'Email' : deliveryChannel === 'whatsapp' ? 'WhatsApp' : 'SMS';
   const { verifyPhone } = useAuth();
   const [code, setCode] = useState('');
   const [error, setError] = useState<string | null>(null);
@@ -50,12 +62,12 @@ export default function CodeScreen() {
 
   async function submit(value?: string) {
     const entered = (value ?? code).trim();
-    if (entered.length !== 6 || busy || !phone) return;
+    if (entered.length !== 6 || busy || !contact) return;
     setBusy(true);
     setError(null);
     try {
       // The root guard routes: new users → /setup, returning users → home.
-      await verifyPhone(phone, entered);
+      await verifyPhone(contact, entered, deliveryChannel);
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Verification failed');
       setBusy(false);
@@ -63,9 +75,9 @@ export default function CodeScreen() {
   }
 
   async function resend() {
-    if (resendIn > 0 || !phone) return;
+    if (resendIn > 0 || !contact) return;
     try {
-      const res = await api.requestPhoneCode(phone);
+      const res = await api.requestPhoneCode(contact, { channel: deliveryChannel });
       setCurrentDevCode(res.devCode ?? '');
       setResendIn(RESEND_SECONDS);
       setCode('');
@@ -84,9 +96,9 @@ export default function CodeScreen() {
               <Text style={{ fontSize: 18 }}>💬</Text>
             </View>
             <View style={{ flex: 1 }}>
-              <Text style={styles.bannerFrom}>Now (dev preview)</Text>
+              <Text style={styles.bannerFrom}>iykyk (dev preview)</Text>
               <Text style={styles.bannerText}>
-                {currentDevCode} is your Now verification code
+                {currentDevCode} is your iykyk verification code
               </Text>
             </View>
             <Text style={styles.bannerNow}>now</Text>
@@ -101,9 +113,11 @@ export default function CodeScreen() {
               adjustsFontSizeToFit
               minimumFontScale={0.6}
             >
-              Verify your phone
+              {viaEmail ? 'Verify your email' : 'Verify your phone'}
             </Text>
-            <Text style={styles.subtitle}>We sent {phone} a code via SMS</Text>
+            <Text style={styles.subtitle}>
+              We sent {contact ? `${contact} ` : ''}a code via {channelLabel}
+            </Text>
 
             <TextInput
               value={code}
@@ -137,6 +151,7 @@ export default function CodeScreen() {
               loading={busy}
               style={code.length === 6 ? undefined : styles.buttonDisabled}
             />
+            <View style={{ height: spacing.xl }} />
           </ScrollView>
         </KeyboardAvoidingView>
       </SafeAreaView>

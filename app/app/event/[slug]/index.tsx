@@ -162,7 +162,7 @@ export default function EventScreen() {
   async function share() {
     if (!event) return;
     const url = Linking.createURL(`e/${event.slug}`);
-    const message = `You're invited: ${event.title} - ${formatEventDate(event.date)} at ${formatEventTime(event.date)}.\nOpen in Now: ${url}`;
+    const message = `You're invited: ${event.title} - ${formatEventDate(event.date)} at ${formatEventTime(event.date)}.\nOpen in iykyk: ${url}`;
     await shareText(message, url);
   }
 
@@ -497,7 +497,7 @@ export default function EventScreen() {
                       {myPlusOne.name}
                     </Text>
                     {myPlusOne.userId == null ? (
-                      // Not on Now yet — resurface the invite link to text them.
+                      // Not on iykyk yet — resurface the invite link to text them.
                       <Pressable onPress={sharePlusOneInvite} hitSlop={8}>
                         <Text style={[styles.plusOneShareText, { color: ink.text }]}>Share invite</Text>
                       </Pressable>

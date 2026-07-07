@@ -6,7 +6,7 @@ import { AuroraBackground } from '../../components/AuroraBackground';
 import { uiText } from '../../lib/fonts';
 import { colors } from '../../lib/theme';
 
-// Dev-only: now://dev-login signs in as the Preview account so the app
+// Dev-only: iykyk://dev-login signs in as the Preview account so the app
 // can be toured while the real SMS flow is under construction. In release
 // builds (and against a server with real SMS) this just bounces to welcome.
 export default function DevLoginScreen() {

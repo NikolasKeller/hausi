@@ -112,6 +112,12 @@ export interface AuthResponse {
   user: PublicUser & { email: string | null; phone: string | null };
 }
 
+// How the verification code is delivered. 'sms' is the default; 'whatsapp'
+// needs a WhatsApp-enabled Twilio sender; 'email' goes through Twilio Verify's
+// email channel (SendGrid integration) and targets an email address instead of
+// a phone number.
+export type DeliveryChannel = 'sms' | 'whatsapp' | 'email';
+
 export interface PhoneRequestResponse {
   sent: boolean;
   // Present only while no SMS provider is configured (local dev):
@@ -123,7 +129,7 @@ export interface PhoneVerifyResponse extends AuthResponse {
   isNew: boolean;
 }
 
-// A named +1 an attendee brings. Linked to a Now user (picked from mutuals)
+// A named +1 an attendee brings. Linked to an iykyk user (picked from mutuals)
 // or a standalone name+phone entry. avatarEmoji falls back to a ticket when
 // there's no linked account.
 export interface PlusOneGuest {

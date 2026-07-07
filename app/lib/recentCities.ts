@@ -1,6 +1,6 @@
 import { storage } from './storage';
 
-const KEY = 'now.recentCities';
+const KEY = 'iykyk.recentCities';
 const MAX = 5;
 
 export async function getRecentCities(): Promise<string[]> {
