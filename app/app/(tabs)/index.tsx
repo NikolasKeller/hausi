@@ -210,23 +210,6 @@ function HomeScreen() {
           </View>
         ) : null}
 
-        <View style={[styles.sectionGroup, styles.ctaGroup]}>
-          <Text
-            style={styles.ctaTitle}
-            numberOfLines={1}
-            adjustsFontSizeToFit
-            minimumFontScale={0.6}
-          >
-            Throw something
-          </Text>
-          <Button
-            title="Create an event"
-            variant="vibrant"
-            style={styles.ctaButton}
-            onPress={() => router.push('/new-event')}
-          />
-        </View>
-
         <View style={styles.sectionGroup}>
           <Text style={styles.sectionTitle}>Party starters</Text>
           <ScrollView
@@ -443,19 +426,6 @@ const styles = StyleSheet.create({
   sectionTitle: {
     ...display(30),
     color: colors.text,
-  },
-  ctaGroup: {
-    marginTop: spacing.lg,
-    alignItems: 'flex-start',
-  },
-  ctaTitle: {
-    ...display(40),
-    color: colors.text,
-    marginBottom: spacing.md,
-    alignSelf: 'stretch',
-  },
-  ctaButton: {
-    alignSelf: 'stretch',
   },
   welcomeBanner: {
     backgroundColor: colors.card,
