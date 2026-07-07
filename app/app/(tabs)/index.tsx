@@ -274,7 +274,7 @@ function MutualCard({ event }: { event: ExploreEvent }) {
     <View style={styles.mutualEntry}>
       {event.friendGoing ? (
         <View style={styles.mutualAttrib}>
-          <Avatar emoji={event.friendGoing.avatarEmoji} size={28} />
+          <Avatar emoji={event.friendGoing.avatarEmoji} image={event.friendGoing.avatarImage} size={28} />
           <Text style={styles.mutualAttribText} numberOfLines={1}>
             <Text style={styles.mutualName}>{event.friendGoing.name}</Text>
             <Text style={styles.mutualGoing}> is going</Text> 👍
