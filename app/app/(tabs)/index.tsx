@@ -174,13 +174,9 @@ function HomeScreen() {
           </Pressable>
         ) : null}
 
-        <View style={styles.sectionGroup}>
-          <Text style={styles.sectionTitle}>Find your mutuals</Text>
-          {home.palsGoing.length === 0 ? (
-            <Text style={styles.emptyNote}>
-              No mutual plans yet - RSVP to a few parties and your crew will pop up here.
-            </Text>
-          ) : (
+        {home.palsGoing.length > 0 ? (
+          <View style={styles.sectionGroup}>
+            <Text style={styles.sectionTitle}>Find your mutuals</Text>
             <View style={styles.mutualFeed}>
               {(showAllMutuals ? home.palsGoing : home.palsGoing.slice(0, 3)).map((event) => (
                 <MutualCard key={event.id} event={event} />
@@ -194,8 +190,8 @@ function HomeScreen() {
                 </Pressable>
               ) : null}
             </View>
-          )}
-        </View>
+          </View>
+        ) : null}
 
         {trending.list.length > 0 ? (
           <View style={styles.sectionGroup}>
@@ -435,10 +431,6 @@ const styles = StyleSheet.create({
   sectionTitle: {
     ...display(30),
     color: colors.text,
-  },
-  emptyNote: {
-    ...uiText(14),
-    color: colors.muted,
   },
   ctaGroup: {
     marginTop: spacing.lg,

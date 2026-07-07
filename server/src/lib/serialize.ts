@@ -117,16 +117,22 @@ export function toExploreEvent(
   viewerId: string,
   friendIds?: Set<string>
 ): ExploreEvent {
-  const counts = countRsvps(event.rsvps);
+  // The host auto-RSVPs GOING to their own event, so counting them would make
+  // every fresh event read "1 interested". The discovery "interested" tally is
+  // guests only — exclude the host.
+  const guestCounts = countRsvps(event.rsvps.filter((r) => r.userId !== event.hostId));
   const friend = friendIds
     ? event.rsvps.find(
         (r) => r.status === 'GOING' && r.userId !== viewerId && friendIds.has(r.userId)
       )
     : undefined;
   // A few faces for the interested cluster: mutuals first, then anyone else
-  // who's GOING/MAYBE, skipping the viewer and de-duping by user.
+  // who's GOING/MAYBE, skipping the viewer and host and de-duping by user.
   const interestedRsvps = event.rsvps.filter(
-    (r) => (r.status === 'GOING' || r.status === 'MAYBE') && r.userId !== viewerId
+    (r) =>
+      (r.status === 'GOING' || r.status === 'MAYBE') &&
+      r.userId !== viewerId &&
+      r.userId !== event.hostId
   );
   interestedRsvps.sort((a, b) => {
     const aFriend = friendIds?.has(a.userId) ? 0 : 1;
@@ -146,7 +152,7 @@ export function toExploreEvent(
   return {
     ...toEventSummary(event, viewerId),
     description: event.description,
-    interested: counts.going + counts.maybe,
+    interested: guestCounts.going + guestCounts.maybe,
     friendGoing: friend ? toPublicUser(friend.user) : null,
     interestedAvatars,
   };

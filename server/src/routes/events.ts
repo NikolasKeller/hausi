@@ -209,8 +209,8 @@ eventRoutes.post('/', async (c) => {
       plusOneLimit: data.plusOneLimit ?? 1,
       rsvpsOpen: data.rsvpsOpen ?? true,
       hostId: userId,
-      // The host is going to their own party.
-      rsvps: { create: { userId, status: 'GOING' } },
+      // The host organizes the event; they are not a "going" guest, so no
+      // self-RSVP is created. Their event still shows in their feed via hostId.
     },
     include: eventInclude,
   });

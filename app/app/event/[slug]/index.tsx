@@ -424,7 +424,7 @@ export default function EventScreen() {
               )}
             </Glass>
 
-            {rsvpLocked ? (
+            {event.isHost ? null : rsvpLocked ? (
               <View style={{ gap: spacing.sm }}>
                 <Glass tint={ink.glassTint} radius={radius.md} style={styles.lockedNote}>
                   <Text style={[styles.lockedNoteText, { color: ink.subtext }]}>
@@ -711,9 +711,11 @@ export default function EventScreen() {
 
           <Pressable
             onPress={() => {
-              if (!rsvpLocked) setRsvp('GOING');
+              // The host organizes the event — the pill is a guest count for
+              // them, not a personal RSVP.
+              if (!event.isHost && !rsvpLocked) setRsvp('GOING');
             }}
-            disabled={rsvpBusy}
+            disabled={rsvpBusy || event.isHost}
             style={({ pressed }) => [styles.barGoing, pressed && { opacity: 0.85 }]}
           >
             <Text style={styles.barGoingCount}>{event.counts.going}</Text>

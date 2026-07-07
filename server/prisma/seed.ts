@@ -321,8 +321,7 @@ async function main() {
         costPerPerson: e.costPerPerson,
         dressCode: e.dressCode,
         hostId: ye.id,
-        // The host is attending their own event.
-        rsvps: { create: [{ userId: ye.id, status: 'GOING' }] },
+        // The host organizes the event and is not counted as a going guest.
       },
     });
   }
