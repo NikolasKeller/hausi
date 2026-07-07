@@ -569,7 +569,7 @@ const styles = StyleSheet.create({
   },
   recentTitle: {
     color: '#fff',
-    fontSize: 14,
+    fontSize: 18,
     fontWeight: '800',
     letterSpacing: -0.3,
     textShadowColor: 'rgba(0,0,0,0.35)',

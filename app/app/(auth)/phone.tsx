@@ -76,6 +76,7 @@ export default function PhoneScreen() {
             contentContainerStyle={styles.content}
             keyboardShouldPersistTaps="handled"
           >
+            <View style={{ flex: 0.5 }} />
             <Text style={styles.title}>
               Join the party
             </Text>
@@ -154,7 +155,6 @@ const styles = StyleSheet.create({
   content: {
     flexGrow: 1,
     padding: spacing.lg,
-    paddingTop: spacing.xl * 2,
     gap: spacing.md,
   },
   title: {
@@ -192,10 +192,12 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: colors.cardBorder,
     borderRadius: radius.sm,
-    color: colors.text,
     paddingHorizontal: spacing.md,
-    fontSize: 18,
-    paddingVertical: 12,
+    ...uiText(18),
+    color: colors.text,
+    // Keep the box height comfortable; uiText's lineHeight can clip on web.
+    lineHeight: 22,
+    paddingVertical: 14,
   },
   picker: {
     backgroundColor: colors.inputBg,

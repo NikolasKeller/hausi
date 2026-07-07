@@ -15,7 +15,7 @@ import { api } from '../lib/api';
 import { useAuth } from '../lib/auth';
 import { pickAvatarImage } from '../lib/imageUpload';
 import { colors, radius, shadow, spacing } from '../lib/theme';
-import { display, kicker, uiText } from '../lib/fonts';
+import { display, uiText } from '../lib/fonts';
 import { Avatar } from '../components/Avatar';
 import { Button, ErrorText } from '../components/ui';
 
@@ -76,7 +76,6 @@ export default function SetupScreen() {
             keyboardShouldPersistTaps="handled"
             showsVerticalScrollIndicator={false}
           >
-            <Text style={styles.kicker}>Welcome</Text>
             <Text style={styles.title}>
               Pick your look
             </Text>
@@ -88,13 +87,6 @@ export default function SetupScreen() {
               >
                 <Avatar name={name} image={photo} size={168} />
               </Pressable>
-              <Text style={styles.hint}>
-                {uploading
-                  ? 'Uploading your fabulous face…'
-                  : photo
-                    ? 'Lookin’ ready to party ✨'
-                    : 'Add a photo, or skip for now'}
-              </Text>
               <View style={styles.photoActions}>
                 {/* Native only: web's "camera" is the same file dialog as the
                     library, so it'd just be a confusing duplicate button. */}
@@ -173,10 +165,6 @@ const styles = StyleSheet.create({
     paddingTop: spacing.xl * 2,
     gap: spacing.lg,
   },
-  kicker: {
-    ...kicker(colors.muted),
-    textAlign: 'center',
-  },
   title: {
     ...display(56),
     color: colors.text,
@@ -189,10 +177,6 @@ const styles = StyleSheet.create({
   },
   facePressed: {
     transform: [{ scale: 0.96 }],
-  },
-  hint: {
-    ...uiText(14, '600'),
-    color: colors.muted,
   },
   photoActions: {
     flexDirection: 'row',

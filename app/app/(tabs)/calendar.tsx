@@ -319,9 +319,6 @@ function CalendarScreen() {
               <View style={styles.emptyState}>
                 <View style={styles.emptyBody}>
                   <Text style={styles.emptyTitle}>{emptyMessageFor(selected).title}</Text>
-                  <Text style={styles.emptySubtitle}>
-                    {emptyMessageFor(selected).subtitle}
-                  </Text>
                 </View>
                 <Button
                   title="Plan something"
@@ -587,12 +584,8 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
   },
   emptyTitle: {
-    ...display(24),
+    ...display(36),
     color: colors.text,
-  },
-  emptySubtitle: {
-    ...uiText(15),
-    color: colors.muted,
     textAlign: 'center',
   },
   planButton: {

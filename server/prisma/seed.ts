@@ -42,6 +42,58 @@ type FeaturedEvent = {
 
 const events: FeaturedEvent[] = [
   {
+    title: 'Bahnwärter Thiel Sommerfest',
+    description: [
+      'The Bahnwärter Thiel Cultural Center invites you to a spectacular summer festival, with a music program across four stages - two open-air and two indoor.',
+      '',
+      'In cozy seating areas you can enjoy ice-cold drinks and treats from the food stand while the day\'s musicians delight your ears. And this time there\'s something for your eyes too: the Munich collective Isarseide enchants you with a breathtaking aerial performance on vertical silks and rope attached to the crane.',
+      '',
+      'Line-up (A–Z):',
+      '- Atric [Tipping Point / Leipzig]',
+      '- Basti Steinacker [Korajo / Munich]',
+      '- Bonjour Ben [Freiland, It Works / Rostock]',
+      '- Hutti [Munich]',
+      '- Isarseide [Munich]',
+      '- Karlo Kurbel [Bahnwärter Thiel, Flugmodus / Munich]',
+      '- Nepobaby [Atoll Amore / Hamburg]',
+      '- and many more',
+      '',
+      'From 0€ in advance, 15€ at the door. A safer space: no homophobia, no violence, no sexism, no racism, no hate.',
+    ].join('\n'),
+    coverImage:
+      'https://imageflow.rausgegangen.de/url/https%3A//s3.eu-central-1.amazonaws.com/rausgegangen/pUr4EdnURNuVwrx1yEoj_26-07-11-sommerfest.jpg?width=800&height=1000&mode=crop',
+    coverTheme: 'sunset',
+    titleFont: 'classic',
+    effect: 'confetti',
+    date: at(2026, 7, 11, 14),
+    location: 'Bahnwärter Thiel, Tumblingerstraße 45, 80337 München, Germany',
+    city: 'Munich',
+    category: 'music',
+    costPerPerson: 'From 0 EUR',
+    dressCode: '',
+  },
+  {
+    title: 'PAPItutmirleid BIG ASS FESTIVAL #2',
+    description: [
+      'Papi is back at the Skatehalle - but this time with a huge outdoor festival.',
+      '',
+      'Food trucks, a huge stage, free flash tattoos, free braids and tooth gems. We always say "come naked", but this time please bring your most comfortable dancing shoes.',
+      '',
+      'Doors 3pm - 1am. Expect house and latin all day and night.',
+    ].join('\n'),
+    coverImage:
+      'https://imageflow.rausgegangen.de/url/https%3A//s3.eu-central-1.amazonaws.com/rausgegangen/invRAbcNQVa3P8tkv5KO_bildschirmfoto-2026-07-01-um-135828.png?width=800&height=1000&mode=crop',
+    coverTheme: 'disco',
+    titleFont: 'eclectic',
+    effect: 'sparkles',
+    date: at(2026, 7, 11, 15),
+    location: 'Skateschule München, Dachauerstraße 110c, 80636 München, Germany',
+    city: 'Munich',
+    category: 'music',
+    costPerPerson: '15 EUR',
+    dressCode: '',
+  },
+  {
     title: "YE's Magic Garden",
     description: [
       'For the very first time, YE is unveiling a completely new concept in the heart of Munich.',
@@ -326,7 +378,7 @@ async function main() {
     });
   }
 
-  console.log(`Seeded ${events.length} featured YE Munich events (all public).`);
+  console.log(`Seeded ${events.length} featured Munich events (all public).`);
   console.log('Dev login: demo@now.app / now123');
 }
 

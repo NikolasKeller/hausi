@@ -12,12 +12,14 @@ export function initials(name: string): string {
   return (words[0][0] + words[words.length - 1][0]).toUpperCase();
 }
 
-// A stable background color per name so people stay visually distinct without
-// storing anything — same name always lands on the same hue.
+// A stable background color per person. Keyed off the first letter only so the
+// color doesn't flicker on every keystroke while someone types their name — it
+// locks in as soon as the first character is entered.
 function colorFor(name: string): string {
+  const first = name.trim().charAt(0).toUpperCase();
   let hash = 0;
-  for (let i = 0; i < name.length; i++) {
-    hash = (hash * 31 + name.charCodeAt(i)) | 0;
+  for (let i = 0; i < first.length; i++) {
+    hash = (hash * 31 + first.charCodeAt(i)) | 0;
   }
   const hue = Math.abs(hash) % 360;
   return `hsl(${hue}, 55%, 45%)`;

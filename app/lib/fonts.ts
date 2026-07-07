@@ -10,6 +10,15 @@ import type { TitleFont } from '../shared/types';
 // surface. It ships one optical cut, so all "weights" map to the same family.
 const LEAGUE = 'LeagueGothic_400Regular';
 
+// League Gothic is tightly condensed, so it reads smaller than a normal
+// sans at the same px. Scale every size up app-wide for legibility. UI/body
+// text gets the bigger bump; big display headlines a gentler one so layouts
+// don't blow out. A hard floor keeps even the smallest labels (dates, meta)
+// comfortably readable.
+const TEXT_SCALE = 1.3;
+const DISPLAY_SCALE = 1.15;
+const MIN_UI_SIZE = 15;
+
 export const FONTS_TO_LOAD = {
   LeagueGothic_400Regular,
   // Kept for the opt-in per-event title fonts (Literary / Fancy / Eclectic).
@@ -34,12 +43,15 @@ export const displayTitle: TextStyle = { fontFamily: DISPLAY_FONT, fontWeight: '
 // kept for call-site compatibility but resolves to the same cut. letterSpacing
 // is absolute px in RN, so it scales with the font size.
 export function display(
-  size: number,
+  rawSize: number,
   opts?: { weight?: 'black' | 'heavy'; lineHeight?: number; tracking?: number }
 ): TextStyle {
+  const size = Math.round(rawSize * DISPLAY_SCALE);
   const family = opts?.weight ? DISPLAY_FONT_HEAVY : DISPLAY_FONT;
-  const tracking = opts?.tracking ?? -0.03;
-  const lh = opts?.lineHeight ?? (size >= 56 ? 0.92 : size >= 32 ? 1.0 : 1.1);
+  // League Gothic is condensed, so a hair of positive tracking (instead of the
+  // tight negative default) keeps big headlines from feeling cramped.
+  const tracking = opts?.tracking ?? 0.01;
+  const lh = opts?.lineHeight ?? (size >= 56 ? 1.0 : size >= 32 ? 1.08 : 1.15);
   return {
     fontFamily: family,
     fontWeight: 'normal',
@@ -54,17 +66,20 @@ export function display(
 // tracking, generous line-height. The weight arg is accepted for compatibility
 // but every value resolves to the one League Gothic cut.
 export function uiText(
-  size: number,
+  rawSize: number,
   weight: TextStyle['fontWeight'] = '400',
   opts?: { tracking?: number; lineHeight?: number }
 ): TextStyle {
-  const tracking = opts?.tracking ?? -0.01;
+  const size = Math.max(Math.round(rawSize * TEXT_SCALE), MIN_UI_SIZE);
+  // Positive tracking spreads the condensed letters so body/label text reads
+  // wider and less cramped.
+  const tracking = opts?.tracking ?? 0.03;
   return {
     fontFamily: uiFamily(weight),
     fontSize: size,
     fontWeight: 'normal',
     letterSpacing: Math.round(size * tracking * 100) / 100,
-    lineHeight: Math.round(size * (opts?.lineHeight ?? 1.4)),
+    lineHeight: Math.round(size * (opts?.lineHeight ?? 1.45)),
   };
 }
 
@@ -73,7 +88,7 @@ export function uiText(
 export function kicker(color?: string): TextStyle {
   return {
     fontFamily: LEAGUE,
-    fontSize: 12,
+    fontSize: Math.round(12 * TEXT_SCALE),
     fontWeight: 'normal',
     letterSpacing: 1.5,
     textTransform: 'uppercase',

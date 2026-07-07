@@ -53,14 +53,10 @@ function ExploreCard({ event }: { event: ExploreEvent }) {
         <Text style={styles.cardTitle} numberOfLines={2}>
           {event.title}
         </Text>
-        <Text style={styles.cardMeta} numberOfLines={1}>
-          {formatEventDate(event.date)} · {event.city}
+        <Text style={styles.cardMeta} numberOfLines={2}>
+          {formatEventDate(event.date)}
+          {event.location ? ` · ${event.location}` : ''}
         </Text>
-        {event.description ? (
-          <Text style={styles.cardDescription} numberOfLines={2}>
-            {event.description}
-          </Text>
-        ) : null}
       </View>
     </Pressable>
   );
@@ -794,7 +790,7 @@ const styles = StyleSheet.create({
   },
   posterTitle: {
     color: '#fff',
-    fontSize: 20,
+    fontSize: 24,
     fontWeight: '700',
     letterSpacing: -0.5,
     textAlign: 'center',
@@ -821,10 +817,6 @@ const styles = StyleSheet.create({
   },
   cardMeta: {
     ...uiText(13, '600'),
-    color: colors.muted,
-  },
-  cardDescription: {
-    ...uiText(13),
     color: colors.muted,
   },
 });
