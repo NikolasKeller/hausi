@@ -14,64 +14,43 @@ import { Ionicons } from '@expo/vector-icons';
 import { COVER_LIST, coverFor, themeInk, THEME_CATEGORIES, type ThemeCategory } from '../lib/covers';
 import { EFFECT_CATEGORIES, EFFECT_META, EffectOverlay } from './EffectOverlay';
 import { Glass, GlassPill } from './glass';
-import { radius, spacing } from '../lib/theme';
+import { colors, radius, spacing } from '../lib/theme';
 import { uiText } from '../lib/fonts';
 
-// Deterministic textural scatter of the theme emoji across the whole surface.
-const SCATTER: { top: string; left: string; size: number; rotate: string }[] = [
-  { top: '5%', left: '8%', size: 40, rotate: '-14deg' },
-  { top: '12%', left: '76%', size: 52, rotate: '10deg' },
-  { top: '34%', left: '30%', size: 34, rotate: '6deg' },
-  { top: '48%', left: '84%', size: 44, rotate: '-8deg' },
-  { top: '62%', left: '12%', size: 38, rotate: '16deg' },
-  { top: '78%', left: '64%', size: 48, rotate: '-6deg' },
-  { top: '88%', left: '24%', size: 32, rotate: '12deg' },
-];
-
 // ── ThemeBackground ───────────────────────────────────────────────────────────
-// A full-page event theme surface: the theme gradient fills the whole screen,
-// its emoji scatters faintly for texture, and an optional effect overlay drifts
-// across the top. Opaque. Content floats on top in mood-aware glass.
+// The event page surface. Rather than a per-event colourful gradient, this now
+// renders the Now corporate canvas: a near-black backdrop with a warm orange
+// bloom at the top (our signature white-on-black glow). An optional effect
+// overlay still drifts across. Content floats on top in dark glass.
 export function ThemeBackground({
-  theme,
   effect,
   children,
   style,
 }: {
-  theme: string;
+  theme?: string;
   effect?: string;
   children?: React.ReactNode;
   style?: StyleProp<ViewStyle>;
 }) {
-  const cover = coverFor(theme);
   const { height } = useWindowDimensions();
-  const emojiTint = cover.mood === 'dark' ? 0.16 : 0.2;
   return (
-    <View style={[styles.fill, { backgroundColor: cover.colors[0] }, style]}>
+    <View style={[styles.fill, { backgroundColor: colors.bg }, style]}>
+      {/* Subtle warm-to-black vertical ramp so the canvas isn't flat. */}
       <LinearGradient
-        colors={cover.colors}
+        colors={['#1E1712', '#141210', colors.bg]}
         start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}
+        end={{ x: 0, y: 1 }}
         style={StyleSheet.absoluteFill}
         pointerEvents="none"
       />
-      <View style={StyleSheet.absoluteFill} pointerEvents="none">
-        {SCATTER.map((s, i) => (
-          <Text
-            key={i}
-            style={{
-              position: 'absolute',
-              top: s.top as `${number}%`,
-              left: s.left as `${number}%`,
-              fontSize: s.size,
-              opacity: emojiTint,
-              transform: [{ rotate: s.rotate }],
-            }}
-          >
-            {cover.emoji}
-          </Text>
-        ))}
-      </View>
+      {/* Orange bloom fading out toward the middle of the screen. */}
+      <LinearGradient
+        colors={['rgba(255,106,43,0.22)', 'rgba(255,106,43,0)']}
+        start={{ x: 0.5, y: 0 }}
+        end={{ x: 0.5, y: 0.5 }}
+        style={StyleSheet.absoluteFill}
+        pointerEvents="none"
+      />
       {effect ? <EffectOverlay effect={effect} height={height} count={14} /> : null}
       {children}
     </View>

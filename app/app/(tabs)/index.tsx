@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Pressable,
@@ -21,18 +21,19 @@ import { Avatar } from '../../components/Avatar';
 import { Button } from '../../components/ui';
 import { formatEventDate } from '../../components/EventCard';
 import { withScreenBackground } from '../../components/ScreenBackground';
+import { hasLocationPermission, locateCity } from '../../lib/location';
 
 export default withScreenBackground(HomeScreen);
 
 // Never a plain "welcome back" — always something cheerful and party-flavored.
-const GREETINGS: Array<(name: string) => { text: string; subtext: string }> = [
-  (n) => ({ text: `Look who's back - ${n}! 🎉`, subtext: "Let's find your next party." }),
-  (n) => ({ text: `${n} has entered the chat 🎊`, subtext: 'Good vibes incoming.' }),
-  (n) => ({ text: `Ayy, ${n}! 🥳`, subtext: 'Who are we celebrating today?' }),
-  (n) => ({ text: `The party missed you, ${n} 💃`, subtext: "Let's get something on the calendar." }),
-  (n) => ({ text: `There they are - ${n} 🕺`, subtext: 'Ready to make plans?' }),
-  (n) => ({ text: `${n} in the building ✨`, subtext: 'Time to stir something up.' }),
-  (n) => ({ text: `Confetti's out for ${n} 🎈`, subtext: "What's the move tonight?" }),
+const GREETINGS: Array<(name: string) => { text: string }> = [
+  (n) => ({ text: `Look who's back - ${n}! 🎉` }),
+  (n) => ({ text: `${n} has entered the chat 🎊` }),
+  (n) => ({ text: `Ayy, ${n}! 🥳` }),
+  (n) => ({ text: `The party missed you, ${n} 💃` }),
+  (n) => ({ text: `There they are - ${n} 🕺` }),
+  (n) => ({ text: `${n} in the building ✨` }),
+  (n) => ({ text: `Confetti's out for ${n} 🎈` }),
 ];
 
 function pickGreeting(name: string) {
@@ -47,7 +48,7 @@ function HomeScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const [showAllMutuals, setShowAllMutuals] = useState(false);
   // Greet a returning user once, on app open, then let it fade.
-  const [welcome, setWelcome] = useState<{ text: string; subtext: string } | null>(null);
+  const [welcome, setWelcome] = useState<{ text: string } | null>(null);
   useEffect(() => {
     if (!welcomeBack) return;
     setWelcome(pickGreeting(welcomeBack));
@@ -55,6 +56,27 @@ function HomeScreen() {
     const t = setTimeout(() => setWelcome(null), 5000);
     return () => clearTimeout(t);
   }, [welcomeBack, dismissWelcome]);
+
+  // Keep the user's city in sync with where they actually are, so the feed
+  // localizes ("Trending in Munich") for returning users too — not just fresh
+  // onboarders. Best-effort and silent: only runs when location is already
+  // granted (never prompts here), and only writes when the city changed.
+  const locationSynced = useRef(false);
+  useEffect(() => {
+    if (locationSynced.current) return;
+    locationSynced.current = true;
+    (async () => {
+      try {
+        if (!(await hasLocationPermission())) return;
+        const { city } = await locateCity();
+        if (!city) return;
+        await api.updateProfile({ city });
+        setHome(await api.home());
+      } catch {
+        // Ignore — keep whatever city we already have.
+      }
+    })();
+  }, []);
 
   const fetchAll = useCallback(() => api.home(), []);
 
@@ -120,12 +142,13 @@ function HomeScreen() {
     );
   }
 
-  // Surface the discover feed's trending events. Prefer the geo-local list;
-  // fall back to the global "trending now" when we have no nearby signal.
+  // Surface the discover feed's trending events. Prefer the geo-local list
+  // (titled with the user's city); fall back to the global list otherwise.
+  const city = home.city?.trim();
   const nearby = home.trendingNearby ?? [];
   const trending =
     nearby.length > 0
-      ? { title: 'Trending near you', list: nearby }
+      ? { title: city ? `Trending in ${city}` : 'Trending near you', list: nearby }
       : { title: 'Trending now', list: home.trendingNow ?? [] };
 
   return (
@@ -147,7 +170,6 @@ function HomeScreen() {
           <Pressable onPress={() => setWelcome(null)} style={styles.sectionGroup}>
             <View style={styles.welcomeBanner}>
               <Text style={styles.welcomeText}>{welcome.text}</Text>
-              <Text style={styles.welcomeSubtext}>{welcome.subtext}</Text>
             </View>
           </Pressable>
         ) : null}
@@ -188,8 +210,13 @@ function HomeScreen() {
         ) : null}
 
         <View style={[styles.sectionGroup, styles.ctaGroup]}>
-          <Text style={styles.ctaTitle}>
-            Throw{'\n'}something
+          <Text
+            style={styles.ctaTitle}
+            numberOfLines={1}
+            adjustsFontSizeToFit
+            minimumFontScale={0.6}
+          >
+            Throw something
           </Text>
           <Button
             title="Create an event"
@@ -351,7 +378,7 @@ const styles = StyleSheet.create({
   headerRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
+    justifyContent: 'center',
     paddingHorizontal: spacing.md,
     paddingTop: spacing.sm,
   },
@@ -361,6 +388,7 @@ const styles = StyleSheet.create({
   wordmark: {
     ...display(38),
     color: colors.text,
+    textAlign: 'center',
     textShadowColor: 'rgba(255,106,43,0.6)',
     textShadowOffset: { width: 0, height: 0 },
     textShadowRadius: 14,
@@ -382,9 +410,10 @@ const styles = StyleSheet.create({
     alignItems: 'flex-start',
   },
   ctaTitle: {
-    ...display(52),
+    ...display(40),
     color: colors.text,
     marginBottom: spacing.md,
+    alignSelf: 'stretch',
   },
   ctaButton: {
     alignSelf: 'stretch',
@@ -405,10 +434,6 @@ const styles = StyleSheet.create({
   welcomeText: {
     ...display(22),
     color: colors.text,
-  },
-  welcomeSubtext: {
-    ...uiText(14),
-    color: colors.muted,
   },
   horizontalScroll: {
     marginHorizontal: -spacing.md,

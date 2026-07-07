@@ -125,10 +125,11 @@ function ProfileScreen() {
             style={styles.topScrim}
             pointerEvents="none"
           />
-          {/* Lower half fades into the page background. */}
+          {/* Photo fades fully into the page background high up, so it ends
+              well above the name — nothing bleeds down behind the stats. */}
           <LinearGradient
             colors={['transparent', 'transparent', colors.bg]}
-            locations={[0, 0.45, 1]}
+            locations={[0, 0.4, 0.72]}
             style={StyleSheet.absoluteFill}
             pointerEvents="none"
           />
@@ -147,19 +148,21 @@ function ProfileScreen() {
               <Ionicons name="settings-sharp" size={18} color={colors.text} />
             </Pressable>
           </View>
+        </View>
 
-          <View style={styles.heroContent}>
-            <Text style={styles.bigName} numberOfLines={2}>
-              {profile.name}
-            </Text>
-            <View style={styles.joinedPill}>
-              <Ionicons name="sparkles" size={13} color={colors.accent} />
-              <Text style={styles.joinedText}>joined {joinedYear}</Text>
-            </View>
-            <View style={styles.statsRow}>
-              <Stat label="Mutuals" value={profile.mutuals.length} />
-              <Stat label="Badges" value={profile.badges.length} />
-            </View>
+        {/* Name + stats sit on the solid dark canvas, below where the photo has
+            already faded out. Pulled up a touch to stay close to the photo. */}
+        <View style={styles.heroContent}>
+          <Text style={styles.bigName} numberOfLines={2}>
+            {profile.name}
+          </Text>
+          <View style={styles.joinedPill}>
+            <Ionicons name="sparkles" size={13} color={colors.accent} />
+            <Text style={styles.joinedText}>joined {joinedYear}</Text>
+          </View>
+          <View style={styles.statsRow}>
+            <Stat label="Mutuals" value={profile.mutuals.length} />
+            <Stat label="Badges" value={profile.badges.length} />
           </View>
         </View>
 
@@ -237,7 +240,7 @@ const styles = StyleSheet.create({
   // Full-bleed photo hero; content sits at the bottom where the photo fades
   // into the page background.
   hero: {
-    height: 500,
+    height: 360,
     width: '100%',
     justifyContent: 'flex-end',
     backgroundColor: colors.bg,
@@ -278,7 +281,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: spacing.md,
     paddingHorizontal: spacing.lg,
-    paddingBottom: spacing.xl,
+    paddingBottom: spacing.md,
+    marginTop: -spacing.huge,
   },
   bigName: {
     ...display(44),

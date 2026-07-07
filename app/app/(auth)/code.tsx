@@ -95,29 +95,32 @@ export default function CodeScreen() {
 
         <KeyboardAvoidingView style={{ flex: 1 }} behavior="padding">
           <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
-            <Text style={styles.title}>
+            <Text
+              style={styles.title}
+              numberOfLines={1}
+              adjustsFontSizeToFit
+              minimumFontScale={0.6}
+            >
               Verify your phone
             </Text>
             <Text style={styles.subtitle}>We sent {phone} a code via SMS</Text>
 
-            <View style={styles.card}>
-              <TextInput
-                value={code}
-                onChangeText={(t) => {
-                  const clean = t.replace(/[^0-9]/g, '').slice(0, 6);
-                  setCode(clean);
-                  if (clean.length === 6) submit(clean);
-                }}
-                placeholder="000000"
-                placeholderTextColor={colors.muted}
-                keyboardType="number-pad"
-                autoFocus
-                style={styles.codeInput}
-                maxLength={6}
-                textContentType="oneTimeCode"
-                autoComplete="one-time-code"
-              />
-            </View>
+            <TextInput
+              value={code}
+              onChangeText={(t) => {
+                const clean = t.replace(/[^0-9]/g, '').slice(0, 6);
+                setCode(clean);
+                if (clean.length === 6) submit(clean);
+              }}
+              placeholder="000000"
+              placeholderTextColor={colors.muted}
+              keyboardType="number-pad"
+              autoFocus
+              style={[styles.codeInput, styles.noOutline]}
+              maxLength={6}
+              textContentType="oneTimeCode"
+              autoComplete="one-time-code"
+            />
 
             <Text style={styles.resend} onPress={resend}>
               {resendIn > 0
@@ -188,7 +191,7 @@ const styles = StyleSheet.create({
   },
   title: {
     color: colors.text,
-    ...display(56),
+    ...display(40),
     textAlign: 'center',
   },
   subtitle: {
@@ -197,22 +200,21 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     marginBottom: spacing.lg,
   },
-  card: {
-    backgroundColor: colors.card,
-    borderWidth: 1,
-    borderColor: colors.cardBorder,
-    borderRadius: radius.lg,
-    paddingVertical: spacing.md,
-    ...shadow.card,
-  },
   codeInput: {
     color: colors.text,
-    paddingVertical: spacing.sm,
+    backgroundColor: 'transparent',
+    borderWidth: 0,
+    paddingVertical: spacing.md,
     fontSize: 36,
     letterSpacing: 14,
     textAlign: 'center',
     fontWeight: '700',
   },
+  // Kill the browser's focus ring / native input chrome on web.
+  noOutline:
+    Platform.OS === 'web'
+      ? ({ outlineStyle: 'none', outlineWidth: 0, appearance: 'none', border: 'none', background: 'transparent' } as any)
+      : {},
   resend: {
     color: colors.muted,
     ...uiText(14, '500'),

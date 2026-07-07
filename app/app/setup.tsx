@@ -14,6 +14,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { api } from '../lib/api';
 import { useAuth } from '../lib/auth';
 import { pickAvatarImage } from '../lib/imageUpload';
+import { locateCity } from '../lib/location';
 import { colors, radius, shadow, spacing } from '../lib/theme';
 import { display, uiText } from '../lib/fonts';
 import { Avatar } from '../components/Avatar';
@@ -57,8 +58,16 @@ export default function SetupScreen() {
     }
     setBusy(true);
     setError(null);
+    // Grab the user's city on onboarding so their home feed is local from the
+    // start. Best-effort: if they deny/skip location, keep the default city.
+    let city: string | undefined;
     try {
-      await api.updateProfile({ name: trimmed, avatarImage: photo });
+      city = (await locateCity()).city;
+    } catch {
+      // No location permission / lookup failed — proceed without it.
+    }
+    try {
+      await api.updateProfile({ name: trimmed, avatarImage: photo, ...(city ? { city } : {}) });
       updateUser({ ...user!, name: trimmed, avatarImage: photo });
       router.replace('/');
     } catch (e) {

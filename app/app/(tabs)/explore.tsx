@@ -53,9 +53,8 @@ function ExploreCard({ event }: { event: ExploreEvent }) {
         <Text style={styles.cardTitle} numberOfLines={2}>
           {event.title}
         </Text>
-        <Text style={styles.cardMeta} numberOfLines={2}>
+        <Text style={styles.cardMeta} numberOfLines={1}>
           {formatEventDate(event.date)}
-          {event.location ? ` · ${event.location}` : ''}
         </Text>
       </View>
     </Pressable>
@@ -142,19 +141,18 @@ function ExploreScreen() {
       try {
         let target = city;
         if (target === null) {
-          // First load: prefer where the user actually is right now. Only when
-          // location permission is already granted, so opening Explore never
-          // triggers a surprise prompt; otherwise fall back to their saved city.
+          // First load: default to where the user actually is. We ask for
+          // location here (once — city is only null on the very first open), so
+          // Explore opens on the user's real city instead of a saved default.
+          // If they deny or it fails, fall back to their saved city below.
           let located: string | null = null;
           try {
-            if (await hasLocationPermission()) {
-              const loc = await locateCity();
-              located = loc.city;
-              myLocationRef.current = loc;
-              setMyLocation(loc);
-            }
+            const loc = await locateCity();
+            located = loc.city;
+            myLocationRef.current = loc;
+            setMyLocation(loc);
           } catch {
-            // GPS/reverse-geocode failed — fall back to the saved city below.
+            // Denied / GPS failed — fall back to the saved city below.
           }
           if (located) {
             target = located;
@@ -352,20 +350,6 @@ function ExploreScreen() {
                 );
               })}
             </ScrollView>
-
-            <CoverGradient theme="lava" style={styles.hero} emojiOpacity={0}>
-              <Text style={styles.heroKicker}>Get out there</Text>
-              <Text style={styles.heroTitle}>
-                The streets are calling
-              </Text>
-              <Text style={styles.heroSubtitle}>
-                {city ? `See what's happening in ${city}` : "See what's happening everywhere"}
-              </Text>
-            </CoverGradient>
-
-            <Text style={styles.sectionTitle}>
-              Meet new people
-            </Text>
 
             {error ? (
               <View style={styles.inlineState}>
@@ -713,48 +697,6 @@ const styles = StyleSheet.create({
   chipLabelActive: {
     // Sits on the white active pill (colors.ink) — needs dark ink to stay legible.
     color: colors.onInk,
-  },
-  hero: {
-    minHeight: 200,
-    justifyContent: 'flex-end',
-    padding: spacing.lg,
-    gap: spacing.xs,
-    marginTop: spacing.sm,
-    marginHorizontal: spacing.md,
-    borderRadius: radius.lg,
-    borderWidth: 1,
-    borderColor: colors.cardBorder,
-    overflow: 'hidden',
-    ...shadow.card,
-  },
-  // White text below sits ON the dark "midnight" photo hero — intentional.
-  heroKicker: {
-    ...kicker('#fff'),
-    opacity: 0.9,
-  },
-  heroTitle: {
-    ...display(38),
-    color: '#fff',
-    textShadowColor: 'rgba(0,0,0,0.4)',
-    textShadowOffset: { width: 0, height: 2 },
-    textShadowRadius: 8,
-  },
-  heroSubtitle: {
-    ...uiText(15),
-    color: '#fff',
-    opacity: 0.85,
-  },
-  sectionKicker: {
-    ...kicker(colors.accent),
-    marginHorizontal: spacing.md,
-    marginTop: spacing.xl,
-  },
-  sectionTitle: {
-    ...display(28),
-    color: colors.text,
-    marginHorizontal: spacing.md,
-    marginTop: spacing.xs,
-    marginBottom: spacing.md,
   },
   inlineState: {
     alignItems: 'center',

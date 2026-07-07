@@ -11,7 +11,7 @@ import {
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { DESCRIPTION_SCALE, LIMITS } from '../shared/types';
-import { colors, light, radius, shadow, spacing } from '../lib/theme';
+import { colors, radius, shadow, spacing } from '../lib/theme';
 import { DISPLAY_FONT, kicker, uiText } from '../lib/fonts';
 import { Glass } from './glass';
 import { BULLET } from './RichDescription';
@@ -149,11 +149,11 @@ export function DescriptionEditor({
 
           <View style={[styles.toolbarWrap, { paddingBottom: insets.bottom + spacing.sm }]}>
             <Glass
-              tint="light"
+              tint="dark"
               intensity={40}
               radius={radius.pill}
               border
-              fill="rgba(255,255,255,0.6)"
+              fill="rgba(24,24,27,0.94)"
               style={styles.toolbar}
             >
               <Pressable
@@ -163,7 +163,7 @@ export function DescriptionEditor({
                 <Ionicons
                   name="list"
                   size={20}
-                  color={bulletsActive ? '#fff' : colors.text}
+                  color={bulletsActive ? colors.onInk : colors.text}
                 />
                 <Text style={[styles.toolLabel, bulletsActive && styles.toolLabelActive]}>
                   Bullets
@@ -177,7 +177,7 @@ export function DescriptionEditor({
                   hitSlop={8}
                   style={[styles.sizeBtn, !canShrink && styles.sizeBtnOff]}
                 >
-                  <Text style={styles.sizeSmall}>A</Text>
+                  <Text style={styles.sizeSymbol}>−</Text>
                 </Pressable>
                 <Text style={styles.sizePct}>{scale}%</Text>
                 <Pressable
@@ -186,7 +186,7 @@ export function DescriptionEditor({
                   hitSlop={8}
                   style={[styles.sizeBtn, !canGrow && styles.sizeBtnOff]}
                 >
-                  <Text style={styles.sizeBig}>A</Text>
+                  <Text style={styles.sizeSymbol}>+</Text>
                 </Pressable>
               </View>
             </Glass>
@@ -302,16 +302,13 @@ const styles = StyleSheet.create({
   sizeBtnOff: {
     opacity: 0.4,
   },
-  sizeSmall: {
-    ...uiText(13, '600'),
+  sizeSymbol: {
+    ...uiText(22, '600'),
     color: colors.text,
-  },
-  sizeBig: {
-    ...uiText(20, '600'),
-    color: colors.text,
+    lineHeight: 24,
   },
   sizePct: {
-    ...kicker(light.text3),
+    ...kicker(colors.muted),
     minWidth: 40,
     textAlign: 'center',
   },

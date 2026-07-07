@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import {
   KeyboardAvoidingView,
+  Platform,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -97,7 +98,7 @@ export default function PhoneScreen() {
                 placeholderTextColor={colors.muted}
                 keyboardType="phone-pad"
                 autoFocus
-                style={styles.phoneInputInline}
+                style={[styles.phoneInputInline, styles.noOutline]}
                 maxLength={16}
               />
             </View>
@@ -168,6 +169,7 @@ const styles = StyleSheet.create({
   phoneRow: {
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'center',
     gap: spacing.sm,
   },
   // Borderless inline country prefix (e.g. "+1 ▾") — no box/bubble.
@@ -179,20 +181,23 @@ const styles = StyleSheet.create({
   },
   phonePrefix: {
     color: colors.text,
-    ...uiText(24),
+    ...uiText(30),
   },
   phoneCaret: {
     color: colors.muted,
-    fontSize: 12,
+    fontSize: 14,
   },
   // Borderless inline phone field — plain text on the canvas, no box.
   phoneInputInline: {
     flex: 1,
-    ...uiText(24),
+    ...uiText(30),
     color: colors.text,
-    lineHeight: 30,
+    lineHeight: 38,
+    textAlign: 'center',
     paddingVertical: 6,
   },
+  // Kill the browser's blue focus ring on web (react-native-web maps these).
+  noOutline: Platform.OS === 'web' ? ({ outlineStyle: 'none', outlineWidth: 0 } as any) : {},
   phoneInput: {
     flex: 1,
     backgroundColor: colors.inputBg,

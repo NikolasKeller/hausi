@@ -137,6 +137,7 @@ export function DateTimeSheet({
                   width: '100%',
                   padding: 14,
                   fontSize: 16,
+                  fontFamily: 'Reglo-Bold',
                   borderRadius: radius.md,
                   border: `1px solid ${colors.cardBorder}`,
                   colorScheme: 'light',
@@ -237,7 +238,9 @@ const styles = StyleSheet.create({
   },
   doneText: { ...uiText(15, '600'), color: colors.onInk },
   pickerWrap: {
-    paddingHorizontal: spacing.md,
+    // Match the header's padding so the input lines up with the title/Done and
+    // has even spacing on both sides.
+    paddingHorizontal: spacing.lg,
     paddingTop: spacing.xs,
   },
   iosPicker: {
@@ -267,6 +270,5 @@ const styles = StyleSheet.create({
   webRow: {
     gap: spacing.sm,
     paddingVertical: spacing.sm,
-    paddingHorizontal: spacing.sm,
   },
 });

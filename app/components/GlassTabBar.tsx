@@ -9,6 +9,7 @@ import {
   View,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { Ionicons } from '@expo/vector-icons';
 import { colors, radius, spacing } from '../lib/theme';
 import { uiText } from '../lib/fonts';
 
@@ -35,12 +36,18 @@ const SPRING = { useNativeDriver: true, friction: 9, tension: 90 };
 
 // A rounded, floating tab bar with a translucent "bubble" that glides to the
 // active tab — and, while dragging horizontally, follows the finger, clamped
-// to the bar so it can never slip past the edges.
+// to the bar so it can never slip past the edges. The "Create" screen isn't a
+// bar tab: it lives in a white + button floating above the bar's right edge.
 export function GlassTabBar({ state, descriptors, navigation }: TabBarProps) {
   const insets = useSafeAreaInsets();
-  const count = state.routes.length;
+
+  // Only the four primary destinations live in the bar; Create is the FAB.
+  const barRoutes = state.routes.filter((r) => r.name !== 'create');
+  const createRoute = state.routes.find((r) => r.name === 'create');
+  const count = barRoutes.length;
 
   const [rowWidth, setRowWidth] = useState(0);
+  const [barHeight, setBarHeight] = useState(0);
   const rowLeft = useRef(0);
   const rowRef = useRef<View>(null);
   const translateX = useRef(new Animated.Value(0)).current;
@@ -48,17 +55,20 @@ export function GlassTabBar({ state, descriptors, navigation }: TabBarProps) {
 
   const tabWidth = rowWidth ? rowWidth / count : 0;
 
+  const activeKey = state.routes[state.index]?.key;
+  const activeIndex = Math.max(0, barRoutes.findIndex((r) => r.key === activeKey));
+
   // Latest layout/nav values for the PanResponder, which is created once and
   // would otherwise close over stale values.
-  const latest = useRef({ tabWidth, rowWidth, count, state, navigation });
-  latest.current = { tabWidth, rowWidth, count, state, navigation };
+  const latest = useRef({ tabWidth, rowWidth, count, barRoutes, activeIndex, navigation });
+  latest.current = { tabWidth, rowWidth, count, barRoutes, activeIndex, navigation };
 
   // Settle the bubble under the active tab whenever it changes (unless a drag
   // is currently driving it).
   useEffect(() => {
     if (dragging.current || !tabWidth) return;
-    Animated.spring(translateX, { ...SPRING, toValue: state.index * tabWidth }).start();
-  }, [state.index, tabWidth, translateX]);
+    Animated.spring(translateX, { ...SPRING, toValue: activeIndex * tabWidth }).start();
+  }, [activeIndex, tabWidth, translateX]);
 
   const pan = useRef(
     PanResponder.create({
@@ -76,20 +86,20 @@ export function GlassTabBar({ state, descriptors, navigation }: TabBarProps) {
         translateX.setValue(center - tw / 2);
       },
       onPanResponderRelease: (_e, g) => {
-        const { tabWidth: tw, count: c, state: st, navigation: nav } = latest.current;
+        const { tabWidth: tw, count: c, barRoutes: br, activeIndex: ai, navigation: nav } = latest.current;
         dragging.current = false;
         if (!tw) return;
         const x = g.moveX - rowLeft.current;
         let idx = Math.round((x - tw / 2) / tw);
         idx = Math.max(0, Math.min(idx, c - 1));
         Animated.spring(translateX, { ...SPRING, toValue: idx * tw }).start();
-        const route = st.routes[idx];
-        if (route && idx !== st.index) nav.navigate(route.name);
+        const route = br[idx];
+        if (route && idx !== ai) nav.navigate(route.name);
       },
       onPanResponderTerminate: () => {
         dragging.current = false;
-        const { tabWidth: tw, state: st } = latest.current;
-        if (tw) Animated.spring(translateX, { ...SPRING, toValue: st.index * tw }).start();
+        const { tabWidth: tw, activeIndex: ai } = latest.current;
+        if (tw) Animated.spring(translateX, { ...SPRING, toValue: ai * tw }).start();
       },
     })
   ).current;
@@ -101,9 +111,22 @@ export function GlassTabBar({ state, descriptors, navigation }: TabBarProps) {
     });
   }
 
+  const goCreate = () => {
+    if (!createRoute) return;
+    const event = navigation.emit({
+      type: 'tabPress',
+      target: createRoute.key,
+      canPreventDefault: true,
+    });
+    if (!event.defaultPrevented) navigation.navigate('create');
+  };
+
   return (
     <View style={[styles.wrap, { paddingBottom: insets.bottom + spacing.sm }]}>
-      <View style={styles.bar}>
+      <View
+        style={styles.bar}
+        onLayout={(e) => setBarHeight(e.nativeEvent.layout.height)}
+      >
         <View
           ref={rowRef}
           style={styles.row}
@@ -120,9 +143,9 @@ export function GlassTabBar({ state, descriptors, navigation }: TabBarProps) {
             />
           ) : null}
 
-          {state.routes.map((route, index) => {
+          {barRoutes.map((route) => {
             const { options } = descriptors[route.key];
-            const focused = state.index === index;
+            const focused = route.key === activeKey;
             const color = focused ? colors.ink : colors.muted;
             const label = options.title ?? route.name;
 
@@ -146,6 +169,20 @@ export function GlassTabBar({ state, descriptors, navigation }: TabBarProps) {
           })}
         </View>
       </View>
+
+      {/* Floating Create button — sits above the bar's right edge. */}
+      {createRoute ? (
+        <Pressable
+          onPress={goCreate}
+          style={({ pressed }) => [
+            styles.fab,
+            { bottom: insets.bottom + spacing.sm + Math.max(barHeight - 22, 28) },
+            pressed && { opacity: 0.85 },
+          ]}
+        >
+          <Ionicons name="add" size={32} color={colors.onInk} />
+        </Pressable>
+      ) : null}
     </View>
   );
 }
@@ -189,5 +226,20 @@ const styles = StyleSheet.create({
   },
   label: {
     ...uiText(11, '600'),
+  },
+  fab: {
+    position: 'absolute',
+    right: 0,
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    backgroundColor: colors.ink,
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#000',
+    shadowOpacity: 0.4,
+    shadowRadius: 16,
+    shadowOffset: { width: 0, height: 8 },
+    elevation: 14,
   },
 });

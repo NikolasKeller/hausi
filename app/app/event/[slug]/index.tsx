@@ -250,7 +250,10 @@ export default function EventScreen() {
     );
   }
 
-  const ink = themeInk(event.coverTheme);
+  // The page now sits on the corporate dark canvas (see ThemeBackground), so
+  // content always uses the dark-surface ink (white type, dark glass) instead
+  // of a palette that flipped with the per-event theme.
+  const ink = themeInk('noir');
 
   const myRsvp = event.rsvps.find((r) => r.user.id === user?.id);
   const myPlusOne = myRsvp?.guests?.[0] ?? null;

@@ -399,11 +399,11 @@ export function EventForm({ initial, submitLabel, onSubmit, footer }: Props) {
         style={[styles.taskbarWrap, { bottom: insets.bottom + spacing.sm }]}
       >
         <Glass
-          tint={ink.glassTint}
+          tint="dark"
           intensity={40}
           radius={radius.pill}
           border
-          fill={ink.dark ? 'rgba(15,12,24,0.45)' : 'rgba(255,255,255,0.5)'}
+          fill="rgba(24,24,27,0.94)"
           style={styles.taskbar}
         >
           <Pressable style={styles.taskbarItem} onPress={() => setThemePickerOpen(true)}>
