@@ -620,6 +620,11 @@ const styles = StyleSheet.create({
     color: colors.text,
     // 16px avoids mobile Safari's auto-zoom when this autoFocus input opens.
     fontSize: 16,
+    // Give the line box its full height (+ a hair of headroom) so the
+    // placeholder isn't clipped top/bottom — RN-Web collapses a single-line
+    // input with paddingVertical:0 and no lineHeight down onto its text.
+    lineHeight: 22,
+    minHeight: 24,
     paddingVertical: 0,
   },
   menuItem: {
