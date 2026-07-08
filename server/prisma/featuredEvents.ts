@@ -22,6 +22,10 @@ export type FeaturedEvent = {
   category: string;
   costPerPerson: string;
   dressCode: string;
+  // Real organizer when it is NOT YE Munich (e.g. "PAPItutmirleid") — the
+  // seeds then host the event under that organizer's org account instead of
+  // wrongly crediting YE. Omitted = YE Munich's own event.
+  organizerName?: string;
 };
 
 export const FEATURED_EVENTS: FeaturedEvent[] = [
@@ -55,6 +59,7 @@ export const FEATURED_EVENTS: FeaturedEvent[] = [
     category: 'music',
     costPerPerson: 'From 0 EUR',
     dressCode: '',
+    organizerName: 'Bahnwärter Thiel',
   },
   {
     title: 'PAPItutmirleid BIG ASS FESTIVAL #2',
@@ -76,6 +81,7 @@ export const FEATURED_EVENTS: FeaturedEvent[] = [
     category: 'music',
     costPerPerson: '15 EUR',
     dressCode: '',
+    organizerName: 'PAPItutmirleid',
   },
   {
     title: "YE's Magic Garden",
