@@ -36,4 +36,7 @@ ENV DATABASE_URL="file:/data/now.db"
 # --accept-data-loss lets db push apply destructive schema changes (e.g. a
 # dropped model) non-interactively; without it the boot aborts and the
 # healthcheck never comes up on a volume that still has the old tables.
-CMD ["sh", "-c", "mkdir -p /data && npx prisma db push --skip-generate --accept-data-loss && npm start"]
+# `db push` is idempotent (see above). `add-events` then ensures the curated
+# featured events exist — it's additive/idempotent (never deletes), so running
+# it on every boot is safe; `|| true` keeps a seeding hiccup from blocking boot.
+CMD ["sh", "-c", "mkdir -p /data && npx prisma db push --skip-generate --accept-data-loss && (npm run add-events || echo 'add-events skipped') && npm start"]
