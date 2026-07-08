@@ -147,17 +147,6 @@ function RootNavigator() {
           headerLeft: () => <ModalClose />,
         }}
       />
-      <Stack.Screen
-        name="add-plus-one"
-        options={{
-          title: '',
-          presentation: 'modal',
-          gestureEnabled: true,
-          headerTransparent: true,
-          headerStyle: { backgroundColor: 'transparent' },
-          headerLeft: () => <ModalClose />,
-        }}
-      />
       <Stack.Screen name="event/[slug]/index" options={{ headerShown: false }} />
       <Stack.Screen
         name="event/[slug]/edit"
@@ -194,7 +183,7 @@ function WebFrame({ children }: { children: React.ReactNode }) {
 const frameStyles = StyleSheet.create({
   page: {
     flex: 1,
-    // Entirely black surround — the phone column sits on a flat near-black desk.
+    // Cream surround — the phone column sits on the same warm canvas.
     backgroundColor: colors.bg,
     alignItems: 'center',
   },
@@ -203,15 +192,15 @@ const frameStyles = StyleSheet.create({
     width: '100%',
     maxWidth: 430,
     backgroundColor: colors.bg,
-    // Neutral depth only (no coloured bloom) so the background stays black.
-    ...(Platform.OS === 'web' ? { boxShadow: '0 0 24px rgba(0,0,0,0.5)' } : null),
+    // Neutral depth only, soft on the light canvas.
+    ...(Platform.OS === 'web' ? { boxShadow: '0 0 24px rgba(0,0,0,0.18)' } : null),
   },
 });
 
 export default function RootLayout() {
   return (
     <AuthProvider>
-      <StatusBar style="light" />
+      <StatusBar style="dark" />
       <WebFrame>
         <RootNavigator />
       </WebFrame>

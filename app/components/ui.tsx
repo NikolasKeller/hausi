@@ -30,7 +30,9 @@ export function Button({
   loading,
   disabled,
   variant = 'primary',
-  tone = 'paper',
+  // Ghost buttons default to dark ink — right for the cream canvas. Pass
+  // tone="paper" on dark (theme) surfaces to get the white outline instead.
+  tone = 'ink',
   style,
 }: {
   title: string;
@@ -89,8 +91,9 @@ export function Button({
     );
   }
 
-  // ghost / danger — bordered, transparent.
-  const edge = variant === 'danger' ? colors.danger : tone === 'ink' ? colors.onInk : '#fff';
+  // ghost / danger — bordered, transparent. 'ink' = dark outline for light
+  // surfaces; 'paper' = white outline for dark (theme) surfaces.
+  const edge = variant === 'danger' ? colors.danger : tone === 'ink' ? colors.text : '#fff';
   return (
     <Pressable
       onPress={onPress}

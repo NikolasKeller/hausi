@@ -55,9 +55,9 @@ export function ThemeBackground({
         style={StyleSheet.absoluteFill}
         pointerEvents="none"
       />
-      {/* Signature violet bloom fading out toward the middle. */}
+      {/* Soft neutral sheen fading out toward the middle. */}
       <LinearGradient
-        colors={['rgba(139,92,246,0.16)', 'rgba(139,92,246,0)']}
+        colors={['rgba(255,255,255,0.10)', 'rgba(255,255,255,0)']}
         start={{ x: 0.5, y: 0 }}
         end={{ x: 0.5, y: 0.42 }}
         style={StyleSheet.absoluteFill}

@@ -1,70 +1,69 @@
-// iykyk design system — a stark near-black canvas with a violet bloom falling
-// from the top, white type, translucent white surfaces/hairlines, and a
-// heliotrope-violet signature accent. Dark, soft-glow, nightlife-flavored.
+// iykyk design system — a warm cream canvas (matching the chrome wordmark
+// artwork), near-black ink for text and primary actions, white cards with
+// subtle hairlines, and silvery greys for everything secondary. Neutral,
+// metallic, print-like.
 
-// ── App palette (dark canvas) ────────────────────────────────────────────────
+// ── App palette (cream canvas) ────────────────────────────────────────────────
 export const colors = {
   // Surfaces
-  bg: '#0C0C0E',        // near-black canvas
-  card: '#1C1C1E',      // elevated dark card
-  cardBorder: 'rgba(255,255,255,0.10)', // hairline on dark
-  inputBg: 'rgba(255,255,255,0.07)',    // translucent field fill
+  bg: '#CFC7BD',        // warm cream/greige canvas (sampled from the artwork)
+  card: '#F4F1EB',      // elevated warm-white card
+  cardBorder: 'rgba(0,0,0,0.08)',       // hairline on light
+  inputBg: 'rgba(255,255,255,0.55)',    // translucent field fill
   // Type
-  text: '#FFFFFF',      // white ink
-  muted: 'rgba(255,255,255,0.56)',      // dimmed white
-  // Brand / accent — heliotrope violet
-  accent: '#8B5CF6',
-  accentDark: '#6D3BDD',
-  violet: '#8B5CF6',
-  helio: '#A78BFA',     // lighter heliotrope tint (headlines, glows)
-  // High-contrast solid fill (a white pill on the dark canvas)
-  ink: '#FFFFFF',
-  // Text on the violet/gradient accent fill
+  text: '#171717',      // near-black ink
+  muted: 'rgba(23,23,23,0.55)',         // dimmed ink
+  // Brand / accent — anthracite (the chrome look's dark pole)
+  accent: '#1F1F1F',
+  accentDark: '#000000',
+  violet: '#4A4A4A',    // kept name for back-compat — now a dark grey
+  helio: '#6B6B6B',     // silvery secondary (headlines, subtle glows)
+  // High-contrast solid fill (a dark pill on the cream canvas)
+  ink: '#171717',
+  // Text on the anthracite/gradient accent fill
   onAccent: '#FFFFFF',
-  // Text on a white solid fill
-  onInk: '#111111',
+  // Text on an ink solid fill
+  onInk: '#FFFFFF',
   // Semantics
-  danger: '#FF5A5F',
-  success: '#31C46B',
-  warning: '#FFB020',
+  danger: '#D93036',
+  success: '#1E9E52',
+  warning: '#B87A00',
 };
 
-// ── Elevated dark surfaces (was the "paper" light palette) ────────────────────
-// Kept under the `light` name for back-compat with the many callers, but now a
-// dark-on-dark surface scheme so "paper" cards read as Partiful's dark panels.
+// ── Elevated surfaces (kept under the `light` name for back-compat) ───────────
 export const light = {
   // Surfaces
-  bg: '#0C0C0E', // dark canvas
-  paper: '#1C1C1E', // elevated dark card / panel
-  // Ink & type ramp (white → dim)
-  ink: '#FFFFFF',
-  text: '#FFFFFF',
-  text2: 'rgba(255,255,255,0.80)', // bright secondary
-  text3: 'rgba(255,255,255,0.60)', // tertiary
-  muted: 'rgba(255,255,255,0.45)', // faint
-  disabled: 'rgba(255,255,255,0.30)',
-  border: 'rgba(255,255,255,0.14)', // structural hairline
-  hairline: 'rgba(255,255,255,0.10)', // soft divider
-  inputBg: 'rgba(255,255,255,0.07)',
+  bg: '#CFC7BD', // cream canvas
+  paper: '#F4F1EB', // warm-white card / panel
+  // Ink & type ramp (near-black → dim)
+  ink: '#171717',
+  text: '#171717',
+  text2: 'rgba(23,23,23,0.80)', // strong secondary
+  text3: 'rgba(23,23,23,0.60)', // tertiary
+  muted: 'rgba(23,23,23,0.45)', // faint
+  disabled: 'rgba(23,23,23,0.30)',
+  border: 'rgba(0,0,0,0.12)', // structural hairline
+  hairline: 'rgba(0,0,0,0.08)', // soft divider
+  inputBg: 'rgba(255,255,255,0.55)',
   // Accents
-  sand: '#D9C58B', // warm sand (kept for active nav highlights)
-  midnight: '#4F7BFF', // electric blue accent
-  onInk: '#111111', // text on a white solid fill
+  sand: '#B4A88F', // warm sand (kept for active nav highlights)
+  midnight: '#3A3A3A', // dark grey accent (was electric blue)
+  onInk: '#FFFFFF', // text on an ink solid fill
 };
 
-// ── Vibrant brand gradients (the festive party surface) ──────────────────────
-// A dusk→night ramp for dark hero backgrounds.
-export const dusk = ['#B497D6', '#8E6BB8', '#5E4590', '#352A58', '#1C1633'] as const;
+// ── Neutral brand gradients (the chrome surface) ─────────────────────────────
+// A silver dawn ramp for hero backgrounds.
+export const dusk = ['#E6E2DB', '#CFC7BD', '#AFA79C', '#8D867B', '#6E675D'] as const;
 
 export const brand = {
-  // The signature gradient — heliotrope → violet → deep indigo.
-  party: ['#C4A7FF', '#8B5CF6', '#5B34C4'] as const,
-  // Soft violet washes for section backgrounds.
-  partyPink: ['#E4D6FF', '#C9B2FF'] as const,
-  periwinkle: ['rgba(139,92,246,0.28)', 'rgba(255,255,255,0)'] as const,
-  spearmint: ['#C9B2FF', '#E9E0FF'] as const,
-  // Heliotrope → violet — the primary action gradient.
-  glow: ['#A78BFA', '#6D3BDD'] as const,
+  // The signature gradient — polished chrome: light silver → steel.
+  party: ['#EFECE6', '#C2BBB0', '#8F887D'] as const,
+  // Soft neutral washes for section backgrounds.
+  partyPink: ['#EDE9E2', '#DCD6CC'] as const,
+  periwinkle: ['rgba(255,255,255,0.5)', 'rgba(255,255,255,0)'] as const,
+  spearmint: ['#DCD6CC', '#EFECE6'] as const,
+  // Anthracite ramp — the primary action gradient.
+  glow: ['#3A3A3A', '#111111'] as const,
 };
 
 // Kept for back-compat (the primary action gradient).
@@ -72,10 +71,10 @@ export const brandGradient = brand.glow;
 
 // RSVP / semantic pills (shared across schemes).
 export const rsvp = {
-  going: { bg: '#31C431', text: '#0A1A0A' },
-  maybe: { bg: '#FFAE00', text: '#1A1022' },
-  no: { bg: '#E5484D', text: '#FFFFFF' },
-  waitlist: { bg: 'rgba(255,255,255,0.16)', text: '#FFFFFF' },
+  going: { bg: '#1E9E52', text: '#FFFFFF' },
+  maybe: { bg: '#E4B23C', text: '#231A05' },
+  no: { bg: '#D93036', text: '#FFFFFF' },
+  waitlist: { bg: 'rgba(0,0,0,0.10)', text: '#171717' },
 };
 
 // Partiful spacing ramp: 4 6 8 10 12 16 20 24 40 60 80.
@@ -100,20 +99,20 @@ export const radius = {
   pill: 999,
 };
 
-// Layered elevation. On the dark canvas shadows read faintly; surfaces are
-// mostly separated by their translucent hairline border, with a soft shadow to
+// Layered elevation. On the cream canvas shadows stay soft and warm; surfaces
+// are mostly separated by their hairline border, with a gentle shadow to
 // ground floating elements (RSVP bar, sheets).
 export const shadow = {
   card: {
-    shadowColor: '#000',
-    shadowOpacity: 0.35,
+    shadowColor: '#4A4438',
+    shadowOpacity: 0.14,
     shadowRadius: 10,
     shadowOffset: { width: 0, height: 4 },
     elevation: 3,
   },
   float: {
-    shadowColor: '#000',
-    shadowOpacity: 0.5,
+    shadowColor: '#4A4438',
+    shadowOpacity: 0.25,
     shadowRadius: 24,
     shadowOffset: { width: 0, height: 12 },
     elevation: 12,

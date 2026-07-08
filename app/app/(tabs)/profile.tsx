@@ -12,7 +12,7 @@ import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 import { LinearGradient } from 'expo-linear-gradient';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import type { MyProfile } from '../../shared/types';
+import type { EventSummary, MyProfile } from '../../shared/types';
 import { api, mediaUrl } from '../../lib/api';
 import { useAuth } from '../../lib/auth';
 import { confirmDialog } from '../../lib/dialogs';
@@ -21,20 +21,11 @@ import { colors, radius, shadow, spacing } from '../../lib/theme';
 import { display, uiText } from '../../lib/fonts';
 import { Avatar } from '../../components/Avatar';
 import { Button } from '../../components/ui';
+import { EventCard } from '../../components/EventCard';
 import { SettingsSheet } from '../../components/SettingsSheet';
 import { withScreenBackground } from '../../components/ScreenBackground';
 
-// A centered stat tile — small label above a big number (0 when empty).
-function Stat({ label, value }: { label: string; value: number }) {
-  return (
-    <View style={styles.stat}>
-      <Text style={styles.statLabel}>{label}</Text>
-      <Text style={styles.statValue}>{value}</Text>
-    </View>
-  );
-}
-
-// No violet bloom here — the profile sits on the plain dark canvas.
+// No bloom here — the profile sits on the plain canvas.
 export default withScreenBackground(ProfileScreen, { bloom: false });
 
 function ProfileScreen() {
@@ -42,6 +33,9 @@ function ProfileScreen() {
   const insets = useSafeAreaInsets();
   const { logout } = useAuth();
   const [profile, setProfile] = useState<MyProfile | null>(null);
+  // Events with a bought ticket (any non-hosted event on "my events" — buying
+  // marks them GOING server-side).
+  const [tickets, setTickets] = useState<EventSummary[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [settingsOpen, setSettingsOpen] = useState(false);
 
@@ -52,6 +46,13 @@ function ProfileScreen() {
       setError(null);
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Could not load profile');
+    }
+    // Best-effort — the profile renders fine without the ticket list.
+    try {
+      const res = await api.myEvents();
+      setTickets(res.events.filter((ev) => !ev.isHost));
+    } catch {
+      // keep whatever we had
     }
   }, []);
 
@@ -67,6 +68,12 @@ function ProfileScreen() {
         } catch (e) {
           if (!active) return;
           setError(e instanceof Error ? e.message : 'Could not load profile');
+        }
+        try {
+          const res = await api.myEvents();
+          if (active) setTickets(res.events.filter((ev) => !ev.isHost));
+        } catch {
+          // best-effort
         }
       })();
       return () => {
@@ -120,12 +127,16 @@ function ProfileScreen() {
               <Avatar name={profile.name} image={null} size={160} />
             </View>
           )}
-          {/* Top scrim keeps the buttons legible over a bright photo. */}
-          <LinearGradient
-            colors={['rgba(0,0,0,0.45)', 'transparent']}
-            style={styles.topScrim}
-            pointerEvents="none"
-          />
+          {/* Top scrim keeps the buttons legible over a busy photo — only
+              needed when there actually is one (it would read as a stray grey
+              band on the plain fallback). */}
+          {photo ? (
+            <LinearGradient
+              colors={['rgba(0,0,0,0.45)', 'transparent']}
+              style={styles.topScrim}
+              pointerEvents="none"
+            />
+          ) : null}
           {/* Photo fades fully into the page background high up, so it ends
               well above the name — nothing bleeds down behind the stats. */}
           <LinearGradient
@@ -161,47 +172,24 @@ function ProfileScreen() {
             <Ionicons name="sparkles" size={13} color={colors.accent} />
             <Text style={styles.joinedText}>joined {joinedYear}</Text>
           </View>
-          <View style={styles.statsRow}>
-            <Stat label="Mutuals" value={profile.mutuals.length} />
-            <Stat label="Badges" value={profile.badges.length} />
-          </View>
         </View>
 
-        {profile.badges.length > 0 ? (
-          <View style={styles.section}>
-            <ScrollView
-              horizontal
-              showsHorizontalScrollIndicator={false}
-              contentContainerStyle={styles.badgeRow}
-            >
-              {profile.badges.map((badge) => (
-                <View key={badge.key} style={styles.badgeChip}>
-                  <Text style={styles.badgeEmoji}>{badge.emoji}</Text>
-                  <Text style={styles.badgeValue}>{badge.value}</Text>
-                  <Text style={styles.badgeLabel}>{badge.label}</Text>
-                </View>
-              ))}
-            </ScrollView>
-          </View>
-        ) : null}
-
-        {profile.mutuals.length > 0 ? (
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Mutuals</Text>
-            <View style={styles.mutualsGrid}>
-              {profile.mutuals.map((m) => (
-                <View key={m.user.id} style={styles.mutualItem}>
-                  <Avatar name={m.user.name} image={m.user.avatarImage} size={44} />
-                  <View style={styles.mutualInfo}>
-                    <Text style={styles.mutualName} numberOfLines={1}>
-                      {m.user.name}
-                    </Text>
-                  </View>
-                </View>
+        {/* Events with a bought ticket — tapping "Buy ticket" on an event
+            files it here (and on the calendar). */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>My events</Text>
+          {tickets.length === 0 ? (
+            <Text style={styles.ticketsEmpty}>
+              No tickets yet - grab one on an event page 🎟️
+            </Text>
+          ) : (
+            <View style={styles.ticketList}>
+              {tickets.map((ev) => (
+                <EventCard key={ev.id} event={ev} />
               ))}
             </View>
-          </View>
-        ) : null}
+          )}
+        </View>
       </ScrollView>
       {settingsOpen ? (
         <SettingsSheet
@@ -297,9 +285,9 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
-    backgroundColor: 'rgba(255,255,255,0.10)',
+    backgroundColor: 'rgba(255,255,255,0.55)',
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.14)',
+    borderColor: 'rgba(0,0,0,0.10)',
     borderRadius: radius.pill,
     paddingHorizontal: spacing.md,
     paddingVertical: 6,
@@ -308,82 +296,20 @@ const styles = StyleSheet.create({
     ...uiText(13, '600'),
     color: colors.text,
   },
-  statsRow: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    gap: spacing.xxl,
-    marginTop: spacing.xs,
-  },
-  stat: {
-    alignItems: 'center',
-    gap: 2,
-  },
-  statLabel: {
-    ...uiText(13),
-    color: colors.muted,
-  },
-  statValue: {
-    ...display(28),
-    color: colors.text,
-  },
   section: {
     marginTop: spacing.xl,
-    gap: spacing.sm,
+    gap: spacing.md,
+    paddingHorizontal: spacing.md,
   },
   sectionTitle: {
-    ...display(28),
-    color: colors.text,
-    textAlign: 'center',
-  },
-  badgeRow: {
-    gap: spacing.sm,
-    paddingHorizontal: spacing.md,
-    flexGrow: 1,
-    justifyContent: 'center',
-  },
-  badgeChip: {
-    backgroundColor: colors.card,
-    borderWidth: 1,
-    borderColor: colors.cardBorder,
-    borderRadius: radius.lg,
-    paddingVertical: spacing.md,
-    paddingHorizontal: spacing.lg,
-    alignItems: 'center',
-    gap: 2,
-    minWidth: 130,
-    ...shadow.card,
-  },
-  badgeEmoji: {
-    fontSize: 32,
-  },
-  badgeValue: {
-    ...display(26),
+    ...display(24),
     color: colors.text,
   },
-  badgeLabel: {
-    ...uiText(12),
+  ticketsEmpty: {
+    ...uiText(14),
     color: colors.muted,
-    textAlign: 'center',
   },
-  mutualsGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    justifyContent: 'space-between',
-    rowGap: spacing.md,
-    paddingHorizontal: spacing.md,
-  },
-  mutualItem: {
-    width: '48%',
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.sm,
-  },
-  mutualInfo: {
-    flex: 1,
-    gap: 1,
-  },
-  mutualName: {
-    ...uiText(14, '700'),
-    color: colors.text,
+  ticketList: {
+    gap: spacing.md,
   },
 });
