@@ -477,8 +477,8 @@ export default function EventScreen() {
           {/* Pure guest-count display — RSVPs are gone, tickets are bought at
               the source. */}
           <View style={styles.barGoing}>
-            <Text style={styles.barGoingCount}>{event.counts.going}</Text>
-            <Text style={styles.barGoingLabel}>Going</Text>
+            <Text style={[styles.barGoingCount, { color: ink.text }]}>{event.counts.going}</Text>
+            <Text style={[styles.barLabel, { color: ink.text }]}>Going</Text>
           </View>
 
           <BarItem icon="person-add" label="Invite" color={ink.text} onPress={share} />
@@ -585,27 +585,18 @@ const styles = StyleSheet.create({
   barLabel: {
     ...uiText(11, '600'),
   },
+  // Same footprint as a BarItem (icon + label) but the "icon" is the going
+  // count itself — no white circle card, just the number sitting plainly in
+  // the bar like everything else around it.
   barGoing: {
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#fff',
-    width: 58,
-    height: 58,
-    borderRadius: 29,
-    marginHorizontal: 2,
-    shadowColor: '#000',
-    shadowOpacity: 0.08,
-    shadowRadius: 6,
-    shadowOffset: { width: 0, height: 2 },
-    elevation: 2,
+    gap: 3,
+    minWidth: 50,
+    paddingVertical: 6,
   },
   barGoingCount: {
     ...uiText(18, '700'),
-    color: '#111',
-  },
-  barGoingLabel: {
-    ...uiText(10, '600'),
-    color: '#555',
   },
   menuOverlay: {
     ...StyleSheet.absoluteFillObject,
