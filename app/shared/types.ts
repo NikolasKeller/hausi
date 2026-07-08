@@ -238,6 +238,9 @@ export interface EventDetail extends EventSummary {
   description: string;
   descriptionScale: number;
   costPerPerson: string;
+  // External ticket/checkout URL (organiser's real paid-ticket page) for
+  // scraped events; '' for user-created events. The buy-ticket button opens it.
+  ticketUrl: string;
   dressCode: string;
   maxGuests: number | null;
   plusOneLimit: number;
