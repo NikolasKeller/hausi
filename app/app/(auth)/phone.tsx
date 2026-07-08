@@ -98,7 +98,6 @@ export default function PhoneScreen() {
                 hitSlop={10}
               >
                 <Text style={styles.phonePrefix}>{country.flag} {country.code}</Text>
-                <Text style={styles.phoneCaret}>▾</Text>
               </Pressable>
               <TextInput
                 value={digits}
@@ -208,7 +207,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     gap: spacing.sm,
   },
-  // Borderless inline country prefix (e.g. "🇩🇪 +49 ▾") — no box/bubble.
+  // Borderless inline country prefix (e.g. "🇩🇪 +49") — no box/bubble.
   countryInline: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -218,10 +217,6 @@ const styles = StyleSheet.create({
   phonePrefix: {
     color: colors.text,
     ...uiText(30),
-  },
-  phoneCaret: {
-    color: colors.muted,
-    fontSize: 14,
   },
   // Borderless inline phone field — plain text on the canvas, no box.
   phoneInputInline: {
