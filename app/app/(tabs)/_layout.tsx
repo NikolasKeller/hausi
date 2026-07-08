@@ -7,9 +7,12 @@ import { GlassTabBar } from '../../components/GlassTabBar';
 // Each tab screen paints its own opaque backdrop (see withScreenBackground), so
 // the sceneStyle stays opaque here too: on web the navigator stacks every
 // mounted tab and only a solid scene keeps blurred tabs from bleeding through.
+// Explore is the first tab and the initial route; the personal feed lives on
+// the "Iykyk" tab where Explore used to be.
 export default function TabsLayout() {
   return (
     <Tabs
+      initialRouteName="explore"
       tabBar={(props) => <GlassTabBar {...(props as any)} />}
       screenOptions={{
         headerShown: false,
@@ -20,11 +23,11 @@ export default function TabsLayout() {
       }}
     >
       <Tabs.Screen
-        name="index"
+        name="explore"
         options={{
-          title: 'Home',
+          title: 'Explore',
           tabBarIcon: ({ color, focused }) => (
-            <Ionicons name={focused ? 'home' : 'home-outline'} size={24} color={color} />
+            <Ionicons name={focused ? 'earth' : 'earth-outline'} size={22} color={color} />
           ),
         }}
       />
@@ -33,16 +36,16 @@ export default function TabsLayout() {
         options={{
           title: 'Calendar',
           tabBarIcon: ({ color, focused }) => (
-            <Ionicons name={focused ? 'calendar' : 'calendar-outline'} size={24} color={color} />
+            <Ionicons name={focused ? 'calendar' : 'calendar-outline'} size={22} color={color} />
           ),
         }}
       />
       <Tabs.Screen
-        name="explore"
+        name="index"
         options={{
-          title: 'Explore',
+          title: 'Iykyk',
           tabBarIcon: ({ color, focused }) => (
-            <Ionicons name={focused ? 'earth' : 'earth-outline'} size={24} color={color} />
+            <Ionicons name={focused ? 'home' : 'home-outline'} size={22} color={color} />
           ),
         }}
       />
@@ -53,7 +56,7 @@ export default function TabsLayout() {
           tabBarIcon: ({ color, focused }) => (
             <Ionicons
               name={focused ? 'person-circle' : 'person-circle-outline'}
-              size={26}
+              size={24}
               color={color}
             />
           ),

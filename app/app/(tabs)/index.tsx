@@ -146,14 +146,6 @@ function HomeScreen() {
       <View style={styles.wordmarkWrap}>
         <Text style={styles.wordmark}>iykyk</Text>
       </View>
-      <View style={{ flex: 1 }} />
-      <Pressable
-        onPress={() => router.push('/explore')}
-        style={({ pressed }) => [styles.glassButton, pressed && { opacity: 0.7 }]}
-        hitSlop={6}
-      >
-        <Ionicons name="search" size={18} color={colors.text} />
-      </Pressable>
     </View>
   );
 
@@ -482,7 +474,7 @@ const styles = StyleSheet.create({
   headerRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'flex-start',
+    justifyContent: 'center',
     paddingHorizontal: spacing.md,
     paddingTop: spacing.sm,
   },
@@ -492,16 +484,6 @@ const styles = StyleSheet.create({
   wordmark: {
     ...display(24),
     color: colors.text,
-  },
-  glassButton: {
-    width: 38,
-    height: 38,
-    borderRadius: 19,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: 'rgba(255,255,255,0.12)',
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.16)',
   },
   sectionGroup: {
     gap: spacing.md,

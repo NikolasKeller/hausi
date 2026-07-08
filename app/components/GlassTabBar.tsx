@@ -190,7 +190,7 @@ const styles = StyleSheet.create({
     borderRadius: radius.pill,
     borderWidth: 1,
     borderColor: 'rgba(255,255,255,0.12)',
-    padding: 6,
+    padding: 4,
     shadowColor: '#000',
     shadowOpacity: 0.5,
     shadowRadius: 24,
@@ -214,11 +214,11 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 2,
-    paddingVertical: 8,
+    gap: 1,
+    paddingVertical: 5,
   },
   label: {
-    ...uiText(11, '600'),
+    ...uiText(10, '600'),
   },
   fab: {
     position: 'absolute',
