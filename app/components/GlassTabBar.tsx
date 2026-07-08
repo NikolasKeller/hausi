@@ -23,6 +23,7 @@ type TabBarProps = {
     {
       options: {
         title?: string;
+        href?: unknown;
         tabBarIcon?: (a: { color: string; focused: boolean; size: number }) => React.ReactNode;
       };
     }
@@ -43,9 +44,14 @@ export function GlassTabBar({ state, descriptors, navigation }: TabBarProps) {
   const insets = useSafeAreaInsets();
   const router = useRouter();
 
-  // Only the four primary destinations live in the bar; Create is the FAB,
-  // which jumps straight into the event editor.
-  const barRoutes = state.routes.filter((r) => r.name !== 'create');
+  // Only real destinations live in the bar: Create is the FAB, and "index" is
+  // just the hidden "/" → /explore redirect, never a tab.
+  const barRoutes = state.routes.filter(
+    (r) =>
+      r.name !== 'create' &&
+      r.name !== 'index' &&
+      descriptors[r.key]?.options?.href !== null
+  );
   const count = barRoutes.length;
 
   const [rowWidth, setRowWidth] = useState(0);
