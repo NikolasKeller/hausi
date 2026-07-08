@@ -110,13 +110,14 @@ export default function CodeScreen() {
 
         <KeyboardAvoidingView style={{ flex: 1 }} behavior="padding">
           <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
+            {/* Plain chevron back button (no text) — decrowds the screen; it
+                still returns to the phone/method step. */}
             <Pressable
               onPress={() => (router.canGoBack() ? router.back() : router.replace('/phone'))}
               hitSlop={10}
-              style={({ pressed }) => [styles.backLink, pressed && { opacity: 0.6 }]}
+              style={({ pressed }) => [styles.backButton, pressed && { opacity: 0.6 }]}
             >
-              <Ionicons name="chevron-back" size={20} color={colors.muted} />
-              <Text style={styles.backText}>Use a different method</Text>
+              <Ionicons name="chevron-back" size={22} color={colors.text} />
             </Pressable>
             <Text
               style={styles.title}
@@ -212,19 +213,21 @@ const styles = StyleSheet.create({
   content: {
     flexGrow: 1,
     padding: spacing.lg,
-    paddingTop: spacing.xl * 2,
-    gap: spacing.md,
+    paddingTop: spacing.lg,
+    // Roomier vertical rhythm so the screen never feels crowded.
+    gap: spacing.lg,
   },
-  backLink: {
-    flexDirection: 'row',
+  backButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
     alignItems: 'center',
-    gap: 2,
+    justifyContent: 'center',
     alignSelf: 'flex-start',
-    marginBottom: spacing.xs,
-  },
-  backText: {
-    color: colors.muted,
-    ...uiText(15, '500'),
+    backgroundColor: 'rgba(255,255,255,0.7)',
+    borderWidth: 1,
+    borderColor: 'rgba(0,0,0,0.10)',
+    marginBottom: spacing.md,
   },
   title: {
     color: colors.text,

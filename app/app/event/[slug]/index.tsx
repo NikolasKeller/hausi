@@ -46,6 +46,13 @@ function ticketInfo(description: string, ticketUrl?: string): { url: string | nu
   return { url, text };
 }
 
+// Hero title sizing: comfortable for short names, one step smaller for long
+// scraped titles so they wrap in ~1–3 lines instead of towering.
+function titleSizeStyle(title: string) {
+  const size = title.length > 60 ? 24 : 28;
+  return { fontSize: size, lineHeight: Math.round(size * 1.18), letterSpacing: -0.5 };
+}
+
 // One item in the floating bottom action bar (icon over a small label).
 function BarItem({
   icon,
@@ -276,25 +283,35 @@ export default function EventScreen() {
           contentContainerStyle={[styles.content, { paddingBottom: insets.bottom + 108 }]}
           keyboardShouldPersistTaps="handled"
         >
+          {/* The cover starts BELOW the back-button strip (insets.top + button
+              height), so the floating chip sits on plain paper and never
+              overlaps the image. Long scraped titles step down a size so they
+              wrap in ~1–3 lines instead of towering. */}
           {event.coverImage ? (
-            <View style={styles.posterWrap}>
+            <View style={[styles.posterWrap, { paddingTop: insets.top + 56 }]}>
               <CoverGradient
                 theme={event.coverTheme}
                 image={event.coverImage}
                 style={styles.poster}
               />
               <Text
-                style={[styles.heroTitleBelow, titleFontStyle(event.titleFont), { color: ink.text }]}
+                style={[
+                  styles.heroTitleBelow,
+                  titleFontStyle(event.titleFont),
+                  titleSizeStyle(event.title),
+                  { color: ink.text },
+                ]}
               >
                 {event.title}
               </Text>
             </View>
           ) : (
-            <View style={styles.heroBlock}>
+            <View style={[styles.heroBlock, { paddingTop: insets.top + 64 }]}>
               <Text
                 style={[
                   styles.heroTitlePlain,
                   titleFontStyle(event.titleFont),
+                  titleSizeStyle(event.title),
                   { color: ink.text },
                 ]}
               >
@@ -628,9 +645,9 @@ const styles = StyleSheet.create({
   content: {
     paddingBottom: spacing.section,
   },
+  // paddingTop is applied inline (insets.top + button strip height).
   posterWrap: {
     padding: spacing.lg,
-    paddingTop: 80,
   },
   poster: {
     aspectRatio: 1,
@@ -639,23 +656,16 @@ const styles = StyleSheet.create({
     borderRadius: radius.lg,
     overflow: 'hidden',
   },
+  // Size/lineHeight come from titleSizeStyle(title) — length-adaptive.
   heroTitleBelow: {
-    fontSize: 56,
-    letterSpacing: -1,
-    lineHeight: 56,
     marginTop: spacing.lg,
   },
   heroBlock: {
     paddingHorizontal: spacing.lg,
-    paddingTop: 100,
     paddingBottom: spacing.md,
     gap: spacing.sm,
   },
-  heroTitlePlain: {
-    fontSize: 56,
-    letterSpacing: -1,
-    lineHeight: 56,
-  },
+  heroTitlePlain: {},
   section: {
     padding: spacing.lg,
     gap: spacing.lg,
