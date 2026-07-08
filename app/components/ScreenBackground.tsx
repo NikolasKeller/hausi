@@ -1,10 +1,22 @@
 import React from 'react';
 import { StyleSheet, View } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
 import { colors } from '../lib/theme';
 
-// The app-wide backdrop: a flat near-black base.
+// The app-wide backdrop: near-black with a soft violet bloom falling from the
+// top of the screen (the Partiful-style lit-at-night glow).
 export function ScreenBackground({ children }: { children?: React.ReactNode }) {
-  return <View style={styles.fill}>{children}</View>;
+  return (
+    <View style={styles.fill}>
+      <LinearGradient
+        colors={['rgba(124,82,222,0.55)', 'rgba(94,58,180,0.22)', 'rgba(12,12,14,0)']}
+        locations={[0, 0.45, 1]}
+        style={styles.bloom}
+        pointerEvents="none"
+      />
+      {children}
+    </View>
+  );
 }
 
 // Wraps a screen so it carries its own opaque backdrop. On web the tab
@@ -34,5 +46,12 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: colors.bg,
     overflow: 'hidden',
+  },
+  bloom: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    height: 320,
   },
 });

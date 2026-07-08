@@ -2,42 +2,59 @@ import type { TextStyle } from 'react-native';
 import { PlayfairDisplay_700Bold } from '@expo-google-fonts/playfair-display';
 import { Pacifico_400Regular } from '@expo-google-fonts/pacifico';
 import { Bungee_400Regular } from '@expo-google-fonts/bungee';
+import {
+  Inter_400Regular,
+  Inter_500Medium,
+  Inter_600SemiBold,
+  Inter_700Bold,
+  Inter_800ExtraBold,
+} from '@expo-google-fonts/inter';
 import type { TitleFont } from '../shared/types';
 
-// The app is set entirely in Reglo Bold (Sebastien Sanfilippo, OFL) — a
-// geometric sans bundled locally as the single voice across every surface. It
-// ships one weight, so all "weights" map to the same family.
+// Interface text is set in Inter — a compact, modern grotesque with real
+// weights, so body copy reads regular/medium instead of everything-bold.
+// Reglo Bold (Sebastien Sanfilippo, OFL) stays as the statement/display voice
+// for big event titles.
 const REGLO = 'Reglo-Bold';
 
-// Reglo is a normal-width geometric sans, so it needs only a light size bump
-// for comfort (no condensed-font compensation). A modest floor keeps the
-// smallest labels (dates, meta) readable.
-const TEXT_SCALE = 1.1;
-const DISPLAY_SCALE = 1.05;
-const MIN_UI_SIZE = 13;
+// Inter is metrically normal — no size compensation needed.
+const TEXT_SCALE = 1.0;
+const DISPLAY_SCALE = 1.0;
+const MIN_UI_SIZE = 12;
 
 export const FONTS_TO_LOAD = {
   'Reglo-Bold': require('../assets/fonts/Reglo-Bold.otf'),
+  Inter_400Regular,
+  Inter_500Medium,
+  Inter_600SemiBold,
+  Inter_700Bold,
+  Inter_800ExtraBold,
   // Kept for the opt-in per-event title fonts (Literary / Fancy / Eclectic).
   PlayfairDisplay_700Bold,
   Pacifico_400Regular,
   Bungee_400Regular,
 };
 
-// Reglo has a single cut, so every requested weight resolves to it.
-function uiFamily(_weight?: TextStyle['fontWeight']): string {
-  return REGLO;
+// Map a requested weight onto the nearest loaded Inter cut.
+function uiFamily(weight?: TextStyle['fontWeight']): string {
+  const w = typeof weight === 'string' ? parseInt(weight, 10) || 400 : (weight ?? 400);
+  if (w >= 800) return 'Inter_800ExtraBold';
+  if (w >= 700) return 'Inter_700Bold';
+  if (w >= 600) return 'Inter_600SemiBold';
+  if (w >= 500) return 'Inter_500Medium';
+  return 'Inter_400Regular';
 }
 
-// The app's one and only voice.
-export const DISPLAY_FONT = REGLO;
-export const DISPLAY_FONT_HEAVY = REGLO; // poster/cover weight (same cut)
+// Display/headline voice: bold Inter for section headers; Reglo stays the
+// poster face for event titles (see TITLE_FONT_STYLES).
+export const DISPLAY_FONT = 'Inter_800ExtraBold';
+export const DISPLAY_FONT_HEAVY = 'Inter_800ExtraBold';
 export const SERIF_FONT = 'PlayfairDisplay_700Bold'; // opt-in literary title only
 export const displayTitle: TextStyle = { fontFamily: DISPLAY_FONT, fontWeight: 'normal' };
 
-// Statement type: Reglo Bold at tight negative tracking. The `weight` opt is
-// kept for call-site compatibility but resolves to the same cut. letterSpacing
-// is absolute px in RN, so it scales with the font size.
+// Statement type: bold Inter at tight negative tracking. The `weight` opt is
+// kept for call-site compatibility. letterSpacing is absolute px in RN, so it
+// scales with the font size.
 export function display(
   rawSize: number,
   opts?: { weight?: 'black' | 'heavy'; lineHeight?: number; tracking?: number }
@@ -56,8 +73,7 @@ export function display(
   } as TextStyle;
 }
 
-// Interface text — Reglo Bold, the single UI voice. The weight arg is accepted
-// for compatibility but every value resolves to the one Reglo cut.
+// Interface text — Inter at the requested weight.
 export function uiText(
   rawSize: number,
   weight: TextStyle['fontWeight'] = '400',
@@ -78,10 +94,10 @@ export function uiText(
 // display headlines the way Partiful labels its sections.
 export function kicker(color?: string): TextStyle {
   return {
-    fontFamily: REGLO,
+    fontFamily: 'Inter_700Bold',
     fontSize: Math.round(12 * TEXT_SCALE),
     fontWeight: 'normal',
-    letterSpacing: 1.5,
+    letterSpacing: 1.2,
     textTransform: 'uppercase',
     ...(color ? { color } : null),
   };
@@ -95,10 +111,10 @@ export const TITLE_FONT_LABELS: Record<TitleFont, string> = {
 };
 
 // Style for big event titles per font choice. `classic` is Reglo Bold (the
-// app-wide default); Literary/Fancy/Eclectic stay as opt-in decorative faces.
+// poster default); Literary/Fancy/Eclectic stay as opt-in decorative faces.
 // The loaded faces carry their weight in the family name, so fontWeight resets.
 export const TITLE_FONT_STYLES: Record<TitleFont, TextStyle> = {
-  classic: { fontFamily: DISPLAY_FONT, fontWeight: 'normal', letterSpacing: -1 },
+  classic: { fontFamily: REGLO, fontWeight: 'normal', letterSpacing: -1 },
   literary: { fontFamily: 'PlayfairDisplay_700Bold', fontWeight: 'normal', letterSpacing: 0 },
   fancy: { fontFamily: 'Pacifico_400Regular', fontWeight: 'normal', letterSpacing: 0 },
   eclectic: { fontFamily: 'Bungee_400Regular', fontWeight: 'normal', letterSpacing: 0 },

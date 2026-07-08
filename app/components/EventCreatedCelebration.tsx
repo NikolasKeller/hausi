@@ -14,11 +14,11 @@ const useNativeDriver = Platform.OS !== 'web';
 // near-black canvas with the warm orange accent and the Reglo display voice.
 
 const CONFETTI_COLORS = [
-  colors.accent, // #FF6A2B
-  brand.glow[0], // #FF8A3D
-  colors.accentDark, // #D2491A
+  colors.accent,
+  brand.glow[0],
+  colors.accentDark,
   '#FFFFFF',
-  '#FFB061',
+  '#C4A7FF',
 ];
 
 interface ConfettiSpec {
