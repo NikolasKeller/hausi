@@ -1,4 +1,4 @@
-import React, { useCallback, useMemo, useState } from 'react';
+import React, { useCallback, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Image,
@@ -10,7 +10,7 @@ import {
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useFocusEffect, useRouter } from 'expo-router';
+import { useFocusEffect } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import type { EventSummary } from '../../shared/types';
 import { api, mediaUrl } from '../../lib/api';
@@ -70,7 +70,6 @@ function chunkWeeks(cells: (Date | null)[]): (Date | null)[][] {
 export default withScreenBackground(CalendarScreen);
 
 function CalendarScreen() {
-  const router = useRouter();
   const [events, setEvents] = useState<EventSummary[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [reloadKey, setReloadKey] = useState(0);
@@ -143,6 +142,22 @@ function CalendarScreen() {
     []
   );
 
+  // The mirror gesture in list mode: swipe down to fall back to the grid —
+  // hinted by the handle above the list. Only claimed while the list is
+  // scrolled to the very top, so normal downward scrolling keeps working.
+  const listAtTop = useRef(true);
+  const swipeDown = useMemo(
+    () =>
+      PanResponder.create({
+        onMoveShouldSetPanResponder: (_e, g) =>
+          listAtTop.current && g.dy > 10 && Math.abs(g.dy) > Math.abs(g.dx),
+        onPanResponderRelease: (_e, g) => {
+          if (g.dy > 50 || (g.dy > 20 && g.vy > 0.4)) setMode('grid');
+        },
+      }),
+    []
+  );
+
   function shiftMonth(delta: number) {
     setView((v) => {
       const d = new Date(v.year, v.month + delta, 1);
@@ -168,7 +183,7 @@ function CalendarScreen() {
         <View style={styles.center}>
           <Text style={styles.errorEmoji}>🫠</Text>
           <Text style={styles.errorText}>{error}</Text>
-          <Button title="Try again" variant="ghost" tone="ink" onPress={retry} />
+          <Button title="Try again" variant="ghost" onPress={retry} />
         </View>
       </SafeAreaView>
     );
@@ -213,17 +228,13 @@ function CalendarScreen() {
           </View>
         ) : null}
       </View>
-      <View style={styles.headerActions}>
-        {mode === 'grid' ? (
+      {mode === 'grid' ? (
+        <View style={styles.headerActions}>
           <Pressable onPress={goToToday} style={styles.todayPill} hitSlop={4}>
             <Text style={styles.todayPillText}>Today</Text>
           </Pressable>
-        ) : (
-          <Pressable onPress={() => setMode('grid')} style={styles.toggleButton} hitSlop={4}>
-            <Ionicons name="calendar-outline" size={20} color={colors.text} />
-          </Pressable>
-        )}
-      </View>
+        </View>
+      ) : null}
     </View>
   );
 
@@ -306,12 +317,6 @@ function CalendarScreen() {
                 <View style={styles.emptyBody}>
                   <Text style={styles.emptyTitle}>{EMPTY_TITLE}</Text>
                 </View>
-                <Button
-                  title="Plan something"
-                  variant="primary"
-                  onPress={() => router.push('/new-event')}
-                  style={styles.planButton}
-                />
               </View>
             ) : (
               <ScrollView
@@ -332,29 +337,40 @@ function CalendarScreen() {
 
   return (
     <SafeAreaView edges={['top']} style={styles.safe}>
-      <ScrollView contentContainerStyle={styles.content}>
-        {header}
+      <View style={{ flex: 1 }} {...swipeDown.panHandlers}>
+        <ScrollView
+          contentContainerStyle={styles.content}
+          onScroll={(e) => {
+            listAtTop.current = e.nativeEvent.contentOffset.y <= 0;
+          }}
+          scrollEventThrottle={16}
+        >
+          {/* Mirrors the grid panel's handle: swipe down to fall back to the
+              calendar grid. */}
+          <View style={styles.listHandle} />
+          {header}
 
-        <View style={styles.listSections}>
-          <View style={styles.sectionHead}>
-            <Text style={styles.sectionTitle}>Upcoming</Text>
+          <View style={styles.listSections}>
+            <View style={styles.sectionHead}>
+              <Text style={styles.sectionTitle}>Upcoming</Text>
+            </View>
+            {upcoming.length === 0 ? (
+              <Text style={styles.sectionEmpty}>Nothing planned - yet 👀</Text>
+            ) : (
+              upcoming.map((ev) => <EventCard key={ev.id} event={ev} />)
+            )}
+
+            {past.length > 0 ? (
+              <>
+                <Text style={[styles.sectionTitle, { marginTop: spacing.lg }]}>Past</Text>
+                {past.map((ev) => (
+                  <EventCard key={ev.id} event={ev} />
+                ))}
+              </>
+            ) : null}
           </View>
-          {upcoming.length === 0 ? (
-            <Text style={styles.sectionEmpty}>Nothing planned - yet 👀</Text>
-          ) : (
-            upcoming.map((ev) => <EventCard key={ev.id} event={ev} />)
-          )}
-
-          {past.length > 0 ? (
-            <>
-              <Text style={[styles.sectionTitle, { marginTop: spacing.lg }]}>Past</Text>
-              {past.map((ev) => (
-                <EventCard key={ev.id} event={ev} />
-              ))}
-            </>
-          ) : null}
-        </View>
-      </ScrollView>
+        </ScrollView>
+      </View>
     </SafeAreaView>
   );
 }
@@ -453,15 +469,14 @@ const styles = StyleSheet.create({
     ...uiText(12, '600'),
     color: colors.text,
   },
-  toggleButton: {
+  // Swipe-down affordance at the top of the list view (mirror of panelHandle).
+  listHandle: {
+    alignSelf: 'center',
     width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: colors.card,
-    borderWidth: 1,
-    borderColor: colors.cardBorder,
-    alignItems: 'center',
-    justifyContent: 'center',
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: 'rgba(255,255,255,0.25)',
+    marginBottom: spacing.xs,
   },
   weekdayRow: {
     flexDirection: 'row',
@@ -575,10 +590,6 @@ const styles = StyleSheet.create({
     ...display(24),
     color: colors.text,
     textAlign: 'center',
-  },
-  planButton: {
-    alignSelf: 'center',
-    minWidth: 200,
   },
   listSections: {
     gap: spacing.md,

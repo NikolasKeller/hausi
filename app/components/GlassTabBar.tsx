@@ -9,8 +9,6 @@ import {
   View,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useRouter } from 'expo-router';
-import { Ionicons } from '@expo/vector-icons';
 import { colors, radius, spacing } from '../lib/theme';
 import { uiText } from '../lib/fonts';
 
@@ -38,24 +36,20 @@ const SPRING = { useNativeDriver: true, friction: 9, tension: 90 };
 
 // A rounded, floating tab bar with a translucent "bubble" that glides to the
 // active tab — and, while dragging horizontally, follows the finger, clamped
-// to the bar so it can never slip past the edges. The "Create" screen isn't a
-// bar tab: it lives in a white + button floating above the bar's right edge.
+// to the bar so it can never slip past the edges.
 export function GlassTabBar({ state, descriptors, navigation }: TabBarProps) {
   const insets = useSafeAreaInsets();
-  const router = useRouter();
 
-  // Only real destinations live in the bar: Create is the FAB, and "index" is
-  // just the hidden "/" → /explore redirect, never a tab.
+  // Only real destinations live in the bar: "index" is just the hidden
+  // "/" → /explore redirect, never a tab.
   const barRoutes = state.routes.filter(
     (r) =>
-      r.name !== 'create' &&
       r.name !== 'index' &&
       descriptors[r.key]?.options?.href !== null
   );
   const count = barRoutes.length;
 
   const [rowWidth, setRowWidth] = useState(0);
-  const [barHeight, setBarHeight] = useState(0);
   const rowLeft = useRef(0);
   const rowRef = useRef<View>(null);
   const translateX = useRef(new Animated.Value(0)).current;
@@ -119,14 +113,9 @@ export function GlassTabBar({ state, descriptors, navigation }: TabBarProps) {
     });
   }
 
-  const goCreate = () => router.push('/new-event');
-
   return (
     <View style={[styles.wrap, { paddingBottom: insets.bottom + spacing.sm }]}>
-      <View
-        style={styles.bar}
-        onLayout={(e) => setBarHeight(e.nativeEvent.layout.height)}
-      >
+      <View style={styles.bar}>
         <View
           ref={rowRef}
           style={styles.row}
@@ -169,19 +158,6 @@ export function GlassTabBar({ state, descriptors, navigation }: TabBarProps) {
           })}
         </View>
       </View>
-
-      {/* Floating Create button — sits clear above the bar's right edge so it
-          never overlaps the tab items. */}
-      <Pressable
-        onPress={goCreate}
-        style={({ pressed }) => [
-          styles.fab,
-          { bottom: insets.bottom + spacing.sm + barHeight + spacing.sm },
-          pressed && { opacity: 0.85 },
-        ]}
-      >
-        <Ionicons name="add" size={32} color={colors.onInk} />
-      </Pressable>
     </View>
   );
 }
@@ -225,20 +201,5 @@ const styles = StyleSheet.create({
   },
   label: {
     ...uiText(10, '600'),
-  },
-  fab: {
-    position: 'absolute',
-    right: spacing.xl,
-    width: 60,
-    height: 60,
-    borderRadius: 30,
-    backgroundColor: colors.ink,
-    alignItems: 'center',
-    justifyContent: 'center',
-    shadowColor: '#000',
-    shadowOpacity: 0.4,
-    shadowRadius: 16,
-    shadowOffset: { width: 0, height: 8 },
-    elevation: 14,
   },
 });

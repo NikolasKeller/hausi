@@ -585,14 +585,19 @@ const styles = StyleSheet.create({
     gap: spacing.sm,
     ...shadow.card,
   },
-  // Fixed line box so the title field height stays constant across title fonts.
+  // Fixed box height (instead of lineHeight) keeps the field constant across
+  // title fonts AND keeps the glyphs vertically centered: iOS pushes a
+  // single-line TextInput's text down and clips it when lineHeight exceeds
+  // the font size.
   titleInput: {
     color: colors.text,
     fontSize: 26,
-    lineHeight: 40,
+    height: 56,
     textAlign: 'center',
+    textAlignVertical: 'center',
+    includeFontPadding: false,
     paddingHorizontal: spacing.md,
-    paddingVertical: 8,
+    paddingVertical: 0,
   },
   sectionLabel: {
     ...kicker(light.text3),

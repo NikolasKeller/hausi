@@ -7,8 +7,9 @@ import { GlassTabBar } from '../../components/GlassTabBar';
 // Each tab screen paints its own opaque backdrop (see withScreenBackground), so
 // the sceneStyle stays opaque here too: on web the navigator stacks every
 // mounted tab and only a solid scene keeps blurred tabs from bleeding through.
-// Explore — labeled "Iykyk" — is the app's main page and initial route; the
-// old home feed is gone ("index" only survives as a hidden "/" redirect).
+// Explore is the app's main page and initial route (its on-screen header is
+// the "Iykyk" wordmark); the old home feed is gone ("index" only survives as
+// a hidden "/" redirect).
 export default function TabsLayout() {
   return (
     <Tabs
@@ -25,7 +26,7 @@ export default function TabsLayout() {
       <Tabs.Screen
         name="explore"
         options={{
-          title: 'Iykyk',
+          title: 'Explore',
           tabBarIcon: ({ color, focused }) => (
             <Ionicons name={focused ? 'earth' : 'earth-outline'} size={22} color={color} />
           ),

@@ -90,7 +90,7 @@ function ProfileScreen() {
       <SafeAreaView style={styles.safe} edges={['top']}>
         <View style={styles.center}>
           <Text style={styles.errorText}>{error}</Text>
-          <Button title="Retry" variant="ghost" tone="ink" onPress={load} />
+          <Button title="Retry" variant="ghost" onPress={load} />
         </View>
       </SafeAreaView>
     );
@@ -255,7 +255,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     // Sit the avatar low in the hero, close to the name below it.
-    paddingBottom: 36,
+    paddingBottom: 16,
   },
   topScrim: {
     position: 'absolute',

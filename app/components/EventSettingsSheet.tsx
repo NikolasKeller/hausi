@@ -11,7 +11,7 @@ import {
   type TextInputProps,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { LIMITS } from '../shared/types';
+import { MAX_PLUS_ONES } from '../shared/types';
 import { radius, spacing } from '../lib/theme';
 import { uiText } from '../lib/fonts';
 import { Glass } from './glass';
@@ -129,12 +129,18 @@ export function EventSettingsSheet({
                 <Text style={styles.stepValue}>
                   {plusOneLimit === 0 ? 'None' : `+${plusOneLimit}`}
                 </Text>
-                <Pressable
-                  onPress={() => onChangePlusOneLimit(Math.min(LIMITS.plusOnes, plusOneLimit + 1))}
-                  style={styles.stepBtn}
-                >
-                  <Text style={styles.stepText}>＋</Text>
-                </Pressable>
+                {plusOneLimit < MAX_PLUS_ONES ? (
+                  <Pressable
+                    onPress={() => onChangePlusOneLimit(Math.min(MAX_PLUS_ONES, plusOneLimit + 1))}
+                    style={styles.stepBtn}
+                  >
+                    <Text style={styles.stepText}>＋</Text>
+                  </Pressable>
+                ) : (
+                  // At the +10 ceiling the ＋ disappears; keep its footprint so
+                  // the stepper doesn't jump.
+                  <View style={styles.stepBtn} />
+                )}
               </View>
             </View>
 
