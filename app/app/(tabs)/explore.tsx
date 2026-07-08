@@ -354,7 +354,7 @@ function ExploreScreen() {
             style={({ pressed }) => [styles.cityPill, pressed && { opacity: 0.8 }]}
           >
             <Text style={styles.cityPillText} numberOfLines={1}>
-              📍 {cityLabel}
+              {cityLabel}
             </Text>
             <Ionicons
               name={cityMenuOpen ? 'chevron-up' : 'chevron-down'}
@@ -393,7 +393,6 @@ function ExploreScreen() {
                       pressed && { opacity: 0.8 },
                     ]}
                   >
-                    <Text style={styles.chipEmoji}>{chip.emoji}</Text>
                     <Text style={[styles.chipLabel, active && styles.chipLabelActive]}>
                       {chip.label}
                     </Text>
@@ -469,7 +468,7 @@ function ExploreScreen() {
                           <Text
                             style={[styles.menuItemText, active && styles.menuItemTextActive]}
                           >
-                            📍 {option}
+                            {option}
                           </Text>
                           {active ? (
                             <Ionicons name="checkmark" size={16} color={colors.accent} />
@@ -512,7 +511,7 @@ function ExploreScreen() {
                       style={[styles.menuItem, recentCities.length > 0 && styles.menuItemBorder]}
                     >
                       <Text style={[styles.menuItemText, city === '' && styles.menuItemTextActive]}>
-                        🌍 All cities
+                        All cities
                       </Text>
                       {city === '' ? (
                         <Ionicons name="checkmark" size={16} color={colors.accent} />
@@ -538,7 +537,7 @@ function ExploreScreen() {
                                   active && styles.menuItemTextActive,
                                 ]}
                               >
-                                📍 {option}
+                                {option}
                               </Text>
                               {active ? (
                                 <Ionicons name="checkmark" size={16} color={colors.accent} />
@@ -746,9 +745,6 @@ const styles = StyleSheet.create({
   chipActive: {
     backgroundColor: colors.ink,
     borderColor: colors.ink,
-  },
-  chipEmoji: {
-    fontSize: 14,
   },
   chipLabel: {
     ...uiText(14, '600'),

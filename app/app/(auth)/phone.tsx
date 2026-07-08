@@ -89,7 +89,7 @@ export default function PhoneScreen() {
             keyboardShouldPersistTaps="handled"
           >
             <View style={{ flex: 0.5 }} />
-            <Text style={styles.title}>Join the party</Text>
+            <Text style={styles.title}>Join the club</Text>
 
             <View style={styles.phoneRow}>
               <Pressable

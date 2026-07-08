@@ -88,7 +88,11 @@ function CalendarScreen() {
         try {
           const res = await api.myEvents();
           if (!active) return;
-          setEvents(res.events);
+          // The calendar only lists events you host or hold a ticket for
+          // (GOING will be set by the upcoming purchase tracking). Favorites
+          // (MAYBE) live on the profile only — a mostly-empty calendar until
+          // purchase tracking lands is intentional.
+          setEvents(res.events.filter((ev) => ev.isHost || ev.myRsvp === 'GOING'));
           setError(null);
         } catch (e) {
           if (!active) return;

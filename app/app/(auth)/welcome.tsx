@@ -18,12 +18,13 @@ import { storage } from '../../lib/storage';
 import { uiText } from '../../lib/fonts';
 import { colors, spacing } from '../../lib/theme';
 
-// The paper stock behind everything; the chrome "iykyk" wordmark cut out to
-// transparency (the static logo / frozen end-state); and the "silver liquid"
-// logo animation that plays once on the very first open.
+// The paper stock behind everything; the "silver liquid" logo animation that
+// plays once on the very first open; and its EXACT last frame as the still —
+// so the freeze after playback and every later visit are pixel-identical to
+// the video's end.
 const PAPER = require('../../assets/paper-texture.png');
-const WORDMARK = require('../../assets/wordmark-chrome-cutout.png');
 const LOGO_VIDEO = require('../../assets/welcome-logo.mp4');
+const LOGO_STILL = require('../../assets/welcome-logo-still.png');
 
 // Set once the intro animation has played through, so it never plays again.
 const WELCOME_LOGO_PLAYED = 'welcome_logo_played';
@@ -52,6 +53,8 @@ export default function WelcomeScreen() {
   const [devError, setDevError] = useState<string | null>(null);
   const [phase, setPhase] = useState<LogoPhase>('checking');
   const intro = useRef(new Animated.Value(0)).current;
+  // Fades the video in from the paper so its opening ground never pops.
+  const videoFade = useRef(new Animated.Value(0)).current;
 
   // Muted so iOS lets it autoplay; never loops — it's a one-shot intro.
   const player = useVideoPlayer(LOGO_VIDEO, (p) => {
@@ -81,8 +84,11 @@ export default function WelcomeScreen() {
     };
   }, []);
 
-  // Play the one-shot animation, then freeze onto the static logo and remember
-  // it so later visits skip straight to the still.
+  // Play the one-shot animation, then freeze onto the still (the video's exact
+  // last frame) and remember it so later visits skip straight to the still.
+  // The video fades in from the paper over ~0.8s: its opening frames carry a
+  // slightly different ground than the screen's paper texture, and the fade
+  // makes that difference invisible.
   useEffect(() => {
     if (phase !== 'video') return;
     try {
@@ -91,6 +97,12 @@ export default function WelcomeScreen() {
       setPhase('static');
       return;
     }
+    Animated.timing(videoFade, {
+      toValue: 1,
+      duration: 800,
+      easing: Easing.out(Easing.quad),
+      useNativeDriver,
+    }).start();
     const freeze = () => {
       storage.setItemAsync(WELCOME_LOGO_PLAYED, '1').catch(() => {});
       setPhase('static');
@@ -104,7 +116,7 @@ export default function WelcomeScreen() {
       end.remove();
       status.remove();
     };
-  }, [phase, player]);
+  }, [phase, player, videoFade]);
 
   async function handleDevLogin() {
     if (devBusy) return;
@@ -155,14 +167,18 @@ export default function WelcomeScreen() {
         ]}
       >
         {phase === 'video' ? (
-          <VideoView
-            player={player}
-            style={styles.art}
-            contentFit="contain"
-            nativeControls={false}
-          />
+          <Animated.View style={[styles.art, { opacity: videoFade }]}>
+            <VideoView
+              player={player}
+              style={StyleSheet.absoluteFill}
+              contentFit="contain"
+              nativeControls={false}
+            />
+          </Animated.View>
         ) : phase === 'static' ? (
-          <Image source={WORDMARK} style={styles.art} resizeMode="contain" />
+          // The video's exact last frame — pixel-identical to where the
+          // animation froze.
+          <Image source={LOGO_STILL} style={styles.art} resizeMode="contain" />
         ) : null}
       </Animated.View>
 
