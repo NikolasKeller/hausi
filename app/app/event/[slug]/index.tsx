@@ -446,120 +446,31 @@ export default function EventScreen() {
               </View>
             ) : null}
 
-            {/* Agentic ticket purchase — the button opens the Agent Wallet
-                wizard (details → availability → payment → buy). The status here
-                mirrors the real phase and never says "purchased" before the
-                agent has a confirmed ticket. Hidden when the event has no
-                ticket link (never a dead button). */}
-            {ticket.url ? (
+            {/* Inline purchase-status detail. The actionable Buy-ticket button
+                lives in the bottom bar (the page's primary action); this only
+                surfaces when the agent hit a dead end (sold out / failed) so the
+                reason is visible without reopening the wallet sheet, plus a
+                manual link to the ticket page as a fallback. */}
+            {ticket.url && (job?.status === 'soldout' || job?.status === 'failed') ? (
               <View style={styles.buySection}>
-                {job?.status === 'done' ? (
-                  <Pressable
-                    onPress={() => openTicketPdf(job.pdfPath)}
-                    style={({ pressed }) => [
-                      styles.buyButton,
-                      { backgroundColor: ink.dark ? '#FFFFFF' : '#171717' },
-                      pressed && { opacity: 0.85, transform: [{ scale: 0.98 }] },
-                    ]}
-                  >
-                    <Ionicons
-                      name="qr-code-outline"
-                      size={20}
-                      color={ink.dark ? '#171717' : '#FFFFFF'}
-                    />
-                    <Text
-                      style={[styles.buyButtonText, { color: ink.dark ? '#171717' : '#FFFFFF' }]}
-                    >
-                      View ticket
+                <Glass tint={ink.glassTint} radius={radius.md} style={styles.agentStatus}>
+                  <Ionicons
+                    name={job.status === 'soldout' ? 'sad-outline' : 'alert-circle-outline'}
+                    size={20}
+                    color={ink.text}
+                  />
+                  <View style={{ flex: 1 }}>
+                    <Text style={[styles.agentStatusTitle, { color: ink.text }]}>
+                      {job.status === 'soldout' ? 'Sold out' : "The agent couldn't finish"}
                     </Text>
-                  </Pressable>
-                ) : job && (job.status === 'checking' || job.status === 'purchasing') ? (
-                  <Pressable onPress={() => setWalletOpen(true)}>
-                    <Glass tint={ink.glassTint} radius={radius.md} style={styles.agentStatus}>
-                      <ActivityIndicator color={ink.text} />
-                      <View style={{ flex: 1 }}>
-                        <Text style={[styles.agentStatusTitle, { color: ink.text }]}>
-                          {job.status === 'checking'
-                            ? 'Checking ticket availability…'
-                            : 'Your agent is buying the ticket…'}
-                        </Text>
-                        <Text style={[styles.agentStatusBody, { color: ink.subtext }]}>
-                          {job.status === 'checking'
-                            ? 'Verifying tickets are still available. No payment yet.'
-                            : 'Completing the checkout and confirming the order.'}
-                        </Text>
-                      </View>
-                    </Glass>
-                  </Pressable>
-                ) : job?.status === 'available' ? (
-                  <Pressable
-                    onPress={() => setWalletOpen(true)}
-                    style={({ pressed }) => [
-                      styles.buyButton,
-                      { backgroundColor: ink.dark ? '#FFFFFF' : '#171717' },
-                      pressed && { opacity: 0.85, transform: [{ scale: 0.98 }] },
-                    ]}
-                  >
-                    <Ionicons
-                      name="card-outline"
-                      size={20}
-                      color={ink.dark ? '#171717' : '#FFFFFF'}
-                    />
-                    <Text
-                      style={[styles.buyButtonText, { color: ink.dark ? '#171717' : '#FFFFFF' }]}
-                    >
-                      Tickets available — continue
+                    <Text style={[styles.agentStatusBody, { color: ink.subtext }]}>
+                      {job.error ||
+                        (job.status === 'soldout'
+                          ? 'No tickets available for this event.'
+                          : 'Unknown reason.')}
                     </Text>
-                  </Pressable>
-                ) : (
-                  <Pressable
-                    onPress={() => setWalletOpen(true)}
-                    style={({ pressed }) => [
-                      styles.buyButton,
-                      { backgroundColor: ink.dark ? '#FFFFFF' : '#171717' },
-                      pressed && { opacity: 0.85, transform: [{ scale: 0.98 }] },
-                    ]}
-                  >
-                    <Ionicons
-                      name={hasTicket ? 'checkmark-circle' : 'ticket-outline'}
-                      size={20}
-                      color={ink.dark ? '#171717' : '#FFFFFF'}
-                    />
-                    <Text
-                      style={[styles.buyButtonText, { color: ink.dark ? '#171717' : '#FFFFFF' }]}
-                    >
-                      {job?.status === 'failed' || job?.status === 'soldout'
-                        ? 'Try again'
-                        : 'Buy ticket'}
-                    </Text>
-                  </Pressable>
-                )}
-
-                {job?.status === 'soldout' ? (
-                  <Glass tint={ink.glassTint} radius={radius.md} style={styles.agentStatus}>
-                    <Ionicons name="sad-outline" size={20} color={ink.text} />
-                    <View style={{ flex: 1 }}>
-                      <Text style={[styles.agentStatusTitle, { color: ink.text }]}>Sold out</Text>
-                      <Text style={[styles.agentStatusBody, { color: ink.subtext }]}>
-                        {job.error || 'No tickets available for this event.'}
-                      </Text>
-                    </View>
-                  </Glass>
-                ) : null}
-
-                {job?.status === 'failed' ? (
-                  <Glass tint={ink.glassTint} radius={radius.md} style={styles.agentStatus}>
-                    <Ionicons name="alert-circle-outline" size={20} color={ink.text} />
-                    <View style={{ flex: 1 }}>
-                      <Text style={[styles.agentStatusTitle, { color: ink.text }]}>
-                        The agent couldn't finish
-                      </Text>
-                      <Text style={[styles.agentStatusBody, { color: ink.subtext }]}>
-                        {job.error || 'Unknown reason.'}
-                      </Text>
-                    </View>
-                  </Glass>
-                ) : null}
+                  </View>
+                </Glass>
 
                 {/* The source stays one tap away — buy manually if you prefer. */}
                 <Pressable
@@ -596,43 +507,118 @@ export default function EventScreen() {
         </Glass>
       </Pressable>
 
-      {/* Floating bottom action bar — Edit · Text Blast · Invite · More. The
-          buying the ticket is the page's primary action (in the body), so the
-          old "N going" counter is gone entirely. Host-only items are hidden
-          for guests; the body stays uncluttered. */}
-      <View
-        pointerEvents="box-none"
-        style={[styles.actionBarWrap, { paddingBottom: insets.bottom + spacing.sm }]}
-      >
-        <Glass tint={ink.dark ? 'dark' : 'light'} radius={radius.pill} style={styles.actionBar}>
-          {event.canManage ? (
-            <BarItem
-              icon="pencil"
-              label="Edit"
-              color={ink.text}
-              onPress={() => router.push(`/event/${event.slug}/edit`)}
-            />
-          ) : null}
-          {event.canManage ? (
-            <BarItem
-              icon="megaphone"
-              label="Text Blast"
-              color={ink.text}
-              onPress={() => router.push(`/event/${event.slug}/blast`)}
-            />
-          ) : null}
+      {/* Floating bottom action bar. Buying a ticket is the page's primary —
+          and, for guests, only — action: a full-width Buy-ticket button that
+          drives the Agent Wallet flow (details → availability → payment → done)
+          and mirrors the live phase. The old Invite and "N going" controls are
+          gone; host-only management sits in a compact pill beside it. */}
+      {ticket.url || event.canManage ? (
+        <View
+          pointerEvents="box-none"
+          style={[styles.actionBarWrap, { paddingBottom: insets.bottom + spacing.sm }]}
+        >
+          <View style={styles.actionBarRow}>
+            {ticket.url ? (
+              job?.status === 'done' ? (
+                <Pressable
+                  onPress={() => openTicketPdf(job.pdfPath)}
+                  style={({ pressed }) => [
+                    styles.buyButton,
+                    styles.buyButtonBar,
+                    pressed && styles.buyButtonPressed,
+                  ]}
+                >
+                  <Ionicons name="qr-code-outline" size={20} color="#FFFFFF" />
+                  <Text style={[styles.buyButtonText, { color: '#FFFFFF' }]}>View ticket</Text>
+                </Pressable>
+              ) : job && (job.status === 'checking' || job.status === 'purchasing') ? (
+                <Pressable
+                  onPress={() => setWalletOpen(true)}
+                  style={({ pressed }) => [
+                    styles.buyButton,
+                    styles.buyButtonBar,
+                    pressed && styles.buyButtonPressed,
+                  ]}
+                >
+                  <ActivityIndicator color="#FFFFFF" />
+                  <Text style={[styles.buyButtonText, { color: '#FFFFFF' }]}>
+                    {job.status === 'checking' ? 'Checking availability…' : 'Buying your ticket…'}
+                  </Text>
+                </Pressable>
+              ) : job?.status === 'available' ? (
+                <Pressable
+                  onPress={() => setWalletOpen(true)}
+                  style={({ pressed }) => [
+                    styles.buyButton,
+                    styles.buyButtonBar,
+                    pressed && styles.buyButtonPressed,
+                  ]}
+                >
+                  <Ionicons name="card-outline" size={20} color="#FFFFFF" />
+                  <Text style={[styles.buyButtonText, { color: '#FFFFFF' }]}>
+                    Tickets available — continue
+                  </Text>
+                </Pressable>
+              ) : (
+                <Pressable
+                  onPress={() => {
+                    // A fresh attempt after a dead end starts the wizard over.
+                    if (job?.status === 'failed' || job?.status === 'soldout') setJob(null);
+                    setWalletOpen(true);
+                  }}
+                  style={({ pressed }) => [
+                    styles.buyButton,
+                    styles.buyButtonBar,
+                    pressed && styles.buyButtonPressed,
+                  ]}
+                >
+                  <Ionicons
+                    name={
+                      job?.status === 'failed' || job?.status === 'soldout'
+                        ? 'refresh'
+                        : hasTicket
+                          ? 'checkmark-circle'
+                          : 'ticket-outline'
+                    }
+                    size={20}
+                    color="#FFFFFF"
+                  />
+                  <Text style={[styles.buyButtonText, { color: '#FFFFFF' }]}>
+                    {job?.status === 'soldout'
+                      ? 'Sold out — try again'
+                      : job?.status === 'failed'
+                        ? 'Purchase failed — try again'
+                        : 'Buy ticket'}
+                  </Text>
+                </Pressable>
+              )
+            ) : null}
 
-          <BarItem icon="person-add" label="Invite" color={ink.text} onPress={share} />
-          {event.canManage ? (
-            <BarItem
-              icon="ellipsis-horizontal"
-              label="More"
-              color={ink.text}
-              onPress={() => setMenuOpen(true)}
-            />
-          ) : null}
-        </Glass>
-      </View>
+            {event.canManage ? (
+              <Glass tint={ink.dark ? 'dark' : 'light'} radius={radius.pill} style={styles.manageBar}>
+                <BarItem
+                  icon="pencil"
+                  label="Edit"
+                  color={ink.text}
+                  onPress={() => router.push(`/event/${event.slug}/edit`)}
+                />
+                <BarItem
+                  icon="megaphone"
+                  label="Blast"
+                  color={ink.text}
+                  onPress={() => router.push(`/event/${event.slug}/blast`)}
+                />
+                <BarItem
+                  icon="ellipsis-horizontal"
+                  label="More"
+                  color={ink.text}
+                  onPress={() => setMenuOpen(true)}
+                />
+              </Glass>
+            ) : null}
+          </View>
+        </View>
+      ) : null}
 
       {walletOpen ? (
         <AgentWalletSheet
@@ -720,10 +706,25 @@ const styles = StyleSheet.create({
     bottom: 0,
     zIndex: 20,
   },
-  actionBar: {
+  actionBarRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-around',
+    gap: spacing.sm,
+  },
+  // Full-width Buy-ticket button in the bottom bar (the page's primary action).
+  buyButtonBar: {
+    flex: 1,
+    backgroundColor: '#171717',
+  },
+  buyButtonPressed: {
+    opacity: 0.9,
+    transform: [{ scale: 0.99 }],
+  },
+  // Compact glass pill holding host-only management actions beside the button.
+  manageBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
     paddingHorizontal: spacing.sm,
     paddingVertical: spacing.xs,
   },
