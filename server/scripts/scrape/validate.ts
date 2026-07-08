@@ -25,6 +25,69 @@ const FORBIDDEN_TICKET_DOMAINS = [/(^|\.)lu\.ma$/, /(^|\.)luma\.com$/];
 
 const TITLE_PLACEHOLDERS = /^(tba|tbd|untitled|test|placeholder|coming soon|n\/a|-+)$/i;
 
+// Free-signup / recurring-community / drop-in-class style events that you don't
+// really "buy a ticket" for — you just register/sign up (often with only a
+// nominal fee). The user wants these OUT even when a pseudo-price is attached
+// (running clubs, Strava runs, meetups, language exchanges, tech mixers,
+// coffee/matcha socials, yoga/pilates/wellness classes …). Real ticketed
+// nightlife/shows (club nights, raves, concerts, parties, comedy, speed dating)
+// are NOT matched and stay. Word-boundaried and specific to avoid nuking
+// nightlife titles (e.g. "club" alone is not a signal — "run club" is).
+const SIGNUP_PATTERNS = [
+  /\b(run|running|runners?)\s*club\b/i,
+  /\bsocial\s*run\b/i,
+  /\bwomen'?s\s*run\b/i,
+  /\bpark\s*run\b/i,
+  /\bstrava\b/i,
+  /\bmarathon\b/i,
+  /\b\d{1,3}\s*k\s*(run|walk)\b/i,
+  /\bbootcamp\b/i,
+  /\bwork\s*out\b/i,
+  /\bfull body\b/i,
+  /\byoga\b/i,
+  /\bpilates\b/i,
+  /\bsound\s*bath\b/i,
+  /\bbreath\s*work\b/i,
+  /meditation/i,
+  /\bsauna\b/i,
+  /\b(meet\s*-?\s*up)\b/i,
+  /\blanguage exchange\b/i,
+  /\bmake new friends\b/i,
+  /\bnew friends\b/i,
+  /\b(tech|social|networking)\s*mixer\b/i,
+  /\bnetworking\b/i,
+  /\bsocial club\b/i,
+  /\bsocial (and|&) language\b/i,
+  /\bexpat\b/i,
+  /\bcoffee club\b/i,
+  /\bmatcha\b/i,
+  /\beat (&|and) meet\b/i,
+  /\bcommunity class\b/i,
+  /\bshala\b/i,
+  /\b(hike|hiking)\b/i,
+  /\bfree (entry|registration|signup|sign[- ]?up)\b/i,
+  /\bregister for free\b/i,
+  /\brsvp\b/i,
+];
+
+// Clearly-ticketed show formats that are real paid events even if their name
+// happens to contain a signup-ish word (e.g. a "… Social Club Comedy Show").
+// These override the signup patterns so genuine ticketed shows are kept.
+const TICKETED_SHOW_OVERRIDE = /\b(stand[- ]?up|comedy|speed dating|drag (show|brunch|bingo))\b/i;
+
+// True when the event looks like a free-signup / meetup / class rather than a
+// real ticketed event. Exported so the production cleanup applies the same rule.
+//
+// Matches on the TITLE ONLY: these event types always announce themselves in
+// the title ("… Run Club", "Yin Yoga Class", "Tech Mixer"). Scanning the
+// description caused false positives — real club nights/festivals mention "yoga"
+// or "meet-up" or "free entry (before 11pm)" in their copy without being
+// signups. The `description` param is kept for signature/compat but unused.
+export function isFreeSignupStyle(title: string, _description = ''): boolean {
+  if (TICKETED_SHOW_OVERRIDE.test(title)) return false;
+  return SIGNUP_PATTERNS.some((re) => re.test(title));
+}
+
 export const HORIZON_DAYS_DEFAULT = 60;
 
 export type CheckId =
@@ -38,6 +101,7 @@ export type CheckId =
   | 'paid-ticket'      // costPerPerson parses to an amount > 0
   | 'ticket-url'       // real paid-ticket URL present, https, NOT lu.ma
   | 'no-source-in-desc' // visible description must not leak a URL/source line
+  | 'non-ticket-signup' // free-signup / meetup / class style, not a real ticket
   | 'dedupe';          // (title, city, calendar day) not already in the DB
 
 export interface EventCandidate {
@@ -169,6 +233,11 @@ export function validateEvent(e: EventCandidate, opts: ValidationOptions = {}): 
 
   // 8b. Buy link must be a real paid-ticket URL, never a lu.ma free-signup.
   if (!ticketUrlOk(e.ticketUrl)) failures.push('ticket-url');
+
+  // 8c. Not a free-signup / meetup / drop-in-class style event (run clubs,
+  //     Strava, language exchanges, yoga classes …) — you don't buy a ticket
+  //     for those, you just register, so they don't belong in a ticketed feed.
+  if (isFreeSignupStyle(e.title, e.description)) failures.push('non-ticket-signup');
 
   // 9. Dedupe against the DB (when the caller provides the key set).
   if (opts.existingKeys && opts.existingKeys.has(dedupeKey(e.title, e.city, e.date))) {
