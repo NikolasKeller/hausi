@@ -77,10 +77,15 @@ const TICKETED_SHOW_OVERRIDE = /\b(stand[- ]?up|comedy|speed dating|drag (show|b
 
 // True when the event looks like a free-signup / meetup / class rather than a
 // real ticketed event. Exported so the production cleanup applies the same rule.
-export function isFreeSignupStyle(title: string, description: string): boolean {
-  const text = `${title}\n${description.slice(0, 400)}`;
-  if (TICKETED_SHOW_OVERRIDE.test(text)) return false;
-  return SIGNUP_PATTERNS.some((re) => re.test(text));
+//
+// Matches on the TITLE ONLY: these event types always announce themselves in
+// the title ("… Run Club", "Yin Yoga Class", "Tech Mixer"). Scanning the
+// description caused false positives — real club nights/festivals mention "yoga"
+// or "meet-up" or "free entry (before 11pm)" in their copy without being
+// signups. The `description` param is kept for signature/compat but unused.
+export function isFreeSignupStyle(title: string, _description = ''): boolean {
+  if (TICKETED_SHOW_OVERRIDE.test(title)) return false;
+  return SIGNUP_PATTERNS.some((re) => re.test(title));
 }
 
 export const HORIZON_DAYS_DEFAULT = 60;
