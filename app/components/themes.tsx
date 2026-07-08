@@ -5,7 +5,6 @@ import {
   ScrollView,
   StyleSheet,
   Text,
-  useWindowDimensions,
   View,
   type StyleProp,
   type ViewStyle,
@@ -13,7 +12,7 @@ import {
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { COVER_LIST, coverFor, themeInk, THEME_CATEGORIES, type ThemeCategory } from '../lib/covers';
-import { EFFECT_CATEGORIES, EFFECT_META, EffectOverlay } from './EffectOverlay';
+import { EFFECT_CATEGORIES, EFFECT_META } from './EffectOverlay';
 import { Glass, GlassPill } from './glass';
 import { colors, radius, spacing } from '../lib/theme';
 import { uiText } from '../lib/fonts';
@@ -21,14 +20,15 @@ import { uiText } from '../lib/fonts';
 const PAPER = require('../assets/paper-texture.png');
 
 // ── ThemeBackground ───────────────────────────────────────────────────────────
-// The event page / editor surface. Every event now sits on the app's paper
-// design background (never the old coloured random gradients), so the whole
-// product reads as one continuous chrome-on-paper sheet. An optional effect
-// overlay still drifts across. `theme` is accepted for call-site compatibility
-// but no longer tints the background.
+// The event page / editor surface. Every event sits on the app's calm paper
+// design background — no coloured gradients, no emoji watermark and no animated
+// effect overlays, so the whole product reads as one continuous chrome-on-paper
+// sheet. `theme` / `effect` are accepted for call-site compatibility but no
+// longer paint anything.
 export function ThemeBackground({
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   theme,
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   effect,
   children,
   style,
@@ -38,11 +38,9 @@ export function ThemeBackground({
   children?: React.ReactNode;
   style?: StyleProp<ViewStyle>;
 }) {
-  const { height } = useWindowDimensions();
   return (
     <View style={[styles.fill, { backgroundColor: colors.bg }, style]}>
       <Image source={PAPER} style={StyleSheet.absoluteFill} resizeMode="cover" />
-      {effect ? <EffectOverlay effect={effect} height={height} count={14} /> : null}
       {children}
     </View>
   );

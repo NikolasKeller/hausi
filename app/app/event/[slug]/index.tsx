@@ -314,7 +314,7 @@ export default function EventScreen() {
   const blasts = event.comments.filter((c) => c.type === 'blast');
 
   return (
-    <ThemeBackground theme={event.coverTheme} effect={event.effect}>
+    <ThemeBackground theme={event.coverTheme}>
         <ScrollView
           contentContainerStyle={[styles.content, { paddingBottom: insets.bottom + 108 }]}
           keyboardShouldPersistTaps="handled"

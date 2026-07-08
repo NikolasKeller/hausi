@@ -13,8 +13,6 @@ interface Props {
   theme?: string;
   style?: ViewStyle;
   children?: React.ReactNode;
-  // Kept for call-site compatibility (emoji scatter is gone).
-  emojiOpacity?: number;
   // Optional uploaded cover photo (path like "/uploads/x.jpg" or full URL).
   image?: string | null;
 }

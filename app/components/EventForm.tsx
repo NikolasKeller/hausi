@@ -267,7 +267,7 @@ export function EventForm({ initial, submitLabel, onSubmit, footer }: Props) {
   }
 
   return (
-    <ThemeBackground theme={coverTheme} effect={effect === 'none' ? undefined : effect}>
+    <ThemeBackground theme={coverTheme}>
       <SafeAreaView edges={['top']} style={{ backgroundColor: 'transparent' }}>
         <View style={styles.formHeader}>
           <Pressable
