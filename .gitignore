@@ -17,3 +17,6 @@ app/android/
 server/public/
 # uploaded images (dev)
 server/uploads/
+
+# playwright browser cache (wallet prototype, local only)
+.pw-browsers/

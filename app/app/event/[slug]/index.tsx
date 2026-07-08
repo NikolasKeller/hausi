@@ -1,4 +1,4 @@
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import {
   ActivityIndicator,
   Platform,
@@ -12,8 +12,14 @@ import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import * as Linking from 'expo-linking';
-import { type EventDetail } from '../../../shared/types';
-import { api } from '../../../lib/api';
+import {
+  type EventDetail,
+  type TicketJobInfo,
+  type TicketProvider,
+  type WalletIdentity,
+  type WalletPayment,
+} from '../../../shared/types';
+import { api, mediaUrl } from '../../../lib/api';
 import { useAuth } from '../../../lib/auth';
 import { confirmDialog, notify } from '../../../lib/dialogs';
 import { recordRecentEvent, removeRecentEvent } from '../../../lib/recents';
@@ -25,6 +31,7 @@ import { RichDescription } from '../../../components/RichDescription';
 import { ThemeBackground } from '../../../components/themes';
 import { Glass } from '../../../components/glass';
 import { Avatar } from '../../../components/Avatar';
+import { AgentWalletSheet } from '../../../components/AgentWalletSheet';
 import { Button } from '../../../components/ui';
 import { formatEventDate, formatEventTime } from '../../../components/EventCard';
 
@@ -110,6 +117,10 @@ export default function EventScreen() {
   const [error, setError] = useState<string | null>(null);
   const [menuOpen, setMenuOpen] = useState(false);
   const [inviteBusy, setInviteBusy] = useState(false);
+  // Agentic ticket purchase: the wallet sheet collects the user's details,
+  // then a server-side agent buys the ticket; `job` tracks its progress.
+  const [walletOpen, setWalletOpen] = useState(false);
+  const [job, setJob] = useState<TicketJobInfo | null>(null);
 
   const load = useCallback(async () => {
     if (!slug) return;
@@ -135,6 +146,66 @@ export default function EventScreen() {
       load();
     }, [load])
   );
+
+  // My latest purchase job for this event (agent status survives leaving the
+  // page — the newest job wins, done or not).
+  useEffect(() => {
+    if (!event) return;
+    let active = true;
+    api
+      .myTickets()
+      .then((res) => {
+        if (!active) return;
+        const mine = res.jobs.find((j) => j.eventId === event.id);
+        if (mine) setJob(mine);
+      })
+      .catch(() => {});
+    return () => {
+      active = false;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [event?.id]);
+
+  // While a phase is running server-side (availability check or purchase),
+  // poll the job until it settles into a state that needs the user again.
+  useEffect(() => {
+    if (!job || (job.status !== 'checking' && job.status !== 'purchasing')) return;
+    const timer = setInterval(() => {
+      api
+        .ticketJob(job.id)
+        .then((res) => setJob(res.job))
+        .catch(() => {});
+    }, 2500);
+    return () => clearInterval(timer);
+  }, [job?.id, job?.status]);
+
+  // Step 1+2: submit identity → server checks availability. The poll above
+  // then advances the job to available / soldout / failed.
+  async function startCheck(identity: WalletIdentity, provider: TicketProvider) {
+    if (!event) return;
+    const res = await api.checkTicketAvailability(event.id, identity, provider);
+    setJob(res.job);
+  }
+
+  // Step 3+4: confirm payment on the available job → agent completes the buy.
+  async function startPurchase(identity: WalletIdentity, payment: WalletPayment) {
+    if (!job) return;
+    const res = await api.purchaseTicket(job.id, identity, payment);
+    setJob(res.job);
+    // Buying files the event under Profile → "My events" (server sets the
+    // GOING rsvp); refresh so the page reflects it right away. Best-effort.
+    load().catch(() => {});
+  }
+
+  function openTicketPdf(pdfPath: string) {
+    const url = mediaUrl(pdfPath);
+    if (!url) return;
+    if (Platform.OS === 'web') {
+      (globalThis as any).window?.open(url, '_blank');
+    } else {
+      Linking.openURL(url).catch(() => notify('Could not open ticket', url));
+    }
+  }
 
   async function share() {
     if (!event) return;
@@ -375,44 +446,139 @@ export default function EventScreen() {
               </View>
             ) : null}
 
-            {/* Tickets are bought at the event's source — one prominent button
-                instead of the old RSVP row. Hidden entirely when the event has
-                no ticket link (never a dead button). */}
+            {/* Agentic ticket purchase — the button opens the Agent Wallet
+                wizard (details → availability → payment → buy). The status here
+                mirrors the real phase and never says "purchased" before the
+                agent has a confirmed ticket. Hidden when the event has no
+                ticket link (never a dead button). */}
             {ticket.url ? (
-              <Pressable
-                onPress={() => {
-                  // Remember the purchase as a GOING RSVP (fills Profile →
-                  // "My events" and the calendar). Strictly fire-and-forget —
-                  // opening the ticket link must never block on it.
-                  if (!hasTicket && !event.isHost) {
-                    api
-                      .rsvp(event.id, 'GOING')
-                      .then((res) => setEvent(res.event))
-                      .catch(() => {});
-                  }
-                  if (Platform.OS === 'web') {
-                    (globalThis as any).window?.open(ticket.url!, '_blank');
-                  } else {
-                    Linking.openURL(ticket.url!).catch(() =>
-                      notify('Could not open link', ticket.url!)
-                    );
-                  }
-                }}
-                style={({ pressed }) => [
-                  styles.buyButton,
-                  { backgroundColor: ink.dark ? '#FFFFFF' : '#171717' },
-                  pressed && { opacity: 0.85, transform: [{ scale: 0.98 }] },
-                ]}
-              >
-                <Ionicons
-                  name={hasTicket ? 'checkmark-circle' : 'ticket-outline'}
-                  size={20}
-                  color={ink.dark ? '#171717' : '#FFFFFF'}
-                />
-                <Text style={[styles.buyButtonText, { color: ink.dark ? '#171717' : '#FFFFFF' }]}>
-                  {hasTicket ? 'Ticket purchased' : 'Buy ticket'}
-                </Text>
-              </Pressable>
+              <View style={styles.buySection}>
+                {job?.status === 'done' ? (
+                  <Pressable
+                    onPress={() => openTicketPdf(job.pdfPath)}
+                    style={({ pressed }) => [
+                      styles.buyButton,
+                      { backgroundColor: ink.dark ? '#FFFFFF' : '#171717' },
+                      pressed && { opacity: 0.85, transform: [{ scale: 0.98 }] },
+                    ]}
+                  >
+                    <Ionicons
+                      name="qr-code-outline"
+                      size={20}
+                      color={ink.dark ? '#171717' : '#FFFFFF'}
+                    />
+                    <Text
+                      style={[styles.buyButtonText, { color: ink.dark ? '#171717' : '#FFFFFF' }]}
+                    >
+                      View ticket
+                    </Text>
+                  </Pressable>
+                ) : job && (job.status === 'checking' || job.status === 'purchasing') ? (
+                  <Pressable onPress={() => setWalletOpen(true)}>
+                    <Glass tint={ink.glassTint} radius={radius.md} style={styles.agentStatus}>
+                      <ActivityIndicator color={ink.text} />
+                      <View style={{ flex: 1 }}>
+                        <Text style={[styles.agentStatusTitle, { color: ink.text }]}>
+                          {job.status === 'checking'
+                            ? 'Checking ticket availability…'
+                            : 'Your agent is buying the ticket…'}
+                        </Text>
+                        <Text style={[styles.agentStatusBody, { color: ink.subtext }]}>
+                          {job.status === 'checking'
+                            ? 'Verifying tickets are still available. No payment yet.'
+                            : 'Completing the checkout and confirming the order.'}
+                        </Text>
+                      </View>
+                    </Glass>
+                  </Pressable>
+                ) : job?.status === 'available' ? (
+                  <Pressable
+                    onPress={() => setWalletOpen(true)}
+                    style={({ pressed }) => [
+                      styles.buyButton,
+                      { backgroundColor: ink.dark ? '#FFFFFF' : '#171717' },
+                      pressed && { opacity: 0.85, transform: [{ scale: 0.98 }] },
+                    ]}
+                  >
+                    <Ionicons
+                      name="card-outline"
+                      size={20}
+                      color={ink.dark ? '#171717' : '#FFFFFF'}
+                    />
+                    <Text
+                      style={[styles.buyButtonText, { color: ink.dark ? '#171717' : '#FFFFFF' }]}
+                    >
+                      Tickets available — continue
+                    </Text>
+                  </Pressable>
+                ) : (
+                  <Pressable
+                    onPress={() => setWalletOpen(true)}
+                    style={({ pressed }) => [
+                      styles.buyButton,
+                      { backgroundColor: ink.dark ? '#FFFFFF' : '#171717' },
+                      pressed && { opacity: 0.85, transform: [{ scale: 0.98 }] },
+                    ]}
+                  >
+                    <Ionicons
+                      name={hasTicket ? 'checkmark-circle' : 'ticket-outline'}
+                      size={20}
+                      color={ink.dark ? '#171717' : '#FFFFFF'}
+                    />
+                    <Text
+                      style={[styles.buyButtonText, { color: ink.dark ? '#171717' : '#FFFFFF' }]}
+                    >
+                      {job?.status === 'failed' || job?.status === 'soldout'
+                        ? 'Try again'
+                        : 'Buy ticket'}
+                    </Text>
+                  </Pressable>
+                )}
+
+                {job?.status === 'soldout' ? (
+                  <Glass tint={ink.glassTint} radius={radius.md} style={styles.agentStatus}>
+                    <Ionicons name="sad-outline" size={20} color={ink.text} />
+                    <View style={{ flex: 1 }}>
+                      <Text style={[styles.agentStatusTitle, { color: ink.text }]}>Sold out</Text>
+                      <Text style={[styles.agentStatusBody, { color: ink.subtext }]}>
+                        {job.error || 'No tickets available for this event.'}
+                      </Text>
+                    </View>
+                  </Glass>
+                ) : null}
+
+                {job?.status === 'failed' ? (
+                  <Glass tint={ink.glassTint} radius={radius.md} style={styles.agentStatus}>
+                    <Ionicons name="alert-circle-outline" size={20} color={ink.text} />
+                    <View style={{ flex: 1 }}>
+                      <Text style={[styles.agentStatusTitle, { color: ink.text }]}>
+                        The agent couldn't finish
+                      </Text>
+                      <Text style={[styles.agentStatusBody, { color: ink.subtext }]}>
+                        {job.error || 'Unknown reason.'}
+                      </Text>
+                    </View>
+                  </Glass>
+                ) : null}
+
+                {/* The source stays one tap away — buy manually if you prefer. */}
+                <Pressable
+                  onPress={() => {
+                    if (Platform.OS === 'web') {
+                      (globalThis as any).window?.open(ticket.url!, '_blank');
+                    } else {
+                      Linking.openURL(ticket.url!).catch(() =>
+                        notify('Could not open link', ticket.url!)
+                      );
+                    }
+                  }}
+                  hitSlop={6}
+                >
+                  <Text style={[styles.sourceLink, { color: ink.subtext }]}>
+                    Open ticket page ↗
+                  </Text>
+                </Pressable>
+              </View>
             ) : null}
 
           </View>
@@ -472,6 +638,17 @@ export default function EventScreen() {
           ) : null}
         </Glass>
       </View>
+
+      {walletOpen ? (
+        <AgentWalletSheet
+          mode="purchase"
+          eventTitle={event.title}
+          job={job}
+          onClose={() => setWalletOpen(false)}
+          onCheckAvailability={startCheck}
+          onPurchase={startPurchase}
+        />
+      ) : null}
 
       {menuOpen ? (
         <View style={styles.menuOverlay}>
@@ -730,6 +907,9 @@ const styles = StyleSheet.create({
     gap: spacing.sm,
     marginTop: spacing.xs,
   },
+  buySection: {
+    gap: spacing.sm,
+  },
   buyButton: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -746,6 +926,24 @@ const styles = StyleSheet.create({
   },
   buyButtonText: {
     ...uiText(17, '700'),
+  },
+  agentStatus: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.md,
+    padding: spacing.md,
+  },
+  agentStatusTitle: {
+    ...uiText(15, '700'),
+  },
+  agentStatusBody: {
+    ...uiText(13, '500'),
+    marginTop: 2,
+  },
+  sourceLink: {
+    ...uiText(13, '600'),
+    textAlign: 'center',
+    textDecorationLine: 'underline',
   },
   guestSummary: {
     padding: spacing.md,

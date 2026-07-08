@@ -15,6 +15,10 @@ import type {
   PhoneRequestResponse,
   PhoneVerifyResponse,
   RsvpStatus,
+  TicketJobInfo,
+  TicketProvider,
+  WalletIdentity,
+  WalletPayment,
 } from '../shared/types';
 
 // In dev, the machine running Metro is also running the API — derive its
@@ -286,5 +290,34 @@ export const api = {
       `/events/${eventId}/blast`,
       { method: 'POST', body: JSON.stringify({ text }) }
     );
+  },
+  // Step 1+2 of the agentic purchase: submit the buyer identity and kick off
+  // the server-side availability check. The returned job starts in 'checking'
+  // and moves to 'available' or 'soldout' (poll with ticketJob). No payment
+  // data is sent here.
+  checkTicketAvailability(
+    eventId: string,
+    identity: WalletIdentity,
+    provider: TicketProvider = 'demo'
+  ) {
+    return request<{ job: TicketJobInfo }>('/tickets/check', {
+      method: 'POST',
+      body: JSON.stringify({ eventId, provider, identity }),
+    });
+  },
+  // Step 3+4: confirm payment on an 'available' job; the agent completes the
+  // checkout and only then flips the job to 'done' with the ticket PDF. Card
+  // data rides along per request and is never stored server-side.
+  purchaseTicket(jobId: string, identity: WalletIdentity, payment: WalletPayment) {
+    return request<{ job: TicketJobInfo }>(`/tickets/${encodeURIComponent(jobId)}/purchase`, {
+      method: 'POST',
+      body: JSON.stringify({ identity, payment }),
+    });
+  },
+  ticketJob(id: string) {
+    return request<{ job: TicketJobInfo }>(`/tickets/${encodeURIComponent(id)}`);
+  },
+  myTickets() {
+    return request<{ jobs: TicketJobInfo[] }>('/tickets');
   },
 };

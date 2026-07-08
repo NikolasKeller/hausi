@@ -279,6 +279,65 @@ export interface EventInput {
   rsvpsOpen?: boolean;
 }
 
+// ── Agent Wallet / agentic ticket purchase ──────────────────────────────────
+
+// The "Agent Wallet" — the user's locally-stored purchase profile. Lives ONLY
+// on the device (expo-secure-store / localStorage). Entered once, reused for
+// every purchase. Split in two: the identity a checkout typically asks for,
+// and the payment method. Both are sent to the server per request; card data
+// is only ever held in memory for the running job and never persisted.
+export interface WalletIdentity {
+  name: string;
+  email: string;
+  address: string;
+  // Free-form so it works across locales; validated as a real date client-side.
+  dateOfBirth: string; // "YYYY-MM-DD"
+}
+
+export interface WalletPayment {
+  cardNumber: string;
+  cardExpiry: string; // MM/YY
+  cardCvc: string;
+}
+
+export interface AgentWallet extends WalletIdentity, WalletPayment {}
+
+// Real phases of an agentic purchase. The UI mirrors these 1:1 and NEVER shows
+// "purchased" until the agent has a confirmed ticket (status 'done'):
+//   checking    — the agent is verifying ticket availability on the site
+//   available   — tickets are available; waiting for the user's payment step
+//   soldout     — no tickets available (terminal for this attempt)
+//   purchasing  — the agent is completing the checkout with the payment method
+//   done        — purchase confirmed, ticket PDF (with QR) is ready
+//   failed      — something went wrong (reason in `error`)
+export type TicketJobStatus =
+  | 'checking'
+  | 'available'
+  | 'soldout'
+  | 'purchasing'
+  | 'done'
+  | 'failed';
+
+// 'demo' → the server's own test checkout page (full flow incl. PDF).
+// 'web'  → the event's real ticket URL (best-effort form detection; stops
+//          before any real purchase — prototype safety).
+export type TicketProvider = 'demo' | 'web';
+
+export interface TicketJobInfo {
+  id: string;
+  eventId: string;
+  status: TicketJobStatus;
+  provider: TicketProvider;
+  // "/uploads/tickets/x.pdf" once done — resolve via mediaUrl().
+  pdfPath: string;
+  cardLast4: string;
+  // Availability / failure detail, safe to show (never contains card data).
+  error: string;
+  createdAt: string;
+  // Enough event context to render a ticket row in the profile.
+  event: { slug: string; title: string; date: string; location: string } | null;
+}
+
 export interface HomeFeed {
   city: string;
   trendingNearby: ExploreEvent[];

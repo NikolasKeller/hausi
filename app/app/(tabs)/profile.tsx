@@ -2,6 +2,8 @@ import React, { useCallback, useState } from 'react';
 import {
   ActivityIndicator,
   Image,
+  Linking,
+  Platform,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -12,7 +14,7 @@ import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 import { LinearGradient } from 'expo-linear-gradient';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import type { EventSummary, MyProfile } from '../../shared/types';
+import type { EventSummary, MyProfile, TicketJobInfo } from '../../shared/types';
 import { api, mediaUrl } from '../../lib/api';
 import { useAuth } from '../../lib/auth';
 import { confirmDialog } from '../../lib/dialogs';
@@ -20,8 +22,9 @@ import { shareText } from '../../lib/share';
 import { colors, radius, shadow, spacing } from '../../lib/theme';
 import { display, uiText } from '../../lib/fonts';
 import { Avatar } from '../../components/Avatar';
+import { AgentWalletSheet } from '../../components/AgentWalletSheet';
 import { Button } from '../../components/ui';
-import { EventCard } from '../../components/EventCard';
+import { EventCard, formatEventDate } from '../../components/EventCard';
 import { ChromeText } from '../../components/ChromeText';
 import { SettingsSheet } from '../../components/SettingsSheet';
 import { withScreenBackground } from '../../components/ScreenBackground';
@@ -37,8 +40,11 @@ function ProfileScreen() {
   // Events with a bought ticket (any non-hosted event on "my events" — buying
   // marks them GOING server-side).
   const [tickets, setTickets] = useState<EventSummary[]>([]);
+  // Agent-purchased tickets (with the generated PDF once done).
+  const [ticketJobs, setTicketJobs] = useState<TicketJobInfo[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [walletOpen, setWalletOpen] = useState(false);
 
   const load = useCallback(async () => {
     try {
@@ -54,6 +60,12 @@ function ProfileScreen() {
       setTickets(res.events.filter((ev) => !ev.isHost));
     } catch {
       // keep whatever we had
+    }
+    try {
+      const res = await api.myTickets();
+      setTicketJobs(res.jobs);
+    } catch {
+      // best-effort
     }
   }, []);
 
@@ -73,6 +85,12 @@ function ProfileScreen() {
         try {
           const res = await api.myEvents();
           if (active) setTickets(res.events.filter((ev) => !ev.isHost));
+        } catch {
+          // best-effort
+        }
+        try {
+          const res = await api.myTickets();
+          if (active) setTicketJobs(res.jobs);
         } catch {
           // best-effort
         }
@@ -191,15 +209,82 @@ function ProfileScreen() {
             </View>
           )}
         </View>
+
+        {/* Agent-purchased tickets — each finished job links its PDF (with the
+            entry QR code); an in-flight purchase or a failure shows its status.
+            Pre-purchase phases (checking availability, awaiting payment, sold
+            out) don't belong here — those live on the event page. */}
+        {(() => {
+          const purchaseJobs = ticketJobs.filter((jb) =>
+            ['purchasing', 'done', 'failed'].includes(jb.status)
+          );
+          if (!purchaseJobs.length) return null;
+          return (
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>Tickets</Text>
+            <View style={styles.ticketList}>
+              {purchaseJobs.map((jb) => {
+                const done = jb.status === 'done';
+                const pdfUrl = mediaUrl(jb.pdfPath);
+                return (
+                  <Pressable
+                    key={jb.id}
+                    disabled={!done || !pdfUrl}
+                    onPress={() => {
+                      if (!pdfUrl) return;
+                      if (Platform.OS === 'web') {
+                        (globalThis as any).window?.open(pdfUrl, '_blank');
+                      } else {
+                        Linking.openURL(pdfUrl).catch(() => {});
+                      }
+                    }}
+                    style={({ pressed }) => [styles.ticketRow, pressed && styles.pressed]}
+                  >
+                    <Ionicons
+                      name={
+                        done
+                          ? 'qr-code-outline'
+                          : jb.status === 'failed'
+                            ? 'alert-circle-outline'
+                            : 'hourglass-outline'
+                      }
+                      size={22}
+                      color={jb.status === 'failed' ? colors.danger : colors.text}
+                    />
+                    <View style={{ flex: 1 }}>
+                      <Text style={styles.ticketRowTitle} numberOfLines={1}>
+                        {jb.event?.title ?? 'Event'}
+                      </Text>
+                      <Text style={styles.ticketRowMeta} numberOfLines={1}>
+                        {jb.event ? `${formatEventDate(jb.event.date)} · ` : ''}
+                        {done
+                          ? `Ticket PDF · card ${jb.cardLast4 ? `•••• ${jb.cardLast4}` : ''}`
+                          : jb.status === 'failed'
+                            ? 'Purchase failed'
+                            : 'Your agent is buying…'}
+                      </Text>
+                    </View>
+                    {done ? (
+                      <Ionicons name="open-outline" size={18} color={colors.muted} />
+                    ) : null}
+                  </Pressable>
+                );
+              })}
+            </View>
+          </View>
+          );
+        })()}
       </ScrollView>
       {settingsOpen ? (
         <SettingsSheet
           onClose={() => setSettingsOpen(false)}
           onEditProfile={() => router.push('/edit-profile')}
           onShareProfile={shareProfile}
+          onEditWallet={() => setWalletOpen(true)}
           onLogout={confirmLogout}
         />
       ) : null}
+      {walletOpen ? <AgentWalletSheet mode="edit" onClose={() => setWalletOpen(false)} /> : null}
     </View>
   );
 }
@@ -312,5 +397,25 @@ const styles = StyleSheet.create({
   },
   ticketList: {
     gap: spacing.md,
+  },
+  ticketRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.md,
+    backgroundColor: colors.card,
+    borderWidth: 1,
+    borderColor: colors.cardBorder,
+    borderRadius: radius.md,
+    padding: spacing.md,
+    ...shadow.card,
+  },
+  ticketRowTitle: {
+    ...uiText(15, '700'),
+    color: colors.text,
+  },
+  ticketRowMeta: {
+    ...uiText(13, '500'),
+    color: colors.muted,
+    marginTop: 2,
   },
 });
