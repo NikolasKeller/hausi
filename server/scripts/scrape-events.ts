@@ -68,11 +68,16 @@ async function loadExistingKeys(): Promise<Set<string>> {
 }
 
 function buildDescription(e: ScrapedEvent): string {
-  const parts: string[] = [];
-  if (e.description) parts.push(e.description);
   const sourceLabel = { luma: 'lu.ma', ra: 'Resident Advisor', eventbrite: 'Eventbrite', allevents: 'allevents.in' }[e.source];
-  parts.push(`—\nSource: ${sourceLabel}\n${e.sourceUrl}`);
-  return parts.join('\n\n').slice(0, DESCRIPTION_LIMIT);
+  const suffix = `—\nSource: ${sourceLabel}\n${e.sourceUrl}`;
+  // Truncate the body, never the source suffix — a cut-off trailing URL would
+  // (rightly) fail the source-url validation check and drop the event.
+  const budget = DESCRIPTION_LIMIT - suffix.length - 2; // "\n\n" separator
+  const body =
+    e.description.length > budget
+      ? `${e.description.slice(0, budget - 1).trimEnd()}…`
+      : e.description;
+  return body ? `${body}\n\n${suffix}` : suffix;
 }
 
 function buildLocation(e: ScrapedEvent): string {
