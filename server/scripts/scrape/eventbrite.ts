@@ -37,25 +37,24 @@ interface EbResult {
 
 // The search results carry no price data, so each candidate needs one event-
 // page fetch: the page embeds a schema.org AggregateOffer with the real ticket
-// price range plus an isFree flag. Returns '' for free/priceless events.
-async function fetchPriceLabel(eventUrl: string): Promise<string> {
+// price range. Returns '' for free/priceless events and null when the page
+// couldn't be fetched (so the caller may retry under a later search term).
+// lowPrice/highPrice appear both quoted ("11.83") and as bare JSON numbers.
+async function fetchPriceLabel(eventUrl: string): Promise<string | null> {
   const res = await politeFetch(eventUrl, {}, { retries: 2, timeoutMs: 20000 });
-  if (!res) return '';
+  if (!res) return null;
   let html = '';
   try {
     html = await res.text();
   } catch {
-    return '';
+    return null;
   }
-  if (/"isFree"\s*:\s*true/.test(html)) return '';
-  const offer = html.match(
-    /"@type"\s*:\s*"AggregateOffer"[^}]*?"lowPrice"\s*:\s*"([\d.]+)"[^}]*?"priceCurrency"\s*:\s*"([A-Z]{3})"/
-  );
-  // Key order varies; try the reverse arrangement before giving up.
-  const low = offer?.[1] ?? html.match(/"lowPrice"\s*:\s*"([\d.]+)"/)?.[1];
-  const currency = offer?.[2] ?? html.match(/"priceCurrency"\s*:\s*"([A-Z]{3})"/)?.[1];
-  const high = html.match(/"highPrice"\s*:\s*"([\d.]+)"/)?.[1];
+  const low = html.match(/"lowPrice"\s*:\s*"?([\d.]+)"?/)?.[1];
+  const currency = html.match(/"priceCurrency"\s*:\s*"([A-Z]{3})"/)?.[1];
+  const high = html.match(/"highPrice"\s*:\s*"?([\d.]+)"?/)?.[1];
   const amount = Number(low);
+  // No positive lowPrice ⇒ the event is free (its offer shows 0.00) or has no
+  // published price; either way it fails the paid-only rule.
   if (!low || !currency || !Number.isFinite(amount) || amount <= 0) return '';
   const label = amount.toFixed(Number.isInteger(amount) ? 0 : 2);
   return high && Number(high) > amount ? `From ${label} ${currency}` : `${label} ${currency}`;
@@ -101,10 +100,13 @@ export async function scrapeEventbrite(config: CityConfig): Promise<ScrapedEvent
       if (venueCity && venueCity !== config.name.toLowerCase()) continue;
       const cls = classify(r.name, r.summary ?? '');
       if (!cls) continue;
-      seenUrls.add(r.url);
       // Paid events only: one extra page fetch per candidate for the price.
       const price = await fetchPriceLabel(r.url);
       await sleep(1500 + Math.random() * 1000);
+      // null = fetch failed — leave the URL unmarked so a later search term
+      // gets another shot; '' = definitively free/priceless — mark and skip.
+      if (price == null) continue;
+      seenUrls.add(r.url);
       if (!price) continue;
       out.push({
         source: 'eventbrite',
