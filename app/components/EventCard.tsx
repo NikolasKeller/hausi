@@ -29,18 +29,24 @@ const STATUS_LABEL: Record<string, string> = {
 
 export function EventCard({ event }: { event: EventSummary }) {
   const router = useRouter();
+  // Photo covers get white type over a scrim; the plain paper cover needs dark
+  // graphite type to stay legible.
+  const hasPhoto = Boolean(event.coverImage);
   return (
     <Pressable
       onPress={() => router.push(`/event/${event.slug}`)}
       style={({ pressed }) => [styles.card, pressed && { opacity: 0.85 }]}
     >
-      <CoverGradient theme={event.coverTheme} image={event.coverImage} style={styles.cover} emojiOpacity={0.45}>
+      <CoverGradient theme={event.coverTheme} image={event.coverImage} style={styles.cover}>
         {event.canceledAt ? (
           <View style={styles.canceledBadge}>
             <Text style={styles.canceledText}>CANCELED</Text>
           </View>
         ) : null}
-        <Text style={[styles.title, titleFontStyle(event.titleFont)]} numberOfLines={2}>
+        <Text
+          style={[styles.title, hasPhoto ? styles.titleOnPhoto : styles.titleOnPaper, titleFontStyle(event.titleFont)]}
+          numberOfLines={2}
+        >
           {event.title}
         </Text>
       </CoverGradient>
@@ -83,14 +89,20 @@ const styles = StyleSheet.create({
     padding: spacing.lg,
     justifyContent: 'flex-end',
   },
-  // The title sits on the colorful/dark CoverGradient hero, so white stays here.
   title: {
-    color: '#fff',
     fontSize: 38,
     letterSpacing: -1,
+  },
+  // On a photo cover: white type with a shadow for legibility over imagery.
+  titleOnPhoto: {
+    color: '#fff',
     textShadowColor: 'rgba(0,0,0,0.35)',
     textShadowOffset: { width: 0, height: 2 },
     textShadowRadius: 6,
+  },
+  // On the plain paper cover: graphite ink, no shadow.
+  titleOnPaper: {
+    color: colors.text,
   },
   // CANCELED badge also sits on the cover hero — keep it legible on dark imagery.
   canceledBadge: {

@@ -22,6 +22,7 @@ import { display, uiText } from '../../lib/fonts';
 import { Avatar } from '../../components/Avatar';
 import { Button } from '../../components/ui';
 import { EventCard } from '../../components/EventCard';
+import { ChromeText } from '../../components/ChromeText';
 import { SettingsSheet } from '../../components/SettingsSheet';
 import { withScreenBackground } from '../../components/ScreenBackground';
 
@@ -165,9 +166,9 @@ function ProfileScreen() {
         {/* Name + stats sit on the solid dark canvas, below where the photo has
             already faded out. Pulled up a touch to stay close to the photo. */}
         <View style={styles.heroContent}>
-          <Text style={styles.bigName} numberOfLines={2}>
+          <ChromeText style={styles.bigName} numberOfLines={2}>
             {profile.name}
-          </Text>
+          </ChromeText>
           <View style={styles.joinedPill}>
             <Ionicons name="sparkles" size={13} color={colors.accent} />
             <Text style={styles.joinedText}>joined {joinedYear}</Text>

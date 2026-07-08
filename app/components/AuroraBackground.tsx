@@ -1,10 +1,11 @@
 import React from 'react';
-import { StyleSheet, View } from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
+import { Image, StyleSheet, View } from 'react-native';
 import { colors } from '../lib/theme';
 
-// Auth backdrop: the warm cream canvas with a soft bright sheen at the top.
-// The `confetti` prop is kept for API compatibility with callers but no longer
+const PAPER = require('../assets/paper-texture.png');
+
+// Auth backdrop: the same full-bleed paper texture as the rest of the app. The
+// `confetti` prop is kept for API compatibility with callers but no longer
 // renders anything.
 export function AuroraBackground({
   children,
@@ -16,12 +17,7 @@ export function AuroraBackground({
 }) {
   return (
     <View style={styles.fill}>
-      <LinearGradient
-        colors={['rgba(255,255,255,0.45)', 'rgba(255,255,255,0.15)', 'rgba(255,255,255,0)']}
-        locations={[0, 0.45, 1]}
-        style={styles.bloom}
-        pointerEvents="none"
-      />
+      <Image source={PAPER} style={StyleSheet.absoluteFill} resizeMode="cover" />
       {children}
     </View>
   );
@@ -32,12 +28,5 @@ const styles = StyleSheet.create({
     flex: 1,
     overflow: 'hidden',
     backgroundColor: colors.bg,
-  },
-  bloom: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    height: 320,
   },
 });

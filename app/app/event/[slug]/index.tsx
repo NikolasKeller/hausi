@@ -18,11 +18,11 @@ import { useAuth } from '../../../lib/auth';
 import { confirmDialog, notify } from '../../../lib/dialogs';
 import { recordRecentEvent, removeRecentEvent } from '../../../lib/recents';
 import { shareText } from '../../../lib/share';
-import { colors, radius, spacing } from '../../../lib/theme';
+import { colors, light, radius, spacing } from '../../../lib/theme';
 import { titleFontStyle, display, kicker, uiText } from '../../../lib/fonts';
 import { CoverGradient } from '../../../components/CoverGradient';
 import { RichDescription } from '../../../components/RichDescription';
-import { ThemeBackground, themeInk } from '../../../components/themes';
+import { ThemeBackground } from '../../../components/themes';
 import { Glass } from '../../../components/glass';
 import { Avatar } from '../../../components/Avatar';
 import { Button } from '../../../components/ui';
@@ -215,10 +215,16 @@ export default function EventScreen() {
     );
   }
 
-  // The page now sits on the corporate dark canvas (see ThemeBackground), so
-  // content always uses the dark-surface ink (white type, dark glass) instead
-  // of a palette that flipped with the per-event theme.
-  const ink = themeInk('noir');
+  // The page sits on the paper design background (see ThemeBackground), so all
+  // content uses graphite ink on light glass.
+  const ink = {
+    dark: false,
+    text: colors.text,
+    subtext: light.text2,
+    faint: light.text3,
+    glassTint: 'light' as const,
+    hairline: light.hairline,
+  };
 
   const spotsLeft =
     event.maxGuests != null ? Math.max(0, event.maxGuests - event.counts.going) : null;

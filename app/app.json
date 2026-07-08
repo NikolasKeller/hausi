@@ -7,7 +7,7 @@
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
-    "backgroundColor": "#CFC7BD",
+    "backgroundColor": "#F1F1F1",
     "runtimeVersion": {
       "policy": "appVersion"
     },
@@ -35,8 +35,8 @@
       "favicon": "./assets/favicon.png",
       "bundler": "metro",
       "output": "single",
-      "themeColor": "#CFC7BD",
-      "backgroundColor": "#CFC7BD"
+      "themeColor": "#F1F1F1",
+      "backgroundColor": "#F1F1F1"
     },
     "plugins": [
       "expo-router",

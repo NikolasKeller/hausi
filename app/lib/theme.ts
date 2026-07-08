@@ -1,26 +1,26 @@
-// iykyk design system — a warm cream canvas (matching the chrome wordmark
-// artwork), near-black ink for text and primary actions, white cards with
-// subtle hairlines, and silvery greys for everything secondary. Neutral,
-// metallic, print-like.
+// iykyk design system — a light textured-paper canvas (the same stock the
+// chrome wordmark is rendered on), graphite-silver ink, crisp white cards, and
+// a real chrome gradient reserved for large headlines. Neutral, metallic,
+// print-like.
 
-// ── App palette (cream canvas) ────────────────────────────────────────────────
+// ── App palette (paper canvas) ────────────────────────────────────────────────
 export const colors = {
-  // Surfaces
-  bg: '#CFC7BD',        // warm cream/greige canvas (sampled from the artwork)
-  card: '#F4F1EB',      // elevated warm-white card
-  cardBorder: 'rgba(0,0,0,0.08)',       // hairline on light
-  inputBg: 'rgba(255,255,255,0.55)',    // translucent field fill
-  // Type
-  text: '#171717',      // near-black ink
-  muted: 'rgba(23,23,23,0.55)',         // dimmed ink
-  // Brand / accent — anthracite (the chrome look's dark pole)
-  accent: '#1F1F1F',
-  accentDark: '#000000',
-  violet: '#4A4A4A',    // kept name for back-compat — now a dark grey
-  helio: '#6B6B6B',     // silvery secondary (headlines, subtle glows)
-  // High-contrast solid fill (a dark pill on the cream canvas)
-  ink: '#171717',
-  // Text on the anthracite/gradient accent fill
+  // Surfaces — bg is the flat fallback under the paper-texture image.
+  bg: '#F1F1F1',        // near-white paper (matches the texture's average)
+  card: '#FFFFFF',      // crisp white card, lifts off the texture via shadow
+  cardBorder: 'rgba(0,0,0,0.07)',       // hairline on light
+  inputBg: 'rgba(255,255,255,0.65)',    // translucent field fill
+  // Type — graphite silver (metallic feel, still high contrast on paper)
+  text: '#2B2E33',      // graphite ink
+  muted: '#6A6E75',     // mid graphite-silver
+  // Brand / accent — near-black graphite (the chrome look's dark pole)
+  accent: '#20242A',
+  accentDark: '#0E1013',
+  violet: '#4A4E55',    // kept name for back-compat — a graphite grey
+  helio: '#565B63',     // darker silver for headline fallbacks
+  // High-contrast solid fill (a dark pill on the paper canvas)
+  ink: '#20242A',
+  // Text on the graphite/gradient accent fill
   onAccent: '#FFFFFF',
   // Text on an ink solid fill
   onInk: '#FFFFFF',
@@ -30,24 +30,27 @@ export const colors = {
   warning: '#B87A00',
 };
 
+// The chrome gradient for large headlines (MaskedView), top-lit steel.
+export const chrome = ['#E8EBEF', '#AEB4BC', '#5B616B', '#B9BFC7', '#868C96'] as const;
+
 // ── Elevated surfaces (kept under the `light` name for back-compat) ───────────
 export const light = {
   // Surfaces
-  bg: '#CFC7BD', // cream canvas
-  paper: '#F4F1EB', // warm-white card / panel
-  // Ink & type ramp (near-black → dim)
-  ink: '#171717',
-  text: '#171717',
-  text2: 'rgba(23,23,23,0.80)', // strong secondary
-  text3: 'rgba(23,23,23,0.60)', // tertiary
-  muted: 'rgba(23,23,23,0.45)', // faint
-  disabled: 'rgba(23,23,23,0.30)',
-  border: 'rgba(0,0,0,0.12)', // structural hairline
-  hairline: 'rgba(0,0,0,0.08)', // soft divider
-  inputBg: 'rgba(255,255,255,0.55)',
+  bg: '#F1F1F1', // paper canvas
+  paper: '#FFFFFF', // white card / panel
+  // Ink & type ramp (graphite → dim silver)
+  ink: '#2B2E33',
+  text: '#2B2E33',
+  text2: '#4A4E55', // strong secondary
+  text3: '#6A6E75', // tertiary
+  muted: '#868C94', // faint silver
+  disabled: 'rgba(43,46,51,0.30)',
+  border: 'rgba(0,0,0,0.10)', // structural hairline
+  hairline: 'rgba(0,0,0,0.07)', // soft divider
+  inputBg: 'rgba(255,255,255,0.65)',
   // Accents
   sand: '#B4A88F', // warm sand (kept for active nav highlights)
-  midnight: '#3A3A3A', // dark grey accent (was electric blue)
+  midnight: '#3A3E45', // graphite accent
   onInk: '#FFFFFF', // text on an ink solid fill
 };
 
