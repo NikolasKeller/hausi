@@ -1,0 +1,59 @@
+name: EAS Update — PR preview
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+concurrency:
+  group: eas-update-preview-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  preview:
+    name: Publish PR preview
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+    steps:
+      - name: Check for EXPO_TOKEN
+        run: |
+          if [ -z "${{ secrets.EXPO_TOKEN }}" ]; then
+            echo "Missing EXPO_TOKEN secret. Create an access token at https://expo.dev/settings/access-tokens and add it as a repository secret named EXPO_TOKEN."
+            exit 1
+          fi
+
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: app/package-lock.json
+
+      - name: Setup EAS
+        uses: expo/expo-github-action@v8
+        with:
+          eas-version: latest
+          token: ${{ secrets.EXPO_TOKEN }}
+
+      - name: Install dependencies
+        working-directory: app
+        run: npm ci
+
+      - name: Publish preview and comment QR code on PR
+        uses: expo/expo-github-action/preview@v8
+        env:
+          # Server origin the published app talks to (e.g. the Railway domain).
+          # Without it the bundle falls back to localhost and cannot reach the API on a phone.
+          EXPO_PUBLIC_API_URL: ${{ vars.EXPO_PUBLIC_API_URL }}
+        with:
+          working-directory: app
+          # One EAS Update branch per PR branch; the comment on the PR is
+          # updated in place on every new push.
+          command: eas update --auto --branch ${{ github.event.pull_request.head.ref }}
+          # The project includes expo-dev-client, which would make the action
+          # default to dev-build QR codes; we want plain Expo Go.
+          qr-target: expo-go
