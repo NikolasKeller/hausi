@@ -21,6 +21,11 @@ export interface ScrapedEvent {
   // Source-specific popularity signal (RA "attending", luma guest count,
   // 0 when the source exposes none). Only used for ranking, never stored.
   hype: number;
+  // Ticket price as shown to guests, following the app's costPerPerson
+  // convention ("15 EUR", "From 17 EUR", see prisma/featuredEvents.ts).
+  // '' means the source reports no paid ticket — such events are rejected by
+  // the paid-ticket validation check and never inserted.
+  priceLabel: string;
 }
 
 export interface CityConfig {

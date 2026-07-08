@@ -35,6 +35,32 @@ interface EbResult {
   };
 }
 
+// The search results carry no price data, so each candidate needs one event-
+// page fetch: the page embeds a schema.org AggregateOffer with the real ticket
+// price range plus an isFree flag. Returns '' for free/priceless events.
+async function fetchPriceLabel(eventUrl: string): Promise<string> {
+  const res = await politeFetch(eventUrl, {}, { retries: 2, timeoutMs: 20000 });
+  if (!res) return '';
+  let html = '';
+  try {
+    html = await res.text();
+  } catch {
+    return '';
+  }
+  if (/"isFree"\s*:\s*true/.test(html)) return '';
+  const offer = html.match(
+    /"@type"\s*:\s*"AggregateOffer"[^}]*?"lowPrice"\s*:\s*"([\d.]+)"[^}]*?"priceCurrency"\s*:\s*"([A-Z]{3})"/
+  );
+  // Key order varies; try the reverse arrangement before giving up.
+  const low = offer?.[1] ?? html.match(/"lowPrice"\s*:\s*"([\d.]+)"/)?.[1];
+  const currency = offer?.[2] ?? html.match(/"priceCurrency"\s*:\s*"([A-Z]{3})"/)?.[1];
+  const high = html.match(/"highPrice"\s*:\s*"([\d.]+)"/)?.[1];
+  const amount = Number(low);
+  if (!low || !currency || !Number.isFinite(amount) || amount <= 0) return '';
+  const label = amount.toFixed(Number.isInteger(amount) ? 0 : 2);
+  return high && Number(high) > amount ? `From ${label} ${currency}` : `${label} ${currency}`;
+}
+
 function extractServerData(html: string): EbResult[] {
   const m = html.match(/window\.__SERVER_DATA__\s*=\s*(\{.*?\});\s*\n/s);
   if (!m) return [];
@@ -76,6 +102,10 @@ export async function scrapeEventbrite(config: CityConfig): Promise<ScrapedEvent
       const cls = classify(r.name, r.summary ?? '');
       if (!cls) continue;
       seenUrls.add(r.url);
+      // Paid events only: one extra page fetch per candidate for the price.
+      const price = await fetchPriceLabel(r.url);
+      await sleep(1500 + Math.random() * 1000);
+      if (!price) continue;
       out.push({
         source: 'eventbrite',
         sourceUrl: r.url,
@@ -87,6 +117,7 @@ export async function scrapeEventbrite(config: CityConfig): Promise<ScrapedEvent
         city: config.name,
         imageUrl: r.image?.original?.url ?? r.image?.url ?? '',
         hype: 0,
+        priceLabel: price,
       });
     }
   }

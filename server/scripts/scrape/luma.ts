@@ -13,6 +13,11 @@ interface LumaGeo {
   city_state?: string;
 }
 
+interface LumaPrice {
+  cents?: number | null;
+  currency?: string | null;
+}
+
 interface LumaListEntry {
   event: {
     api_id: string;
@@ -25,6 +30,23 @@ interface LumaListEntry {
   };
   guest_count?: number;
   ticket_count?: number;
+  ticket_info?: {
+    price?: LumaPrice | null;
+    max_price?: LumaPrice | null;
+    is_free?: boolean;
+  } | null;
+}
+
+// "15 EUR" / "From 15 EUR" following the app's costPerPerson convention.
+// '' when the event is free or exposes no price (dropped by validation).
+function priceLabel(info: LumaListEntry['ticket_info']): string {
+  if (!info || info.is_free) return '';
+  const cents = info.price?.cents;
+  if (!cents || cents <= 0) return '';
+  const amount = (cents / 100).toFixed(cents % 100 === 0 ? 0 : 2);
+  const currency = (info.price?.currency ?? 'eur').toUpperCase();
+  const hasRange = !!info.max_price?.cents && info.max_price.cents !== cents;
+  return hasRange ? `From ${amount} ${currency}` : `${amount} ${currency}`;
 }
 
 interface LumaListResponse {
@@ -104,11 +126,13 @@ export async function scrapeLuma(config: CityConfig, maxPages = 4): Promise<Scra
   }
 
   // Pre-filter before the (per-event) detail requests: offline, in this city,
-  // and passing the lifestyle keyword filter on the title alone.
+  // paid (free events never make it into the app), and passing the lifestyle
+  // keyword filter on the title alone.
   const candidates = entries.filter((e) => {
     const ev = e.event;
     if (ev.location_type && ev.location_type !== 'offline') return false;
     if (!cityMatches(config, ev.geo_address_info?.city)) return false;
+    if (!priceLabel(e.ticket_info)) return false;
     return classify(ev.name, '') != null;
   });
 
@@ -129,6 +153,7 @@ export async function scrapeLuma(config: CityConfig, maxPages = 4): Promise<Scra
       city: config.name,
       imageUrl: ev.cover_url ?? '',
       hype: (entry.guest_count ?? 0) + (entry.ticket_count ?? 0),
+      priceLabel: priceLabel(entry.ticket_info),
     });
   }
   return out;

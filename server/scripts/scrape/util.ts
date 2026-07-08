@@ -159,12 +159,6 @@ export function classify(title: string, description: string): Classified | null 
 // RA events are club/techno by construction — no keyword filter needed.
 export const RA_CLASSIFIED: Classified = { category: 'music', coverTheme: 'midnight' };
 
-// Dedupe key used both within a run and against rows already in the DB.
-export function dedupeKey(title: string, city: string, startAt: Date): string {
-  const day = startAt.toISOString().slice(0, 10);
-  return `${title.trim().toLowerCase()}|${city.toLowerCase()}|${day}`;
-}
-
 export function isValidEvent(e: ScrapedEvent, now: Date, horizon: Date): boolean {
   return (
     e.title.trim().length > 2 &&

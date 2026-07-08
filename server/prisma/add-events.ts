@@ -7,6 +7,16 @@ import { FEATURED_EVENTS } from './featuredEvents.js';
 // this NEVER deletes anything — it only creates events that don't already exist
 // (matched by slug) and ensures the host org account exists. Safe to run
 // against production (and safe to run on every deploy: re-runs are no-ops).
+//
+// The app is paid-events-only ("buy ticket" model): featured events without a
+// real ticket price > 0 are skipped, so free events can't reappear on deploy.
+
+// Same parse rule as scripts/scrape/validate.ts (parsePriceAmount): a
+// costPerPerson like "15 EUR" / "From 17 EUR" must contain an amount > 0.
+function hasPaidTicket(costPerPerson: string): boolean {
+  const m = costPerPerson.replace(',', '.').match(/(\d+(?:\.\d+)?)/);
+  return m != null && Number(m[1]) > 0;
+}
 
 async function main() {
   const email = 'events@ye-munich.com';
@@ -28,7 +38,13 @@ async function main() {
 
   let added = 0;
   let skipped = 0;
+  let skippedFree = 0;
   for (const e of FEATURED_EVENTS) {
+    // Paid-only app: never (re)create featured events without a ticket price.
+    if (!hasPaidTicket(e.costPerPerson)) {
+      skippedFree += 1;
+      continue;
+    }
     // Match by title, not slug: makeSlug() appends a random suffix, so it isn't
     // a stable key. Title uniquely identifies each curated featured event.
     const existing = await db.event.findFirst({ where: { title: e.title } });
@@ -58,7 +74,9 @@ async function main() {
     added += 1;
   }
 
-  console.log(`add-events: added ${added}, skipped ${skipped} existing (no data deleted).`);
+  console.log(
+    `add-events: added ${added}, skipped ${skipped} existing, ${skippedFree} free/priceless (no data deleted).`
+  );
 }
 
 main()
