@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
+  Image,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -17,12 +18,15 @@ import { searchCities } from '../../lib/geocoding';
 import { hasLocationPermission, locateCity, type LocatedCity } from '../../lib/location';
 import { getRecentCities, recordRecentCity } from '../../lib/recentCities';
 import { colors, radius, spacing, shadow } from '../../lib/theme';
-import { titleFontStyle, display, uiText, kicker } from '../../lib/fonts';
+import { titleFontStyle, uiText, kicker } from '../../lib/fonts';
 import { CoverGradient } from '../../components/CoverGradient';
-import { ChromeText } from '../../components/ChromeText';
 import { Button } from '../../components/ui';
 import { withScreenBackground } from '../../components/ScreenBackground';
 import { formatEventDate } from '../../components/EventCard';
+
+// The chrome "iykyk" wordmark used as the header logo (same asset family as the
+// welcome screen).
+const WORDMARK = require('../../assets/wordmark-chrome-header.png');
 
 const CATEGORY_CHIPS: { key: Category | 'all'; emoji: string; label: string }[] = [
   { key: 'all', emoji: '🔍', label: 'All' },
@@ -306,7 +310,9 @@ function ExploreScreen() {
       <View style={{ flex: 1 }}>
         <View style={styles.headerRow}>
           <View style={styles.headerTitleWrap}>
-            <ChromeText style={styles.headerTitle}>Iykyk</ChromeText>
+            {/* Chrome wordmark logo, sized to the height the "Iykyk" text
+                header used (display(32)) so the header footprint is unchanged. */}
+            <Image source={WORDMARK} style={styles.headerLogo} resizeMode="contain" />
           </View>
           <Pressable
             onPress={toggleCityMenu}
@@ -551,10 +557,11 @@ const styles = StyleSheet.create({
   headerTitleWrap: {
     gap: spacing.xs,
   },
-  headerTitle: {
-    // Match the calendar's month title size so the tab headers feel consistent.
-    ...display(32),
-    color: colors.text,
+  headerLogo: {
+    // Same height as the old display(32) text header; width follows the
+    // wordmark's aspect ratio (892×694 ≈ 1.285) so it stays crisp and in place.
+    height: 34,
+    width: 34 * 1.285,
   },
   cityPill: {
     flexDirection: 'row',
