@@ -106,10 +106,10 @@ export const radius = {
 
 // Milky frosted-glass tokens — the "frosted pane" look on the black canvas.
 export const glass = {
-  fill: 'rgba(255,255,255,0.14)',
-  fillStrong: 'rgba(255,255,255,0.20)',
-  fillLite: 'rgba(255,255,255,0.10)',
-  border: 'rgba(255,255,255,0.22)',
+  fill: 'rgba(255,255,255,0.16)',
+  fillStrong: 'rgba(255,255,255,0.24)',
+  fillLite: 'rgba(255,255,255,0.11)',
+  border: 'rgba(255,255,255,0.28)',
   borderSoft: 'rgba(255,255,255,0.12)',
   blur: 48,
   blurNav: 40,

@@ -14,8 +14,9 @@ import { Asset } from 'expo-asset';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Button } from '../../components/ui';
 import { useAuth } from '../../lib/auth';
-import { uiText } from '../../lib/fonts';
-import { colors, spacing } from '../../lib/theme';
+import { thinLabel, uiText } from '../../lib/fonts';
+import { colors, glass, spacing } from '../../lib/theme';
+import { MilkyCard } from '../../components/MilkyCard';
 
 // The animated liquid-silver logo on a pure-black ground — the loop morphs
 // into the "iykyk" lettering, so it carries the brand alone. On web (the
@@ -160,14 +161,18 @@ const styles = StyleSheet.create({
   },
   brand: {
     alignItems: 'center',
-    gap: spacing.md,
-    // Sits in the lower third, under the artwork's wordmark.
     marginBottom: spacing.xl,
   },
+  taglineCard: {
+    paddingVertical: 14,
+    paddingHorizontal: 20,
+    alignItems: 'center',
+  },
   tagline: {
-    color: colors.muted,
-    ...uiText(16, '500'),
+    color: glass.textMuted,
+    ...thinLabel(16),
     textAlign: 'center',
+    fontStyle: 'italic',
   },
   devWrap: {
     alignItems: 'center',

@@ -350,12 +350,12 @@ function ExploreScreen() {
                 </View>
                 <View style={styles.heroIndicators}>
                   <View style={styles.indicatorChip}>
-                    <Ionicons name="moon-outline" size={14} color={glass.text} />
-                    <Text style={styles.indicatorNum}>+{Math.min(9, tonightCount)}</Text>
+                    <Ionicons name="people-outline" size={14} color={glass.text} />
+                    <Text style={styles.indicatorNum}>+{Math.min(9, (events ?? []).filter((e) => e.friendGoing).length)}</Text>
                   </View>
                   <View style={styles.indicatorChip}>
-                    <Ionicons name="sunny-outline" size={14} color={glass.text} />
-                    <Text style={styles.indicatorNum}>-{Math.max(1, 10 - tonightCount)}</Text>
+                    <Ionicons name="heart-outline" size={14} color={glass.text} />
+                    <Text style={styles.indicatorNum}>{interestedTotal}</Text>
                   </View>
                 </View>
               </View>

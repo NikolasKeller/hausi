@@ -27,7 +27,7 @@ import { withScreenBackground } from '../../components/ScreenBackground';
 import { MilkyCard } from '../../components/MilkyCard';
 
 // No bloom here — the profile sits on the plain canvas.
-export default withScreenBackground(ProfileScreen, { bloom: false });
+export default withScreenBackground(ProfileScreen, { bloom: true });
 
 function ProfileScreen() {
   const router = useRouter();
@@ -125,7 +125,7 @@ function ProfileScreen() {
             <Image source={{ uri: photo }} style={StyleSheet.absoluteFill} resizeMode="cover" />
           ) : (
             <View style={styles.heroFallback}>
-              <Avatar name={profile.name} image={null} size={160} />
+              <Avatar name={profile.name} image={null} size={140} variant="chrome" />
             </View>
           )}
           {/* Top scrim keeps the buttons legible over a busy photo — only
@@ -171,7 +171,7 @@ function ProfileScreen() {
             {profile.name}
           </Text>
           <View style={styles.joinedPill}>
-            <Ionicons name="heart-outline" size={13} color={glass.text} />
+            <Ionicons name="heart" size={12} color="#0A0A0A" />
             <Text style={styles.joinedText}>joined {joinedYear}</Text>
           </View>
         </MilkyCard>
@@ -229,13 +229,12 @@ const styles = StyleSheet.create({
   // Full-bleed photo hero; content sits at the bottom where the photo fades
   // into the page background.
   hero: {
-    height: 360,
+    height: 280,
     width: '100%',
     justifyContent: 'flex-end',
     backgroundColor: colors.bg,
     overflow: 'hidden',
-    // Nudge the photo down from the very top so it isn't glued to the edge.
-    marginTop: spacing.xl,
+    marginTop: spacing.lg,
   },
   heroFallback: {
     ...StyleSheet.absoluteFillObject,
@@ -263,9 +262,9 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: 'rgba(0,0,0,0.35)',
+    backgroundColor: glass.fillLite,
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.18)',
+    borderColor: glass.borderSoft,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -291,17 +290,15 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
-    backgroundColor: glass.fillLite,
-    borderWidth: 1,
-    borderColor: glass.borderSoft,
+    backgroundColor: '#FFFFFF',
     borderRadius: radius.pill,
     paddingHorizontal: spacing.md,
-    paddingVertical: 6,
+    paddingVertical: 7,
   },
   joinedText: {
-    ...thinLabel(13),
-    color: glass.text,
-    fontStyle: 'normal',
+    ...uiText(12, '700'),
+    color: '#0A0A0A',
+    letterSpacing: 0.3,
   },
   section: {
     marginTop: spacing.xl,

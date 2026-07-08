@@ -30,7 +30,7 @@ export function MilkyCard({
     <View style={[styles.outer, { borderRadius: radius }, shadow.milky, style]}>
       <BlurView
         intensity={intensity}
-        tint="dark"
+        tint="light"
         style={[styles.blur, { borderRadius: radius }]}
       >
         <View
@@ -39,7 +39,7 @@ export function MilkyCard({
         />
         <LinearGradient
           pointerEvents="none"
-          colors={['rgba(255,255,255,0.22)', 'rgba(255,255,255,0.04)', 'rgba(255,255,255,0)']}
+          colors={['rgba(255,255,255,0.32)', 'rgba(255,255,255,0.08)', 'rgba(255,255,255,0)']}
           locations={[0, 0.35, 1]}
           start={{ x: 0, y: 0 }}
           end={{ x: 0, y: 1 }}

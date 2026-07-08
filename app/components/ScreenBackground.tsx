@@ -84,17 +84,17 @@ const styles = StyleSheet.create({
     paddingTop: 40,
   },
   watermarkBlur: {
-    width: '130%',
-    height: '42%',
+    width: '140%',
+    height: '50%',
     overflow: 'hidden',
-    opacity: 0.14,
+    opacity: 0.22,
   },
   watermarkBlurWeb: {
-    width: '130%',
-    height: '42%',
-    opacity: 0.12,
+    width: '140%',
+    height: '50%',
+    opacity: 0.18,
     ...(Platform.OS === 'web'
-      ? ({ filter: 'blur(28px) brightness(1.15)' } as object)
+      ? ({ filter: 'blur(36px) brightness(1.2)' } as object)
       : null),
   },
   watermark: {

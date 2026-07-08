@@ -15,7 +15,14 @@ export function initials(name: string): string {
 // A stable background color per person. Keyed off the first letter only so the
 // color doesn't flicker on every keystroke while someone types their name — it
 // locks in as soon as the first character is entered.
-function colorFor(name: string): string {
+// A stable background color per person. Chrome variant uses neutral silver
+// tones to match the glassmorphism palette; default keeps saturated HSL.
+function colorFor(name: string, chrome = false): string {
+  if (chrome) {
+    const first = name.trim().charAt(0).toUpperCase();
+    const shades = ['#2A2A2A', '#333333', '#3D3D3D', '#474747', '#525252'];
+    return shades[(first.charCodeAt(0) || 65) % shades.length];
+  }
   const first = name.trim().charAt(0).toUpperCase();
   let hash = 0;
   for (let i = 0; i < first.length; i++) {
@@ -25,26 +32,31 @@ function colorFor(name: string): string {
   return `hsl(${hue}, 55%, 45%)`;
 }
 
-// A user face: their uploaded photo when they have one, otherwise their
-// initials on a colored circle. If the photo fails to load (deleted upload,
-// offline), fall back to initials rather than leaving a blank circle.
 export function Avatar({
   name,
   image,
   size = 36,
+  variant = 'default',
 }: {
   name: string;
   image?: string | null;
   size?: number;
+  variant?: 'default' | 'chrome';
 }) {
   const [failed, setFailed] = useState(false);
   useEffect(() => setFailed(false), [image]);
 
   const round = { width: size, height: size, borderRadius: size / 2 };
   const showImage = !!image && !failed;
+  const chrome = variant === 'chrome';
   return (
     <View
-      style={[styles.circle, round, !showImage && { backgroundColor: colorFor(name) }]}
+      style={[
+        styles.circle,
+        round,
+        !showImage && { backgroundColor: colorFor(name, chrome) },
+        chrome && styles.chromeCircle,
+      ]}
     >
       {showImage ? (
         <Image
@@ -72,5 +84,8 @@ const styles = StyleSheet.create({
   initials: {
     color: '#fff',
     fontWeight: '700',
+  },
+  chromeCircle: {
+    borderColor: 'rgba(255,255,255,0.22)',
   },
 });
