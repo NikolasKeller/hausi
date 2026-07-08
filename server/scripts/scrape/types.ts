@@ -26,6 +26,9 @@ export interface ScrapedEvent {
   // '' means the source reports no paid ticket — such events are rejected by
   // the paid-ticket validation check and never inserted.
   priceLabel: string;
+  // The real paid-ticket URL (buy-button target): the source's own event/
+  // checkout page (Eventbrite/RA/venue). lu.ma links are dropped upstream.
+  ticketUrl: string;
 }
 
 export interface CityConfig {

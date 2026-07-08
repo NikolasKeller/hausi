@@ -2,9 +2,9 @@ import bcrypt from 'bcryptjs';
 import { db } from '../src/lib/db.js';
 import { makeSlug } from '../src/lib/slug.js';
 import { CITIES } from './scrape/cities.js';
-import { scrapeLuma } from './scrape/luma.js';
 import { scrapeRa } from './scrape/ra.js';
 import { scrapeEventbrite } from './scrape/eventbrite.js';
+import { translateToEnglish } from './scrape/translate.js';
 import type { ScrapedEvent } from './scrape/types.js';
 import { classify, isValidEvent, RA_CLASSIFIED, sleep } from './scrape/util.js';
 import {
@@ -14,26 +14,33 @@ import {
   type EventCandidate,
 } from './scrape/validate.js';
 
-// Scrapes hyped lifestyle/social events (run clubs, coffee meetups, dating
-// events, raves, rooftop parties, yoga/pilates, social sports …) for European
-// capitals from real public sources — lu.ma, Resident Advisor, Eventbrite —
-// and inserts them as public events into the app DB.
+// Scrapes hyped lifestyle/social/nightlife events (run clubs, raves, rooftop
+// parties, yoga, dating, coffee socials …) for European capitals from real
+// public sources — Resident Advisor and Eventbrite — and inserts them as
+// public events into the app DB.
+//
+// Sourcing rule (user correction, 2026-07-08):
+// - Keep the BROAD set from RA + Eventbrite (both are real PAID-ticket
+//   checkouts, acceptable as buy targets).
+// - lu.ma is dropped entirely: its links are free "register" signups, not
+//   ticket purchases — exactly what we don't want.
+// - Paid only: every event needs a real ticket price > 0 (free / RSVP-only /
+//   non-ticket signup events fail this and are dropped).
 //
 // Guarantees:
-// - NOTHING is invented: every title/date/venue/description/image comes
-//   verbatim from the source; the source URL is appended to the description.
-// - Paid events only: the price is captured into costPerPerson and any event
-//   without a real ticket price > 0 is rejected.
-// - Every event must pass the full validation checklist (scrape/validate.ts)
-//   right before its insert, or it is dropped with the reason logged.
-// - Idempotent: re-runs skip events that already exist (same title + city +
-//   calendar day), so it can run on a schedule and only add new events.
+// - NOTHING is invented: title/date/venue/price/image/ticket URL all come
+//   verbatim from the source.
+// - The ticket link is stored in Event.ticketUrl (the buy button reads it), and
+//   is NEVER written into the visible description.
+// - Descriptions are stored in English: non-English text is translated
+//   best-effort (key-less); the original is kept on failure. Empty stays empty.
+// - Every event passes the validation checklist before insert or is dropped
+//   with the reason logged. Idempotent: re-runs skip existing (title+city+day).
 //
 // Usage (from server/):
 //   DATABASE_URL="file:/…/dev.db" npm run scrape                    # all cities
 //   DATABASE_URL="file:/…/dev.db" npm run scrape -- Berlin          # one city
-//   DATABASE_URL="file:/…/dev.db" npm run scrape -- --validate-only # audit the
-//     existing DB events against the checklist; reports only, changes nothing.
+//   DATABASE_URL="file:/…/dev.db" npm run scrape -- --validate-only # audit only
 //
 // The description limit lives in app/shared/types.ts (LIMITS.description=4000).
 
@@ -67,17 +74,16 @@ async function loadExistingKeys(): Promise<Set<string>> {
   return new Set(rows.map((r) => dedupeKey(r.title, r.city, r.date)));
 }
 
-function buildDescription(e: ScrapedEvent): string {
-  const sourceLabel = { luma: 'lu.ma', ra: 'Resident Advisor', eventbrite: 'Eventbrite', allevents: 'allevents.in' }[e.source];
-  const suffix = `—\nSource: ${sourceLabel}\n${e.sourceUrl}`;
-  // Truncate the body, never the source suffix — a cut-off trailing URL would
-  // (rightly) fail the source-url validation check and drop the event.
-  const budget = DESCRIPTION_LIMIT - suffix.length - 2; // "\n\n" separator
-  const body =
-    e.description.length > budget
-      ? `${e.description.slice(0, budget - 1).trimEnd()}…`
-      : e.description;
-  return body ? `${body}\n\n${suffix}` : suffix;
+// English description, no source/URL line (the ticket link lives in ticketUrl).
+// Non-English text is translated best-effort; the original is kept on failure,
+// and an empty description stays empty (never fabricated).
+async function buildDescription(
+  e: ScrapedEvent
+): Promise<{ text: string; translated: boolean }> {
+  const raw = e.description.trim();
+  if (!raw) return { text: '', translated: false };
+  const t = await translateToEnglish(raw);
+  return { text: t.text.slice(0, DESCRIPTION_LIMIT), translated: t.translated };
 }
 
 function buildLocation(e: ScrapedEvent): string {
@@ -105,18 +111,20 @@ async function scrapeCity(cityName?: string) {
 
   const report: { city: string; added: number; skipped: number; bySource: Record<string, number> }[] = [];
   const stats = new ValidationStats();
+  let translatedCount = 0;
 
   for (const config of cities) {
     console.log(`\n=== ${config.name} ===`);
     const collected: ScrapedEvent[] = [];
     try {
-      const [luma, ra, eb] = [
-        await scrapeLuma(config).catch((e) => (console.warn('  luma failed:', e), [] as ScrapedEvent[])),
+      // lu.ma is intentionally NOT scraped: its links are free signups, not
+      // ticket purchases. RA + Eventbrite are real paid-ticket checkouts.
+      const [ra, eb] = [
         await scrapeRa(config).catch((e) => (console.warn('  ra failed:', e), [] as ScrapedEvent[])),
         await scrapeEventbrite(config).catch((e) => (console.warn('  eventbrite failed:', e), [] as ScrapedEvent[])),
       ];
-      console.log(`  scraped: luma=${luma.length} ra=${ra.length} eventbrite=${eb.length}`);
-      collected.push(...luma, ...ra, ...eb);
+      console.log(`  scraped: ra=${ra.length} eventbrite=${eb.length}`);
+      collected.push(...ra, ...eb);
     } catch (e) {
       console.warn(`  scrape error for ${config.name}:`, e);
     }
@@ -154,16 +162,28 @@ async function scrapeCity(cityName?: string) {
         skipped++;
         continue;
       }
+      // Early dedupe short-circuit BEFORE translating: on idempotent re-runs
+      // most candidates already exist, and translation hits a rate-limited API
+      // — don't spend that quota (or risk exhausting it before genuinely new
+      // events) on rows that will only fail the dedupe check anyway.
+      const title = e.title.slice(0, 120);
+      if (existing.has(dedupeKey(title, e.city, e.startAt))) {
+        skipped++;
+        continue;
+      }
       // Final checklist, evaluated on the exact row that would be inserted.
+      const desc = await buildDescription(e);
+      if (desc.translated) translatedCount++;
       const candidate: EventCandidate = {
-        title: e.title.slice(0, 120),
-        description: buildDescription(e),
+        title,
+        description: desc.text,
         date: e.startAt,
         location: buildLocation(e),
         city: e.city,
         category: cls.category,
         coverImage: e.imageUrl.startsWith('http') ? e.imageUrl : '',
         costPerPerson: e.priceLabel,
+        ticketUrl: e.ticketUrl,
       };
       const result = validateEvent(candidate, {
         horizonDays: HORIZON_DAYS,
@@ -191,6 +211,7 @@ async function scrapeCity(cityName?: string) {
           city: candidate.city,
           category: candidate.category,
           costPerPerson: candidate.costPerPerson,
+          ticketUrl: candidate.ticketUrl,
           isPublic: true,
           hostId: host.id,
         },
@@ -211,6 +232,7 @@ async function scrapeCity(cityName?: string) {
   }
   const total = report.reduce((s, r) => s + r.added, 0);
   console.log(`total inserted: ${total}`);
+  console.log(`descriptions translated to English: ${translatedCount}`);
   console.log(stats.summary());
 }
 
@@ -240,6 +262,7 @@ async function validateOnly() {
         category: e.category,
         coverImage: e.coverImage,
         costPerPerson: e.costPerPerson,
+        ticketUrl: e.ticketUrl,
       },
       // No existingKeys: the event IS in the DB — dedupe is meaningless here.
       { timeZone: timeZoneByCity.get(e.city) }

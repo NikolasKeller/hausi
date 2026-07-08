@@ -28,10 +28,13 @@ import { Avatar } from '../../../components/Avatar';
 import { Button } from '../../../components/ui';
 import { formatEventDate, formatEventTime } from '../../../components/EventCard';
 
-// Scraped events carry their source/ticket link at the end of the description.
-// Pull the LAST https URL out; when it sits at the very end of the text it's
-// also stripped from the displayed copy (the Buy-ticket button replaces it).
-function ticketInfo(description: string): { url: string | null; text: string } {
+// The buy-ticket link comes from the event's ticketUrl field (the organiser's
+// real paid-ticket page). Older scraped events instead carried the link as the
+// last URL in the description; for those we fall back to extracting it and
+// stripping it from the displayed copy so the button still works and no raw URL
+// shows.
+function ticketInfo(description: string, ticketUrl?: string): { url: string | null; text: string } {
+  if (ticketUrl) return { url: ticketUrl, text: description };
   const matches = description.match(/https:\/\/[^\s]+/g);
   if (!matches || matches.length === 0) return { url: null, text: description };
   const url = matches[matches.length - 1];
@@ -230,7 +233,7 @@ export default function EventScreen() {
     event.maxGuests != null ? Math.max(0, event.maxGuests - event.counts.going) : null;
   // Tickets are sold at the source: the last https URL in the description is
   // the ticket/source link, surfaced as the big Buy-ticket button below.
-  const ticket = ticketInfo(event.description);
+  const ticket = ticketInfo(event.description, event.ticketUrl);
   // Buying once marks the event as GOING, so it shows up under Profile →
   // "My events" and on the calendar.
   const hasTicket = event.rsvps.some(

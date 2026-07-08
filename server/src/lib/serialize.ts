@@ -57,6 +57,7 @@ type EventRow = {
   category: string;
   isPublic: boolean;
   costPerPerson: string;
+  ticketUrl: string;
   dressCode: string;
   maxGuests: number | null;
   plusOneLimit: number;
@@ -205,6 +206,7 @@ export function toEventDetail(
     description: event.description,
     descriptionScale: event.descriptionScale,
     costPerPerson: event.costPerPerson,
+    ticketUrl: event.ticketUrl,
     dressCode: event.dressCode,
     maxGuests: event.maxGuests,
     plusOneLimit: event.plusOneLimit,

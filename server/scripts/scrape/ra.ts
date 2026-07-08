@@ -112,6 +112,9 @@ export async function scrapeRa(config: CityConfig, take = 30, horizonDays = 30):
       imageUrl: ev.images?.[0]?.filename ?? '',
       hype: ev.attending ?? 0,
       priceLabel: price,
+      // RA sells the ticket on its own event page — a real paid checkout
+      // (unlike lu.ma's free signups), so it's an acceptable buy target.
+      ticketUrl: `https://ra.co${ev.contentUrl}`,
     });
   }
   return out;

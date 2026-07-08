@@ -120,6 +120,8 @@ export async function scrapeEventbrite(config: CityConfig): Promise<ScrapedEvent
         imageUrl: r.image?.original?.url ?? r.image?.url ?? '',
         hype: 0,
         priceLabel: price,
+        // Eventbrite's own event page is a real paid checkout — accepted.
+        ticketUrl: r.url,
       });
     }
   }

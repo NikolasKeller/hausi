@@ -96,6 +96,10 @@ model Event {
   descriptionScale Int        @default(100)
   coverTheme    String        @default("sunset")
   coverImage    String        @default("")
+  // External ticket/checkout URL for scraped events. The buy-ticket button
+  // opens this (the organiser's real paid-ticket page — Eventbrite/RA/venue,
+  // never a free-signup lu.ma link). '' for regular user-created events.
+  ticketUrl     String        @default("")
   titleFont     String        @default("classic")
   effect        String        @default("none")
   date          DateTime
