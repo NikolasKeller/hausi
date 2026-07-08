@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useState } from 'react';
 import {
   ActivityIndicator,
   Platform,
@@ -12,14 +12,8 @@ import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import * as Linking from 'expo-linking';
-import {
-  type EventDetail,
-  type TicketJobInfo,
-  type TicketProvider,
-  type WalletIdentity,
-  type WalletPayment,
-} from '../../../shared/types';
-import { api, mediaUrl } from '../../../lib/api';
+import { type EventDetail } from '../../../shared/types';
+import { api } from '../../../lib/api';
 import { useAuth } from '../../../lib/auth';
 import { confirmDialog, notify } from '../../../lib/dialogs';
 import { recordRecentEvent, removeRecentEvent } from '../../../lib/recents';
@@ -31,7 +25,6 @@ import { RichDescription } from '../../../components/RichDescription';
 import { ThemeBackground } from '../../../components/themes';
 import { Glass } from '../../../components/glass';
 import { Avatar } from '../../../components/Avatar';
-import { AgentWalletSheet } from '../../../components/AgentWalletSheet';
 import { Button } from '../../../components/ui';
 import { formatEventDate, formatEventTime } from '../../../components/EventCard';
 
@@ -117,10 +110,6 @@ export default function EventScreen() {
   const [error, setError] = useState<string | null>(null);
   const [menuOpen, setMenuOpen] = useState(false);
   const [inviteBusy, setInviteBusy] = useState(false);
-  // Agentic ticket purchase: the wallet sheet collects the user's details,
-  // then a server-side agent buys the ticket; `job` tracks its progress.
-  const [walletOpen, setWalletOpen] = useState(false);
-  const [job, setJob] = useState<TicketJobInfo | null>(null);
 
   const load = useCallback(async () => {
     if (!slug) return;
@@ -147,63 +136,15 @@ export default function EventScreen() {
     }, [load])
   );
 
-  // My latest purchase job for this event (agent status survives leaving the
-  // page — the newest job wins, done or not).
-  useEffect(() => {
-    if (!event) return;
-    let active = true;
-    api
-      .myTickets()
-      .then((res) => {
-        if (!active) return;
-        const mine = res.jobs.find((j) => j.eventId === event.id);
-        if (mine) setJob(mine);
-      })
-      .catch(() => {});
-    return () => {
-      active = false;
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [event?.id]);
-
-  // While a phase is running server-side (availability check or purchase),
-  // poll the job until it settles into a state that needs the user again.
-  useEffect(() => {
-    if (!job || (job.status !== 'checking' && job.status !== 'purchasing')) return;
-    const timer = setInterval(() => {
-      api
-        .ticketJob(job.id)
-        .then((res) => setJob(res.job))
-        .catch(() => {});
-    }, 2500);
-    return () => clearInterval(timer);
-  }, [job?.id, job?.status]);
-
-  // Step 1+2: submit identity → server checks availability. The poll above
-  // then advances the job to available / soldout / failed.
-  async function startCheck(identity: WalletIdentity, provider: TicketProvider) {
-    if (!event) return;
-    const res = await api.checkTicketAvailability(event.id, identity, provider);
-    setJob(res.job);
-  }
-
-  // Step 3+4: confirm payment on the available job → agent completes the buy.
-  async function startPurchase(identity: WalletIdentity, payment: WalletPayment) {
-    if (!job) return;
-    const res = await api.purchaseTicket(job.id, identity, payment);
-    setJob(res.job);
-    // Buying files the event under Profile → "My events" (server sets the
-    // GOING rsvp); refresh so the page reflects it right away. Best-effort.
-    load().catch(() => {});
-  }
-
-  function openTicketPdf(pdfPath: string) {
-    const url = mediaUrl(pdfPath);
-    if (!url) return;
+  // Buying a ticket is a simple redirect to the event's own ticket/checkout
+  // page — no in-app purchase. (The agentic purchase flow — Playwright agent,
+  // demo provider, ticket PDF, wallet screens — still lives in the repo, just
+  // decoupled from this screen so we can pick it back up later.)
+  function openTicket(url: string) {
     if (Platform.OS === 'web') {
       (globalThis as any).window?.open(url, '_blank');
     } else {
-      Linking.openURL(url).catch(() => notify('Could not open ticket', url));
+      Linking.openURL(url).catch(() => notify('Could not open link', url));
     }
   }
 
@@ -302,14 +243,10 @@ export default function EventScreen() {
 
   const spotsLeft =
     event.maxGuests != null ? Math.max(0, event.maxGuests - event.counts.going) : null;
-  // Tickets are sold at the source: the last https URL in the description is
-  // the ticket/source link, surfaced as the big Buy-ticket button below.
+  // Tickets are sold at the source: the ticketUrl field (or the last https URL
+  // in the description) is the organiser's checkout page. The Buy-ticket button
+  // simply opens it.
   const ticket = ticketInfo(event.description, event.ticketUrl);
-  // Buying once marks the event as GOING, so it shows up under Profile →
-  // "My events" and on the calendar.
-  const hasTicket = event.rsvps.some(
-    (r) => r.user.id === user?.id && (r.status === 'GOING' || r.status === 'WAITLIST')
-  );
   // Host "text blasts" surface in their own Announcements section (newest first).
   const blasts = event.comments.filter((c) => c.type === 'blast');
 
@@ -446,52 +383,6 @@ export default function EventScreen() {
               </View>
             ) : null}
 
-            {/* Inline purchase-status detail. The actionable Buy-ticket button
-                lives in the bottom bar (the page's primary action); this only
-                surfaces when the agent hit a dead end (sold out / failed) so the
-                reason is visible without reopening the wallet sheet, plus a
-                manual link to the ticket page as a fallback. */}
-            {ticket.url && (job?.status === 'soldout' || job?.status === 'failed') ? (
-              <View style={styles.buySection}>
-                <Glass tint={ink.glassTint} radius={radius.md} style={styles.agentStatus}>
-                  <Ionicons
-                    name={job.status === 'soldout' ? 'sad-outline' : 'alert-circle-outline'}
-                    size={20}
-                    color={ink.text}
-                  />
-                  <View style={{ flex: 1 }}>
-                    <Text style={[styles.agentStatusTitle, { color: ink.text }]}>
-                      {job.status === 'soldout' ? 'Sold out' : "The agent couldn't finish"}
-                    </Text>
-                    <Text style={[styles.agentStatusBody, { color: ink.subtext }]}>
-                      {job.error ||
-                        (job.status === 'soldout'
-                          ? 'No tickets available for this event.'
-                          : 'Unknown reason.')}
-                    </Text>
-                  </View>
-                </Glass>
-
-                {/* The source stays one tap away — buy manually if you prefer. */}
-                <Pressable
-                  onPress={() => {
-                    if (Platform.OS === 'web') {
-                      (globalThis as any).window?.open(ticket.url!, '_blank');
-                    } else {
-                      Linking.openURL(ticket.url!).catch(() =>
-                        notify('Could not open link', ticket.url!)
-                      );
-                    }
-                  }}
-                  hitSlop={6}
-                >
-                  <Text style={[styles.sourceLink, { color: ink.subtext }]}>
-                    Open ticket page ↗
-                  </Text>
-                </Pressable>
-              </View>
-            ) : null}
-
           </View>
         </ScrollView>
 
@@ -509,9 +400,9 @@ export default function EventScreen() {
 
       {/* Floating bottom action bar. Buying a ticket is the page's primary —
           and, for guests, only — action: a full-width Buy-ticket button that
-          drives the Agent Wallet flow (details → availability → payment → done)
-          and mirrors the live phase. The old Invite and "N going" controls are
-          gone; host-only management sits in a compact pill beside it. */}
+          opens the event's own ticket/checkout page in the browser. Hidden when
+          the event has no ticket link. Host-only management sits in a compact
+          pill beside it. */}
       {ticket.url || event.canManage ? (
         <View
           pointerEvents="box-none"
@@ -519,79 +410,17 @@ export default function EventScreen() {
         >
           <View style={styles.actionBarRow}>
             {ticket.url ? (
-              job?.status === 'done' ? (
-                <Pressable
-                  onPress={() => openTicketPdf(job.pdfPath)}
-                  style={({ pressed }) => [
-                    styles.buyButton,
-                    styles.buyButtonBar,
-                    pressed && styles.buyButtonPressed,
-                  ]}
-                >
-                  <Ionicons name="qr-code-outline" size={20} color="#FFFFFF" />
-                  <Text style={[styles.buyButtonText, { color: '#FFFFFF' }]}>View ticket</Text>
-                </Pressable>
-              ) : job && (job.status === 'checking' || job.status === 'purchasing') ? (
-                <Pressable
-                  onPress={() => setWalletOpen(true)}
-                  style={({ pressed }) => [
-                    styles.buyButton,
-                    styles.buyButtonBar,
-                    pressed && styles.buyButtonPressed,
-                  ]}
-                >
-                  <ActivityIndicator color="#FFFFFF" />
-                  <Text style={[styles.buyButtonText, { color: '#FFFFFF' }]}>
-                    {job.status === 'checking' ? 'Checking availability…' : 'Buying your ticket…'}
-                  </Text>
-                </Pressable>
-              ) : job?.status === 'available' ? (
-                <Pressable
-                  onPress={() => setWalletOpen(true)}
-                  style={({ pressed }) => [
-                    styles.buyButton,
-                    styles.buyButtonBar,
-                    pressed && styles.buyButtonPressed,
-                  ]}
-                >
-                  <Ionicons name="card-outline" size={20} color="#FFFFFF" />
-                  <Text style={[styles.buyButtonText, { color: '#FFFFFF' }]}>
-                    Tickets available — continue
-                  </Text>
-                </Pressable>
-              ) : (
-                <Pressable
-                  onPress={() => {
-                    // A fresh attempt after a dead end starts the wizard over.
-                    if (job?.status === 'failed' || job?.status === 'soldout') setJob(null);
-                    setWalletOpen(true);
-                  }}
-                  style={({ pressed }) => [
-                    styles.buyButton,
-                    styles.buyButtonBar,
-                    pressed && styles.buyButtonPressed,
-                  ]}
-                >
-                  <Ionicons
-                    name={
-                      job?.status === 'failed' || job?.status === 'soldout'
-                        ? 'refresh'
-                        : hasTicket
-                          ? 'checkmark-circle'
-                          : 'ticket-outline'
-                    }
-                    size={20}
-                    color="#FFFFFF"
-                  />
-                  <Text style={[styles.buyButtonText, { color: '#FFFFFF' }]}>
-                    {job?.status === 'soldout'
-                      ? 'Sold out — try again'
-                      : job?.status === 'failed'
-                        ? 'Purchase failed — try again'
-                        : 'Buy ticket'}
-                  </Text>
-                </Pressable>
-              )
+              <Pressable
+                onPress={() => openTicket(ticket.url!)}
+                style={({ pressed }) => [
+                  styles.buyButton,
+                  styles.buyButtonBar,
+                  pressed && styles.buyButtonPressed,
+                ]}
+              >
+                <Ionicons name="ticket-outline" size={20} color="#FFFFFF" />
+                <Text style={[styles.buyButtonText, { color: '#FFFFFF' }]}>Buy ticket</Text>
+              </Pressable>
             ) : null}
 
             {event.canManage ? (
@@ -618,17 +447,6 @@ export default function EventScreen() {
             ) : null}
           </View>
         </View>
-      ) : null}
-
-      {walletOpen ? (
-        <AgentWalletSheet
-          mode="purchase"
-          eventTitle={event.title}
-          job={job}
-          onClose={() => setWalletOpen(false)}
-          onCheckAvailability={startCheck}
-          onPurchase={startPurchase}
-        />
       ) : null}
 
       {menuOpen ? (
@@ -881,9 +699,6 @@ const styles = StyleSheet.create({
     gap: spacing.sm,
     marginTop: spacing.xs,
   },
-  buySection: {
-    gap: spacing.sm,
-  },
   buyButton: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -900,24 +715,6 @@ const styles = StyleSheet.create({
   },
   buyButtonText: {
     ...uiText(17, '700'),
-  },
-  agentStatus: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.md,
-    padding: spacing.md,
-  },
-  agentStatusTitle: {
-    ...uiText(15, '700'),
-  },
-  agentStatusBody: {
-    ...uiText(13, '500'),
-    marginTop: 2,
-  },
-  sourceLink: {
-    ...uiText(13, '600'),
-    textAlign: 'center',
-    textDecorationLine: 'underline',
   },
   guestSummary: {
     padding: spacing.md,
