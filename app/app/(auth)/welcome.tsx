@@ -1,12 +1,25 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { Animated, Easing, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
+import {
+  Animated,
+  Easing,
+  Image,
+  Platform,
+  Pressable,
+  StyleSheet,
+  Text,
+  View,
+} from 'react-native';
 import { useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { AuroraBackground } from '../../components/AuroraBackground';
+import { LinearGradient } from 'expo-linear-gradient';
 import { Button } from '../../components/ui';
 import { useAuth } from '../../lib/auth';
-import { display, uiText } from '../../lib/fonts';
+import { uiText } from '../../lib/fonts';
 import { colors, spacing } from '../../lib/theme';
+
+// The chrome "iykyk" artwork — a square render on a warm cream ground. The
+// screen fills with the same cream and feathers the artwork's edges into it.
+const WORDMARK = require('../../assets/wordmark-chrome.png');
 
 // react-native-web has no native driver; silence its fallback warning.
 const useNativeDriver = Platform.OS !== 'web';
@@ -52,31 +65,43 @@ export default function WelcomeScreen() {
   }, [intro]);
 
   return (
-    <AuroraBackground>
+    <View style={styles.screen}>
+      {/* The artwork, centered and contained — never stretched. */}
+      <Animated.View
+        pointerEvents="none"
+        style={[
+          StyleSheet.absoluteFill,
+          styles.artWrap,
+          {
+            opacity: intro,
+            transform: [
+              {
+                translateY: intro.interpolate({
+                  inputRange: [0, 1],
+                  outputRange: [24, 0],
+                }),
+              },
+            ],
+          },
+        ]}
+      >
+        <Image source={WORDMARK} style={styles.art} resizeMode="contain" />
+      </Animated.View>
+      {/* Feather the square artwork's top/bottom edges into the canvas so its
+          slight vignette never shows a seam. */}
+      <LinearGradient
+        colors={[colors.bg, 'rgba(207,199,189,0)', 'rgba(207,199,189,0)', colors.bg]}
+        locations={[0, 0.3, 0.7, 1]}
+        style={StyleSheet.absoluteFill}
+        pointerEvents="none"
+      />
+
       <SafeAreaView style={styles.safe}>
         <View style={{ flex: 1 }} />
 
-        <Animated.View
-          style={[
-            styles.brand,
-            {
-              opacity: intro,
-              transform: [
-                {
-                  translateY: intro.interpolate({
-                    inputRange: [0, 1],
-                    outputRange: [24, 0],
-                  }),
-                },
-              ],
-            },
-          ]}
-        >
-          <Text style={styles.wordmark}>iykyk</Text>
+        <Animated.View style={[styles.brand, { opacity: intro }]}>
           <Text style={styles.tagline}>Parties worth showing up for</Text>
         </Animated.View>
-
-        <View style={{ flex: 1 }} />
 
         <Button title="Get started" variant="primary" onPress={() => router.push('/phone')} />
 
@@ -93,11 +118,26 @@ export default function WelcomeScreen() {
 
         <View style={{ height: spacing.xl }} />
       </SafeAreaView>
-    </AuroraBackground>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
+  screen: {
+    flex: 1,
+    // Matches the artwork's cream ground so the square image melts into the
+    // full screen.
+    backgroundColor: colors.bg,
+    overflow: 'hidden',
+  },
+  artWrap: {
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  art: {
+    width: '100%',
+    height: '80%',
+  },
   safe: {
     flex: 1,
     paddingHorizontal: spacing.lg,
@@ -106,15 +146,12 @@ const styles = StyleSheet.create({
   brand: {
     alignItems: 'center',
     gap: spacing.md,
-  },
-  wordmark: {
-    color: colors.text,
-    ...display(56),
-    textAlign: 'center',
+    // Sits in the lower third, under the artwork's wordmark.
+    marginBottom: spacing.xl,
   },
   tagline: {
     color: colors.muted,
-    ...uiText(18, '400'),
+    ...uiText(16, '500'),
     textAlign: 'center',
   },
   devWrap: {

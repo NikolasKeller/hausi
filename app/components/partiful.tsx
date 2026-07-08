@@ -205,7 +205,7 @@ export function PaperBackground({
   return (
     <View style={styles.paperFill}>
       <LinearGradient
-        colors={['rgba(139,92,246,0.22)', 'rgba(255,79,216,0.06)', 'rgba(17,17,17,0)']}
+        colors={['rgba(255,255,255,0.45)', 'rgba(255,255,255,0.15)', 'rgba(255,255,255,0)']}
         locations={[0, 0.5, 1]}
         style={styles.washTop}
         pointerEvents="none"

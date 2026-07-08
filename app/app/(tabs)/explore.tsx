@@ -535,8 +535,9 @@ const styles = StyleSheet.create({
     alignItems: 'flex-end',
     justifyContent: 'space-between',
     paddingHorizontal: spacing.md,
-    paddingTop: spacing.sm,
-    paddingBottom: spacing.sm,
+    // Generous, Partiful-style breathing room around the wordmark.
+    paddingTop: spacing.lg,
+    paddingBottom: spacing.md,
     gap: spacing.sm,
   },
   headerTitleWrap: {
@@ -673,7 +674,9 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     gap: spacing.sm,
     paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
+    paddingTop: spacing.sm,
+    // Clear separation between the chip row and the event grid below.
+    paddingBottom: spacing.lg,
   },
   chip: {
     flexDirection: 'row',

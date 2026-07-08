@@ -1,25 +1,23 @@
 import React, { useCallback, useState } from 'react';
 import {
   ActivityIndicator,
-  KeyboardAvoidingView,
+  Platform,
   Pressable,
   ScrollView,
   StyleSheet,
   Text,
-  TextInput,
   View,
 } from 'react-native';
 import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import * as Linking from 'expo-linking';
-import { LIMITS, MAX_PLUS_ONES, type EventDetail, type RsvpStatus } from '../../../shared/types';
+import { type EventDetail } from '../../../shared/types';
 import { api } from '../../../lib/api';
-import { useAuth } from '../../../lib/auth';
 import { confirmDialog, notify } from '../../../lib/dialogs';
 import { recordRecentEvent, removeRecentEvent } from '../../../lib/recents';
 import { shareText } from '../../../lib/share';
-import { colors, radius, rsvp, spacing } from '../../../lib/theme';
+import { colors, radius, spacing } from '../../../lib/theme';
 import { titleFontStyle, display, kicker, uiText } from '../../../lib/fonts';
 import { CoverGradient } from '../../../components/CoverGradient';
 import { RichDescription } from '../../../components/RichDescription';
@@ -27,21 +25,22 @@ import { ThemeBackground, themeInk } from '../../../components/themes';
 import { Glass } from '../../../components/glass';
 import { Avatar } from '../../../components/Avatar';
 import { Button } from '../../../components/ui';
-import { PillBadge } from '../../../components/partiful';
 import { formatEventDate, formatEventTime } from '../../../components/EventCard';
 
-const RSVP_OPTIONS: { status: RsvpStatus; label: string; emoji: string }[] = [
-  { status: 'GOING', label: 'Going', emoji: '👍' },
-  { status: 'MAYBE', label: 'Maybe', emoji: '🤔' },
-  { status: 'CANT', label: "Can't Go", emoji: '😢' },
-];
-
-const STATUS_SECTIONS: { status: RsvpStatus; title: string }[] = [
-  { status: 'GOING', title: 'Going' },
-  { status: 'WAITLIST', title: 'Waitlist' },
-  { status: 'MAYBE', title: 'Maybe' },
-  { status: 'CANT', title: "Can't go" },
-];
+// Scraped events carry their source/ticket link at the end of the description.
+// Pull the LAST https URL out; when it sits at the very end of the text it's
+// also stripped from the displayed copy (the Buy-ticket button replaces it).
+function ticketInfo(description: string): { url: string | null; text: string } {
+  const matches = description.match(/https:\/\/[^\s]+/g);
+  if (!matches || matches.length === 0) return { url: null, text: description };
+  const url = matches[matches.length - 1];
+  const idx = description.lastIndexOf(url);
+  let text = description;
+  if (description.slice(idx + url.length).trim() === '') {
+    text = description.slice(0, idx).replace(/[\s:·\-–—]+$/, '');
+  }
+  return { url, text };
+}
 
 // One item in the floating bottom action bar (icon over a small label).
 function BarItem({
@@ -102,13 +101,8 @@ export default function EventScreen() {
   const { slug } = useLocalSearchParams<{ slug: string }>();
   const router = useRouter();
   const insets = useSafeAreaInsets();
-  const { user } = useAuth();
   const [event, setEvent] = useState<EventDetail | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [rsvpBusy, setRsvpBusy] = useState(false);
-  const [commentText, setCommentText] = useState('');
-  const [sendingComment, setSendingComment] = useState(false);
-  const [showAllGuests, setShowAllGuests] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const [inviteBusy, setInviteBusy] = useState(false);
 
@@ -137,40 +131,11 @@ export default function EventScreen() {
     }, [load])
   );
 
-  async function setRsvp(status: RsvpStatus) {
-    if (!event || rsvpBusy) return;
-    setRsvpBusy(true);
-    try {
-      const res = await api.rsvp(event.id, status);
-      setEvent(res.event);
-    } catch (e) {
-      notify('RSVP failed', e instanceof Error ? e.message : 'Try again');
-    } finally {
-      setRsvpBusy(false);
-    }
-  }
-
-  async function dropPlusOne(plusOneId: string) {
-    if (!event) return;
-    try {
-      const res = await api.removePlusOne(event.id, plusOneId);
-      setEvent(res.event);
-    } catch (e) {
-      notify('Remove failed', e instanceof Error ? e.message : 'Try again');
-    }
-  }
-
   async function share() {
     if (!event) return;
     const url = Linking.createURL(`e/${event.slug}`);
     const message = `You're invited: ${event.title} - ${formatEventDate(event.date)} at ${formatEventTime(event.date)}.\nOpen in iykyk: ${url}`;
     await shareText(message, url);
-  }
-
-  async function sharePlusOneInvite() {
-    if (!event) return;
-    const url = Linking.createURL(`e/${event.slug}`);
-    await shareText(`You're my +1 for "${event.title}"! 🎟️ RSVP here: ${url}`, url);
   }
 
   async function acceptCohostInvite() {
@@ -197,22 +162,6 @@ export default function EventScreen() {
       notify('Could not decline', e instanceof Error ? e.message : 'Try again');
     } finally {
       setInviteBusy(false);
-    }
-  }
-
-  async function confirmRemoveGuest(guestId: string, guestName: string) {
-    if (!event) return;
-    const ok = await confirmDialog(
-      'Remove guest?',
-      `${guestName} will be removed from the guest list.`,
-      'Remove'
-    );
-    if (!ok) return;
-    try {
-      const res = await api.removeGuest(event.id, guestId);
-      setEvent(res.event);
-    } catch (e) {
-      notify('Remove failed', e instanceof Error ? e.message : 'Try again');
     }
   }
 
@@ -246,20 +195,6 @@ export default function EventScreen() {
     }
   }
 
-  async function sendComment() {
-    if (!event || !commentText.trim() || sendingComment) return;
-    setSendingComment(true);
-    try {
-      await api.addComment(event.id, commentText.trim());
-      setCommentText('');
-      await load();
-    } catch (e) {
-      notify('Comment failed', e instanceof Error ? e.message : 'Try again');
-    } finally {
-      setSendingComment(false);
-    }
-  }
-
   if (error) {
     return (
       <View style={styles.center}>
@@ -283,38 +218,16 @@ export default function EventScreen() {
   // of a palette that flipped with the per-event theme.
   const ink = themeInk('noir');
 
-  const myRsvp = event.rsvps.find((r) => r.user.id === user?.id);
-  const myGuests = myRsvp?.guests ?? [];
-  // Effective +1 allowance: the host's per-event limit, clamped to the global
-  // hard cap. The add button hides once the user reaches it.
-  const maxPlusOnes = Math.min(event.plusOneLimit, MAX_PLUS_ONES);
   const spotsLeft =
     event.maxGuests != null ? Math.max(0, event.maxGuests - event.counts.going) : null;
-  const canAddPlusOne = spotsLeft == null || spotsLeft > 0;
-  // People who can't be a +1 because they're already on the list (as a guest or
-  // someone else's +1) — handed to the picker so they don't show up there.
-  const plusOneExclude = event.rsvps
-    .flatMap((r) => [
-      r.status !== 'CANT' ? r.user.id : null,
-      ...r.guests.map((g) => g.userId),
-    ])
-    .filter((id): id is string => !!id)
-    .join(',');
-  const rsvpLocked = !event.rsvpsOpen && !event.canManage;
-  // Guest-list summary preview: going + maybe, in that order.
-  const previewGuests = event.rsvps.filter(
-    (r) => r.status === 'GOING' || r.status === 'MAYBE'
-  );
-  const previewShown = previewGuests.slice(0, 7);
-  const previewExtra = event.counts.going + event.counts.maybe - previewShown.length;
-  // Host "text blasts" live in their own Announcements section (newest first);
-  // the Party Wall shows only guest chatter + activity, never a blast.
+  // Tickets are sold at the source: the last https URL in the description is
+  // the ticket/source link, surfaced as the big Buy-ticket button below.
+  const ticket = ticketInfo(event.description);
+  // Host "text blasts" surface in their own Announcements section (newest first).
   const blasts = event.comments.filter((c) => c.type === 'blast');
-  const wallComments = event.comments.filter((c) => c.type !== 'blast');
 
   return (
     <ThemeBackground theme={event.coverTheme} effect={event.effect}>
-      <KeyboardAvoidingView style={{ flex: 1 }} behavior="padding">
         <ScrollView
           contentContainerStyle={[styles.content, { paddingBottom: insets.bottom + 108 }]}
           keyboardShouldPersistTaps="handled"
@@ -419,9 +332,9 @@ export default function EventScreen() {
               ) : null}
             </Glass>
 
-            {event.description ? (
+            {ticket.text ? (
               <RichDescription
-                text={event.description}
+                text={ticket.text}
                 scale={event.descriptionScale}
                 color={ink.text}
               />
@@ -446,313 +359,35 @@ export default function EventScreen() {
               </View>
             ) : null}
 
-            {/* Guest list summary — same order as the reference: heading, counts,
-                a row of avatars, then a "View all" toggle for the full list. */}
-            <Glass tint={ink.glassTint} radius={radius.md} style={styles.guestSummary}>
-              <View style={styles.guestSummaryHead}>
-                <View>
-                  <Text style={[styles.kickerLabel, { color: ink.subtext }]}>Who's coming</Text>
-                  <Text style={[styles.sectionTitle, { color: ink.text }]}>Guest List</Text>
-                </View>
-                <Pressable onPress={() => setShowAllGuests((v) => !v)}>
-                  <Glass tint={ink.glassTint} radius={radius.pill} style={styles.viewAllPill}>
-                    <Text style={[styles.viewAllText, { color: ink.text }]}>
-                      {showAllGuests ? 'Hide' : 'View all'}
-                    </Text>
-                  </Glass>
-                </Pressable>
-              </View>
-              {event.counts.going > 0 || event.counts.maybe > 0 || event.counts.waitlist > 0 ? (
-                <Text style={[styles.guestCountsLine, { color: ink.subtext }]}>
-                  {[
-                    event.counts.going > 0 ? `${event.counts.going} Going` : null,
-                    event.counts.maybe > 0 ? `${event.counts.maybe} Maybe` : null,
-                    event.counts.waitlist > 0 ? `${event.counts.waitlist} Waitlist` : null,
-                  ]
-                    .filter(Boolean)
-                    .join(' · ')}
-                </Text>
-              ) : null}
-              {previewShown.length ? (
-                <View style={styles.avatarStack}>
-                  {previewShown.map((r, i) => (
-                    <View key={r.user.id} style={i > 0 ? { marginLeft: -10 } : undefined}>
-                      <Avatar name={r.user.name} image={r.user.avatarImage} size={40} />
-                    </View>
-                  ))}
-                  {previewExtra > 0 ? (
-                    <Glass tint={ink.glassTint} radius={999} style={[styles.avatarMore, { marginLeft: -10 }]}>
-                      <Text style={[styles.avatarMoreText, { color: ink.text }]}>+{previewExtra}</Text>
-                    </Glass>
-                  ) : null}
-                </View>
-              ) : (
-                <Text style={[styles.guestEmpty, { color: ink.faint }]}>Be the first to RSVP 👀</Text>
-              )}
-            </Glass>
-
-            {event.isHost ? null : rsvpLocked ? (
-              <View style={{ gap: spacing.sm }}>
-                <Glass tint={ink.glassTint} radius={radius.md} style={styles.lockedNote}>
-                  <Text style={[styles.lockedNoteText, { color: ink.subtext }]}>
-                    🔒 RSVPs are closed for this event
-                  </Text>
-                </Glass>
-                {myRsvp && myRsvp.status !== 'CANT' ? (
-                  <Button
-                    title="I can't make it anymore"
-                    variant="ghost"
-                    tone={ink.dark ? 'paper' : 'ink'}
-                    onPress={() => setRsvp('CANT')}
-                  />
-                ) : null}
-              </View>
-            ) : (
-              <View style={styles.rsvpRow}>
-                {RSVP_OPTIONS.map((opt) => {
-                  const active =
-                    myRsvp?.status === opt.status ||
-                    (opt.status === 'GOING' && myRsvp?.status === 'WAITLIST');
-                  return (
-                    <Pressable
-                      key={opt.status}
-                      onPress={() => setRsvp(opt.status)}
-                      disabled={rsvpBusy}
-                      style={({ pressed }) => [styles.rsvpButtonWrap, pressed && { opacity: 0.8 }]}
-                    >
-                      <Glass
-                        tint={ink.glassTint}
-                        radius={999}
-                        fill={active ? (ink.dark ? 'rgba(255,255,255,0.22)' : 'rgba(255,255,255,0.42)') : undefined}
-                        style={[styles.rsvpCircle, active && { borderColor: ink.text, borderWidth: 1 }]}
-                      >
-                        <Text style={styles.rsvpEmoji}>{opt.emoji}</Text>
-                      </Glass>
-                      <Text
-                        style={[
-                          styles.rsvpLabel,
-                          { color: active ? ink.text : ink.subtext, fontWeight: active ? '700' : '600' },
-                        ]}
-                      >
-                        {opt.status === 'GOING' && myRsvp?.status === 'WAITLIST'
-                          ? 'Waitlist'
-                          : opt.label}
-                      </Text>
-                    </Pressable>
-                  );
-                })}
-              </View>
-            )}
-
-            {myRsvp?.status === 'WAITLIST' ? (
-              <Glass tint={ink.glassTint} radius={radius.md} style={styles.lockedNote}>
-                <Text style={[styles.lockedNoteText, { color: ink.subtext }]}>
-                  ⏳ The event is full - you're #
-                  {event.rsvps.filter((r) => r.status === 'WAITLIST').findIndex(
-                    (r) => r.user.id === user?.id
-                  ) + 1}{' '}
-                  on the waitlist
-                </Text>
-              </Glass>
-            ) : null}
-
-            {myRsvp?.status === 'GOING' && event.plusOneLimit > 0 && (myGuests.length > 0 || !rsvpLocked) ? (
-              <Glass tint={ink.glassTint} radius={radius.md} style={styles.plusOnesCard}>
-                <Text style={[styles.plusOnesLabel, { color: ink.text }]}>
-                  {maxPlusOnes > 1 ? 'Your plus ones' : 'Your plus one'}
-                </Text>
-                {myGuests.map((g) => (
-                  <View key={g.id} style={styles.plusOneChip}>
-                    <Avatar name={g.name} image={g.avatarImage} size={24} />
-                    <Text style={[styles.plusOneChipName, { color: ink.text }]} numberOfLines={1}>
-                      {g.name}
-                    </Text>
-                    {g.userId == null ? (
-                      // Not on iykyk yet — resurface the invite link to text them.
-                      <Pressable onPress={sharePlusOneInvite} hitSlop={8}>
-                        <Text style={[styles.plusOneShareText, { color: ink.text }]}>Share invite</Text>
-                      </Pressable>
-                    ) : null}
-                    <Pressable
-                      onPress={() => dropPlusOne(g.id)}
-                      hitSlop={8}
-                      style={[styles.removeGuest, { borderColor: ink.hairline }]}
-                    >
-                      <Text style={[styles.removeGuestText, { color: ink.subtext }]}>✕</Text>
-                    </Pressable>
-                  </View>
-                ))}
-                {myGuests.length >= maxPlusOnes ? (
-                  // Reached the allowance — hide the add button, note the cap.
-                  <Text style={[styles.plusOnesFull, { color: ink.faint }]}>
-                    {`Max ${maxPlusOnes} plus ${maxPlusOnes === 1 ? 'one' : 'ones'}`}
-                  </Text>
-                ) : canAddPlusOne ? (
-                  <Pressable
-                    onPress={() =>
-                      router.push({
-                        pathname: '/add-plus-one',
-                        params: {
-                          eventId: event.id,
-                          slug: event.slug,
-                          title: event.title,
-                          exclude: plusOneExclude,
-                        },
-                      })
-                    }
-                  >
-                    <Glass tint={ink.glassTint} radius={radius.pill} style={styles.addPlusOneButton}>
-                      <Text style={[styles.addPlusOneText, { color: ink.text }]}>＋ Bring a +1</Text>
-                    </Glass>
-                  </Pressable>
-                ) : (
-                  <Text style={[styles.plusOnesFull, { color: ink.faint }]}>Event is full</Text>
-                )}
-              </Glass>
-            ) : null}
-
-            {showAllGuests ? (
-            <>
-            <View style={[styles.divider, { backgroundColor: ink.hairline }]} />
-
-            <View style={styles.sectionHead}>
-              <Text style={[styles.kickerLabel, { color: ink.subtext }]}>Who's coming</Text>
-              <Text style={[styles.sectionTitle, { color: ink.text }]}>Guest list</Text>
-              {event.counts.going > 0 || event.counts.maybe > 0 || event.counts.waitlist > 0 ? (
-                <View style={styles.countPills}>
-                  {event.counts.going > 0 ? (
-                    <PillBadge label={`${event.counts.going} going`} bg={rsvp.going.bg} color={rsvp.going.text} />
-                  ) : null}
-                  {event.counts.maybe > 0 ? (
-                    <PillBadge label={`${event.counts.maybe} maybe`} bg={rsvp.maybe.bg} color={rsvp.maybe.text} />
-                  ) : null}
-                  {event.counts.waitlist > 0 ? (
-                    <PillBadge
-                      label={`${event.counts.waitlist} waitlist`}
-                      bg={rsvp.waitlist.bg}
-                      color={rsvp.waitlist.text}
-                    />
-                  ) : null}
-                </View>
-              ) : null}
-            </View>
-            {STATUS_SECTIONS.map(({ status, title }) => {
-              const guests = event.rsvps.filter((r) => r.status === status);
-              if (!guests.length) return null;
-              return (
-                <View key={status} style={{ gap: spacing.sm }}>
-                  <Text style={[styles.guestGroupTitle, { color: ink.subtext }]}>{title}</Text>
-                  {guests.map((r) => {
-                    const isCohost = event.cohosts.some((ch) => ch.id === r.user.id);
-                    const isMe = r.user.id === user?.id;
-                    return (
-                      <View key={r.user.id} style={{ gap: spacing.sm }}>
-                        <Glass tint={ink.glassTint} radius={radius.md} style={styles.guestRow}>
-                          <Avatar name={r.user.name} image={r.user.avatarImage} size={32} />
-                          <Text style={[styles.guestName, { flex: 1, color: ink.text }]}>
-                            {r.user.name}
-                            {r.user.id === event.host.id ? '  👑' : isCohost ? '  🤝' : ''}
-                          </Text>
-                          {event.canManage && r.user.id !== event.host.id && !isCohost ? (
-                            <Pressable
-                              onPress={() => confirmRemoveGuest(r.user.id, r.user.name)}
-                              style={[styles.removeGuest, { borderColor: ink.hairline }]}
-                              hitSlop={8}
-                            >
-                              <Text style={[styles.removeGuestText, { color: ink.subtext }]}>✕</Text>
-                            </Pressable>
-                          ) : null}
-                        </Glass>
-                        {/* Your own +1 is managed via the chip above, so only list others' here. */}
-                        {!isMe
-                          ? r.guests.map((g) => (
-                              <Glass
-                                key={g.id}
-                                tint={ink.glassTint}
-                                radius={radius.md}
-                                style={[styles.guestRow, styles.plusOneGuestRow]}
-                              >
-                                <Avatar name={g.name} image={g.avatarImage} size={26} />
-                                <Text
-                                  style={[styles.plusOneGuestName, { flex: 1, color: ink.text }]}
-                                  numberOfLines={1}
-                                >
-                                  {g.name}
-                                  <Text style={[styles.plusOneTag, { color: ink.faint }]}>{`  +1 of ${r.user.name}`}</Text>
-                                </Text>
-                                {event.canManage ? (
-                                  <Pressable
-                                    onPress={() => dropPlusOne(g.id)}
-                                    style={[styles.removeGuest, { borderColor: ink.hairline }]}
-                                    hitSlop={8}
-                                  >
-                                    <Text style={[styles.removeGuestText, { color: ink.subtext }]}>✕</Text>
-                                  </Pressable>
-                                ) : null}
-                              </Glass>
-                            ))
-                          : null}
-                      </View>
-                    );
-                  })}
-                </View>
-              );
-            })}
-            </>
-            ) : null}
-
-            <View style={[styles.divider, { backgroundColor: ink.hairline }]} />
-
-            <View style={styles.sectionHead}>
-              <Text style={[styles.kickerLabel, { color: ink.subtext }]}>Say hi</Text>
-              <Text style={[styles.sectionTitle, { color: ink.text }]}>Party Wall 💬</Text>
-            </View>
-            {wallComments.length === 0 ? (
-              <Text style={[styles.noComments, { color: ink.faint }]}>No comments yet - break the ice!</Text>
-            ) : (
-              wallComments.map((c) =>
-                c.type === 'system' ? (
-                  <Text key={c.id} style={[styles.systemEntry, { color: ink.faint }]}>
-                    {c.user.name} {c.text}
-                  </Text>
-                ) : (
-                  <View key={c.id} style={styles.commentRow}>
-                    <Avatar name={c.user.name} image={c.user.avatarImage} size={32} />
-                    <Glass tint={ink.glassTint} radius={radius.md} style={styles.commentBubble}>
-                      <Text style={[styles.commentAuthor, { color: ink.text }]}>{c.user.name}</Text>
-                      <Text style={[styles.commentText, { color: ink.text }]}>{c.text}</Text>
-                    </Glass>
-                  </View>
-                )
-              )
-            )}
-            <View style={styles.commentInputRow}>
-              <Glass tint={ink.glassTint} radius={radius.md} style={styles.commentInputWrap}>
-                <TextInput
-                  value={commentText}
-                  onChangeText={setCommentText}
-                  placeholder="Write something…"
-                  placeholderTextColor={ink.faint}
-                  style={[styles.commentInput, { color: ink.text }]}
-                  multiline
-                  maxLength={LIMITS.comment}
-                />
-              </Glass>
+            {/* Tickets are bought at the event's source — one prominent button
+                instead of the old RSVP row. Hidden entirely when the event has
+                no ticket link (never a dead button). */}
+            {ticket.url ? (
               <Pressable
-                onPress={sendComment}
-                disabled={sendingComment || !commentText.trim()}
-                style={[styles.sendButton, !commentText.trim() && { opacity: 0.4 }]}
+                onPress={() => {
+                  if (Platform.OS === 'web') {
+                    (globalThis as any).window?.open(ticket.url!, '_blank');
+                  } else {
+                    Linking.openURL(ticket.url!).catch(() =>
+                      notify('Could not open link', ticket.url!)
+                    );
+                  }
+                }}
+                style={({ pressed }) => [
+                  styles.buyButton,
+                  { backgroundColor: ink.dark ? '#FFFFFF' : '#171717' },
+                  pressed && { opacity: 0.85, transform: [{ scale: 0.98 }] },
+                ]}
               >
-                {sendingComment ? (
-                  <ActivityIndicator color="#fff" size="small" />
-                ) : (
-                  <Text style={styles.sendText}>Send</Text>
-                )}
+                <Ionicons name="ticket-outline" size={20} color={ink.dark ? '#171717' : '#FFFFFF'} />
+                <Text style={[styles.buyButtonText, { color: ink.dark ? '#171717' : '#FFFFFF' }]}>
+                  Buy ticket
+                </Text>
               </Pressable>
-            </View>
+            ) : null}
+
           </View>
         </ScrollView>
-      </KeyboardAvoidingView>
 
       {/* Floating back button — the screen has no nav header (so no opaque bar
           over the full-bleed theme); this glass chip sits over the cover. */}
@@ -790,18 +425,12 @@ export default function EventScreen() {
             />
           ) : null}
 
-          <Pressable
-            onPress={() => {
-              // The host organizes the event — the pill is a guest count for
-              // them, not a personal RSVP.
-              if (!event.isHost && !rsvpLocked) setRsvp('GOING');
-            }}
-            disabled={rsvpBusy || event.isHost}
-            style={({ pressed }) => [styles.barGoing, pressed && { opacity: 0.85 }]}
-          >
+          {/* Pure guest-count display — RSVPs are gone, tickets are bought at
+              the source. */}
+          <View style={styles.barGoing}>
             <Text style={styles.barGoingCount}>{event.counts.going}</Text>
             <Text style={styles.barGoingLabel}>Going</Text>
-          </Pressable>
+          </View>
 
           <BarItem icon="person-add" label="Invite" color={ink.text} onPress={share} />
           {event.canManage ? (
@@ -993,13 +622,6 @@ const styles = StyleSheet.create({
     letterSpacing: -1,
     lineHeight: 56,
   },
-  lockedNote: {
-    padding: spacing.md,
-  },
-  lockedNoteText: {
-    ...uiText(14, '500'),
-    textAlign: 'center',
-  },
   section: {
     padding: spacing.lg,
     gap: spacing.lg,
@@ -1079,27 +701,22 @@ const styles = StyleSheet.create({
     gap: spacing.sm,
     marginTop: spacing.xs,
   },
-  rsvpRow: {
+  buyButton: {
     flexDirection: 'row',
-    justifyContent: 'center',
-    gap: spacing.xl,
-    paddingVertical: spacing.sm,
-  },
-  rsvpButtonWrap: {
     alignItems: 'center',
+    justifyContent: 'center',
     gap: spacing.sm,
+    borderRadius: radius.pill,
+    paddingVertical: 16,
+    paddingHorizontal: spacing.xl,
+    shadowColor: '#000',
+    shadowOpacity: 0.25,
+    shadowRadius: 12,
+    shadowOffset: { width: 0, height: 6 },
+    elevation: 5,
   },
-  rsvpCircle: {
-    width: 76,
-    height: 76,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  rsvpEmoji: {
-    fontSize: 32,
-  },
-  rsvpLabel: {
-    ...uiText(14, '600'),
+  buyButtonText: {
+    ...uiText(17, '700'),
   },
   guestSummary: {
     padding: spacing.md,
@@ -1136,37 +753,6 @@ const styles = StyleSheet.create({
   },
   guestEmpty: {
     ...uiText(14, '500'),
-  },
-  plusOnesCard: {
-    alignItems: 'flex-start',
-    gap: spacing.sm,
-    padding: spacing.md,
-  },
-  plusOnesLabel: {
-    ...uiText(15, '600'),
-  },
-  plusOneChip: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.xs,
-    maxWidth: '100%',
-  },
-  plusOneChipName: {
-    ...uiText(15, '700'),
-    flexShrink: 1,
-  },
-  plusOneShareText: {
-    ...uiText(13, '600'),
-  },
-  addPlusOneButton: {
-    paddingHorizontal: spacing.md,
-    paddingVertical: 8,
-  },
-  addPlusOneText: {
-    ...uiText(14, '600'),
-  },
-  plusOnesFull: {
-    ...uiText(14, '600'),
   },
   plusOneGuestRow: {
     marginLeft: spacing.lg,

@@ -3,9 +3,9 @@ import { StyleSheet, View } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { colors } from '../lib/theme';
 
-// Auth backdrop: near-black with the app's violet top bloom. The `confetti`
-// prop is kept for API compatibility with callers but no longer renders
-// anything.
+// Auth backdrop: the warm cream canvas with a soft bright sheen at the top.
+// The `confetti` prop is kept for API compatibility with callers but no longer
+// renders anything.
 export function AuroraBackground({
   children,
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -17,7 +17,7 @@ export function AuroraBackground({
   return (
     <View style={styles.fill}>
       <LinearGradient
-        colors={['rgba(124,82,222,0.55)', 'rgba(94,58,180,0.22)', 'rgba(12,12,14,0)']}
+        colors={['rgba(255,255,255,0.45)', 'rgba(255,255,255,0.15)', 'rgba(255,255,255,0)']}
         locations={[0, 0.45, 1]}
         style={styles.bloom}
         pointerEvents="none"

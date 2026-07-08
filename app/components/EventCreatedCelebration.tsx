@@ -18,7 +18,7 @@ const CONFETTI_COLORS = [
   brand.glow[0],
   colors.accentDark,
   '#FFFFFF',
-  '#C4A7FF',
+  '#C2BBB0',
 ];
 
 interface ConfettiSpec {
