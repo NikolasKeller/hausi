@@ -298,7 +298,7 @@ function ExploreScreen() {
       <View style={{ flex: 1 }}>
         <View style={styles.headerRow}>
           <View style={styles.headerTitleWrap}>
-            <Text style={styles.headerTitle}>Explore</Text>
+            <Text style={styles.headerTitle}>Iykyk</Text>
           </View>
           <Pressable
             onPress={toggleCityMenu}

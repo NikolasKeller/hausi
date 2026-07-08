@@ -254,7 +254,8 @@ const styles = StyleSheet.create({
     backgroundColor: colors.card,
     alignItems: 'center',
     justifyContent: 'center',
-    paddingBottom: 120,
+    // Sit the avatar low in the hero, close to the name below it.
+    paddingBottom: 36,
   },
   topScrim: {
     position: 'absolute',
