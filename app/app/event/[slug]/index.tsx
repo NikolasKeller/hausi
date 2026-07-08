@@ -596,8 +596,10 @@ export default function EventScreen() {
         </Glass>
       </Pressable>
 
-      {/* Floating bottom action bar — Edit · Text Blast · Going · Invite · More.
-          Host-only items are hidden for guests; the body stays uncluttered. */}
+      {/* Floating bottom action bar — Edit · Text Blast · Invite · More. The
+          buying the ticket is the page's primary action (in the body), so the
+          old "N going" counter is gone entirely. Host-only items are hidden
+          for guests; the body stays uncluttered. */}
       <View
         pointerEvents="box-none"
         style={[styles.actionBarWrap, { paddingBottom: insets.bottom + spacing.sm }]}
@@ -619,13 +621,6 @@ export default function EventScreen() {
               onPress={() => router.push(`/event/${event.slug}/blast`)}
             />
           ) : null}
-
-          {/* Pure guest-count display — RSVPs are gone, tickets are bought at
-              the source. */}
-          <View style={styles.barGoing}>
-            <Text style={styles.barGoingCount}>{event.counts.going}</Text>
-            <Text style={styles.barGoingLabel}>Going</Text>
-          </View>
 
           <BarItem icon="person-add" label="Invite" color={ink.text} onPress={share} />
           {event.canManage ? (
@@ -741,28 +736,6 @@ const styles = StyleSheet.create({
   },
   barLabel: {
     ...uiText(11, '600'),
-  },
-  barGoing: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: '#fff',
-    width: 58,
-    height: 58,
-    borderRadius: 29,
-    marginHorizontal: 2,
-    shadowColor: '#000',
-    shadowOpacity: 0.08,
-    shadowRadius: 6,
-    shadowOffset: { width: 0, height: 2 },
-    elevation: 2,
-  },
-  barGoingCount: {
-    ...uiText(18, '700'),
-    color: '#111',
-  },
-  barGoingLabel: {
-    ...uiText(10, '600'),
-    color: '#555',
   },
   menuOverlay: {
     ...StyleSheet.absoluteFillObject,
