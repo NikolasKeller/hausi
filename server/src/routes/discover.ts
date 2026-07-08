@@ -30,7 +30,7 @@ discoverRoutes.get('/home', async (c) => {
     where: { isPublic: true, canceledAt: null, date: { gte: new Date() } },
     include: exploreInclude,
     orderBy: { date: 'asc' },
-    take: 200,
+    take: 1000,
   });
 
   const explore = events.map((e) => toExploreEvent(e, userId, friendIds));
@@ -73,7 +73,9 @@ discoverRoutes.get('/explore', async (c) => {
     },
     include: exploreInclude,
     orderBy: { date: 'asc' },
-    take: 200,
+    // High enough that a full catalogue of scraped city events (24 cities ×
+    // ~35, see scripts/scrape-events.ts) never truncates a city's feed.
+    take: 1000,
   });
 
   // Cities that have public events, resolved to real, on-the-map places. Each
