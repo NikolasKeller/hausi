@@ -14,6 +14,7 @@ import { Ionicons } from '@expo/vector-icons';
 import * as Linking from 'expo-linking';
 import { type EventDetail } from '../../../shared/types';
 import { api } from '../../../lib/api';
+import { useAuth } from '../../../lib/auth';
 import { confirmDialog, notify } from '../../../lib/dialogs';
 import { recordRecentEvent, removeRecentEvent } from '../../../lib/recents';
 import { shareText } from '../../../lib/share';
@@ -101,6 +102,7 @@ export default function EventScreen() {
   const { slug } = useLocalSearchParams<{ slug: string }>();
   const router = useRouter();
   const insets = useSafeAreaInsets();
+  const { user } = useAuth();
   const [event, setEvent] = useState<EventDetail | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [menuOpen, setMenuOpen] = useState(false);
@@ -223,6 +225,11 @@ export default function EventScreen() {
   // Tickets are sold at the source: the last https URL in the description is
   // the ticket/source link, surfaced as the big Buy-ticket button below.
   const ticket = ticketInfo(event.description);
+  // Buying once marks the event as GOING, so it shows up under Profile →
+  // "My events" and on the calendar.
+  const hasTicket = event.rsvps.some(
+    (r) => r.user.id === user?.id && (r.status === 'GOING' || r.status === 'WAITLIST')
+  );
   // Host "text blasts" surface in their own Announcements section (newest first).
   const blasts = event.comments.filter((c) => c.type === 'blast');
 
@@ -365,6 +372,15 @@ export default function EventScreen() {
             {ticket.url ? (
               <Pressable
                 onPress={() => {
+                  // Remember the purchase as a GOING RSVP (fills Profile →
+                  // "My events" and the calendar). Strictly fire-and-forget —
+                  // opening the ticket link must never block on it.
+                  if (!hasTicket && !event.isHost) {
+                    api
+                      .rsvp(event.id, 'GOING')
+                      .then((res) => setEvent(res.event))
+                      .catch(() => {});
+                  }
                   if (Platform.OS === 'web') {
                     (globalThis as any).window?.open(ticket.url!, '_blank');
                   } else {
@@ -379,9 +395,13 @@ export default function EventScreen() {
                   pressed && { opacity: 0.85, transform: [{ scale: 0.98 }] },
                 ]}
               >
-                <Ionicons name="ticket-outline" size={20} color={ink.dark ? '#171717' : '#FFFFFF'} />
+                <Ionicons
+                  name={hasTicket ? 'checkmark-circle' : 'ticket-outline'}
+                  size={20}
+                  color={ink.dark ? '#171717' : '#FFFFFF'}
+                />
                 <Text style={[styles.buyButtonText, { color: ink.dark ? '#171717' : '#FFFFFF' }]}>
-                  Buy ticket
+                  {hasTicket ? 'Ticket purchased' : 'Buy ticket'}
                 </Text>
               </Pressable>
             ) : null}
