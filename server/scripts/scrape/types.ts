@@ -29,6 +29,11 @@ export interface ScrapedEvent {
   // The real paid-ticket URL (buy-button target): the source's own event/
   // checkout page (Eventbrite/RA/venue). lu.ma links are dropped upstream.
   ticketUrl: string;
+  // Real organizer/promoter name from the source (RA promoter, Eventbrite
+  // organizer), plausibility-checked against title/description with the venue
+  // as fallback. '' when nothing reliable is extractable — the inserter then
+  // falls back to the neutral scout host. Never invented.
+  organizerName: string;
 }
 
 export interface CityConfig {

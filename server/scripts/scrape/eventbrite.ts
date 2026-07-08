@@ -1,4 +1,5 @@
 import type { CityConfig, ScrapedEvent } from './types.js';
+import { pickOrganizerName } from './organizer.js';
 import { classify, politeFetch, sleep, zonedTimeToUtc } from './util.js';
 
 // Eventbrite public search pages (https://www.eventbrite.com/d/<city>/<term>/)
@@ -35,12 +36,15 @@ interface EbResult {
   };
 }
 
-// The search results carry no price data, so each candidate needs one event-
-// page fetch: the page embeds a schema.org AggregateOffer with the real ticket
-// price range. Returns '' for free/priceless events and null when the page
+// The search results carry no price/organizer data, so each candidate needs one
+// event-page fetch: the page embeds a schema.org AggregateOffer with the real
+// ticket price range, plus the organizer as {"@type":"Organization","name":…}.
+// price is '' for free/priceless events; the whole result is null when the page
 // couldn't be fetched (so the caller may retry under a later search term).
 // lowPrice/highPrice appear both quoted ("11.83") and as bare JSON numbers.
-async function fetchPriceLabel(eventUrl: string): Promise<string | null> {
+export async function fetchEventPage(
+  eventUrl: string
+): Promise<{ price: string; organizerName: string } | null> {
   const res = await politeFetch(eventUrl, {}, { retries: 2, timeoutMs: 20000 });
   if (!res) return null;
   let html = '';
@@ -49,15 +53,22 @@ async function fetchPriceLabel(eventUrl: string): Promise<string | null> {
   } catch {
     return null;
   }
+  const organizerName =
+    html.match(/"organizer"\s*:\s*\{\s*"@type"\s*:\s*"Organization"\s*,\s*"name"\s*:\s*"([^"]{1,120})"/)?.[1] ?? '';
+
   const low = html.match(/"lowPrice"\s*:\s*"?([\d.]+)"?/)?.[1];
   const currency = html.match(/"priceCurrency"\s*:\s*"([A-Z]{3})"/)?.[1];
   const high = html.match(/"highPrice"\s*:\s*"?([\d.]+)"?/)?.[1];
   const amount = Number(low);
   // No positive lowPrice ⇒ the event is free (its offer shows 0.00) or has no
   // published price; either way it fails the paid-only rule.
-  if (!low || !currency || !Number.isFinite(amount) || amount <= 0) return '';
+  if (!low || !currency || !Number.isFinite(amount) || amount <= 0) {
+    return { price: '', organizerName };
+  }
   const label = amount.toFixed(Number.isInteger(amount) ? 0 : 2);
-  return high && Number(high) > amount ? `From ${label} ${currency}` : `${label} ${currency}`;
+  const price =
+    high && Number(high) > amount ? `From ${label} ${currency}` : `${label} ${currency}`;
+  return { price, organizerName };
 }
 
 function extractServerData(html: string): EbResult[] {
@@ -100,28 +111,37 @@ export async function scrapeEventbrite(config: CityConfig): Promise<ScrapedEvent
       if (venueCity && venueCity !== config.name.toLowerCase()) continue;
       const cls = classify(r.name, r.summary ?? '');
       if (!cls) continue;
-      // Paid events only: one extra page fetch per candidate for the price.
-      const price = await fetchPriceLabel(r.url);
+      // Paid events only: one extra page fetch per candidate for price+organizer.
+      const page = await fetchEventPage(r.url);
       await sleep(1500 + Math.random() * 1000);
       // null = fetch failed — leave the URL unmarked so a later search term
-      // gets another shot; '' = definitively free/priceless — mark and skip.
-      if (price == null) continue;
+      // gets another shot; price '' = definitively free/priceless — mark & skip.
+      if (page == null) continue;
       seenUrls.add(r.url);
-      if (!price) continue;
+      if (!page.price) continue;
+      const description = (r.summary ?? '').trim();
       out.push({
         source: 'eventbrite',
         sourceUrl: r.url,
         title: r.name.trim(),
-        description: (r.summary ?? '').trim(),
+        description,
         startAt: zonedTimeToUtc(`${r.start_date}T${r.start_time}:00`, r.timezone),
         venueName: r.primary_venue?.name ?? '',
         address: r.primary_venue?.address?.localized_address_display ?? '',
         city: config.name,
         imageUrl: r.image?.original?.url ?? r.image?.url ?? '',
         hype: 0,
-        priceLabel: price,
+        priceLabel: page.price,
         // Eventbrite's own event page is a real paid checkout — accepted.
         ticketUrl: r.url,
+        organizerName: pickOrganizerName({
+          promoterName: page.organizerName,
+          venueName: r.primary_venue?.name,
+          title: r.name,
+          description,
+          // Scraped from the event's own page (its organizer account).
+          authoritative: true,
+        }),
       });
     }
   }

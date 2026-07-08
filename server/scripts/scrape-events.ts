@@ -2,6 +2,7 @@ import bcrypt from 'bcryptjs';
 import { db } from '../src/lib/db.js';
 import { makeSlug } from '../src/lib/slug.js';
 import { CITIES } from './scrape/cities.js';
+import { organizerSlug } from './scrape/organizer.js';
 import { scrapeRa } from './scrape/ra.js';
 import { scrapeEventbrite } from './scrape/eventbrite.js';
 import { translateToEnglish } from './scrape/translate.js';
@@ -67,6 +68,34 @@ async function ensureHost() {
   return host;
 }
 
+// One org account per real organizer/promoter (mirrors the "Social Run Club" /
+// "YE Munich" pattern): looked up by generated email (stable slug of the name),
+// created on first sight. Events are hosted by their actual organizer — the
+// neutral scout host only remains for events whose organizer is unknown.
+const organizerCache = new Map<string, { id: string }>();
+
+async function ensureOrganizerHost(name: string, city: string) {
+  const email = `org-${organizerSlug(name)}@hausi.app`;
+  const cached = organizerCache.get(email);
+  if (cached) return cached;
+  let host = await db.user.findFirst({ where: { email } });
+  if (!host) {
+    host = await db.user.create({
+      data: {
+        name,
+        email,
+        passwordHash: await bcrypt.hash('iykyk123', 10),
+        avatarEmoji: '🎪',
+        city,
+        isOrganization: true,
+      },
+    });
+    console.log(`  created organizer host "${name}" (${email})`);
+  }
+  organizerCache.set(email, host);
+  return host;
+}
+
 // Existing (title, city, day) keys so re-runs never insert duplicates, even
 // when a source re-lists the same event under a fresh URL.
 async function loadExistingKeys(): Promise<Set<string>> {
@@ -112,6 +141,7 @@ async function scrapeCity(cityName?: string) {
   const report: { city: string; added: number; skipped: number; bySource: Record<string, number> }[] = [];
   const stats = new ValidationStats();
   let translatedCount = 0;
+  let scoutFallbacks = 0;
 
   for (const config of cities) {
     console.log(`\n=== ${config.name} ===`);
@@ -199,6 +229,12 @@ async function scrapeCity(cityName?: string) {
         }
         continue;
       }
+      // Host = the real organizer/promoter from the source; the neutral scout
+      // account only hosts events whose organizer couldn't be determined.
+      const eventHost = e.organizerName
+        ? await ensureOrganizerHost(e.organizerName, e.city)
+        : host;
+      if (!e.organizerName) scoutFallbacks++;
       await db.event.create({
         data: {
           slug: makeSlug(candidate.title),
@@ -213,7 +249,7 @@ async function scrapeCity(cityName?: string) {
           costPerPerson: candidate.costPerPerson,
           ticketUrl: candidate.ticketUrl,
           isPublic: true,
-          hostId: host.id,
+          hostId: eventHost.id,
         },
       });
       existing.add(dedupeKey(candidate.title, candidate.city, candidate.date));
@@ -233,6 +269,7 @@ async function scrapeCity(cityName?: string) {
   const total = report.reduce((s, r) => s + r.added, 0);
   console.log(`total inserted: ${total}`);
   console.log(`descriptions translated to English: ${translatedCount}`);
+  console.log(`organizer hosts created/used: ${organizerCache.size}; scout-host fallbacks: ${scoutFallbacks}`);
   console.log(stats.summary());
 }
 
