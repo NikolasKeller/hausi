@@ -19,11 +19,19 @@ const LISTINGS_QUERY = `query GET_EVENT_LISTINGS($filters: FilterInputDtoInput, 
         contentUrl
         images { filename }
         venue { name address }
+        isTicketed
+        tickets(queryType: AVAILABLE) { priceRetail isAddOn currency { code } }
       }
     }
     totalResults
   }
 }`;
+
+interface RaTicket {
+  priceRetail: number | null;
+  isAddOn: boolean | null;
+  currency: { code: string } | null;
+}
 
 interface RaEvent {
   id: string;
@@ -34,6 +42,21 @@ interface RaEvent {
   contentUrl: string;
   images: { filename: string }[];
   venue: { name: string; address: string | null } | null;
+  isTicketed: boolean | null;
+  tickets: RaTicket[] | null;
+}
+
+// Cheapest real (non-add-on) available ticket tier → "From 15 EUR" / "15 EUR".
+// '' when RA lists no purchasable priced ticket (dropped by validation).
+function priceLabel(ev: RaEvent): string {
+  const tiers = (ev.tickets ?? []).filter(
+    (t) => !t.isAddOn && typeof t.priceRetail === 'number' && t.priceRetail > 0
+  );
+  if (!tiers.length) return '';
+  const min = tiers.reduce((a, b) => (b.priceRetail! < a.priceRetail! ? b : a));
+  const amount = min.priceRetail!.toFixed(Number.isInteger(min.priceRetail!) ? 0 : 2);
+  const currency = (min.currency?.code ?? 'EUR').toUpperCase();
+  return tiers.length > 1 ? `From ${amount} ${currency}` : `${amount} ${currency}`;
 }
 
 export async function scrapeRa(config: CityConfig, take = 30, horizonDays = 30): Promise<ScrapedEvent[]> {
@@ -73,6 +96,8 @@ export async function scrapeRa(config: CityConfig, take = 30, horizonDays = 30):
   for (const { event: ev } of listings) {
     if (!ev?.startTime || seen.has(ev.id)) continue;
     seen.add(ev.id);
+    const price = priceLabel(ev);
+    if (!price) continue; // free / no purchasable ticket — paid events only
     // RA startTime is venue-local; treating it in the city's timezone.
     const startAt = zonedRaTime(ev.startTime, config.timeZone);
     out.push({
@@ -86,6 +111,7 @@ export async function scrapeRa(config: CityConfig, take = 30, horizonDays = 30):
       city: config.name,
       imageUrl: ev.images?.[0]?.filename ?? '',
       hype: ev.attending ?? 0,
+      priceLabel: price,
     });
   }
   return out;

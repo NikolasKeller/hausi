@@ -6,7 +6,13 @@ import { scrapeLuma } from './scrape/luma.js';
 import { scrapeRa } from './scrape/ra.js';
 import { scrapeEventbrite } from './scrape/eventbrite.js';
 import type { ScrapedEvent } from './scrape/types.js';
-import { classify, dedupeKey, isValidEvent, RA_CLASSIFIED, sleep } from './scrape/util.js';
+import { classify, isValidEvent, RA_CLASSIFIED, sleep } from './scrape/util.js';
+import {
+  dedupeKey,
+  validateEvent,
+  ValidationStats,
+  type EventCandidate,
+} from './scrape/validate.js';
 
 // Scrapes hyped lifestyle/social events (run clubs, coffee meetups, dating
 // events, raves, rooftop parties, yoga/pilates, social sports …) for European
@@ -16,12 +22,18 @@ import { classify, dedupeKey, isValidEvent, RA_CLASSIFIED, sleep } from './scrap
 // Guarantees:
 // - NOTHING is invented: every title/date/venue/description/image comes
 //   verbatim from the source; the source URL is appended to the description.
+// - Paid events only: the price is captured into costPerPerson and any event
+//   without a real ticket price > 0 is rejected.
+// - Every event must pass the full validation checklist (scrape/validate.ts)
+//   right before its insert, or it is dropped with the reason logged.
 // - Idempotent: re-runs skip events that already exist (same title + city +
 //   calendar day), so it can run on a schedule and only add new events.
 //
 // Usage (from server/):
-//   DATABASE_URL="file:/…/dev.db" npm run scrape             # all cities
-//   DATABASE_URL="file:/…/dev.db" npm run scrape -- Berlin   # one city
+//   DATABASE_URL="file:/…/dev.db" npm run scrape                    # all cities
+//   DATABASE_URL="file:/…/dev.db" npm run scrape -- Berlin          # one city
+//   DATABASE_URL="file:/…/dev.db" npm run scrape -- --validate-only # audit the
+//     existing DB events against the checklist; reports only, changes nothing.
 //
 // The description limit lives in app/shared/types.ts (LIMITS.description=4000).
 
@@ -56,11 +68,16 @@ async function loadExistingKeys(): Promise<Set<string>> {
 }
 
 function buildDescription(e: ScrapedEvent): string {
-  const parts: string[] = [];
-  if (e.description) parts.push(e.description);
   const sourceLabel = { luma: 'lu.ma', ra: 'Resident Advisor', eventbrite: 'Eventbrite', allevents: 'allevents.in' }[e.source];
-  parts.push(`—\nSource: ${sourceLabel}\n${e.sourceUrl}`);
-  return parts.join('\n\n').slice(0, DESCRIPTION_LIMIT);
+  const suffix = `—\nSource: ${sourceLabel}\n${e.sourceUrl}`;
+  // Truncate the body, never the source suffix — a cut-off trailing URL would
+  // (rightly) fail the source-url validation check and drop the event.
+  const budget = DESCRIPTION_LIMIT - suffix.length - 2; // "\n\n" separator
+  const body =
+    e.description.length > budget
+      ? `${e.description.slice(0, budget - 1).trimEnd()}…`
+      : e.description;
+  return body ? `${body}\n\n${suffix}` : suffix;
 }
 
 function buildLocation(e: ScrapedEvent): string {
@@ -87,6 +104,7 @@ async function scrapeCity(cityName?: string) {
   }
 
   const report: { city: string; added: number; skipped: number; bySource: Record<string, number> }[] = [];
+  const stats = new ValidationStats();
 
   for (const config of cities) {
     console.log(`\n=== ${config.name} ===`);
@@ -131,36 +149,57 @@ async function scrapeCity(cityName?: string) {
     const sourceCounts: Record<string, number> = {};
     for (const e of interleaved) {
       if (added >= MAX_PER_CITY_PER_RUN) break;
-      const key = dedupeKey(e.title, e.city, e.startAt);
-      if (existing.has(key)) {
-        skipped++;
-        continue;
-      }
       const cls = e.source === 'ra' ? RA_CLASSIFIED : classify(e.title, e.description);
       if (!cls) {
         skipped++;
         continue;
       }
+      // Final checklist, evaluated on the exact row that would be inserted.
+      const candidate: EventCandidate = {
+        title: e.title.slice(0, 120),
+        description: buildDescription(e),
+        date: e.startAt,
+        location: buildLocation(e),
+        city: e.city,
+        category: cls.category,
+        coverImage: e.imageUrl.startsWith('http') ? e.imageUrl : '',
+        costPerPerson: e.priceLabel,
+      };
+      const result = validateEvent(candidate, {
+        horizonDays: HORIZON_DAYS,
+        timeZone: config.timeZone,
+        existingKeys: existing,
+      });
+      stats.record(result);
+      if (!result.ok) {
+        skipped++;
+        // Dupes are routine on re-runs; only spell out real quality failures.
+        if (!(result.failures.length === 1 && result.failures[0] === 'dedupe')) {
+          console.log(`  ✗ dropped "${candidate.title.slice(0, 60)}": ${result.failures.join(', ')}`);
+        }
+        continue;
+      }
       await db.event.create({
         data: {
-          slug: makeSlug(e.title),
-          title: e.title.slice(0, 120),
-          description: buildDescription(e),
+          slug: makeSlug(candidate.title),
+          title: candidate.title,
+          description: candidate.description,
           coverTheme: cls.coverTheme,
-          coverImage: e.imageUrl.startsWith('http') ? e.imageUrl : '',
-          date: e.startAt,
-          location: buildLocation(e),
-          city: e.city,
-          category: cls.category,
+          coverImage: candidate.coverImage,
+          date: candidate.date,
+          location: candidate.location,
+          city: candidate.city,
+          category: candidate.category,
+          costPerPerson: candidate.costPerPerson,
           isPublic: true,
           hostId: host.id,
         },
       });
-      existing.add(key);
+      existing.add(dedupeKey(candidate.title, candidate.city, candidate.date));
       added++;
       sourceCounts[e.source] = (sourceCounts[e.source] ?? 0) + 1;
     }
-    console.log(`  inserted ${added}, skipped ${skipped} (dupes/off-topic)  ${JSON.stringify(sourceCounts)}`);
+    console.log(`  inserted ${added}, skipped ${skipped} (validation/dupes/off-topic)  ${JSON.stringify(sourceCounts)}`);
     report.push({ city: config.name, added, skipped, bySource: sourceCounts });
     await sleep(1000);
   }
@@ -172,9 +211,59 @@ async function scrapeCity(cityName?: string) {
   }
   const total = report.reduce((s, r) => s + r.added, 0);
   console.log(`total inserted: ${total}`);
+  console.log(stats.summary());
 }
 
-scrapeCity(process.argv[2])
+// Audit mode: run the checklist over the events already in the DB and report;
+// never deletes or modifies anything. Only the scraper's own upcoming events
+// are meaningfully covered by all checks, so the report separates the scout
+// host from other hosts (hand-made / seeded events follow looser rules).
+async function validateOnly() {
+  const events = await db.event.findMany({
+    include: { host: { select: { name: true, email: true } } },
+    orderBy: [{ city: 'asc' }, { date: 'asc' }],
+  });
+  console.log(`validate-only: checking ${events.length} existing events (read-only)\n`);
+
+  const timeZoneByCity = new Map(CITIES.map((c) => [c.name, c.timeZone]));
+  const statsByHost = new Map<string, ValidationStats>();
+  const examples: string[] = [];
+
+  for (const e of events) {
+    const result = validateEvent(
+      {
+        title: e.title,
+        description: e.description,
+        date: e.date,
+        location: e.location,
+        city: e.city,
+        category: e.category,
+        coverImage: e.coverImage,
+        costPerPerson: e.costPerPerson,
+      },
+      // No existingKeys: the event IS in the DB — dedupe is meaningless here.
+      { timeZone: timeZoneByCity.get(e.city) }
+    );
+    const hostLabel = e.host.name || e.host.email || e.hostId;
+    let stats = statsByHost.get(hostLabel);
+    if (!stats) statsByHost.set(hostLabel, (stats = new ValidationStats()));
+    stats.record(result);
+    if (!result.ok && examples.length < 15) {
+      examples.push(`  ✗ [${hostLabel}] "${e.title.slice(0, 55)}" (${e.city}): ${result.failures.join(', ')}`);
+    }
+  }
+
+  for (const [host, stats] of statsByHost) {
+    console.log(`--- host: ${host} ---`);
+    console.log(stats.summary());
+    console.log();
+  }
+  console.log('sample failures:');
+  for (const line of examples) console.log(line);
+}
+
+const arg = process.argv[2];
+(arg === '--validate-only' ? validateOnly() : scrapeCity(arg))
   .catch((e) => {
     console.error('scrape-events failed:', e);
     process.exit(1);
