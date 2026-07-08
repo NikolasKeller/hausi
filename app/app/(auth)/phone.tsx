@@ -17,7 +17,7 @@ import { COUNTRIES, DEFAULT_COUNTRY, type Country } from '../../lib/countries';
 import { colors, radius, spacing } from '../../lib/theme';
 import { display, uiText } from '../../lib/fonts';
 import { AuroraBackground } from '../../components/AuroraBackground';
-import { ChromeCard, Glass } from '../../components/glass';
+import { Glass } from '../../components/glass';
 import { Button, ErrorText } from '../../components/ui';
 
 export default function PhoneScreen() {
@@ -96,36 +96,35 @@ export default function PhoneScreen() {
               <Text style={styles.subtitle}>We'll text you a code to confirm it's you.</Text>
             </View>
 
-            {/* One unified field — country code and number read as a single
-                control instead of two disconnected floating pieces. */}
-            <ChromeCard radius={radius.lg} style={styles.phoneCardWrap}>
-              <View style={styles.phoneCard}>
-                <Pressable
-                  style={styles.countrySeg}
-                  onPress={() => setPickerOpen((v) => !v)}
-                  hitSlop={10}
-                >
-                  <Text style={styles.flag}>{country.flag}</Text>
-                  <Text style={styles.code}>{country.code}</Text>
-                  <Ionicons
-                    name={pickerOpen ? 'chevron-up' : 'chevron-down'}
-                    size={14}
-                    color={colors.muted}
-                  />
-                </Pressable>
-                <View style={styles.segDivider} />
-                <TextInput
-                  value={digits}
-                  onChangeText={(t) => setDigits(t.replace(/[^0-9 ]/g, ''))}
-                  placeholder="(123) 456-7890"
-                  placeholderTextColor={colors.muted}
-                  keyboardType="phone-pad"
-                  autoFocus
-                  style={[styles.phoneInputInline, styles.noOutline]}
-                  maxLength={16}
+            {/* Plain, borderless field — no card, just the country code and
+                number sitting together as one row (not two floating pieces
+                with a big gap between them like before). */}
+            <View style={styles.phoneRow}>
+              <Pressable
+                style={styles.countrySeg}
+                onPress={() => setPickerOpen((v) => !v)}
+                hitSlop={10}
+              >
+                <Text style={styles.flag}>{country.flag}</Text>
+                <Text style={styles.code}>{country.code}</Text>
+                <Ionicons
+                  name={pickerOpen ? 'chevron-up' : 'chevron-down'}
+                  size={14}
+                  color={colors.muted}
                 />
-              </View>
-            </ChromeCard>
+              </Pressable>
+              <TextInput
+                value={digits}
+                onChangeText={(t) => setDigits(t.replace(/[^0-9 ]/g, ''))}
+                placeholder="(123) 456-7890"
+                placeholderTextColor={colors.muted}
+                keyboardType="phone-pad"
+                autoFocus
+                style={[styles.phoneInputInline, styles.noOutline]}
+                maxLength={16}
+              />
+            </View>
+            <View style={styles.phoneUnderline} />
 
             {pickerOpen ? (
               <Glass radius={radius.lg} intensity={24} tint="dark" style={styles.picker}>
@@ -230,47 +229,39 @@ const styles = StyleSheet.create({
     color: colors.muted,
     ...uiText(15, '500'),
   },
-  // The unified phone field — country segment + number read as one control.
-  phoneCardWrap: {
-    shadowColor: '#000',
-    shadowOpacity: 0.35,
-    shadowRadius: 16,
-    shadowOffset: { width: 0, height: 8 },
-  },
-  phoneCard: {
+  // Plain borderless row — country code + number sit together, no card.
+  phoneRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 4,
-    paddingRight: spacing.md,
+    gap: spacing.sm,
   },
   countrySeg: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
-    paddingVertical: 16,
-    paddingHorizontal: spacing.md,
+    gap: 4,
+    paddingVertical: 10,
   },
   flag: {
-    fontSize: 18,
+    fontSize: 20,
   },
   code: {
     color: colors.text,
-    ...uiText(17, '600'),
+    ...uiText(22, '600'),
   },
-  segDivider: {
-    width: StyleSheet.hairlineWidth,
-    alignSelf: 'stretch',
-    marginVertical: 10,
-    backgroundColor: colors.cardBorder,
-  },
-  // Borderless inline phone field — sits inside the chrome card, no own box.
+  // Borderless inline phone field — plain text on the canvas, no own box.
   phoneInputInline: {
     flex: 1,
-    ...uiText(17, '600'),
+    ...uiText(22, '600'),
     color: colors.text,
-    lineHeight: 22,
-    paddingVertical: 16,
-    paddingLeft: spacing.md,
+    lineHeight: 27,
+    paddingVertical: 10,
+  },
+  // A single hairline beneath the row is the only anchor — enough to read as
+  // one field without a card/border boxing it in.
+  phoneUnderline: {
+    height: StyleSheet.hairlineWidth,
+    backgroundColor: colors.cardBorder,
+    marginTop: 2,
   },
   // Kill the browser's blue focus ring on web (react-native-web maps these).
   noOutline: Platform.OS === 'web' ? ({ outlineStyle: 'none', outlineWidth: 0 } as any) : {},
