@@ -1,6 +1,7 @@
 import bcrypt from 'bcryptjs';
 import { DATABASE_URL, db } from '../src/lib/db.js';
 import { makeSlug } from '../src/lib/slug.js';
+import { organizerSlug } from '../scripts/scrape/organizer.js';
 import { FEATURED_EVENTS } from './featuredEvents.js';
 
 // Seeds the featured, curated events shown to every new user on the discovery
@@ -56,6 +57,24 @@ async function main() {
     },
   });
 
+  // Org accounts for featured events run by other promoters (organizerName):
+  // hosting them under YE would credit the wrong organizer.
+  const orgHosts = new Map<string, string>();
+  for (const e of FEATURED_EVENTS) {
+    if (!e.organizerName || orgHosts.has(e.organizerName)) continue;
+    const org = await db.user.create({
+      data: {
+        name: e.organizerName,
+        email: `org-${organizerSlug(e.organizerName)}@hausi.app`,
+        passwordHash,
+        avatarEmoji: '🎪',
+        city: e.city,
+        isOrganization: true,
+      },
+    });
+    orgHosts.set(e.organizerName, org.id);
+  }
+
   for (const e of FEATURED_EVENTS) {
     await db.event.create({
       data: {
@@ -73,7 +92,7 @@ async function main() {
         isPublic: true,
         costPerPerson: e.costPerPerson,
         dressCode: e.dressCode,
-        hostId: ye.id,
+        hostId: e.organizerName ? orgHosts.get(e.organizerName)! : ye.id,
         // The host organizes the event and is not counted as a going guest.
       },
     });

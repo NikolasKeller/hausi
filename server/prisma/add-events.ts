@@ -1,15 +1,20 @@
 import bcrypt from 'bcryptjs';
 import { db } from '../src/lib/db.js';
 import { makeSlug } from '../src/lib/slug.js';
+import { organizerSlug } from '../scripts/scrape/organizer.js';
 import { FEATURED_EVENTS } from './featuredEvents.js';
 
-// Additive, idempotent seed of the curated YE Munich events. Unlike seed.ts,
+// Additive, idempotent seed of the curated featured events. Unlike seed.ts,
 // this NEVER deletes anything — it only creates events that don't already exist
-// (matched by slug) and ensures the host org account exists. Safe to run
+// (matched by slug) and ensures the host org accounts exist. Safe to run
 // against production (and safe to run on every deploy: re-runs are no-ops).
 //
 // The app is paid-events-only ("buy ticket" model): featured events without a
 // real ticket price > 0 are skipped, so free events can't reappear on deploy.
+//
+// Hosts: events with an explicit organizerName (e.g. "PAPItutmirleid") are
+// hosted under that organizer's org account — crediting YE Munich for another
+// promoter's event is a wrong-host bug. Everything else is YE's own event.
 
 // Same parse rule as scripts/scrape/validate.ts (parsePriceAmount): a
 // costPerPerson like "15 EUR" / "From 17 EUR" must contain an amount > 0.
@@ -18,23 +23,26 @@ function hasPaidTicket(costPerPerson: string): boolean {
   return m != null && Number(m[1]) > 0;
 }
 
-async function main() {
-  const email = 'events@ye-munich.com';
-  let ye = await db.user.findFirst({ where: { email } });
-  if (!ye) {
-    const passwordHash = await bcrypt.hash('iykyk123', 10);
-    ye = await db.user.create({
+async function ensureOrg(name: string, email: string, avatarEmoji: string, city: string) {
+  let user = await db.user.findFirst({ where: { email } });
+  if (!user) {
+    user = await db.user.create({
       data: {
-        name: 'YE Munich',
+        name,
         email,
-        passwordHash,
-        avatarEmoji: '🎧',
-        city: 'Munich',
+        passwordHash: await bcrypt.hash('iykyk123', 10),
+        avatarEmoji,
+        city,
         isOrganization: true,
       },
     });
-    console.log('add-events: created host org account (YE Munich)');
+    console.log(`add-events: created host org account (${name})`);
   }
+  return user;
+}
+
+async function main() {
+  const ye = await ensureOrg('YE Munich', 'events@ye-munich.com', '🎧', 'Munich');
 
   let added = 0;
   let skipped = 0;
@@ -52,6 +60,9 @@ async function main() {
       skipped += 1;
       continue;
     }
+    const host = e.organizerName
+      ? await ensureOrg(e.organizerName, `org-${organizerSlug(e.organizerName)}@hausi.app`, '🎪', e.city)
+      : ye;
     await db.event.create({
       data: {
         slug: makeSlug(e.title),
@@ -68,7 +79,7 @@ async function main() {
         isPublic: true,
         costPerPerson: e.costPerPerson,
         dressCode: e.dressCode,
-        hostId: ye.id,
+        hostId: host.id,
       },
     });
     added += 1;
