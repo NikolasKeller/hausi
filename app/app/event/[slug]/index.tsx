@@ -110,6 +110,7 @@ export default function EventScreen() {
   const [error, setError] = useState<string | null>(null);
   const [menuOpen, setMenuOpen] = useState(false);
   const [inviteBusy, setInviteBusy] = useState(false);
+  const [favBusy, setFavBusy] = useState(false);
 
   const load = useCallback(async () => {
     if (!slug) return;
@@ -153,6 +154,24 @@ export default function EventScreen() {
     const url = Linking.createURL(`e/${event.slug}`);
     const message = `You're invited: ${event.title} - ${formatEventDate(event.date)} at ${formatEventTime(event.date)}.\nOpen in iykyk: ${url}`;
     await shareText(message, url);
+  }
+
+  // Favoriting is decoupled from tickets: it reuses the "interested" (MAYBE)
+  // RSVP so the event shows up under Profile → Favorites (via api.myEvents).
+  async function toggleFavorite() {
+    if (!event || !user || favBusy) return;
+    const next = !event.rsvps.some((r) => r.user.id === user.id && r.status === 'MAYBE');
+    setFavBusy(true);
+    try {
+      const res = next
+        ? await api.rsvp(event.id, 'MAYBE')
+        : await api.removeGuest(event.id, user.id);
+      setEvent(res.event);
+    } catch (e) {
+      notify('Could not update favorite', e instanceof Error ? e.message : 'Try again');
+    } finally {
+      setFavBusy(false);
+    }
   }
 
   async function acceptCohostInvite() {
@@ -243,6 +262,7 @@ export default function EventScreen() {
 
   const spotsLeft =
     event.maxGuests != null ? Math.max(0, event.maxGuests - event.counts.going) : null;
+  const isFavorite = event.rsvps.some((r) => r.user.id === user?.id && r.status === 'MAYBE');
   // Tickets are sold at the source: the ticketUrl field (or the last https URL
   // in the description) is the organiser's checkout page. The Buy-ticket button
   // simply opens it.
@@ -326,6 +346,22 @@ export default function EventScreen() {
                     : ''}
                 </Text>
               </View>
+              {user && !event.isHost ? (
+                <Pressable
+                  onPress={toggleFavorite}
+                  disabled={favBusy}
+                  hitSlop={8}
+                  style={({ pressed }) => pressed && { opacity: 0.6 }}
+                >
+                  <Glass tint={ink.glassTint} radius={999} style={styles.favButton}>
+                    <Ionicons
+                      name={isFavorite ? 'heart' : 'heart-outline'}
+                      size={20}
+                      color={isFavorite ? colors.danger : ink.text}
+                    />
+                  </Glass>
+                </Pressable>
+              ) : null}
               <Pressable onPress={share}>
                 <Glass tint={ink.glassTint} radius={radius.pill} style={styles.shareButton}>
                   <Text style={[styles.shareText, { color: ink.text }]}>Share link</Text>
@@ -654,6 +690,12 @@ const styles = StyleSheet.create({
   },
   hostName: {
     ...uiText(16, '700'),
+  },
+  favButton: {
+    width: 38,
+    height: 38,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   shareButton: {
     paddingHorizontal: spacing.md,

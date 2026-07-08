@@ -514,7 +514,12 @@ eventRoutes.delete('/:id/rsvp/:userId', async (c) => {
     include: { cohosts: true },
   });
   if (!event) return c.json({ error: 'Event not found' }, 404);
-  if (!canManageEvent(event, me)) return c.json({ error: 'Only hosts can remove guests' }, 403);
+  // A guest may always remove their OWN RSVP (used by the favorite/interested
+  // toggle); otherwise only hosts/co-hosts can remove someone.
+  const removingSelf = targetUserId === me;
+  if (!removingSelf && !canManageEvent(event, me)) {
+    return c.json({ error: 'Only hosts can remove guests' }, 403);
+  }
   if (targetUserId === event.hostId) {
     return c.json({ error: "The host can't be removed from their own event" }, 400);
   }

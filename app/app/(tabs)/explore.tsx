@@ -14,6 +14,7 @@ import { useFocusEffect, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { CATEGORIES, CATEGORY_META, type Category, type ExploreEvent } from '../../shared/types';
 import { api } from '../../lib/api';
+import { useAuth } from '../../lib/auth';
 import { searchCities } from '../../lib/geocoding';
 import { hasLocationPermission, locateCity, type LocatedCity } from '../../lib/location';
 import { getRecentCities, recordRecentCity } from '../../lib/recentCities';
@@ -39,6 +40,26 @@ const CATEGORY_CHIPS: { key: Category | 'all'; emoji: string; label: string }[] 
 
 function ExploreCard({ event }: { event: ExploreEvent }) {
   const router = useRouter();
+  const { user } = useAuth();
+  // Favorite = the "interested"/MAYBE RSVP; optimistic with revert on failure.
+  const [fav, setFav] = useState(event.myRsvp === 'MAYBE');
+  const [favBusy, setFavBusy] = useState(false);
+
+  async function toggleFav() {
+    if (!user || favBusy) return;
+    const next = !fav;
+    setFav(next);
+    setFavBusy(true);
+    try {
+      if (next) await api.rsvp(event.id, 'MAYBE');
+      else await api.removeGuest(event.id, user.id);
+    } catch {
+      setFav(!next);
+    } finally {
+      setFavBusy(false);
+    }
+  }
+
   return (
     <Pressable
       onPress={() => router.push(`/event/${event.slug}`)}
@@ -55,6 +76,20 @@ function ExploreCard({ event }: { event: ExploreEvent }) {
         >
           {event.title}
         </Text>
+        {user ? (
+          <Pressable
+            onPress={toggleFav}
+            disabled={favBusy}
+            hitSlop={8}
+            style={({ pressed }) => [styles.favBadge, pressed && { opacity: 0.6 }]}
+          >
+            <Ionicons
+              name={fav ? 'heart' : 'heart-outline'}
+              size={18}
+              color={fav ? colors.danger : '#FFFFFF'}
+            />
+          </Pressable>
+        ) : null}
       </CoverGradient>
       <View style={styles.cardBody}>
         {event.friendGoing ? (
@@ -754,6 +789,17 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     padding: spacing.sm,
+  },
+  favBadge: {
+    position: 'absolute',
+    top: spacing.sm,
+    right: spacing.sm,
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(0,0,0,0.35)',
   },
   posterTitle: {
     fontSize: 24,
