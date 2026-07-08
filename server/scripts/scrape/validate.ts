@@ -17,9 +17,13 @@ export const TARGET_CITIES = [
 // Mirrors CATEGORIES in app/shared/types.ts.
 const VALID_CATEGORIES = new Set(['music', 'community', 'arts', 'food', 'sports', 'other']);
 
-// Domains events may cite as their source; the check rejects descriptions
-// whose trailing URL points anywhere else (typo/hallucination guard).
-const SOURCE_DOMAINS = [/(^|\.)lu\.ma$/, /(^|\.)luma\.com$/, /(^|\.)ra\.co$/, /(^|\.)eventbrite\.[a-z.]+$/, /(^|\.)allevents\.in$/];
+// Aggregator domains the buy-ticket link must NEVER point at: we only surface
+// events whose tickets are sold on the organiser's/club's own shop. A ticketUrl
+// on any of these is rejected (they are discovery aggregators, not the seller).
+const AGGREGATOR_DOMAINS = [
+  /(^|\.)lu\.ma$/, /(^|\.)luma\.com$/, /(^|\.)ra\.co$/,
+  /(^|\.)eventbrite\.[a-z.]+$/, /(^|\.)allevents\.in$/,
+];
 
 const TITLE_PLACEHOLDERS = /^(tba|tbd|untitled|test|placeholder|coming soon|n\/a|-+)$/i;
 
@@ -31,11 +35,11 @@ export type CheckId =
   | 'title'            // 3–120 chars, not a placeholder
   | 'city'             // exactly one of the 24 target cities
   | 'location'         // venue/address present, more than just the city name
-  | 'description'      // non-empty description
-  | 'source-url'       // description ends with a plausible source URL
   | 'category'         // valid app category
   | 'image-url'        // coverImage (when set) is a sane http(s) URL
   | 'paid-ticket'      // costPerPerson parses to an amount > 0
+  | 'ticket-url'       // organiser/club shop URL present, https, non-aggregator
+  | 'no-source-in-desc' // description must not leak a source/aggregator URL
   | 'dedupe';          // (title, city, calendar day) not already in the DB
 
 export interface EventCandidate {
@@ -47,6 +51,8 @@ export interface EventCandidate {
   category: string;
   coverImage: string;
   costPerPerson: string;
+  // Organiser's/club's own ticket-shop URL (the buy button target).
+  ticketUrl: string;
 }
 
 export interface ValidationOptions {
@@ -95,16 +101,27 @@ function wallTimeInZone(instant: Date, timeZone: string | undefined): { h: numbe
   }
 }
 
-function hasSourceUrl(description: string): boolean {
-  // The source URL is appended as the last line of the description.
-  const m = description.trimEnd().match(/(https?:\/\/\S+)\s*$/);
-  if (!m) return false;
+function isAggregator(host: string): boolean {
+  return AGGREGATOR_DOMAINS.some((re) => re.test(host));
+}
+
+// The buy link must be a real https URL that is NOT an aggregator (i.e. the
+// organiser's/club's own shop, e.g. a ticket.io club subdomain).
+function ticketUrlOk(ticketUrl: string): boolean {
   try {
-    const host = new URL(m[1]).hostname.toLowerCase();
-    return SOURCE_DOMAINS.some((re) => re.test(host));
+    const u = new URL(ticketUrl);
+    if (u.protocol !== 'https:' && u.protocol !== 'http:') return false;
+    return !!u.hostname && !isAggregator(u.hostname.toLowerCase());
   } catch {
     return false;
   }
+}
+
+// Guards the "no source line in the visible description" rule: the description
+// must not contain any URL (aggregator or otherwise) — the ticket link lives in
+// its own field now.
+function descriptionHasUrl(description: string): boolean {
+  return /https?:\/\/\S+/i.test(description);
 }
 
 export function validateEvent(e: EventCandidate, opts: ValidationOptions = {}): ValidationResult {
@@ -134,11 +151,10 @@ export function validateEvent(e: EventCandidate, opts: ValidationOptions = {}): 
   const location = e.location.trim();
   if (!location || location.toLowerCase() === e.city.trim().toLowerCase()) failures.push('location');
 
-  // 5. Description present …
-  const description = e.description.trim();
-  if (!description) failures.push('description');
-  // … and ending in the source URL (real, retrievable origin).
-  if (!hasSourceUrl(description)) failures.push('source-url');
+  // 5. Description must not leak a source/aggregator URL (it's kept clean; the
+  //    ticket link lives in its own field). An empty description is allowed —
+  //    many club listings have none, and inventing one would be a fabrication.
+  if (descriptionHasUrl(e.description)) failures.push('no-source-in-desc');
 
   // 6. Valid app category.
   if (!VALID_CATEGORIES.has(e.category)) failures.push('category');
@@ -157,6 +173,9 @@ export function validateEvent(e: EventCandidate, opts: ValidationOptions = {}): 
 
   // 8. Paid ticket required: costPerPerson must parse to an amount > 0.
   if (parsePriceAmount(e.costPerPerson) == null) failures.push('paid-ticket');
+
+  // 8b. Buy link must be the organiser's/club's own shop, never an aggregator.
+  if (!ticketUrlOk(e.ticketUrl)) failures.push('ticket-url');
 
   // 9. Dedupe against the DB (when the caller provides the key set).
   if (opts.existingKeys && opts.existingKeys.has(dedupeKey(e.title, e.city, e.date))) {

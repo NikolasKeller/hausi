@@ -2,11 +2,11 @@ import bcrypt from 'bcryptjs';
 import { db } from '../src/lib/db.js';
 import { makeSlug } from '../src/lib/slug.js';
 import { CITIES } from './scrape/cities.js';
-import { scrapeLuma } from './scrape/luma.js';
-import { scrapeRa } from './scrape/ra.js';
-import { scrapeEventbrite } from './scrape/eventbrite.js';
+import { CLUB_SHOPS } from './scrape/clubs.js';
+import { scrapeTicketioShop } from './scrape/ticketio.js';
+import { translateToEnglish } from './scrape/translate.js';
 import type { ScrapedEvent } from './scrape/types.js';
-import { classify, isValidEvent, RA_CLASSIFIED, sleep } from './scrape/util.js';
+import { sleep } from './scrape/util.js';
 import {
   dedupeKey,
   validateEvent,
@@ -14,32 +14,36 @@ import {
   type EventCandidate,
 } from './scrape/validate.js';
 
-// Scrapes hyped lifestyle/social events (run clubs, coffee meetups, dating
-// events, raves, rooftop parties, yoga/pilates, social sports …) for European
-// capitals from real public sources — lu.ma, Resident Advisor, Eventbrite —
-// and inserts them as public events into the app DB.
+// Scrapes real nightlife/club events from the OWN ticket shops of a curated set
+// of clubs/promoters (ticket.io storefronts) and inserts them as public events.
+//
+// Why club shops instead of aggregators: the app's buy-ticket button must open
+// the organiser's/club's own ticket page — never lu.ma / Eventbrite / Resident
+// Advisor. ticket.io shops are the club's own branded storefront, so the stored
+// ticketUrl always stays on the club's domain.
 //
 // Guarantees:
-// - NOTHING is invented: every title/date/venue/description/image comes
-//   verbatim from the source; the source URL is appended to the description.
-// - Paid events only: the price is captured into costPerPerson and any event
-//   without a real ticket price > 0 is rejected.
-// - Every event must pass the full validation checklist (scrape/validate.ts)
-//   right before its insert, or it is dropped with the reason logged.
-// - Idempotent: re-runs skip events that already exist (same title + city +
-//   calendar day), so it can run on a schedule and only add new events.
+// - NOTHING is invented: title, date, venue, price, image and buy URL all come
+//   verbatim from the club's ticket.io JSON-LD. Missing description → stored ''.
+// - The source/ticket URL is NEVER written into the visible description; it goes
+//   into the dedicated Event.ticketUrl column (the buy button reads it).
+// - Descriptions are stored in English: non-English text is translated
+//   (best-effort, key-less); on translation failure the original is kept.
+// - Paid events only: costPerPerson must be a real price > 0.
+// - Every event passes the validation checklist (scrape/validate.ts) right
+//   before insert, or it's dropped with the reason logged.
+// - Idempotent: re-runs skip (title + city + calendar day) already present.
 //
 // Usage (from server/):
-//   DATABASE_URL="file:/…/dev.db" npm run scrape                    # all cities
-//   DATABASE_URL="file:/…/dev.db" npm run scrape -- Berlin          # one city
-//   DATABASE_URL="file:/…/dev.db" npm run scrape -- --validate-only # audit the
-//     existing DB events against the checklist; reports only, changes nothing.
-//
-// The description limit lives in app/shared/types.ts (LIMITS.description=4000).
+//   DATABASE_URL="file:/…/dev.db" npm run scrape                    # all clubs
+//   DATABASE_URL="file:/…/dev.db" npm run scrape -- Munich          # one city
+//   DATABASE_URL="file:/…/dev.db" npm run scrape -- --validate-only # audit only
 
-const MAX_PER_CITY_PER_RUN = 35;
 const HORIZON_DAYS = 60;
 const DESCRIPTION_LIMIT = 4000;
+// Club nights are music/nightlife by construction.
+const CATEGORY = 'music';
+const COVER_THEME = 'midnight';
 
 async function ensureHost() {
   const email = 'scout@hausi.app';
@@ -60,164 +64,113 @@ async function ensureHost() {
   return host;
 }
 
-// Existing (title, city, day) keys so re-runs never insert duplicates, even
-// when a source re-lists the same event under a fresh URL.
 async function loadExistingKeys(): Promise<Set<string>> {
   const rows = await db.event.findMany({ select: { title: true, city: true, date: true } });
   return new Set(rows.map((r) => dedupeKey(r.title, r.city, r.date)));
 }
 
-function buildDescription(e: ScrapedEvent): string {
-  const sourceLabel = { luma: 'lu.ma', ra: 'Resident Advisor', eventbrite: 'Eventbrite', allevents: 'allevents.in' }[e.source];
-  const suffix = `—\nSource: ${sourceLabel}\n${e.sourceUrl}`;
-  // Truncate the body, never the source suffix — a cut-off trailing URL would
-  // (rightly) fail the source-url validation check and drop the event.
-  const budget = DESCRIPTION_LIMIT - suffix.length - 2; // "\n\n" separator
-  const body =
-    e.description.length > budget
-      ? `${e.description.slice(0, budget - 1).trimEnd()}…`
-      : e.description;
-  return body ? `${body}\n\n${suffix}` : suffix;
-}
-
 function buildLocation(e: ScrapedEvent): string {
-  // Location column is capped at 200 chars app-side; keep venue + address,
-  // but don't repeat the venue when the address already starts with it.
   const addressHasVenue =
     e.venueName && e.address.toLowerCase().includes(e.venueName.toLowerCase());
   const loc = addressHasVenue ? e.address : [e.venueName, e.address].filter(Boolean).join(', ');
   return (loc || e.city).slice(0, 200);
 }
 
-async function scrapeCity(cityName?: string) {
+async function run(cityFilter?: string) {
   const host = await ensureHost();
   const existing = await loadExistingKeys();
-  const now = new Date();
-  const horizon = new Date(now.getTime() + HORIZON_DAYS * 86400_000);
-
-  const cities = cityName
-    ? CITIES.filter((c) => c.name.toLowerCase() === cityName.toLowerCase())
-    : CITIES;
-  if (!cities.length) {
-    console.error(`unknown city "${cityName}" — known: ${CITIES.map((c) => c.name).join(', ')}`);
-    process.exit(1);
-  }
-
-  const report: { city: string; added: number; skipped: number; bySource: Record<string, number> }[] = [];
+  const timeZoneByCity = new Map(CITIES.map((c) => [c.name, c.timeZone]));
   const stats = new ValidationStats();
 
-  for (const config of cities) {
-    console.log(`\n=== ${config.name} ===`);
-    const collected: ScrapedEvent[] = [];
+  // 1) Scrape every curated club shop.
+  const collected: ScrapedEvent[] = [];
+  for (const shop of CLUB_SHOPS) {
+    let events: ScrapedEvent[] = [];
     try {
-      const [luma, ra, eb] = [
-        await scrapeLuma(config).catch((e) => (console.warn('  luma failed:', e), [] as ScrapedEvent[])),
-        await scrapeRa(config).catch((e) => (console.warn('  ra failed:', e), [] as ScrapedEvent[])),
-        await scrapeEventbrite(config).catch((e) => (console.warn('  eventbrite failed:', e), [] as ScrapedEvent[])),
-      ];
-      console.log(`  scraped: luma=${luma.length} ra=${ra.length} eventbrite=${eb.length}`);
-      collected.push(...luma, ...ra, ...eb);
+      events = await scrapeTicketioShop(shop);
     } catch (e) {
-      console.warn(`  scrape error for ${config.name}:`, e);
+      console.warn(`  ${shop.name}: scrape failed:`, (e as Error).message);
+    }
+    if (cityFilter) {
+      events = events.filter((ev) => ev.city.toLowerCase() === cityFilter.toLowerCase());
+    }
+    console.log(`${shop.name.padEnd(26)} (${shop.slug}.ticket.io): ${events.length} events`);
+    collected.push(...events);
+  }
+
+  // 2) Translate + validate + insert.
+  let translatedCount = 0;
+  const addedByCity: Record<string, number> = {};
+  const addedByClub: Record<string, number> = {};
+  let added = 0;
+  let skipped = 0;
+
+  for (const e of collected) {
+    // English descriptions only. Empty stays empty (no fabrication).
+    let description = '';
+    if (e.description) {
+      const t = await translateToEnglish(e.description);
+      await sleep(200);
+      if (t.translated) translatedCount++;
+      description = t.text.slice(0, DESCRIPTION_LIMIT);
     }
 
-    // Rank hyped-first within each source group, then interleave sources so a
-    // city page isn't 30 techno events followed by nothing else.
-    const valid = collected.filter((e) => isValidEvent(e, now, horizon));
-    const bySource = new Map<string, ScrapedEvent[]>();
-    for (const e of valid) {
-      const list = bySource.get(e.source) ?? [];
-      list.push(e);
-      bySource.set(e.source, list);
-    }
-    for (const list of bySource.values()) list.sort((a, b) => b.hype - a.hype);
-    const interleaved: ScrapedEvent[] = [];
-    const lists = [...bySource.values()];
-    for (let i = 0; interleaved.length < valid.length; i++) {
-      let pushed = false;
-      for (const list of lists) {
-        if (i < list.length) {
-          interleaved.push(list[i]);
-          pushed = true;
-        }
+    const candidate: EventCandidate = {
+      title: e.title.slice(0, 120),
+      description,
+      date: e.startAt,
+      location: buildLocation(e),
+      city: e.city,
+      category: CATEGORY,
+      coverImage: e.imageUrl.startsWith('http') ? e.imageUrl : '',
+      costPerPerson: e.priceLabel,
+      ticketUrl: e.ticketUrl,
+    };
+    const result = validateEvent(candidate, {
+      horizonDays: HORIZON_DAYS,
+      timeZone: timeZoneByCity.get(e.city),
+      existingKeys: existing,
+    });
+    stats.record(result);
+    if (!result.ok) {
+      skipped++;
+      if (!(result.failures.length === 1 && result.failures[0] === 'dedupe')) {
+        console.log(`  ✗ dropped "${candidate.title.slice(0, 55)}" (${e.city}): ${result.failures.join(', ')}`);
       }
-      if (!pushed) break;
+      continue;
     }
-
-    let added = 0;
-    let skipped = 0;
-    const sourceCounts: Record<string, number> = {};
-    for (const e of interleaved) {
-      if (added >= MAX_PER_CITY_PER_RUN) break;
-      const cls = e.source === 'ra' ? RA_CLASSIFIED : classify(e.title, e.description);
-      if (!cls) {
-        skipped++;
-        continue;
-      }
-      // Final checklist, evaluated on the exact row that would be inserted.
-      const candidate: EventCandidate = {
-        title: e.title.slice(0, 120),
-        description: buildDescription(e),
-        date: e.startAt,
-        location: buildLocation(e),
-        city: e.city,
-        category: cls.category,
-        coverImage: e.imageUrl.startsWith('http') ? e.imageUrl : '',
-        costPerPerson: e.priceLabel,
-      };
-      const result = validateEvent(candidate, {
-        horizonDays: HORIZON_DAYS,
-        timeZone: config.timeZone,
-        existingKeys: existing,
-      });
-      stats.record(result);
-      if (!result.ok) {
-        skipped++;
-        // Dupes are routine on re-runs; only spell out real quality failures.
-        if (!(result.failures.length === 1 && result.failures[0] === 'dedupe')) {
-          console.log(`  ✗ dropped "${candidate.title.slice(0, 60)}": ${result.failures.join(', ')}`);
-        }
-        continue;
-      }
-      await db.event.create({
-        data: {
-          slug: makeSlug(candidate.title),
-          title: candidate.title,
-          description: candidate.description,
-          coverTheme: cls.coverTheme,
-          coverImage: candidate.coverImage,
-          date: candidate.date,
-          location: candidate.location,
-          city: candidate.city,
-          category: candidate.category,
-          costPerPerson: candidate.costPerPerson,
-          isPublic: true,
-          hostId: host.id,
-        },
-      });
-      existing.add(dedupeKey(candidate.title, candidate.city, candidate.date));
-      added++;
-      sourceCounts[e.source] = (sourceCounts[e.source] ?? 0) + 1;
-    }
-    console.log(`  inserted ${added}, skipped ${skipped} (validation/dupes/off-topic)  ${JSON.stringify(sourceCounts)}`);
-    report.push({ city: config.name, added, skipped, bySource: sourceCounts });
-    await sleep(1000);
+    await db.event.create({
+      data: {
+        slug: makeSlug(candidate.title),
+        title: candidate.title,
+        description: candidate.description,
+        coverTheme: COVER_THEME,
+        coverImage: candidate.coverImage,
+        date: candidate.date,
+        location: candidate.location,
+        city: candidate.city,
+        category: candidate.category,
+        costPerPerson: candidate.costPerPerson,
+        ticketUrl: candidate.ticketUrl,
+        isPublic: true,
+        hostId: host.id,
+      },
+    });
+    existing.add(dedupeKey(candidate.title, candidate.city, candidate.date));
+    added++;
+    addedByCity[e.city] = (addedByCity[e.city] ?? 0) + 1;
+    addedByClub[e.venueName || e.city] = (addedByClub[e.venueName || e.city] ?? 0) + 1;
   }
 
   console.log('\n=== SUMMARY ===');
-  for (const r of report) {
-    const gap = r.added < 20 ? '  ⚠ <20 new this run' : '';
-    console.log(`${r.city.padEnd(12)} +${String(r.added).padStart(3)}  ${JSON.stringify(r.bySource)}${gap}`);
-  }
-  const total = report.reduce((s, r) => s + r.added, 0);
-  console.log(`total inserted: ${total}`);
+  console.log(`scraped candidates: ${collected.length}`);
+  console.log(`inserted: ${added}, skipped: ${skipped}`);
+  console.log(`descriptions translated to English: ${translatedCount}`);
+  console.log('per city:', JSON.stringify(addedByCity, null, 1));
   console.log(stats.summary());
 }
 
-// Audit mode: run the checklist over the events already in the DB and report;
-// never deletes or modifies anything. Only the scraper's own upcoming events
-// are meaningfully covered by all checks, so the report separates the scout
-// host from other hosts (hand-made / seeded events follow looser rules).
+// Audit mode: run the checklist over existing DB events (read-only).
 async function validateOnly() {
   const events = await db.event.findMany({
     include: { host: { select: { name: true, email: true } } },
@@ -240,8 +193,8 @@ async function validateOnly() {
         category: e.category,
         coverImage: e.coverImage,
         costPerPerson: e.costPerPerson,
+        ticketUrl: e.ticketUrl,
       },
-      // No existingKeys: the event IS in the DB — dedupe is meaningless here.
       { timeZone: timeZoneByCity.get(e.city) }
     );
     const hostLabel = e.host.name || e.host.email || e.hostId;
@@ -263,7 +216,7 @@ async function validateOnly() {
 }
 
 const arg = process.argv[2];
-(arg === '--validate-only' ? validateOnly() : scrapeCity(arg))
+(arg === '--validate-only' ? validateOnly() : run(arg))
   .catch((e) => {
     console.error('scrape-events failed:', e);
     process.exit(1);
