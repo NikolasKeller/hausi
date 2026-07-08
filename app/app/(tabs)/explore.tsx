@@ -546,7 +546,9 @@ const styles = StyleSheet.create({
   },
   headerRow: {
     flexDirection: 'row',
-    alignItems: 'flex-end',
+    // Center both header elements on one horizontal line: the logo's mid-line
+    // and the city pill's mid-line sit at the same height.
+    alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: spacing.md,
     // Generous, Partiful-style breathing room around the wordmark.
@@ -555,13 +557,13 @@ const styles = StyleSheet.create({
     gap: spacing.sm,
   },
   headerTitleWrap: {
-    gap: spacing.xs,
+    justifyContent: 'center',
   },
   headerLogo: {
-    // Same height as the old display(32) text header; width follows the
-    // wordmark's aspect ratio (892×694 ≈ 1.285) so it stays crisp and in place.
-    height: 34,
-    width: 34 * 1.285,
+    // Bigger, more present than the old text header; width follows the
+    // wordmark's aspect ratio (892×694 ≈ 1.285) so it stays crisp.
+    height: 48,
+    width: 48 * 1.285,
   },
   cityPill: {
     flexDirection: 'row',
