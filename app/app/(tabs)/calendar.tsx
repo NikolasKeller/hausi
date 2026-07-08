@@ -14,12 +14,13 @@ import { useFocusEffect } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import type { EventSummary } from '../../shared/types';
 import { api, mediaUrl } from '../../lib/api';
-import { display, kicker, uiText } from '../../lib/fonts';
-import { colors, radius, shadow, spacing } from '../../lib/theme';
+import { thinDisplay, thinLabel, uiText } from '../../lib/fonts';
+import { colors, glass, radius, spacing } from '../../lib/theme';
 import { COVERS } from '../../lib/covers';
 import { EventCard } from '../../components/EventCard';
 import { Button } from '../../components/ui';
 import { withScreenBackground } from '../../components/ScreenBackground';
+import { MilkyCard } from '../../components/MilkyCard';
 
 const MONTHS = [
   'January',
@@ -209,10 +210,9 @@ function CalendarScreen() {
 
   const header = (
     <View style={styles.header}>
+      <Text style={styles.screenKicker}>Date Night Planner</Text>
       <View style={styles.monthRow}>
         <View style={styles.monthTitleWrap}>
-          {/* Month name at one fixed size. When viewing another year, the year
-              is appended so it stays visible without a purple eyebrow label. */}
           <Text style={styles.monthTitle} numberOfLines={1}>
             {isViewingCurrentYear ? MONTHS[view.month] : `${MONTHS[view.month]} ${view.year}`}
           </Text>
@@ -300,35 +300,37 @@ function CalendarScreen() {
           </View>
 
           <View style={styles.panel}>
-            <View style={styles.panelHandle} />
-            <Text style={styles.panelTitle}>
-              {selectedIsToday ? <Text style={styles.panelStrong}>Today </Text> : null}
-              <Text style={selectedIsToday ? styles.panelMuted : styles.panelStrong}>
-                {selected.toLocaleDateString(undefined, {
-                  weekday: 'long',
-                  month: 'long',
-                  day: 'numeric',
-                })}
+            <MilkyCard radius={radius.milkyLg} style={styles.panelCard} contentStyle={styles.panelInner}>
+              <View style={styles.panelHandle} />
+              <Text style={styles.panelTitle}>
+                {selectedIsToday ? <Text style={styles.panelStrong}>Today </Text> : null}
+                <Text style={selectedIsToday ? styles.panelMuted : styles.panelStrong}>
+                  {selected.toLocaleDateString(undefined, {
+                    weekday: 'long',
+                    month: 'long',
+                    day: 'numeric',
+                  })}
+                </Text>
               </Text>
-            </Text>
 
-            {selectedEvents.length === 0 ? (
-              <View style={styles.emptyState}>
-                <View style={styles.emptyBody}>
-                  <Text style={styles.emptyTitle}>{EMPTY_TITLE}</Text>
+              {selectedEvents.length === 0 ? (
+                <View style={styles.emptyState}>
+                  <View style={styles.emptyBody}>
+                    <Text style={styles.emptyTitle}>{EMPTY_TITLE}</Text>
+                  </View>
                 </View>
-              </View>
-            ) : (
-              <ScrollView
-                style={styles.panelScroll}
-                contentContainerStyle={styles.panelEvents}
-                showsVerticalScrollIndicator={false}
-              >
-                {selectedEvents.map((ev) => (
-                  <EventCard key={ev.id} event={ev} />
-                ))}
-              </ScrollView>
-            )}
+              ) : (
+                <ScrollView
+                  style={styles.panelScroll}
+                  contentContainerStyle={styles.panelEvents}
+                  showsVerticalScrollIndicator={false}
+                >
+                  {selectedEvents.map((ev) => (
+                    <EventCard key={ev.id} event={ev} />
+                  ))}
+                </ScrollView>
+              )}
+            </MilkyCard>
           </View>
         </View>
       </SafeAreaView>
@@ -408,66 +410,60 @@ const styles = StyleSheet.create({
     gap: spacing.md,
   },
   header: {
-    flexDirection: 'row',
-    alignItems: 'flex-end',
-    justifyContent: 'space-between',
-    gap: spacing.sm,
+    gap: 4,
+    marginBottom: spacing.xs,
+  },
+  screenKicker: {
+    ...thinLabel(12),
+    color: glass.textMuted,
+    textAlign: 'center',
   },
   monthRow: {
     flexDirection: 'row',
     alignItems: 'flex-end',
     gap: spacing.sm,
-    flex: 1,
   },
   monthTitleWrap: {
-    // Fill the row so the chevrons always land at the same spot on the right,
-    // regardless of the month name's length (e.g. "May" vs "September").
     flex: 1,
-    gap: spacing.xs,
-  },
-  kicker: {
-    color: colors.accent,
   },
   monthTitle: {
-    // One fixed size for all 12 months. 32 is the size that fits the longest
-    // name ("September") in the row alongside the chevrons, so every month
-    // matches it and the title never resizes as you page through months.
-    ...display(32),
-    color: colors.helio,
+    ...thinDisplay(32),
+    color: glass.text,
     flexShrink: 1,
   },
   chevrons: {
     flexDirection: 'row',
     gap: spacing.xs,
-    marginBottom: spacing.xs,
+    marginBottom: 4,
   },
   chevronButton: {
     width: 32,
     height: 32,
     borderRadius: 16,
-    backgroundColor: colors.card,
+    backgroundColor: glass.fillLite,
     borderWidth: 1,
-    borderColor: colors.cardBorder,
+    borderColor: glass.borderSoft,
     alignItems: 'center',
     justifyContent: 'center',
   },
   headerActions: {
     flexDirection: 'row',
     alignItems: 'center',
+    alignSelf: 'flex-end',
     gap: spacing.sm,
-    marginBottom: spacing.xs,
   },
   todayPill: {
     borderWidth: 1,
-    borderColor: colors.cardBorder,
-    backgroundColor: colors.card,
+    borderColor: glass.borderSoft,
+    backgroundColor: glass.fillLite,
     borderRadius: radius.pill,
     paddingHorizontal: spacing.sm,
     paddingVertical: 6,
   },
   todayPillText: {
-    ...uiText(12, '600'),
-    color: colors.text,
+    ...thinLabel(12),
+    color: glass.text,
+    fontStyle: 'normal',
   },
   // Swipe-down affordance at the top of the list view (mirror of panelHandle).
   listHandle: {
@@ -482,10 +478,12 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
   },
   weekdayLabel: {
-    ...kicker(),
+    ...thinLabel(10),
     flex: 1,
     textAlign: 'center',
-    color: colors.muted,
+    color: glass.textFaint,
+    fontStyle: 'normal',
+    letterSpacing: 0.8,
   },
   grid: {
     // Constant height for every month (see MAX_WEEK_ROWS). Rows flex to share
@@ -511,21 +509,22 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   dayCircleToday: {
-    borderWidth: 2,
-    borderColor: colors.accent,
+    borderWidth: 1.5,
+    borderColor: glass.text,
   },
   dayCircleSelected: {
-    backgroundColor: colors.accent,
+    backgroundColor: 'rgba(255,255,255,0.18)',
+    borderWidth: 1,
+    borderColor: glass.border,
   },
   dayNumber: {
-    color: colors.text,
-    fontSize: 16,
-    fontWeight: '600',
+    ...thinLabel(15),
+    color: glass.text,
+    fontStyle: 'normal',
   },
   dayNumberSelected: {
-    // The selected circle fills with bright silver — flip the number to ink.
-    color: colors.onAccent,
-    fontWeight: '800',
+    color: glass.text,
+    fontStyle: 'italic',
   },
   dayEmoji: {
     fontSize: 20,
@@ -539,13 +538,20 @@ const styles = StyleSheet.create({
   // top corners and separates from the grid with a soft fill (no hard border).
   panel: {
     flex: 1,
-    backgroundColor: 'rgba(255,255,255,0.06)',
-    borderTopLeftRadius: radius.xl,
-    borderTopRightRadius: radius.xl,
     marginHorizontal: -spacing.md,
     marginBottom: -spacing.md,
-    padding: spacing.lg,
+  },
+  panelCard: {
+    flex: 1,
+    borderTopLeftRadius: radius.milkyLg,
+    borderTopRightRadius: radius.milkyLg,
+    borderBottomLeftRadius: 0,
+    borderBottomRightRadius: 0,
+  },
+  panelInner: {
+    flex: 1,
     gap: spacing.md,
+    paddingTop: spacing.md,
   },
   panelHandle: {
     alignSelf: 'center',
@@ -559,12 +565,14 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   panelStrong: {
-    ...uiText(15, '800'),
-    color: colors.text,
+    ...thinLabel(15),
+    color: glass.text,
+    fontStyle: 'italic',
   },
   panelMuted: {
-    ...uiText(15, '600'),
-    color: colors.muted,
+    ...thinLabel(15),
+    color: glass.textMuted,
+    fontStyle: 'normal',
   },
   panelScroll: {
     flex: 1,
@@ -588,8 +596,8 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
   },
   emptyTitle: {
-    ...display(24),
-    color: colors.text,
+    ...thinDisplay(24),
+    color: glass.text,
     textAlign: 'center',
   },
   listSections: {
@@ -601,11 +609,12 @@ const styles = StyleSheet.create({
     gap: spacing.sm,
   },
   sectionTitle: {
-    ...display(30),
-    color: colors.text,
+    ...thinDisplay(28),
+    color: glass.text,
   },
   sectionEmpty: {
-    ...uiText(15),
-    color: colors.muted,
+    ...thinLabel(14),
+    color: glass.textMuted,
+    fontStyle: 'normal',
   },
 });

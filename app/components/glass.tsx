@@ -19,12 +19,12 @@ import { radius as R } from '../lib/theme';
 // pane of glass rather than a flat white overlay. Elements take on the hue and
 // brightness of the ambient gradient they float over.
 export function Glass({
-  intensity = 28,
+  intensity = 40,
   tint = 'dark',
-  radius = R.lg,
+  radius = R.milkySm,
   border = true,
   sheen = true,
-  fill,
+  fill = 'rgba(255,255,255,0.12)',
   style,
   children,
 }: {
@@ -33,7 +33,6 @@ export function Glass({
   radius?: number;
   border?: boolean;
   sheen?: boolean;
-  // Optional extra tint wash painted over the blur (e.g. 'rgba(255,255,255,0.12)').
   fill?: string;
   style?: StyleProp<ViewStyle>;
   children?: React.ReactNode;
@@ -55,7 +54,7 @@ export function Glass({
           pointerEvents="none"
           colors={
             dark
-              ? ['rgba(255,255,255,0.12)', 'rgba(255,255,255,0)']
+              ? ['rgba(255,255,255,0.18)', 'rgba(255,255,255,0)']
               : ['rgba(255,255,255,0.38)', 'rgba(255,255,255,0.04)']
           }
           start={{ x: 0, y: 0 }}
@@ -97,38 +96,32 @@ export function GlassPill({
   );
 }
 
-// ── ChromeCard ────────────────────────────────────────────────────────────────
-// The signature feed surface: a near-black card wrapped in a 1px gradient
-// hairline that shifts bright-silver → dark → silver, like light catching the
-// edge of liquid metal. Cheaper than a per-card BlurView, so safe in lists.
+// ── ChromeCard / MilkyCard alias ──────────────────────────────────────────────
+// True milky frosted glass for hero surfaces; MilkySurface-style fill for lists.
+import { MilkyCard, MilkySurface } from './MilkyCard';
+
 export function ChromeCard({
-  radius: r = R.lg,
+  radius: r,
   style,
   children,
+  milky = false,
 }: {
   radius?: number;
   style?: StyleProp<ViewStyle>;
   children?: React.ReactNode;
+  milky?: boolean;
 }) {
-  return (
-    <LinearGradient
-      colors={['rgba(255,255,255,0.45)', 'rgba(255,255,255,0.10)', 'rgba(255,255,255,0.28)']}
-      start={{ x: 0, y: 0 }}
-      end={{ x: 1, y: 1 }}
-      style={[{ borderRadius: r, padding: 1 }, style]}
-    >
-      <View style={{ borderRadius: r - 1, overflow: 'hidden', backgroundColor: 'rgba(18,18,18,0.92)' }}>
-        {/* Top-edge sheen so the surface reads as glass, not flat paint. */}
-        <LinearGradient
-          pointerEvents="none"
-          colors={['rgba(255,255,255,0.07)', 'rgba(255,255,255,0)']}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 0, y: 1 }}
-          style={StyleSheet.absoluteFill}
-        />
+  if (milky) {
+    return (
+      <MilkyCard radius={r} style={style} contentStyle={{ padding: 0 }}>
         {children}
-      </View>
-    </LinearGradient>
+      </MilkyCard>
+    );
+  }
+  return (
+    <MilkySurface radius={r ?? R.milkySm} style={style}>
+      {children}
+    </MilkySurface>
   );
 }
 

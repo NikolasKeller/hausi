@@ -91,14 +91,31 @@ export const spacing = {
   section: 80,
 };
 
-// Partiful radii: nav 4, inputs/buttons 8, cards/images 12, modals 16, pill.
+// Glassmorphism radii — generous squircles like the reference dashboards.
 export const radius = {
   xs: 4,
   sm: 8,
   md: 12,
   lg: 16,
   xl: 24,
+  milkySm: 28,
+  milky: 36,
+  milkyLg: 44,
   pill: 999,
+};
+
+// Milky frosted-glass tokens — the "frosted pane" look on the black canvas.
+export const glass = {
+  fill: 'rgba(255,255,255,0.14)',
+  fillStrong: 'rgba(255,255,255,0.20)',
+  fillLite: 'rgba(255,255,255,0.10)',
+  border: 'rgba(255,255,255,0.22)',
+  borderSoft: 'rgba(255,255,255,0.12)',
+  blur: 48,
+  blurNav: 40,
+  text: '#FFFFFF',
+  textMuted: 'rgba(255,255,255,0.55)',
+  textFaint: 'rgba(255,255,255,0.38)',
 };
 
 // Layered elevation. On the black canvas shadows read as soft darkness under
@@ -117,5 +134,12 @@ export const shadow = {
     shadowRadius: 28,
     shadowOffset: { width: 0, height: 14 },
     elevation: 12,
+  },
+  milky: {
+    shadowColor: '#000000',
+    shadowOpacity: 0.45,
+    shadowRadius: 32,
+    shadowOffset: { width: 0, height: 16 },
+    elevation: 10,
   },
 };

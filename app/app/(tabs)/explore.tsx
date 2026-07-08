@@ -1,7 +1,6 @@
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
-  Image,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -17,17 +16,17 @@ import { api } from '../../lib/api';
 import { searchCities } from '../../lib/geocoding';
 import { hasLocationPermission, locateCity, type LocatedCity } from '../../lib/location';
 import { getRecentCities, recordRecentCity } from '../../lib/recentCities';
-import { colors, radius, spacing, shadow } from '../../lib/theme';
-import { display, uiText, kicker } from '../../lib/fonts';
+import { colors, glass, radius, spacing } from '../../lib/theme';
+import { thinDisplay, thinLabel, uiText } from '../../lib/fonts';
 import { CoverGradient } from '../../components/CoverGradient';
 import { Button } from '../../components/ui';
 import { withScreenBackground } from '../../components/ScreenBackground';
 import { formatEventDate } from '../../components/EventCard';
 import { Avatar } from '../../components/Avatar';
-import { ChromeCard } from '../../components/glass';
+import { MilkyCard } from '../../components/MilkyCard';
+import { VibeGauge } from '../../components/VibeGauge';
+import { GlassPill } from '../../components/glass';
 
-// Monochrome line icons instead of the colorful category emojis — everything
-// in the chrome UI stays black/silver; color is reserved for event artwork.
 const CATEGORY_ICONS: Record<Category | 'all', keyof typeof Ionicons.glyphMap> = {
   all: 'search',
   music: 'musical-notes-outline',
@@ -46,20 +45,28 @@ const CATEGORY_CHIPS: { key: Category | 'all'; label: string }[] = [
   })),
 ];
 
+function vibeScore(events: ExploreEvent[]): number {
+  if (!events.length) return 32;
+  const interested = events.reduce((n, e) => n + e.interested, 0);
+  const friends = events.filter((e) => e.friendGoing).length;
+  const raw = 28 + Math.min(60, events.length * 4 + interested * 0.6 + friends * 8);
+  return Math.round(Math.min(99, raw));
+}
+
 function ExploreCard({ event }: { event: ExploreEvent }) {
   const router = useRouter();
   const faces = event.interestedAvatars.slice(0, 3);
   return (
     <Pressable
       onPress={() => router.push(`/event/${event.slug}`)}
-      style={({ pressed }) => [styles.card, pressed && { opacity: 0.85 }]}
+      style={({ pressed }) => [styles.card, pressed && { opacity: 0.88 }]}
     >
-      <ChromeCard radius={radius.lg} style={shadow.card}>
+      <MilkyCard radius={radius.milkySm} contentStyle={styles.cardInner}>
         <CoverGradient
           theme={event.coverTheme}
           image={event.coverImage}
           style={styles.poster}
-          emojiOpacity={0.25}
+          emojiOpacity={0.2}
           dim={false}
         />
         <View style={styles.cardBody}>
@@ -81,11 +88,11 @@ function ExploreCard({ event }: { event: ExploreEvent }) {
                   <Avatar name={f.name} image={f.avatarImage} size={20} />
                 </View>
               ))}
-              <Text style={styles.facesLabel}>+{event.interested} going</Text>
+              <Text style={styles.facesLabel}>+{event.interested}</Text>
             </View>
           ) : null}
         </View>
-      </ChromeCard>
+      </MilkyCard>
     </Pressable>
   );
 }
@@ -93,43 +100,30 @@ function ExploreCard({ event }: { event: ExploreEvent }) {
 export default withScreenBackground(ExploreScreen);
 
 function ExploreScreen() {
-  // city: null = not resolved yet, '' = all cities, otherwise a city name.
   const [city, setCity] = useState<string | null>(null);
   const [category, setCategory] = useState<Category | 'all'>('all');
   const [events, setEvents] = useState<ExploreEvent[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [cityMenuOpen, setCityMenuOpen] = useState(false);
   const [citySearch, setCitySearch] = useState('');
-  // Live real-city results for the search box (Open-Meteo) — so only cities
-  // that actually exist can be searched and viewed, never a made-up name.
   const [citySearchResults, setCitySearchResults] = useState<string[]>([]);
   const [citySearching, setCitySearching] = useState(false);
   const [recentCities, setRecentCities] = useState<string[]>([]);
   const [myLocation, setMyLocation] = useState<LocatedCity | null>(null);
   const [locating, setLocating] = useState(false);
   const [locateError, setLocateError] = useState<string | null>(null);
-  // Refs mirror state so async locate callbacks read fresh values, not the
-  // closure from the render they were started in.
   const cityRef = useRef(city);
   const myLocationRef = useRef<LocatedCity | null>(null);
   const locatingRef = useRef(false);
-  // Token value at the moment the user asked to select the locate result;
-  // null = no pending intent. Comparing against the live token on landing
-  // drops intents the user has since superseded, not fresh ones.
   const wantSelectTokenRef = useRef<number | null>(null);
-  // Bumped on every selection or menu close; a locate intent stamped with an
-  // older token must not auto-select (the user moved on while in flight).
   const locateTokenRef = useRef(0);
+
   useEffect(() => {
     cityRef.current = city;
   }, [city]);
 
-  // Debounced live city search: query Open-Meteo for real cities as the user
-  // types, deduped by name. Aborts the in-flight request on each keystroke.
   useEffect(() => {
     const q = citySearch.trim();
-    // Clear stale results on every keystroke so the previous query's cities
-    // don't linger under the spinner while the new query is in flight.
     setCitySearchResults([]);
     if (q.length < 2) {
       setCitySearching(false);
@@ -169,12 +163,6 @@ function ExploreScreen() {
     async (isActive: () => boolean) => {
       try {
         if (city === null) {
-          // First load: pick the initial city from a full (all-cities) fetch.
-          // Prefer the user's saved city when it actually has events; otherwise
-          // open on the city with the MOST public events (so Explore never
-          // opens empty, and lands on the busiest place — e.g. Munich — rather
-          // than an alphabetical first). The "Use my location" button still
-          // lets the user switch to where they are.
           const feed = await api.home().catch(() => null);
           const savedCity = (feed?.city ?? '').trim();
           const all = await api.explore(undefined, category);
@@ -196,7 +184,7 @@ function ExploreScreen() {
             if (!chosen) chosen = all.cities[0] ?? savedCity;
           }
           setCity(chosen);
-          return; // effect re-runs scoped to the chosen city
+          return;
         }
         const res = await api.explore(city || undefined, category);
         if (!isActive()) return;
@@ -224,9 +212,7 @@ function ExploreScreen() {
     wantSelectTokenRef.current = null;
     setCityMenuOpen(false);
     setCitySearch('');
-    if (next) {
-      recordRecentCity(next).then(setRecentCities);
-    }
+    if (next) recordRecentCity(next).then(setRecentCities);
     if (next !== cityRef.current) {
       cityRef.current = next;
       setEvents(null);
@@ -248,8 +234,6 @@ function ExploreScreen() {
     }
     setCityMenuOpen(true);
     getRecentCities().then(setRecentCities);
-    // Only resolve quietly when permission was already granted — opening the
-    // menu should never trigger a surprise permission prompt.
     if (!myLocationRef.current && !locatingRef.current) {
       hasLocationPermission().then((granted) => {
         if (granted && !myLocationRef.current && !locatingRef.current) {
@@ -270,14 +254,10 @@ function ExploreScreen() {
       const located = await locateCity();
       myLocationRef.current = located;
       setMyLocation(located);
-      // Apply only if the user hasn't picked something else or closed the
-      // menu since expressing the intent to select.
       if (wantSelectTokenRef.current === locateTokenRef.current) {
         selectCity(located.city);
       }
     } catch (e) {
-      // Suppress errors nobody is waiting on (quiet resolve after the user
-      // already moved on) so a stale message doesn't greet the next open.
       const relevant =
         startToken === locateTokenRef.current ||
         wantSelectTokenRef.current === locateTokenRef.current;
@@ -293,7 +273,6 @@ function ExploreScreen() {
 
   function onMyLocationPress() {
     if (locatingRef.current) {
-      // A resolve is in flight — apply its result when it lands.
       wantSelectTokenRef.current = locateTokenRef.current;
       return;
     }
@@ -313,8 +292,6 @@ function ExploreScreen() {
 
   const cityLabel = city === null ? '…' : city === '' ? 'All cities' : city;
   const query = citySearch.trim();
-  // Suggestions only appear while typing — the resting menu shows My Location
-  // and recents instead. Results are real cities from the live geocoder.
   const suggestions = query ? citySearchResults : [];
   const myLocationSubtitle = locating
     ? 'Finding you…'
@@ -322,38 +299,36 @@ function ExploreScreen() {
       ? [myLocation.city, myLocation.region].filter(Boolean).join(', ')
       : locateError ?? 'Use your current location';
 
+  const score = useMemo(() => vibeScore(events ?? []), [events]);
+  const gaugeValue = score / 100;
+  const tonightCount = events?.length ?? 0;
+  const interestedTotal = useMemo(
+    () => (events ?? []).reduce((n, e) => n + e.interested, 0),
+    [events]
+  );
+  const latestPct = tonightCount ? Math.min(100, Math.round((interestedTotal / tonightCount) * 12)) : 0;
+
   return (
     <SafeAreaView edges={['top']} style={styles.safe}>
       <View style={{ flex: 1 }}>
-        <View style={styles.headerRow}>
-          <View style={styles.headerTitleWrap}>
-            {/* The liquid-chrome wordmark artwork — the brand IS the header. */}
-            <Image
-              source={require('../../assets/wordmark-chrome-dark.png')}
-              style={styles.headerWordmark}
-              resizeMode="contain"
-              accessibilityLabel="iykyk"
-            />
-          </View>
+        {/* Reference-style top bar: filter left, title center, city pill right */}
+        <View style={styles.topBar}>
+          <Pressable hitSlop={10} style={styles.iconBtn}>
+            <Ionicons name="options-outline" size={20} color={glass.textMuted} />
+          </Pressable>
+          <Text style={styles.screenTitle}>Tonight's Connection Profile</Text>
           <Pressable
             onPress={toggleCityMenu}
-            style={({ pressed }) => [styles.cityPill, pressed && { opacity: 0.8 }]}
+            style={({ pressed }) => [styles.cityPill, pressed && { opacity: 0.85 }]}
           >
-            <Ionicons name="location-outline" size={14} color={colors.text} />
             <Text style={styles.cityPillText} numberOfLines={1}>
               {cityLabel}
             </Text>
-            <Ionicons
-              name={cityMenuOpen ? 'chevron-up' : 'chevron-down'}
-              size={14}
-              color={colors.text}
-            />
           </Pressable>
         </View>
 
         {city === null && error ? (
           <View style={styles.center}>
-            <Text style={styles.errorEmoji}>🫠</Text>
             <Text style={styles.errorText}>{error}</Text>
             <Button title="Try again" variant="ghost" onPress={() => load(() => true)} />
           </View>
@@ -362,7 +337,64 @@ function ExploreScreen() {
             <ActivityIndicator color={colors.accent} size="large" />
           </View>
         ) : (
-          <ScrollView contentContainerStyle={styles.content}>
+          <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+            {/* Hero milky card — Match Vibe Index + gauge */}
+            <MilkyCard radius={radius.milkyLg} contentStyle={styles.heroCard}>
+              <View style={styles.heroTop}>
+                <View style={styles.heroLeft}>
+                  <Text style={styles.heroLabel}>Match Vibe Index</Text>
+                  <View style={styles.heroNumberRow}>
+                    <Text style={styles.heroNumber}>{score}</Text>
+                    <Text style={styles.heroUnit}>MVI</Text>
+                  </View>
+                </View>
+                <View style={styles.heroIndicators}>
+                  <View style={styles.indicatorChip}>
+                    <Ionicons name="moon-outline" size={14} color={glass.text} />
+                    <Text style={styles.indicatorNum}>+{Math.min(9, tonightCount)}</Text>
+                  </View>
+                  <View style={styles.indicatorChip}>
+                    <Ionicons name="sunny-outline" size={14} color={glass.text} />
+                    <Text style={styles.indicatorNum}>-{Math.max(1, 10 - tonightCount)}</Text>
+                  </View>
+                </View>
+              </View>
+
+              <VibeGauge value={gaugeValue} />
+
+              <View style={styles.gaugeLabels}>
+                <Text style={styles.gaugeLabel}>Pass</Text>
+                <Text style={styles.gaugeLabel}>Match</Text>
+              </View>
+
+              <View style={styles.insightBlock}>
+                <Text style={styles.insightTitle}>Smart Connection Insight</Text>
+                <Text style={styles.insightBody}>
+                  {tonightCount > 0
+                    ? `${tonightCount} gatherings in ${city} tonight — your social window is opening.`
+                    : `Quiet in ${city} right now — be the one who starts something worth showing up for.`}
+                </Text>
+              </View>
+            </MilkyCard>
+
+            {/* Twin bottom milky cards */}
+            <View style={styles.twinRow}>
+              <MilkyCard radius={radius.milky} style={styles.twinCard} contentStyle={styles.twinInner}>
+                <Text style={styles.twinLabel}>Latest Interest</Text>
+                <Text style={styles.twinValue}>{latestPct || 0}%</Text>
+                <Pressable style={({ pressed }) => [styles.donePill, pressed && { opacity: 0.9 }]}>
+                  <Ionicons name="heart" size={12} color="#0A0A0A" />
+                  <Text style={styles.doneText}>INTO IT</Text>
+                </Pressable>
+              </MilkyCard>
+              <MilkyCard radius={radius.milky} style={styles.twinCard} contentStyle={styles.twinInner}>
+                <Text style={styles.twinLabel}>Active Tonight</Text>
+                <Text style={styles.twinValue}>{tonightCount}</Text>
+                <Text style={styles.twinUnit}>events</Text>
+              </MilkyCard>
+            </View>
+
+            {/* Category filters — glass pills */}
             <ScrollView
               horizontal
               showsHorizontalScrollIndicator={false}
@@ -371,23 +403,19 @@ function ExploreScreen() {
               {CATEGORY_CHIPS.map((chip) => {
                 const active = category === chip.key;
                 return (
-                  <Pressable
-                    key={chip.key}
-                    onPress={() => selectCategory(chip.key)}
-                    style={({ pressed }) => [
-                      styles.chip,
-                      active && styles.chipActive,
-                      pressed && { opacity: 0.8 },
-                    ]}
-                  >
-                    <Ionicons
-                      name={CATEGORY_ICONS[chip.key]}
-                      size={14}
-                      color={active ? colors.onInk : colors.muted}
-                    />
-                    <Text style={[styles.chipLabel, active && styles.chipLabelActive]}>
-                      {chip.label}
-                    </Text>
+                  <Pressable key={chip.key} onPress={() => selectCategory(chip.key)}>
+                    <GlassPill active={active} style={styles.chipPill}>
+                      <View style={styles.chipInner}>
+                        <Ionicons
+                          name={CATEGORY_ICONS[chip.key]}
+                          size={13}
+                          color={active ? colors.text : glass.textMuted}
+                        />
+                        <Text style={[styles.chipLabel, active && styles.chipLabelActive]}>
+                          {chip.label}
+                        </Text>
+                      </View>
+                    </GlassPill>
                   </Pressable>
                 );
               })}
@@ -395,7 +423,6 @@ function ExploreScreen() {
 
             {error ? (
               <View style={styles.inlineState}>
-                <Text style={styles.errorEmoji}>🫠</Text>
                 <Text style={styles.errorText}>{error}</Text>
                 <Button title="Try again" variant="ghost" onPress={() => load(() => true)} />
               </View>
@@ -405,10 +432,8 @@ function ExploreScreen() {
               </View>
             ) : events.length === 0 ? (
               <View style={styles.inlineState}>
-                <Text style={styles.errorEmoji}>🫥</Text>
                 <Text style={styles.emptyText}>
-                  Nothing here yet - be the first to throw something public in{' '}
-                  {city || 'your city'}
+                  Nothing here yet — be the first to throw something public in {city || 'your city'}
                 </Text>
               </View>
             ) : (
@@ -424,26 +449,24 @@ function ExploreScreen() {
         {cityMenuOpen ? (
           <>
             <Pressable style={styles.menuBackdrop} onPress={closeCityMenu} />
-            <View style={styles.cityMenu}>
+            <MilkyCard radius={radius.milkySm} style={styles.cityMenu} contentStyle={{ padding: 0 }}>
               <View style={styles.citySearchRow}>
-                <Ionicons name="search" size={16} color={colors.muted} />
+                <Ionicons name="search" size={16} color={glass.textMuted} />
                 <TextInput
                   value={citySearch}
                   onChangeText={setCitySearch}
                   placeholder="Search any city…"
-                  placeholderTextColor={colors.muted}
+                  placeholderTextColor={glass.textFaint}
                   style={styles.citySearchInput}
                   autoFocus
                   autoCorrect={false}
                   returnKeyType="search"
                   onSubmitEditing={() => {
-                    // Only commit a real city — the top live result — and only
-                    // once results match the current query (not a stale prefix).
                     if (!citySearching && suggestions[0]) selectCity(suggestions[0]);
                   }}
                 />
               </View>
-              <ScrollView keyboardShouldPersistTaps="handled">
+              <ScrollView keyboardShouldPersistTaps="handled" style={{ maxHeight: 280 }}>
                 {query ? (
                   <>
                     {suggestions.map((option, index) => {
@@ -457,16 +480,11 @@ function ExploreScreen() {
                             index < suggestions.length - 1 && styles.menuItemBorder,
                           ]}
                         >
-                          <View style={styles.menuItemLeft}>
-                            <Ionicons name="location-outline" size={15} color={colors.muted} />
-                            <Text
-                              style={[styles.menuItemText, active && styles.menuItemTextActive]}
-                            >
-                              {option}
-                            </Text>
-                          </View>
+                          <Text style={[styles.menuItemText, active && styles.menuItemTextActive]}>
+                            {option}
+                          </Text>
                           {active ? (
-                            <Ionicons name="checkmark" size={16} color={colors.accent} />
+                            <Ionicons name="checkmark" size={16} color={colors.text} />
                           ) : null}
                         </Pressable>
                       );
@@ -476,9 +494,7 @@ function ExploreScreen() {
                         <ActivityIndicator size="small" color={colors.accent} />
                       </View>
                     ) : suggestions.length === 0 && query.length >= 2 ? (
-                      <Text style={styles.citySearchEmpty}>
-                        No city by that name - check the spelling
-                      </Text>
+                      <Text style={styles.citySearchEmpty}>No city by that name</Text>
                     ) : null}
                   </>
                 ) : (
@@ -487,13 +503,7 @@ function ExploreScreen() {
                       onPress={onMyLocationPress}
                       style={[styles.locationRow, styles.menuItemBorder]}
                     >
-                      <View style={styles.locationIcon}>
-                        {locating ? (
-                          <ActivityIndicator size="small" color={colors.accent} />
-                        ) : (
-                          <Ionicons name="navigate" size={18} color={colors.text} />
-                        )}
-                      </View>
+                      <Ionicons name="navigate-outline" size={18} color={colors.text} />
                       <View style={styles.locationTextWrap}>
                         <Text style={styles.menuItemText}>My Location</Text>
                         <Text style={styles.locationSubtitle} numberOfLines={1}>
@@ -505,53 +515,28 @@ function ExploreScreen() {
                       onPress={() => selectCity('')}
                       style={[styles.menuItem, recentCities.length > 0 && styles.menuItemBorder]}
                     >
-                      <View style={styles.menuItemLeft}>
-                        <Ionicons name="earth-outline" size={15} color={colors.muted} />
-                        <Text style={[styles.menuItemText, city === '' && styles.menuItemTextActive]}>
-                          All cities
-                        </Text>
-                      </View>
-                      {city === '' ? (
-                        <Ionicons name="checkmark" size={16} color={colors.accent} />
-                      ) : null}
+                      <Text style={[styles.menuItemText, city === '' && styles.menuItemTextActive]}>
+                        All cities
+                      </Text>
                     </Pressable>
-                    {recentCities.length > 0 ? (
-                      <>
-                        <Text style={styles.recentHeader}>Recent locations</Text>
-                        {recentCities.map((option, index) => {
-                          const active = option === city;
-                          return (
-                            <Pressable
-                              key={option}
-                              onPress={() => selectCity(option)}
-                              style={[
-                                styles.menuItem,
-                                index < recentCities.length - 1 && styles.menuItemBorder,
-                              ]}
-                            >
-                              <View style={styles.menuItemLeft}>
-                                <Ionicons name="time-outline" size={15} color={colors.muted} />
-                                <Text
-                                  style={[
-                                    styles.menuItemText,
-                                    active && styles.menuItemTextActive,
-                                  ]}
-                                >
-                                  {option}
-                                </Text>
-                              </View>
-                              {active ? (
-                                <Ionicons name="checkmark" size={16} color={colors.accent} />
-                              ) : null}
-                            </Pressable>
-                          );
-                        })}
-                      </>
-                    ) : null}
+                    {recentCities.map((option, index) => (
+                      <Pressable
+                        key={option}
+                        onPress={() => selectCity(option)}
+                        style={[
+                          styles.menuItem,
+                          index < recentCities.length - 1 && styles.menuItemBorder,
+                        ]}
+                      >
+                        <Text style={[styles.menuItemText, option === city && styles.menuItemTextActive]}>
+                          {option}
+                        </Text>
+                      </Pressable>
+                    ))}
                   </>
                 )}
               </ScrollView>
-            </View>
+            </MilkyCard>
           </>
         ) : null}
       </View>
@@ -560,10 +545,7 @@ function ExploreScreen() {
 }
 
 const styles = StyleSheet.create({
-  safe: {
-    flex: 1,
-    backgroundColor: 'transparent',
-  },
+  safe: { flex: 1, backgroundColor: 'transparent' },
   center: {
     flex: 1,
     alignItems: 'center',
@@ -571,90 +553,227 @@ const styles = StyleSheet.create({
     gap: spacing.md,
     padding: spacing.lg,
   },
-  errorEmoji: {
-    fontSize: 44,
+  topBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: spacing.md,
+    paddingTop: spacing.sm,
+    paddingBottom: spacing.md,
+  },
+  iconBtn: {
+    width: 36,
+    height: 36,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  screenTitle: {
+    ...thinLabel(13),
+    color: glass.textMuted,
+    flex: 1,
+    textAlign: 'center',
+  },
+  cityPill: {
+    backgroundColor: glass.fillLite,
+    borderWidth: 1,
+    borderColor: glass.borderSoft,
+    borderRadius: radius.pill,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    maxWidth: 110,
+  },
+  cityPillText: {
+    ...thinLabel(12),
+    color: glass.text,
+    fontStyle: 'normal',
+  },
+  content: {
+    paddingHorizontal: spacing.md,
+    paddingBottom: spacing.xl * 3,
+    gap: spacing.md,
+  },
+  heroCard: {
+    paddingTop: 22,
+    paddingBottom: 18,
+    gap: 4,
+  },
+  heroTop: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    marginBottom: 4,
+  },
+  heroLeft: { gap: 2 },
+  heroLabel: {
+    ...thinLabel(12),
+    color: glass.textMuted,
+  },
+  heroNumberRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-end',
+    gap: 6,
+  },
+  heroNumber: {
+    ...thinDisplay(72),
+    color: glass.text,
+    lineHeight: 68,
+  },
+  heroUnit: {
+    ...thinLabel(14),
+    color: glass.textMuted,
+    marginBottom: 10,
+  },
+  heroIndicators: { gap: 8, alignItems: 'flex-end' },
+  indicatorChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: 'rgba(255,255,255,0.08)',
+    borderRadius: radius.pill,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderWidth: 1,
+    borderColor: glass.borderSoft,
+  },
+  indicatorNum: {
+    ...thinLabel(11),
+    color: glass.text,
+    fontStyle: 'normal',
+  },
+  gaugeLabels: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    paddingHorizontal: 28,
+    marginTop: -6,
+  },
+  gaugeLabel: {
+    ...thinLabel(11),
+    color: glass.textFaint,
+  },
+  insightBlock: {
+    marginTop: spacing.md,
+    gap: 6,
+    paddingTop: spacing.sm,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: glass.borderSoft,
+  },
+  insightTitle: {
+    ...thinLabel(14),
+    color: glass.text,
+    fontStyle: 'italic',
+  },
+  insightBody: {
+    ...thinLabel(12),
+    color: glass.textMuted,
+    lineHeight: 18,
+  },
+  twinRow: {
+    flexDirection: 'row',
+    gap: spacing.sm,
+  },
+  twinCard: { flex: 1 },
+  twinInner: {
+    minHeight: 130,
+    justifyContent: 'space-between',
+    paddingVertical: 16,
+  },
+  twinLabel: {
+    ...thinLabel(12),
+    color: glass.textMuted,
+  },
+  twinValue: {
+    ...thinDisplay(42),
+    color: glass.text,
+  },
+  twinUnit: {
+    ...thinLabel(11),
+    color: glass.textFaint,
+    marginTop: -4,
+  },
+  donePill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    alignSelf: 'flex-start',
+    backgroundColor: '#FFFFFF',
+    borderRadius: radius.pill,
+    paddingHorizontal: 12,
+    paddingVertical: 7,
+  },
+  doneText: {
+    ...uiText(11, '700'),
+    color: '#0A0A0A',
+    letterSpacing: 0.6,
+  },
+  chipsRow: {
+    flexDirection: 'row',
+    gap: spacing.sm,
+    paddingVertical: spacing.xs,
+  },
+  chipPill: { paddingHorizontal: 12, paddingVertical: 7 },
+  chipInner: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  chipLabel: {
+    ...thinLabel(12),
+    color: glass.textMuted,
+    fontStyle: 'normal',
+  },
+  chipLabelActive: { color: glass.text },
+  inlineState: {
+    alignItems: 'center',
+    gap: spacing.md,
+    padding: spacing.xl,
+  },
+  emptyText: {
+    ...thinLabel(14),
+    color: glass.textMuted,
+    textAlign: 'center',
   },
   errorText: {
-    ...uiText(16),
+    ...uiText(15),
     color: colors.text,
     textAlign: 'center',
   },
-  headerRow: {
+  grid: {
     flexDirection: 'row',
-    alignItems: 'flex-end',
+    flexWrap: 'wrap',
     justifyContent: 'space-between',
-    paddingHorizontal: spacing.md,
-    // Generous, Partiful-style breathing room around the wordmark.
-    paddingTop: spacing.lg,
-    paddingBottom: spacing.md,
-    gap: spacing.sm,
+    rowGap: spacing.md,
   },
-  headerTitleWrap: {
-    gap: spacing.xs,
-  },
-  headerWordmark: {
-    // The cropped artwork is 940x440 — keep its ratio at header scale.
-    width: 118,
-    height: 55,
-  },
-  cityPill: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.xs,
-    backgroundColor: colors.card,
-    borderWidth: 1,
-    borderColor: colors.cardBorder,
-    borderRadius: radius.pill,
-    paddingHorizontal: spacing.md,
-    paddingVertical: 8,
-    maxWidth: 200,
-    ...shadow.card,
-  },
-  cityPillText: {
-    ...uiText(14, '600'),
-    color: colors.text,
-    flexShrink: 1,
-  },
+  card: { width: '48%' },
+  cardInner: { padding: 0, overflow: 'hidden' },
+  poster: { height: 140 },
+  cardBody: { padding: spacing.sm, paddingHorizontal: spacing.md, gap: 4 },
+  friendStrip: { ...thinLabel(11), color: glass.textFaint, fontStyle: 'normal' },
+  friendName: { color: glass.text, fontStyle: 'italic' },
+  cardTitle: { ...thinLabel(14), color: glass.text, fontStyle: 'normal' },
+  cardMeta: { ...thinLabel(11), color: glass.textMuted, fontStyle: 'normal' },
+  facesRow: { flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 2 },
+  faceWrap: { borderRadius: 999, borderWidth: 1.5, borderColor: 'rgba(0,0,0,0.4)' },
+  facesLabel: { ...thinLabel(10), color: glass.textFaint, fontStyle: 'normal' },
   menuBackdrop: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
+    ...StyleSheet.absoluteFillObject,
     zIndex: 15,
   },
   cityMenu: {
     position: 'absolute',
-    top: 78,
+    top: 64,
     right: spacing.md,
     left: spacing.md,
-    maxHeight: 340,
-    backgroundColor: colors.card,
-    borderWidth: 1,
-    borderColor: colors.cardBorder,
-    borderRadius: radius.md,
-    overflow: 'hidden',
     zIndex: 20,
-    ...shadow.float,
   },
   citySearchRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing.sm,
     paddingHorizontal: spacing.md,
-    paddingVertical: 10,
-    borderBottomWidth: 1,
-    borderColor: colors.cardBorder,
-    backgroundColor: colors.inputBg,
+    paddingVertical: 12,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: glass.borderSoft,
   },
   citySearchInput: {
     flex: 1,
-    color: colors.text,
-    // 16px avoids mobile Safari's auto-zoom when this autoFocus input opens.
+    color: glass.text,
     fontSize: 16,
-    // Give the line box its full height (+ a hair of headroom) so the
-    // placeholder isn't clipped top/bottom — RN-Web collapses a single-line
-    // input with paddingVertical:0 and no lineHeight down onto its text.
     lineHeight: 22,
     minHeight: 24,
     paddingVertical: 0,
@@ -663,28 +782,19 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    gap: spacing.sm,
     paddingHorizontal: spacing.md,
     paddingVertical: 12,
   },
   menuItemBorder: {
-    borderBottomWidth: 1,
-    borderBottomColor: colors.cardBorder,
-  },
-  menuItemLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.sm,
-    flexShrink: 1,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: glass.borderSoft,
   },
   menuItemText: {
-    ...uiText(15),
-    color: colors.text,
+    ...thinLabel(14),
+    color: glass.text,
+    fontStyle: 'normal',
   },
-  menuItemTextActive: {
-    ...uiText(15, '700'),
-    color: colors.accent,
-  },
+  menuItemTextActive: { color: glass.text, fontStyle: 'italic' },
   locationRow: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -692,128 +802,17 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.md,
     paddingVertical: 12,
   },
-  locationIcon: {
-    width: 28,
-    height: 28,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  locationTextWrap: {
-    flex: 1,
-    gap: 2,
-  },
+  locationTextWrap: { flex: 1, gap: 2 },
   locationSubtitle: {
-    ...uiText(13),
-    color: colors.muted,
+    ...thinLabel(12),
+    color: glass.textFaint,
+    fontStyle: 'normal',
   },
-  recentHeader: {
-    ...kicker(colors.muted),
-    paddingHorizontal: spacing.md,
-    paddingTop: spacing.md,
-    paddingBottom: spacing.xs,
-  },
-  citySearchState: {
-    alignItems: 'center',
-    paddingVertical: spacing.md,
-  },
+  citySearchState: { alignItems: 'center', paddingVertical: spacing.md },
   citySearchEmpty: {
-    ...uiText(14),
-    color: colors.muted,
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.md,
-  },
-  content: {
-    paddingBottom: spacing.xl * 2,
-  },
-  chipsRow: {
-    flexDirection: 'row',
-    gap: spacing.sm,
-    paddingHorizontal: spacing.md,
-    paddingTop: spacing.sm,
-    // Clear separation between the chip row and the event grid below.
-    paddingBottom: spacing.lg,
-  },
-  chip: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.xs,
-    backgroundColor: colors.card,
-    borderWidth: 1,
-    borderColor: colors.cardBorder,
-    borderRadius: radius.pill,
-    paddingHorizontal: spacing.md,
-    paddingVertical: 8,
-  },
-  chipActive: {
-    backgroundColor: colors.ink,
-    borderColor: colors.ink,
-  },
-  chipLabel: {
-    ...uiText(14, '600'),
-    color: colors.text,
-  },
-  chipLabelActive: {
-    // Sits on the white active pill (colors.ink) — needs dark ink to stay legible.
-    color: colors.onInk,
-  },
-  inlineState: {
-    alignItems: 'center',
-    gap: spacing.md,
-    padding: spacing.xl,
-  },
-  emptyText: {
-    ...uiText(15),
-    color: colors.muted,
-    textAlign: 'center',
-  },
-  grid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    justifyContent: 'space-between',
-    rowGap: spacing.md,
-    paddingHorizontal: spacing.md,
-  },
-  card: {
-    width: '48%',
-  },
-  poster: {
-    height: 240,
-  },
-  cardBody: {
-    padding: spacing.sm,
-    paddingHorizontal: spacing.md,
-    gap: spacing.xs,
-  },
-  friendStrip: {
-    ...uiText(12),
-    color: colors.muted,
-  },
-  friendName: {
-    color: colors.text,
-    fontWeight: '700',
-  },
-  cardTitle: {
-    ...uiText(15, '700'),
-    color: colors.text,
-  },
-  cardMeta: {
-    ...uiText(13, '600'),
-    color: colors.muted,
-  },
-  facesRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.xs,
-    marginTop: 2,
-  },
-  faceWrap: {
-    borderRadius: 999,
-    borderWidth: 1.5,
-    borderColor: '#121212',
-  },
-  facesLabel: {
-    ...uiText(12, '600'),
-    color: colors.muted,
-    marginLeft: 2,
+    ...thinLabel(13),
+    color: glass.textMuted,
+    padding: spacing.md,
+    fontStyle: 'normal',
   },
 });

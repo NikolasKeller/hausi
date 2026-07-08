@@ -113,7 +113,9 @@ export default function WelcomeScreen() {
         <View style={{ flex: 1 }} />
 
         <Animated.View style={[styles.brand, { opacity: intro }]}>
-          <Text style={styles.tagline}>Parties worth showing up for</Text>
+          <MilkyCard contentStyle={styles.taglineCard}>
+            <Text style={styles.tagline}>Parties worth showing up for</Text>
+          </MilkyCard>
         </Animated.View>
 
         <Button title="Get started" variant="primary" onPress={() => router.push('/phone')} />

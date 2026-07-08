@@ -3,6 +3,7 @@ import { PlayfairDisplay_700Bold } from '@expo-google-fonts/playfair-display';
 import { Pacifico_400Regular } from '@expo-google-fonts/pacifico';
 import { Bungee_400Regular } from '@expo-google-fonts/bungee';
 import {
+  Inter_300Light,
   Inter_400Regular,
   Inter_500Medium,
   Inter_600SemiBold,
@@ -24,6 +25,7 @@ const MIN_UI_SIZE = 12;
 
 export const FONTS_TO_LOAD = {
   'Reglo-Bold': require('../assets/fonts/Reglo-Bold.otf'),
+  Inter_300Light,
   Inter_400Regular,
   Inter_500Medium,
   Inter_600SemiBold,
@@ -71,6 +73,42 @@ export function display(
     lineHeight: Math.round(size * lh),
     includeFontPadding: false,
   } as TextStyle;
+}
+
+// Thin italic display voice — the reference dashboards' editorial numbers.
+export function thinDisplay(
+  rawSize: number,
+  opts?: { lineHeight?: number; tracking?: number; italic?: boolean }
+): TextStyle {
+  const size = Math.round(rawSize);
+  const tracking = opts?.tracking ?? -0.03;
+  const lh = opts?.lineHeight ?? 0.92;
+  return {
+    fontFamily: 'Inter_300Light',
+    fontWeight: 'normal',
+    fontStyle: opts?.italic === false ? 'normal' : 'italic',
+    fontSize: size,
+    letterSpacing: Math.round(size * tracking * 100) / 100,
+    lineHeight: Math.round(size * lh),
+    includeFontPadding: false,
+  } as TextStyle;
+}
+
+// Small italic label — "Match Vibe Index", time markers on the gauge arc, etc.
+export function thinLabel(
+  rawSize: number,
+  opts?: { tracking?: number; uppercase?: boolean }
+): TextStyle {
+  const size = Math.max(Math.round(rawSize), MIN_UI_SIZE);
+  return {
+    fontFamily: 'Inter_300Light',
+    fontWeight: 'normal',
+    fontStyle: 'italic',
+    fontSize: size,
+    letterSpacing: opts?.tracking ?? 0.4,
+    textTransform: opts?.uppercase ? 'uppercase' : 'none',
+    lineHeight: Math.round(size * 1.35),
+  };
 }
 
 // Interface text — Inter at the requested weight.

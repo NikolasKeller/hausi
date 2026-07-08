@@ -17,13 +17,14 @@ import { api, mediaUrl } from '../../lib/api';
 import { useAuth } from '../../lib/auth';
 import { confirmDialog } from '../../lib/dialogs';
 import { shareText } from '../../lib/share';
-import { colors, radius, shadow, spacing } from '../../lib/theme';
-import { display, uiText } from '../../lib/fonts';
+import { colors, glass, radius, spacing } from '../../lib/theme';
+import { thinDisplay, thinLabel, uiText } from '../../lib/fonts';
 import { Avatar } from '../../components/Avatar';
 import { Button } from '../../components/ui';
 import { EventCard } from '../../components/EventCard';
 import { SettingsSheet } from '../../components/SettingsSheet';
 import { withScreenBackground } from '../../components/ScreenBackground';
+import { MilkyCard } from '../../components/MilkyCard';
 
 // No bloom here — the profile sits on the plain canvas.
 export default withScreenBackground(ProfileScreen, { bloom: false });
@@ -164,18 +165,17 @@ function ProfileScreen() {
 
         {/* Name + stats sit on the solid dark canvas, below where the photo has
             already faded out. Pulled up a touch to stay close to the photo. */}
-        <View style={styles.heroContent}>
+        <MilkyCard radius={radius.milkyLg} style={styles.profileCard} contentStyle={styles.profileCardInner}>
+          <Text style={styles.profileKicker}>Your Connection Profile</Text>
           <Text style={styles.bigName} numberOfLines={2}>
             {profile.name}
           </Text>
           <View style={styles.joinedPill}>
-            <Ionicons name="sparkles" size={13} color={colors.accent} />
+            <Ionicons name="heart-outline" size={13} color={glass.text} />
             <Text style={styles.joinedText}>joined {joinedYear}</Text>
           </View>
-        </View>
+        </MilkyCard>
 
-        {/* Events with a bought ticket — tapping "Buy ticket" on an event
-            files it here (and on the calendar). */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>My events</Text>
           {tickets.length === 0 ? (
@@ -269,32 +269,39 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  heroContent: {
-    alignItems: 'center',
-    gap: spacing.md,
-    paddingHorizontal: spacing.lg,
-    paddingBottom: spacing.md,
+  profileCard: {
+    marginHorizontal: spacing.md,
     marginTop: -spacing.huge,
   },
+  profileCardInner: {
+    alignItems: 'center',
+    gap: spacing.sm,
+    paddingVertical: spacing.lg,
+  },
+  profileKicker: {
+    ...thinLabel(12),
+    color: glass.textMuted,
+  },
   bigName: {
-    ...display(44),
-    color: colors.text,
+    ...thinDisplay(40),
+    color: glass.text,
     textAlign: 'center',
   },
   joinedPill: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
-    backgroundColor: 'rgba(255,255,255,0.08)',
+    backgroundColor: glass.fillLite,
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.14)',
+    borderColor: glass.borderSoft,
     borderRadius: radius.pill,
     paddingHorizontal: spacing.md,
     paddingVertical: 6,
   },
   joinedText: {
-    ...uiText(13, '600'),
-    color: colors.text,
+    ...thinLabel(13),
+    color: glass.text,
+    fontStyle: 'normal',
   },
   section: {
     marginTop: spacing.xl,
@@ -302,12 +309,13 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.md,
   },
   sectionTitle: {
-    ...display(24),
-    color: colors.text,
+    ...thinDisplay(24),
+    color: glass.text,
   },
   ticketsEmpty: {
-    ...uiText(14),
-    color: colors.muted,
+    ...thinLabel(14),
+    color: glass.textMuted,
+    fontStyle: 'normal',
   },
   ticketList: {
     gap: spacing.md,

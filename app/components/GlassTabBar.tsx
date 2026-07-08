@@ -8,12 +8,12 @@ import {
   Text,
   View,
 } from 'react-native';
+import { BlurView } from 'expo-blur';
+import { LinearGradient } from 'expo-linear-gradient';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { colors, radius, spacing } from '../lib/theme';
-import { uiText } from '../lib/fonts';
+import { colors, glass, radius, shadow, spacing } from '../lib/theme';
+import { thinLabel } from '../lib/fonts';
 
-// Minimal shape of the props expo-router / react-navigation hands a custom
-// tabBar. Typed loosely to avoid a hard dependency on the navigator's types.
 type TabBarProps = {
   state: { index: number; routes: { key: string; name: string }[] };
   descriptors: Record<
@@ -34,18 +34,13 @@ type TabBarProps = {
 
 const SPRING = { useNativeDriver: true, friction: 9, tension: 90 };
 
-// A rounded, floating tab bar with a translucent "bubble" that glides to the
-// active tab — and, while dragging horizontally, follows the finger, clamped
-// to the bar so it can never slip past the edges.
+// Floating milky-glass pill nav — the reference's frosted bottom bar with an
+// active tab highlight that glides (and follows horizontal drags).
 export function GlassTabBar({ state, descriptors, navigation }: TabBarProps) {
   const insets = useSafeAreaInsets();
 
-  // Only real destinations live in the bar: "index" is just the hidden
-  // "/" → /explore redirect, never a tab.
   const barRoutes = state.routes.filter(
-    (r) =>
-      r.name !== 'index' &&
-      descriptors[r.key]?.options?.href !== null
+    (r) => r.name !== 'index' && descriptors[r.key]?.options?.href !== null
   );
   const count = barRoutes.length;
 
@@ -60,13 +55,9 @@ export function GlassTabBar({ state, descriptors, navigation }: TabBarProps) {
   const activeKey = state.routes[state.index]?.key;
   const activeIndex = Math.max(0, barRoutes.findIndex((r) => r.key === activeKey));
 
-  // Latest layout/nav values for the PanResponder, which is created once and
-  // would otherwise close over stale values.
   const latest = useRef({ tabWidth, rowWidth, count, barRoutes, activeIndex, navigation });
   latest.current = { tabWidth, rowWidth, count, barRoutes, activeIndex, navigation };
 
-  // Settle the bubble under the active tab whenever it changes (unless a drag
-  // is currently driving it).
   useEffect(() => {
     if (dragging.current || !tabWidth) return;
     Animated.spring(translateX, { ...SPRING, toValue: activeIndex * tabWidth }).start();
@@ -74,7 +65,6 @@ export function GlassTabBar({ state, descriptors, navigation }: TabBarProps) {
 
   const pan = useRef(
     PanResponder.create({
-      // Let taps through to the buttons; only claim clearly-horizontal drags.
       onMoveShouldSetPanResponder: (_e, g) =>
         Math.abs(g.dx) > 6 && Math.abs(g.dx) > Math.abs(g.dy),
       onPanResponderGrant: () => {
@@ -83,7 +73,7 @@ export function GlassTabBar({ state, descriptors, navigation }: TabBarProps) {
       onPanResponderMove: (_e, g) => {
         const { tabWidth: tw, rowWidth: rw } = latest.current;
         if (!tw) return;
-        const x = g.moveX - rowLeft.current; // finger position within the bar
+        const x = g.moveX - rowLeft.current;
         const center = Math.max(tw / 2, Math.min(x, rw - tw / 2));
         translateX.setValue(center - tw / 2);
       },
@@ -115,86 +105,107 @@ export function GlassTabBar({ state, descriptors, navigation }: TabBarProps) {
 
   return (
     <View style={[styles.wrap, { paddingBottom: insets.bottom + spacing.sm }]}>
-      <View style={styles.bar}>
-        <View
-          ref={rowRef}
-          style={styles.row}
-          onLayout={onRowLayout}
-          {...pan.panHandlers}
-        >
-          {tabWidth > 0 ? (
-            <Animated.View
-              pointerEvents="none"
-              style={[
-                styles.bubble,
-                { width: tabWidth, transform: [{ translateX }] },
-              ]}
-            />
-          ) : null}
+      <View style={[styles.barOuter, shadow.milky]}>
+        <BlurView intensity={glass.blurNav} tint="dark" style={styles.barBlur}>
+          <View pointerEvents="none" style={[StyleSheet.absoluteFill, styles.barFill]} />
+          <LinearGradient
+            pointerEvents="none"
+            colors={['rgba(255,255,255,0.20)', 'rgba(255,255,255,0.06)', 'rgba(255,255,255,0)']}
+            locations={[0, 0.4, 1]}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 0, y: 1 }}
+            style={StyleSheet.absoluteFill}
+          />
+          <View
+            ref={rowRef}
+            style={styles.row}
+            onLayout={onRowLayout}
+            {...pan.panHandlers}
+          >
+            {tabWidth > 0 ? (
+              <Animated.View
+                pointerEvents="none"
+                style={[
+                  styles.bubble,
+                  { width: tabWidth - 8, transform: [{ translateX }] },
+                ]}
+              />
+            ) : null}
 
-          {barRoutes.map((route) => {
-            const { options } = descriptors[route.key];
-            const focused = route.key === activeKey;
-            const color = focused ? colors.ink : colors.muted;
-            const label = options.title ?? route.name;
+            {barRoutes.map((route) => {
+              const { options } = descriptors[route.key];
+              const focused = route.key === activeKey;
+              const color = focused ? colors.text : glass.textMuted;
+              const label = options.title ?? route.name;
 
-            const onPress = () => {
-              const event = navigation.emit({
-                type: 'tabPress',
-                target: route.key,
-                canPreventDefault: true,
-              });
-              if (!focused && !event.defaultPrevented) navigation.navigate(route.name);
-            };
+              const onPress = () => {
+                const event = navigation.emit({
+                  type: 'tabPress',
+                  target: route.key,
+                  canPreventDefault: true,
+                });
+                if (!focused && !event.defaultPrevented) navigation.navigate(route.name);
+              };
 
-            return (
-              <Pressable key={route.key} onPress={onPress} style={styles.tab}>
-                {options.tabBarIcon?.({ color, focused, size: 22 })}
-                <Text style={[styles.label, { color }]} numberOfLines={1}>
-                  {label}
-                </Text>
-              </Pressable>
-            );
-          })}
-        </View>
+              return (
+                <Pressable key={route.key} onPress={onPress} style={styles.tab}>
+                  {options.tabBarIcon?.({ color, focused, size: 22 })}
+                  <Text style={[styles.label, { color }]} numberOfLines={1}>
+                    {label}
+                  </Text>
+                </Pressable>
+              );
+            })}
+          </View>
+        </BlurView>
       </View>
     </View>
   );
 }
 
-// Flat, edge-to-edge dark bar (the approved "obsidian" direction): near-black
-// fill, a single silver hairline on top, no floating pill. The bubble survives
-// as a faint silver wash gliding under the active tab.
 const styles = StyleSheet.create({
   wrap: {
-    paddingHorizontal: 0,
-    backgroundColor: 'rgba(8,8,8,0.98)',
-    borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: 'rgba(255,255,255,0.14)',
+    paddingHorizontal: spacing.lg,
+    backgroundColor: 'transparent',
   },
-  bar: {
-    paddingTop: 6,
-    paddingHorizontal: spacing.md,
+  barOuter: {
+    borderRadius: radius.pill,
+    overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: glass.border,
+  },
+  barBlur: {
+    borderRadius: radius.pill,
+    overflow: 'hidden',
+  },
+  barFill: {
+    backgroundColor: glass.fill,
   },
   row: {
     flexDirection: 'row',
     position: 'relative',
+    padding: 5,
   },
   bubble: {
     position: 'absolute',
-    top: 0,
-    bottom: 0,
-    borderRadius: radius.md,
-    backgroundColor: 'rgba(255,255,255,0.06)',
+    top: 5,
+    bottom: 5,
+    left: 4,
+    borderRadius: radius.pill,
+    backgroundColor: 'rgba(255,255,255,0.16)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.12)',
   },
   tab: {
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 1,
-    paddingVertical: 5,
+    gap: 2,
+    paddingVertical: 6,
   },
   label: {
-    ...uiText(10, '600'),
+    ...thinLabel(10),
+    fontStyle: 'normal',
+    letterSpacing: 0.2,
   },
 });
