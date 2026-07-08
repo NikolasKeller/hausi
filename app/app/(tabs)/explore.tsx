@@ -560,10 +560,12 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   headerLogo: {
-    // Bigger, more present than the old text header; width follows the
-    // wordmark's aspect ratio (892×694 ≈ 1.285) so it stays crisp.
-    height: 48,
-    width: 48 * 1.285,
+    // A touch bigger; width follows the wordmark's aspect ratio (892×694 ≈
+    // 1.285). marginTop nudges it down so its mid-line sits level with the
+    // city pill (the wordmark's ink is top-heavy, so it otherwise reads high).
+    height: 54,
+    width: 54 * 1.285,
+    marginTop: 8,
   },
   cityPill: {
     flexDirection: 'row',
