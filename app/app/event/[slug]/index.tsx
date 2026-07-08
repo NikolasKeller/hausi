@@ -36,10 +36,10 @@ import { Button } from '../../../components/ui';
 import { formatEventDate, formatEventTime } from '../../../components/EventCard';
 
 // The buy-ticket link comes from the event's ticketUrl field (the organiser's
-// real paid-ticket page). Older scraped events instead carried the link as the
-// last URL in the description; for those we fall back to extracting it and
-// stripping it from the displayed copy so the button still works and no raw URL
-// shows.
+// real paid-ticket page — used by both the Buy button and the purchase agent).
+// Older scraped events instead carried the link as the last URL in the
+// description; for those we fall back to extracting it and stripping it from
+// the displayed copy so the button still works and no raw URL shows.
 function ticketInfo(description: string, ticketUrl?: string): { url: string | null; text: string } {
   if (ticketUrl) return { url: ticketUrl, text: description };
   const matches = description.match(/https:\/\/[^\s]+/g);

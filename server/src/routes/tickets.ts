@@ -55,10 +55,14 @@ const purchaseSchema = z.object({
   payment: paymentSchema,
 });
 
-// The event's real ticket/source link: the LAST https URL in the description
-// (same convention as the app's Buy-ticket button).
-function ticketUrl(description: string): string | null {
-  const matches = description.match(/https:\/\/[^\s]+/g);
+// The event's real ticket/source link. Prefers the dedicated `ticketUrl`
+// column (introduced by the event pipeline, #108) when present; otherwise
+// falls back to the old convention of the LAST https URL in the description.
+// Read defensively so this works whether or not the column has shipped yet.
+function ticketUrl(event: Event): string | null {
+  const explicit = (event as { ticketUrl?: string | null }).ticketUrl;
+  if (typeof explicit === 'string' && /^https?:\/\//.test(explicit)) return explicit;
+  const matches = event.description.match(/https:\/\/[^\s]+/g);
   return matches?.[matches.length - 1] ?? null;
 }
 
@@ -89,7 +93,7 @@ const SELF_ORIGIN = `http://127.0.0.1:${Number(process.env.PORT ?? 3001)}`;
 // For 'web' the checkout URL is the event's real ticket link; for 'demo' it's
 // our own test shop.
 function checkoutUrlFor(provider: 'demo' | 'web', event: Event, jobId: string): string | null {
-  if (provider === 'web') return ticketUrl(event.description);
+  if (provider === 'web') return ticketUrl(event);
   return `${SELF_ORIGIN}/demo-checkout/${event.id}?job=${jobId}`;
 }
 
@@ -127,7 +131,7 @@ async function runAvailabilityJob(jobId: string, event: Event, provider: 'demo' 
 async function runPurchaseJob(jobId: string, event: Event, provider: 'demo' | 'web', wallet: AgentWallet) {
   try {
     if (provider === 'web') {
-      const url = ticketUrl(event.description);
+      const url = ticketUrl(event);
       if (!url) {
         await db.ticketJob.update({ where: { id: jobId }, data: { status: 'failed', error: 'This event has no ticket link.' } });
         return;
