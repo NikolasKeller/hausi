@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import {
+  Image,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -17,14 +18,16 @@ import { Glass, GlassPill } from './glass';
 import { colors, radius, spacing } from '../lib/theme';
 import { uiText } from '../lib/fonts';
 
+const PAPER = require('../assets/paper-texture.png');
+
 // ── ThemeBackground ───────────────────────────────────────────────────────────
-// The event page surface. Renders the event's SELECTED theme as the full-page
-// background — a rich, all-dark multi-stop gradient from `coverFor(theme)`. On
-// top we keep a subtle bottom-deepening scrim (so content stays legible) plus
-// our signature warm orange bloom at the top edge. An optional effect overlay
-// still drifts across. This is intentionally separate from the square uploaded
-// cover photo, which is rendered elsewhere via `CoverGradient`.
+// The event page / editor surface. Every event now sits on the app's paper
+// design background (never the old coloured random gradients), so the whole
+// product reads as one continuous chrome-on-paper sheet. An optional effect
+// overlay still drifts across. `theme` is accepted for call-site compatibility
+// but no longer tints the background.
 export function ThemeBackground({
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   theme,
   effect,
   children,
@@ -36,33 +39,9 @@ export function ThemeBackground({
   style?: StyleProp<ViewStyle>;
 }) {
   const { height } = useWindowDimensions();
-  const cover = coverFor(theme ?? 'noir');
   return (
     <View style={[styles.fill, { backgroundColor: colors.bg }, style]}>
-      {/* The theme itself: full-screen, opaque, diagonal multi-stop gradient. */}
-      <LinearGradient
-        colors={cover.colors}
-        start={{ x: 0.15, y: 0 }}
-        end={{ x: 0.85, y: 1 }}
-        style={StyleSheet.absoluteFill}
-        pointerEvents="none"
-      />
-      {/* Deepen the bottom so foreground glass + text stay readable on any theme. */}
-      <LinearGradient
-        colors={['rgba(0,0,0,0)', 'rgba(0,0,0,0.28)', 'rgba(0,0,0,0.58)']}
-        start={{ x: 0.5, y: 0.35 }}
-        end={{ x: 0.5, y: 1 }}
-        style={StyleSheet.absoluteFill}
-        pointerEvents="none"
-      />
-      {/* Soft neutral sheen fading out toward the middle. */}
-      <LinearGradient
-        colors={['rgba(255,255,255,0.10)', 'rgba(255,255,255,0)']}
-        start={{ x: 0.5, y: 0 }}
-        end={{ x: 0.5, y: 0.42 }}
-        style={StyleSheet.absoluteFill}
-        pointerEvents="none"
-      />
+      <Image source={PAPER} style={StyleSheet.absoluteFill} resizeMode="cover" />
       {effect ? <EffectOverlay effect={effect} height={height} count={14} /> : null}
       {children}
     </View>

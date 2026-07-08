@@ -18,6 +18,7 @@ import { display, kicker, uiText } from '../../lib/fonts';
 import { colors, radius, shadow, spacing } from '../../lib/theme';
 import { COVERS } from '../../lib/covers';
 import { EventCard } from '../../components/EventCard';
+import { ChromeText } from '../../components/ChromeText';
 import { Button } from '../../components/ui';
 import { withScreenBackground } from '../../components/ScreenBackground';
 
@@ -213,9 +214,9 @@ function CalendarScreen() {
         <View style={styles.monthTitleWrap}>
           {/* Month name at one fixed size. When viewing another year, the year
               is appended so it stays visible without a purple eyebrow label. */}
-          <Text style={styles.monthTitle} numberOfLines={1}>
+          <ChromeText style={styles.monthTitle} numberOfLines={1}>
             {isViewingCurrentYear ? MONTHS[view.month] : `${MONTHS[view.month]} ${view.year}`}
-          </Text>
+          </ChromeText>
         </View>
         {mode === 'grid' ? (
           <View style={styles.chevrons}>

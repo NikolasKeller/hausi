@@ -1,67 +1,38 @@
 import React from 'react';
-import { Image, StyleSheet, Text, View, type ViewStyle } from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
-import { coverFor } from '../lib/covers';
+import { Image, StyleSheet, View, type ViewStyle } from 'react-native';
 import { mediaUrl } from '../lib/api';
 
-// Deterministic scatter pattern so covers look identical everywhere.
-const SCATTER: { top: string; left: string; size: number; rotate: string }[] = [
-  { top: '8%', left: '6%', size: 44, rotate: '-15deg' },
-  { top: '18%', left: '74%', size: 56, rotate: '12deg' },
-  { top: '46%', left: '14%', size: 36, rotate: '8deg' },
-  { top: '58%', left: '82%', size: 40, rotate: '-10deg' },
-  { top: '72%', left: '38%', size: 52, rotate: '18deg' },
-  { top: '30%', left: '44%', size: 32, rotate: '-6deg' },
-];
+// Every cover now sits on the app's paper design background. Real uploaded /
+// scraped cover photos still show their image; the "no image" case is the calm
+// paper stock (no more coloured random gradients). Title text on a paper cover
+// must be dark — callers pick the colour based on whether `image` is set.
+const PAPER = require('../assets/paper-texture.png');
 
 interface Props {
-  theme: string;
+  // Kept for call-site compatibility; the paper background ignores it.
+  theme?: string;
   style?: ViewStyle;
   children?: React.ReactNode;
+  // Kept for call-site compatibility (emoji scatter is gone).
   emojiOpacity?: number;
   // Optional uploaded cover photo (path like "/uploads/x.jpg" or full URL).
-  // When set, it replaces the emoji scatter; the gradient stays as a fallback
-  // background while the image loads.
   image?: string | null;
 }
 
-export function CoverGradient({ theme, style, children, emojiOpacity = 0.45, image }: Props) {
-  const cover = coverFor(theme);
+export function CoverGradient({ style, children, image }: Props) {
   const uri = mediaUrl(image);
   return (
-    <LinearGradient
-      colors={cover.colors}
-      start={{ x: 0, y: 0 }}
-      end={{ x: 1, y: 1 }}
-      style={[styles.base, style]}
-    >
+    <View style={[styles.base, style]}>
+      <Image source={PAPER} style={StyleSheet.absoluteFill} resizeMode="cover" />
       {uri ? (
         <>
           <Image source={{ uri }} style={StyleSheet.absoluteFill} resizeMode="cover" />
           {/* Scrim keeps overlaid title text legible on bright photos. */}
           <View style={[StyleSheet.absoluteFill, styles.scrim]} pointerEvents="none" />
         </>
-      ) : emojiOpacity > 0 ? (
-        <View style={StyleSheet.absoluteFill} pointerEvents="none">
-          {SCATTER.map((s, i) => (
-            <Text
-              key={i}
-              style={{
-                position: 'absolute',
-                top: s.top as `${number}%`,
-                left: s.left as `${number}%`,
-                fontSize: s.size,
-                opacity: emojiOpacity,
-                transform: [{ rotate: s.rotate }],
-              }}
-            >
-              {cover.emoji}
-            </Text>
-          ))}
-        </View>
       ) : null}
       {children}
-    </LinearGradient>
+    </View>
   );
 }
 

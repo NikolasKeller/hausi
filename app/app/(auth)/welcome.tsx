@@ -11,15 +11,15 @@ import {
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { LinearGradient } from 'expo-linear-gradient';
 import { Button } from '../../components/ui';
 import { useAuth } from '../../lib/auth';
 import { uiText } from '../../lib/fonts';
 import { colors, spacing } from '../../lib/theme';
 
-// The chrome "iykyk" artwork — a square render on a warm cream ground. The
-// screen fills with the same cream and feathers the artwork's edges into it.
-const WORDMARK = require('../../assets/wordmark-chrome.png');
+// The paper stock behind everything, and the chrome "iykyk" wordmark cut out
+// to transparency so it drops straight onto the texture with no seam.
+const PAPER = require('../../assets/paper-texture.png');
+const WORDMARK = require('../../assets/wordmark-chrome-cutout.png');
 
 // react-native-web has no native driver; silence its fallback warning.
 const useNativeDriver = Platform.OS !== 'web';
@@ -66,7 +66,11 @@ export default function WelcomeScreen() {
 
   return (
     <View style={styles.screen}>
-      {/* The artwork, centered and contained — never stretched. */}
+      {/* Full-bleed paper texture — the same sheet as the whole app. */}
+      <Image source={PAPER} style={StyleSheet.absoluteFill} resizeMode="cover" />
+
+      {/* The chrome wordmark, cut out to transparency so it sits directly on
+          the paper — no tile, no seam. Centered and contained. */}
       <Animated.View
         pointerEvents="none"
         style={[
@@ -78,7 +82,7 @@ export default function WelcomeScreen() {
               {
                 translateY: intro.interpolate({
                   inputRange: [0, 1],
-                  outputRange: [24, 0],
+                  outputRange: [16, 0],
                 }),
               },
             ],
@@ -87,21 +91,9 @@ export default function WelcomeScreen() {
       >
         <Image source={WORDMARK} style={styles.art} resizeMode="contain" />
       </Animated.View>
-      {/* Feather the square artwork's top/bottom edges into the canvas so its
-          slight vignette never shows a seam. */}
-      <LinearGradient
-        colors={[colors.bg, 'rgba(207,199,189,0)', 'rgba(207,199,189,0)', colors.bg]}
-        locations={[0, 0.3, 0.7, 1]}
-        style={StyleSheet.absoluteFill}
-        pointerEvents="none"
-      />
 
       <SafeAreaView style={styles.safe}>
         <View style={{ flex: 1 }} />
-
-        <Animated.View style={[styles.brand, { opacity: intro }]}>
-          <Text style={styles.tagline}>Parties worth showing up for</Text>
-        </Animated.View>
 
         <Button title="Get started" variant="primary" onPress={() => router.push('/phone')} />
 
@@ -125,8 +117,6 @@ export default function WelcomeScreen() {
 const styles = StyleSheet.create({
   screen: {
     flex: 1,
-    // Matches the artwork's cream ground so the square image melts into the
-    // full screen.
     backgroundColor: colors.bg,
     overflow: 'hidden',
   },
@@ -135,24 +125,15 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   art: {
-    width: '100%',
-    height: '80%',
+    width: '88%',
+    height: '55%',
+    // Nudge the wordmark up so it sits centered above the button.
+    marginBottom: '14%',
   },
   safe: {
     flex: 1,
     paddingHorizontal: spacing.lg,
     paddingBottom: spacing.lg,
-  },
-  brand: {
-    alignItems: 'center',
-    gap: spacing.md,
-    // Sits in the lower third, under the artwork's wordmark.
-    marginBottom: spacing.xl,
-  },
-  tagline: {
-    color: colors.muted,
-    ...uiText(16, '500'),
-    textAlign: 'center',
   },
   devWrap: {
     alignItems: 'center',

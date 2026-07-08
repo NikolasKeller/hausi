@@ -1,13 +1,17 @@
 import React from 'react';
-import { StyleSheet, View } from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
+import { Image, StyleSheet, View } from 'react-native';
 import { colors } from '../lib/theme';
 
-// The app-wide backdrop: the warm cream canvas with a very subtle bright sheen
-// falling from the top (the chrome-on-cream daylight look). `bloom` can be
-// turned off for screens that want the perfectly flat canvas (e.g. Profile).
+// The paper stock the whole app sits on — the same texture the chrome wordmark
+// is rendered on, so every surface feels like one continuous sheet.
+const PAPER = require('../assets/paper-texture.png');
+
+// The app-wide backdrop: a full-bleed paper texture over a matching flat
+// fallback. `bloom` is kept for call-site compatibility; the texture already
+// carries its own subtle light, so it no longer paints an extra overlay.
 export function ScreenBackground({
   children,
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   bloom = true,
 }: {
   children?: React.ReactNode;
@@ -15,14 +19,7 @@ export function ScreenBackground({
 }) {
   return (
     <View style={styles.fill}>
-      {bloom ? (
-        <LinearGradient
-          colors={['rgba(255,255,255,0.45)', 'rgba(255,255,255,0.15)', 'rgba(255,255,255,0)']}
-          locations={[0, 0.45, 1]}
-          style={styles.bloom}
-          pointerEvents="none"
-        />
-      ) : null}
+      <Image source={PAPER} style={StyleSheet.absoluteFill} resizeMode="cover" />
       {children}
     </View>
   );
@@ -56,12 +53,5 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: colors.bg,
     overflow: 'hidden',
-  },
-  bloom: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    height: 320,
   },
 });

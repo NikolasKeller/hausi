@@ -19,6 +19,7 @@ import { getRecentCities, recordRecentCity } from '../../lib/recentCities';
 import { colors, radius, spacing, shadow } from '../../lib/theme';
 import { titleFontStyle, display, uiText, kicker } from '../../lib/fonts';
 import { CoverGradient } from '../../components/CoverGradient';
+import { ChromeText } from '../../components/ChromeText';
 import { Button } from '../../components/ui';
 import { withScreenBackground } from '../../components/ScreenBackground';
 import { formatEventDate } from '../../components/EventCard';
@@ -39,8 +40,15 @@ function ExploreCard({ event }: { event: ExploreEvent }) {
       onPress={() => router.push(`/event/${event.slug}`)}
       style={({ pressed }) => [styles.card, pressed && { opacity: 0.85 }]}
     >
-      <CoverGradient theme={event.coverTheme} image={event.coverImage} style={styles.poster} emojiOpacity={0.25}>
-        <Text style={[styles.posterTitle, titleFontStyle(event.titleFont)]} numberOfLines={3}>
+      <CoverGradient theme={event.coverTheme} image={event.coverImage} style={styles.poster}>
+        <Text
+          style={[
+            styles.posterTitle,
+            event.coverImage ? styles.posterTitleOnPhoto : styles.posterTitleOnPaper,
+            titleFontStyle(event.titleFont),
+          ]}
+          numberOfLines={3}
+        >
           {event.title}
         </Text>
       </CoverGradient>
@@ -298,7 +306,7 @@ function ExploreScreen() {
       <View style={{ flex: 1 }}>
         <View style={styles.headerRow}>
           <View style={styles.headerTitleWrap}>
-            <Text style={styles.headerTitle}>Iykyk</Text>
+            <ChromeText style={styles.headerTitle}>Iykyk</ChromeText>
           </View>
           <Pressable
             onPress={toggleCityMenu}
@@ -737,14 +745,19 @@ const styles = StyleSheet.create({
     padding: spacing.sm,
   },
   posterTitle: {
-    color: '#fff',
     fontSize: 24,
     fontWeight: '700',
     letterSpacing: -0.5,
     textAlign: 'center',
+  },
+  posterTitleOnPhoto: {
+    color: '#fff',
     textShadowColor: 'rgba(0,0,0,0.35)',
     textShadowOffset: { width: 0, height: 2 },
     textShadowRadius: 6,
+  },
+  posterTitleOnPaper: {
+    color: colors.text,
   },
   cardBody: {
     padding: spacing.sm,
