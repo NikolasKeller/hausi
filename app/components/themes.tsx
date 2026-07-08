@@ -4,7 +4,6 @@ import {
   ScrollView,
   StyleSheet,
   Text,
-  useWindowDimensions,
   View,
   type StyleProp,
   type ViewStyle,
@@ -12,7 +11,7 @@ import {
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { COVER_LIST, coverFor, themeInk, THEME_CATEGORIES, type ThemeCategory } from '../lib/covers';
-import { EFFECT_CATEGORIES, EFFECT_META, EffectOverlay } from './EffectOverlay';
+import { EFFECT_CATEGORIES, EFFECT_META } from './EffectOverlay';
 import { Glass, GlassPill } from './glass';
 import { colors, radius, spacing } from '../lib/theme';
 import { uiText } from '../lib/fonts';
@@ -21,11 +20,14 @@ import { uiText } from '../lib/fonts';
 // The event page surface. Renders the event's SELECTED theme as the full-page
 // background — a rich, all-dark multi-stop gradient from `coverFor(theme)`. On
 // top we keep a subtle bottom-deepening scrim (so content stays legible) plus
-// our signature warm orange bloom at the top edge. An optional effect overlay
-// still drifts across. This is intentionally separate from the square uploaded
-// cover photo, which is rendered elsewhere via `CoverGradient`.
+// our signature warm orange bloom at the top edge. This is intentionally
+// separate from the square uploaded cover photo, which is rendered elsewhere
+// via `CoverGradient`. `effect` is kept in the prop signature so existing
+// callers (and the saved per-event setting) still type-check, but the
+// drifting-emoji overlay itself is retired — it cluttered the page.
 export function ThemeBackground({
   theme,
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   effect,
   children,
   style,
@@ -35,7 +37,6 @@ export function ThemeBackground({
   children?: React.ReactNode;
   style?: StyleProp<ViewStyle>;
 }) {
-  const { height } = useWindowDimensions();
   const cover = coverFor(theme ?? 'noir');
   return (
     <View style={[styles.fill, { backgroundColor: colors.bg }, style]}>
@@ -63,7 +64,6 @@ export function ThemeBackground({
         style={StyleSheet.absoluteFill}
         pointerEvents="none"
       />
-      {effect ? <EffectOverlay effect={effect} height={height} count={14} /> : null}
       {children}
     </View>
   );

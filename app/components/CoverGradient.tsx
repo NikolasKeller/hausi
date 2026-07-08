@@ -23,9 +23,20 @@ interface Props {
   // When set, it replaces the emoji scatter; the gradient stays as a fallback
   // background while the image loads.
   image?: string | null;
+  // Darkens photos with a scrim so overlaid title text stays legible. Cards
+  // with no text on top of the image (title shown below instead) skip it —
+  // the photo is the whole point, no need to mute it.
+  dim?: boolean;
 }
 
-export function CoverGradient({ theme, style, children, emojiOpacity = 0.45, image }: Props) {
+export function CoverGradient({
+  theme,
+  style,
+  children,
+  emojiOpacity = 0.45,
+  image,
+  dim = true,
+}: Props) {
   const cover = coverFor(theme);
   const uri = mediaUrl(image);
   return (
@@ -38,8 +49,7 @@ export function CoverGradient({ theme, style, children, emojiOpacity = 0.45, ima
       {uri ? (
         <>
           <Image source={{ uri }} style={StyleSheet.absoluteFill} resizeMode="cover" />
-          {/* Scrim keeps overlaid title text legible on bright photos. */}
-          <View style={[StyleSheet.absoluteFill, styles.scrim]} pointerEvents="none" />
+          {dim ? <View style={[StyleSheet.absoluteFill, styles.scrim]} pointerEvents="none" /> : null}
         </>
       ) : emojiOpacity > 0 ? (
         <View style={StyleSheet.absoluteFill} pointerEvents="none">

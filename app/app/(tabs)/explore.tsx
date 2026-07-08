@@ -18,7 +18,7 @@ import { searchCities } from '../../lib/geocoding';
 import { hasLocationPermission, locateCity, type LocatedCity } from '../../lib/location';
 import { getRecentCities, recordRecentCity } from '../../lib/recentCities';
 import { colors, radius, spacing, shadow } from '../../lib/theme';
-import { titleFontStyle, display, uiText, kicker } from '../../lib/fonts';
+import { display, uiText, kicker } from '../../lib/fonts';
 import { CoverGradient } from '../../components/CoverGradient';
 import { Button } from '../../components/ui';
 import { withScreenBackground } from '../../components/ScreenBackground';
@@ -55,11 +55,13 @@ function ExploreCard({ event }: { event: ExploreEvent }) {
       style={({ pressed }) => [styles.card, pressed && { opacity: 0.85 }]}
     >
       <ChromeCard radius={radius.lg} style={shadow.card}>
-        <CoverGradient theme={event.coverTheme} image={event.coverImage} style={styles.poster} emojiOpacity={0.25}>
-          <Text style={[styles.posterTitle, titleFontStyle(event.titleFont)]} numberOfLines={3}>
-            {event.title}
-          </Text>
-        </CoverGradient>
+        <CoverGradient
+          theme={event.coverTheme}
+          image={event.coverImage}
+          style={styles.poster}
+          emojiOpacity={0.25}
+          dim={false}
+        />
         <View style={styles.cardBody}>
           {event.friendGoing ? (
             <Text style={styles.friendStrip} numberOfLines={1}>
@@ -776,19 +778,6 @@ const styles = StyleSheet.create({
   },
   poster: {
     height: 240,
-    alignItems: 'center',
-    justifyContent: 'center',
-    padding: spacing.sm,
-  },
-  posterTitle: {
-    color: '#fff',
-    fontSize: 24,
-    fontWeight: '700',
-    letterSpacing: -0.5,
-    textAlign: 'center',
-    textShadowColor: 'rgba(0,0,0,0.35)',
-    textShadowOffset: { width: 0, height: 2 },
-    textShadowRadius: 6,
   },
   cardBody: {
     padding: spacing.sm,
