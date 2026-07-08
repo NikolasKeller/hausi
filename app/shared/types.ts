@@ -24,7 +24,7 @@ export const LIMITS = {
 // an event's per-event `plusOneLimit`. The effective allowance is
 // min(plusOneLimit, MAX_PLUS_ONES). Shared by the server (enforcement) and the
 // app (hides the add button once reached).
-export const MAX_PLUS_ONES = 5;
+export const MAX_PLUS_ONES = 10;
 
 // The description's body font-size scale, as a percent of the base size (100 =
 // default). Clamped both client-side (the A−/A+ stepper) and server-side (zod).

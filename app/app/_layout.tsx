@@ -139,14 +139,6 @@ function RootNavigator() {
       <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
       <Stack.Screen name="setup" options={{ headerShown: false, gestureEnabled: false }} />
       <Stack.Screen
-        name="new-event"
-        options={{
-          headerShown: false,
-          presentation: 'modal',
-          gestureEnabled: true,
-        }}
-      />
-      <Stack.Screen
         name="edit-profile"
         options={{
           title: 'Edit Profile',

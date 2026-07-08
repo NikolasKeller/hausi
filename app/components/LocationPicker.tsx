@@ -2,6 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Keyboard,
+  Platform,
   Pressable,
   StyleSheet,
   Text,
@@ -111,7 +112,9 @@ export function LocationPicker({ value, city, onChange, label, labelColor }: Pro
   const showResults = editing && query.trim().length >= 3;
 
   return (
-    <View style={{ gap: 6 }}>
+    // zIndex lifts the suggestion overlay above the fields that follow in the
+    // form, so opening it never pushes the layout around.
+    <View style={[{ gap: 6 }, showResults && styles.raised]}>
       {label ? (
         <Text style={[styles.label, labelColor ? { color: labelColor } : null]}>{label}</Text>
       ) : null}
@@ -157,6 +160,8 @@ export function LocationPicker({ value, city, onChange, label, labelColor }: Pro
         </View>
 
         {showResults ? (
+          // Absolutely positioned dropdown: the field itself keeps its exact
+          // size while suggestions float on top of whatever is below.
           <View style={styles.results}>
             {results.map((r, index) => (
               <Pressable
@@ -232,9 +237,24 @@ const styles = StyleSheet.create({
   placeholder: {
     color: colors.muted,
   },
+  raised: {
+    zIndex: 30,
+    ...(Platform.OS === 'android' ? { elevation: 30 } : null),
+  },
   results: {
-    borderTopWidth: 1,
-    borderTopColor: colors.cardBorder,
+    position: 'absolute',
+    top: '100%',
+    left: 0,
+    right: 0,
+    marginTop: 4,
+    backgroundColor: colors.card,
+    borderWidth: 1,
+    borderColor: colors.cardBorder,
+    borderRadius: radius.md,
+    overflow: 'hidden',
+    maxHeight: 280,
+    zIndex: 30,
+    ...shadow.float,
   },
   resultRow: {
     paddingHorizontal: 16,

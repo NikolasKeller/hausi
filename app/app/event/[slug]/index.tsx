@@ -265,7 +265,7 @@ export default function EventScreen() {
       <View style={styles.center}>
         <Text style={styles.errorEmoji}>🫠</Text>
         <Text style={styles.errorText}>{error}</Text>
-        <Button title="Back home" variant="ghost" tone="ink" onPress={() => router.replace('/')} />
+        <Button title="Back home" variant="ghost" onPress={() => router.replace('/')} />
       </View>
     );
   }
