@@ -6,6 +6,7 @@ import { colors, radius, shadow, spacing } from '../lib/theme';
 import { titleFontStyle, uiText, kicker } from '../lib/fonts';
 import { CoverGradient } from './CoverGradient';
 import { Avatar } from './Avatar';
+import { ChromeCard } from './glass';
 
 export function formatEventDate(iso: string): string {
   const date = new Date(iso);
@@ -32,52 +33,47 @@ export function EventCard({ event }: { event: EventSummary }) {
   return (
     <Pressable
       onPress={() => router.push(`/event/${event.slug}`)}
-      style={({ pressed }) => [styles.card, pressed && { opacity: 0.85 }]}
+      style={({ pressed }) => [pressed && { opacity: 0.85 }]}
     >
-      <CoverGradient theme={event.coverTheme} image={event.coverImage} style={styles.cover} emojiOpacity={0.45}>
-        {event.canceledAt ? (
-          <View style={styles.canceledBadge}>
-            <Text style={styles.canceledText}>CANCELED</Text>
-          </View>
-        ) : null}
-        <Text style={[styles.title, titleFontStyle(event.titleFont)]} numberOfLines={2}>
-          {event.title}
-        </Text>
-      </CoverGradient>
-      <View style={styles.body}>
-        <View style={{ flex: 1, gap: spacing.xs }}>
-          <Text style={styles.date}>
-            {formatEventDate(event.date)} · {formatEventTime(event.date)}
-          </Text>
-          <View style={styles.hostRow}>
-            <Avatar name={event.host.name} image={event.host.avatarImage} size={26} />
-            <Text style={styles.hostName} numberOfLines={1}>
-              {event.isHost ? 'You are hosting' : `Hosted by ${event.host.name}`}
-            </Text>
-          </View>
-        </View>
-        <View style={styles.badges}>
-          <View style={styles.goingPill}>
-            <Text style={styles.going}>{event.counts.going} going</Text>
-          </View>
-          {event.myRsvp && !event.isHost ? (
-            <Text style={styles.myStatus}>{STATUS_LABEL[event.myRsvp]}</Text>
+      <ChromeCard radius={radius.md} style={shadow.card}>
+        <CoverGradient theme={event.coverTheme} image={event.coverImage} style={styles.cover} emojiOpacity={0.45}>
+          {event.canceledAt ? (
+            <View style={styles.canceledBadge}>
+              <Text style={styles.canceledText}>CANCELED</Text>
+            </View>
           ) : null}
+          <Text style={[styles.title, titleFontStyle(event.titleFont)]} numberOfLines={2}>
+            {event.title}
+          </Text>
+        </CoverGradient>
+        <View style={styles.body}>
+          <View style={{ flex: 1, gap: spacing.xs }}>
+            <Text style={styles.date}>
+              {formatEventDate(event.date)} · {formatEventTime(event.date)}
+            </Text>
+            <View style={styles.hostRow}>
+              <Avatar name={event.host.name} image={event.host.avatarImage} size={26} />
+              <Text style={styles.hostName} numberOfLines={1}>
+                {event.isHost ? 'You are hosting' : `Hosted by ${event.host.name}`}
+              </Text>
+            </View>
+          </View>
+          <View style={styles.badges}>
+            <View style={styles.goingRow}>
+              <Avatar name={event.host.name} image={event.host.avatarImage} size={20} />
+              <Text style={styles.going}>+{event.counts.going} going</Text>
+            </View>
+            {event.myRsvp && !event.isHost ? (
+              <Text style={styles.myStatus}>{STATUS_LABEL[event.myRsvp]}</Text>
+            ) : null}
+          </View>
         </View>
-      </View>
+      </ChromeCard>
     </Pressable>
   );
 }
 
 const styles = StyleSheet.create({
-  card: {
-    backgroundColor: colors.card,
-    borderRadius: radius.md,
-    borderWidth: 1,
-    borderColor: colors.cardBorder,
-    overflow: 'hidden',
-    ...shadow.card,
-  },
   cover: {
     minHeight: 150,
     padding: spacing.lg,
@@ -130,19 +126,16 @@ const styles = StyleSheet.create({
     alignItems: 'flex-end',
     gap: spacing.xs,
   },
-  // Soft, quiet pill on the warm-white card — subtle success text on a hairline
-  // chip instead of the loud bright-green fill.
-  goingPill: {
-    backgroundColor: colors.card,
-    borderRadius: radius.pill,
-    borderWidth: 1,
-    borderColor: colors.cardBorder,
-    paddingHorizontal: spacing.sm,
-    paddingVertical: 4,
+  // The approved "going" treatment: tiny avatar + "+N going" in dim silver,
+  // no loud pill.
+  goingRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.xs,
   },
   going: {
     ...uiText(13, '600'),
-    color: colors.success,
+    color: colors.muted,
   },
   myStatus: {
     ...uiText(12, '600'),

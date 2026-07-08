@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
+  Image,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -22,41 +23,67 @@ import { CoverGradient } from '../../components/CoverGradient';
 import { Button } from '../../components/ui';
 import { withScreenBackground } from '../../components/ScreenBackground';
 import { formatEventDate } from '../../components/EventCard';
+import { Avatar } from '../../components/Avatar';
+import { ChromeCard } from '../../components/glass';
 
-const CATEGORY_CHIPS: { key: Category | 'all'; emoji: string; label: string }[] = [
-  { key: 'all', emoji: '🔍', label: 'All' },
+// Monochrome line icons instead of the colorful category emojis — everything
+// in the chrome UI stays black/silver; color is reserved for event artwork.
+const CATEGORY_ICONS: Record<Category | 'all', keyof typeof Ionicons.glyphMap> = {
+  all: 'search',
+  music: 'musical-notes-outline',
+  community: 'people-outline',
+  arts: 'color-palette-outline',
+  food: 'restaurant-outline',
+  sports: 'basketball-outline',
+  other: 'sparkles-outline',
+};
+
+const CATEGORY_CHIPS: { key: Category | 'all'; label: string }[] = [
+  { key: 'all', label: 'All' },
   ...CATEGORIES.map((c) => ({
     key: c,
-    emoji: CATEGORY_META[c].emoji,
     label: CATEGORY_META[c].label,
   })),
 ];
 
 function ExploreCard({ event }: { event: ExploreEvent }) {
   const router = useRouter();
+  const faces = event.interestedAvatars.slice(0, 3);
   return (
     <Pressable
       onPress={() => router.push(`/event/${event.slug}`)}
       style={({ pressed }) => [styles.card, pressed && { opacity: 0.85 }]}
     >
-      <CoverGradient theme={event.coverTheme} image={event.coverImage} style={styles.poster} emojiOpacity={0.25}>
-        <Text style={[styles.posterTitle, titleFontStyle(event.titleFont)]} numberOfLines={3}>
-          {event.title}
-        </Text>
-      </CoverGradient>
-      <View style={styles.cardBody}>
-        {event.friendGoing ? (
-          <Text style={styles.friendStrip} numberOfLines={1}>
-            <Text style={styles.friendName}>{event.friendGoing.name}</Text> is interested
+      <ChromeCard radius={radius.lg} style={shadow.card}>
+        <CoverGradient theme={event.coverTheme} image={event.coverImage} style={styles.poster} emojiOpacity={0.25}>
+          <Text style={[styles.posterTitle, titleFontStyle(event.titleFont)]} numberOfLines={3}>
+            {event.title}
           </Text>
-        ) : null}
-        <Text style={styles.cardTitle} numberOfLines={2}>
-          {event.title}
-        </Text>
-        <Text style={styles.cardMeta} numberOfLines={1}>
-          {formatEventDate(event.date)}
-        </Text>
-      </View>
+        </CoverGradient>
+        <View style={styles.cardBody}>
+          {event.friendGoing ? (
+            <Text style={styles.friendStrip} numberOfLines={1}>
+              <Text style={styles.friendName}>{event.friendGoing.name}</Text> is interested
+            </Text>
+          ) : null}
+          <Text style={styles.cardTitle} numberOfLines={2}>
+            {event.title}
+          </Text>
+          <Text style={styles.cardMeta} numberOfLines={1}>
+            {formatEventDate(event.date)}
+          </Text>
+          {event.interested > 0 ? (
+            <View style={styles.facesRow}>
+              {faces.map((f, i) => (
+                <View key={i} style={[styles.faceWrap, i > 0 && { marginLeft: -8 }]}>
+                  <Avatar name={f.name} image={f.avatarImage} size={20} />
+                </View>
+              ))}
+              <Text style={styles.facesLabel}>+{event.interested} going</Text>
+            </View>
+          ) : null}
+        </View>
+      </ChromeCard>
     </Pressable>
   );
 }
@@ -298,14 +325,21 @@ function ExploreScreen() {
       <View style={{ flex: 1 }}>
         <View style={styles.headerRow}>
           <View style={styles.headerTitleWrap}>
-            <Text style={styles.headerTitle}>Iykyk</Text>
+            {/* The liquid-chrome wordmark artwork — the brand IS the header. */}
+            <Image
+              source={require('../../assets/wordmark-chrome-dark.png')}
+              style={styles.headerWordmark}
+              resizeMode="contain"
+              accessibilityLabel="iykyk"
+            />
           </View>
           <Pressable
             onPress={toggleCityMenu}
             style={({ pressed }) => [styles.cityPill, pressed && { opacity: 0.8 }]}
           >
+            <Ionicons name="location-outline" size={14} color={colors.text} />
             <Text style={styles.cityPillText} numberOfLines={1}>
-              📍 {cityLabel}
+              {cityLabel}
             </Text>
             <Ionicons
               name={cityMenuOpen ? 'chevron-up' : 'chevron-down'}
@@ -344,7 +378,11 @@ function ExploreScreen() {
                       pressed && { opacity: 0.8 },
                     ]}
                   >
-                    <Text style={styles.chipEmoji}>{chip.emoji}</Text>
+                    <Ionicons
+                      name={CATEGORY_ICONS[chip.key]}
+                      size={14}
+                      color={active ? colors.onInk : colors.muted}
+                    />
                     <Text style={[styles.chipLabel, active && styles.chipLabelActive]}>
                       {chip.label}
                     </Text>
@@ -417,11 +455,14 @@ function ExploreScreen() {
                             index < suggestions.length - 1 && styles.menuItemBorder,
                           ]}
                         >
-                          <Text
-                            style={[styles.menuItemText, active && styles.menuItemTextActive]}
-                          >
-                            📍 {option}
-                          </Text>
+                          <View style={styles.menuItemLeft}>
+                            <Ionicons name="location-outline" size={15} color={colors.muted} />
+                            <Text
+                              style={[styles.menuItemText, active && styles.menuItemTextActive]}
+                            >
+                              {option}
+                            </Text>
+                          </View>
                           {active ? (
                             <Ionicons name="checkmark" size={16} color={colors.accent} />
                           ) : null}
@@ -462,9 +503,12 @@ function ExploreScreen() {
                       onPress={() => selectCity('')}
                       style={[styles.menuItem, recentCities.length > 0 && styles.menuItemBorder]}
                     >
-                      <Text style={[styles.menuItemText, city === '' && styles.menuItemTextActive]}>
-                        🌍 All cities
-                      </Text>
+                      <View style={styles.menuItemLeft}>
+                        <Ionicons name="earth-outline" size={15} color={colors.muted} />
+                        <Text style={[styles.menuItemText, city === '' && styles.menuItemTextActive]}>
+                          All cities
+                        </Text>
+                      </View>
                       {city === '' ? (
                         <Ionicons name="checkmark" size={16} color={colors.accent} />
                       ) : null}
@@ -483,14 +527,17 @@ function ExploreScreen() {
                                 index < recentCities.length - 1 && styles.menuItemBorder,
                               ]}
                             >
-                              <Text
-                                style={[
-                                  styles.menuItemText,
-                                  active && styles.menuItemTextActive,
-                                ]}
-                              >
-                                📍 {option}
-                              </Text>
+                              <View style={styles.menuItemLeft}>
+                                <Ionicons name="time-outline" size={15} color={colors.muted} />
+                                <Text
+                                  style={[
+                                    styles.menuItemText,
+                                    active && styles.menuItemTextActive,
+                                  ]}
+                                >
+                                  {option}
+                                </Text>
+                              </View>
                               {active ? (
                                 <Ionicons name="checkmark" size={16} color={colors.accent} />
                               ) : null}
@@ -543,10 +590,10 @@ const styles = StyleSheet.create({
   headerTitleWrap: {
     gap: spacing.xs,
   },
-  headerTitle: {
-    // Match the calendar's month title size so the tab headers feel consistent.
-    ...display(32),
-    color: colors.text,
+  headerWordmark: {
+    // The cropped artwork is 940x440 — keep its ratio at header scale.
+    width: 118,
+    height: 55,
   },
   cityPill: {
     flexDirection: 'row',
@@ -622,6 +669,12 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: colors.cardBorder,
   },
+  menuItemLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    flexShrink: 1,
+  },
   menuItemText: {
     ...uiText(15),
     color: colors.text,
@@ -693,9 +746,6 @@ const styles = StyleSheet.create({
     backgroundColor: colors.ink,
     borderColor: colors.ink,
   },
-  chipEmoji: {
-    fontSize: 14,
-  },
   chipLabel: {
     ...uiText(14, '600'),
     color: colors.text,
@@ -723,12 +773,6 @@ const styles = StyleSheet.create({
   },
   card: {
     width: '48%',
-    backgroundColor: colors.card,
-    borderRadius: radius.lg,
-    borderWidth: 1,
-    borderColor: colors.cardBorder,
-    overflow: 'hidden',
-    ...shadow.card,
   },
   poster: {
     height: 240,
@@ -766,5 +810,21 @@ const styles = StyleSheet.create({
   cardMeta: {
     ...uiText(13, '600'),
     color: colors.muted,
+  },
+  facesRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.xs,
+    marginTop: 2,
+  },
+  faceWrap: {
+    borderRadius: 999,
+    borderWidth: 1.5,
+    borderColor: '#121212',
+  },
+  facesLabel: {
+    ...uiText(12, '600'),
+    color: colors.muted,
+    marginLeft: 2,
   },
 });

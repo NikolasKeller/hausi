@@ -3,8 +3,8 @@ import { StyleSheet, View } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { colors } from '../lib/theme';
 
-// The app-wide backdrop: the warm cream canvas with a very subtle bright sheen
-// falling from the top (the chrome-on-cream daylight look). `bloom` can be
+// The app-wide backdrop: the pure-black canvas with a faint molten-silver glow
+// falling from the top (the liquid-chrome-on-black look). `bloom` can be
 // turned off for screens that want the perfectly flat canvas (e.g. Profile).
 export function ScreenBackground({
   children,
@@ -17,7 +17,7 @@ export function ScreenBackground({
     <View style={styles.fill}>
       {bloom ? (
         <LinearGradient
-          colors={['rgba(255,255,255,0.45)', 'rgba(255,255,255,0.15)', 'rgba(255,255,255,0)']}
+          colors={['rgba(255,255,255,0.10)', 'rgba(255,255,255,0.04)', 'rgba(255,255,255,0)']}
           locations={[0, 0.45, 1]}
           style={styles.bloom}
           pointerEvents="none"

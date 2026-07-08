@@ -11,11 +11,13 @@ import {
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { Ionicons } from '@expo/vector-icons';
 import { api } from '../../lib/api';
 import { COUNTRIES, DEFAULT_COUNTRY, type Country } from '../../lib/countries';
 import { colors, radius, spacing } from '../../lib/theme';
 import { display, uiText } from '../../lib/fonts';
 import { AuroraBackground } from '../../components/AuroraBackground';
+import { ChromeCard, Glass } from '../../components/glass';
 import { Button, ErrorText } from '../../components/ui';
 
 export default function PhoneScreen() {
@@ -88,32 +90,45 @@ export default function PhoneScreen() {
             contentContainerStyle={styles.content}
             keyboardShouldPersistTaps="handled"
           >
-            <View style={{ flex: 0.5 }} />
-            <Text style={styles.title}>Join the party</Text>
-
-            <View style={styles.phoneRow}>
-              <Pressable
-                style={styles.countryInline}
-                onPress={() => setPickerOpen((v) => !v)}
-                hitSlop={10}
-              >
-                <Text style={styles.phonePrefix}>{country.flag} {country.code}</Text>
-                <Text style={styles.phoneCaret}>▾</Text>
-              </Pressable>
-              <TextInput
-                value={digits}
-                onChangeText={(t) => setDigits(t.replace(/[^0-9 ]/g, ''))}
-                placeholder="(123) 456-7890"
-                placeholderTextColor={colors.muted}
-                keyboardType="phone-pad"
-                autoFocus
-                style={[styles.phoneInputInline, styles.noOutline]}
-                maxLength={16}
-              />
+            <View style={styles.header}>
+              <Text style={styles.kicker}>WELCOME</Text>
+              <Text style={styles.title}>Join the party</Text>
+              <Text style={styles.subtitle}>We'll text you a code to confirm it's you.</Text>
             </View>
 
+            {/* One unified field — country code and number read as a single
+                control instead of two disconnected floating pieces. */}
+            <ChromeCard radius={radius.lg} style={styles.phoneCardWrap}>
+              <View style={styles.phoneCard}>
+                <Pressable
+                  style={styles.countrySeg}
+                  onPress={() => setPickerOpen((v) => !v)}
+                  hitSlop={10}
+                >
+                  <Text style={styles.flag}>{country.flag}</Text>
+                  <Text style={styles.code}>{country.code}</Text>
+                  <Ionicons
+                    name={pickerOpen ? 'chevron-up' : 'chevron-down'}
+                    size={14}
+                    color={colors.muted}
+                  />
+                </Pressable>
+                <View style={styles.segDivider} />
+                <TextInput
+                  value={digits}
+                  onChangeText={(t) => setDigits(t.replace(/[^0-9 ]/g, ''))}
+                  placeholder="(123) 456-7890"
+                  placeholderTextColor={colors.muted}
+                  keyboardType="phone-pad"
+                  autoFocus
+                  style={[styles.phoneInputInline, styles.noOutline]}
+                  maxLength={16}
+                />
+              </View>
+            </ChromeCard>
+
             {pickerOpen ? (
-              <View style={styles.picker}>
+              <Glass radius={radius.lg} intensity={24} tint="dark" style={styles.picker}>
                 <TextInput
                   value={prefixSearch}
                   onChangeText={setPrefixSearch}
@@ -153,31 +168,32 @@ export default function PhoneScreen() {
                     <Text style={styles.pickerEmpty}>No match</Text>
                   ) : null}
                 </ScrollView>
-              </View>
+              </Glass>
             ) : null}
 
             {inviteRequired ? (
-              <TextInput
-                value={invite}
-                onChangeText={setInvite}
-                placeholder="Invite code"
-                placeholderTextColor={colors.muted}
-                autoCapitalize="none"
-                autoCorrect={false}
-                style={styles.inviteInput}
-              />
+              <Glass radius={radius.lg} intensity={24} tint="dark" style={styles.inviteCard}>
+                <TextInput
+                  value={invite}
+                  onChangeText={setInvite}
+                  placeholder="Invite code"
+                  placeholderTextColor={colors.muted}
+                  autoCapitalize="none"
+                  autoCorrect={false}
+                  style={[styles.inviteInput, styles.noOutline]}
+                />
+              </Glass>
             ) : null}
 
             <ErrorText message={error} />
-            <View style={{ flex: 1 }} />
+            <View style={{ flex: 1, minHeight: spacing.xxl }} />
 
             <Button
               title={sending ? 'Sending…' : 'Send code'}
-              variant="primary"
+              variant="chrome"
               onPress={sendCode}
               loading={sending}
-              disabled={sending}
-              style={canSubmit ? undefined : styles.buttonDisabled}
+              disabled={!canSubmit || sending}
             />
             <View style={{ height: spacing.xl }} />
           </ScrollView>
@@ -194,52 +210,72 @@ const styles = StyleSheet.create({
   content: {
     flexGrow: 1,
     padding: spacing.lg,
+    paddingTop: spacing.section,
     gap: spacing.md,
+  },
+  header: {
+    gap: 6,
+    marginBottom: spacing.sm,
+  },
+  kicker: {
+    color: colors.muted,
+    ...uiText(12, '700'),
+    letterSpacing: 2,
   },
   title: {
     color: colors.text,
-    ...display(56),
-    textAlign: 'center',
-    marginBottom: spacing.lg,
+    ...display(36),
   },
-  phoneRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: spacing.sm,
-  },
-  // Borderless inline country prefix (e.g. "🇩🇪 +49 ▾") — no box/bubble.
-  countryInline: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    paddingVertical: 6,
-  },
-  phonePrefix: {
-    color: colors.text,
-    ...uiText(30),
-  },
-  phoneCaret: {
+  subtitle: {
     color: colors.muted,
-    fontSize: 14,
+    ...uiText(15, '500'),
   },
-  // Borderless inline phone field — plain text on the canvas, no box.
+  // The unified phone field — country segment + number read as one control.
+  phoneCardWrap: {
+    shadowColor: '#000',
+    shadowOpacity: 0.35,
+    shadowRadius: 16,
+    shadowOffset: { width: 0, height: 8 },
+  },
+  phoneCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 4,
+    paddingRight: spacing.md,
+  },
+  countrySeg: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingVertical: 16,
+    paddingHorizontal: spacing.md,
+  },
+  flag: {
+    fontSize: 18,
+  },
+  code: {
+    color: colors.text,
+    ...uiText(17, '600'),
+  },
+  segDivider: {
+    width: StyleSheet.hairlineWidth,
+    alignSelf: 'stretch',
+    marginVertical: 10,
+    backgroundColor: colors.cardBorder,
+  },
+  // Borderless inline phone field — sits inside the chrome card, no own box.
   phoneInputInline: {
     flex: 1,
-    ...uiText(30),
+    ...uiText(17, '600'),
     color: colors.text,
-    lineHeight: 38,
-    textAlign: 'center',
-    paddingVertical: 6,
+    lineHeight: 22,
+    paddingVertical: 16,
+    paddingLeft: spacing.md,
   },
   // Kill the browser's blue focus ring on web (react-native-web maps these).
   noOutline: Platform.OS === 'web' ? ({ outlineStyle: 'none', outlineWidth: 0 } as any) : {},
-  // Searchable country-code picker.
+  // Searchable country-code picker — a glass card matching the field above.
   picker: {
-    backgroundColor: colors.card,
-    borderWidth: 1,
-    borderColor: colors.cardBorder,
-    borderRadius: radius.md,
     overflow: 'hidden',
   },
   pickerSearch: {
@@ -247,7 +283,7 @@ const styles = StyleSheet.create({
     color: colors.text,
     paddingHorizontal: spacing.md,
     paddingVertical: 12,
-    borderBottomWidth: 1,
+    borderBottomWidth: StyleSheet.hairlineWidth,
     borderBottomColor: colors.cardBorder,
   },
   pickerScroll: {
@@ -281,18 +317,14 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     paddingVertical: spacing.md,
   },
-  inviteInput: {
-    backgroundColor: colors.inputBg,
-    borderWidth: 1,
-    borderColor: colors.cardBorder,
-    borderRadius: radius.sm,
-    paddingHorizontal: spacing.md,
-    ...uiText(18),
-    color: colors.text,
-    lineHeight: 22,
-    paddingVertical: 14,
+  inviteCard: {
+    overflow: 'hidden',
   },
-  buttonDisabled: {
-    opacity: 0.5,
+  inviteInput: {
+    paddingHorizontal: spacing.md,
+    ...uiText(16, '500'),
+    color: colors.text,
+    lineHeight: 20,
+    paddingVertical: 15,
   },
 });

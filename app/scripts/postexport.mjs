@@ -25,6 +25,7 @@ html = html.replace(
 
 const headTags = `
     <meta name="description" content="Parties with friends - invites, RSVPs and the Party Wall." />
+    <meta name="theme-color" content="#000000" />
     <link rel="manifest" href="/manifest.json" />
     <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png" />
     <meta name="mobile-web-app-capable" content="yes" />
@@ -32,8 +33,24 @@ const headTags = `
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     <meta name="apple-mobile-web-app-title" content="iykyk" />
     <style>
-      html, body { background-color: #111111; }
-      body { overscroll-behavior-y: none; }
+      /* Pure-black shell — no white/grey flash behind the app, ever. */
+      html, body { background-color: #000000; }
+      body {
+        /* No rubber-band pull-to-refresh or scroll chaining out of the app. */
+        overscroll-behavior-y: none;
+        /* Kill the grey tap flash and long-press callouts — app, not document. */
+        -webkit-tap-highlight-color: transparent;
+        -webkit-touch-callout: none;
+        /* Stop iOS/Android from inflating text when the address bar collapses. */
+        -webkit-text-size-adjust: 100%;
+        text-size-adjust: 100%;
+      }
+      /* Mobile Safari: 100% viewport height tracks the *dynamic* toolbar so the
+         tab bar never hides behind the collapsed address bar. */
+      html, body, #root { height: 100%; }
+      @supports (height: 100dvh) {
+        html, body, #root { height: 100dvh; }
+      }
       #root {
         padding-top: env(safe-area-inset-top);
         padding-bottom: env(safe-area-inset-bottom);

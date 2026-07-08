@@ -189,7 +189,7 @@ export function PartyGradient({
 // it fully occludes anything behind it.
 const DECOR: { top: string; left: string; size: number; rays: number; color: string; rotate: number }[] = [
   { top: '6%', left: '78%', size: 56, rays: 8, color: colors.helio, rotate: 6 },
-  { top: '30%', left: '-4%', size: 40, rays: 6, color: '#4B7BFF', rotate: -12 },
+  { top: '30%', left: '-4%', size: 40, rays: 6, color: '#B8B8B8', rotate: -12 },
   { top: '82%', left: '86%', size: 34, rays: 8, color: colors.accent, rotate: 10 },
 ];
 
@@ -205,7 +205,7 @@ export function PaperBackground({
   return (
     <View style={styles.paperFill}>
       <LinearGradient
-        colors={['rgba(255,255,255,0.45)', 'rgba(255,255,255,0.15)', 'rgba(255,255,255,0)']}
+        colors={['rgba(255,255,255,0.10)', 'rgba(255,255,255,0.04)', 'rgba(255,255,255,0)']}
         locations={[0, 0.5, 1]}
         style={styles.washTop}
         pointerEvents="none"
@@ -249,7 +249,7 @@ const styles = StyleSheet.create({
     borderRadius: radius.pill,
     paddingVertical: 6,
     paddingHorizontal: 12,
-    backgroundColor: 'rgba(0,0,0,0.06)',
+    backgroundColor: 'rgba(255,255,255,0.08)',
   },
   pillText: {
     fontSize: 12,

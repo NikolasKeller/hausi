@@ -11,6 +11,7 @@ import {
 import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
 import * as Linking from 'expo-linking';
 import { type EventDetail } from '../../../shared/types';
 import { api } from '../../../lib/api';
@@ -18,7 +19,7 @@ import { useAuth } from '../../../lib/auth';
 import { confirmDialog, notify } from '../../../lib/dialogs';
 import { recordRecentEvent, removeRecentEvent } from '../../../lib/recents';
 import { shareText } from '../../../lib/share';
-import { colors, radius, spacing } from '../../../lib/theme';
+import { brand, colors, radius, spacing } from '../../../lib/theme';
 import { titleFontStyle, display, kicker, uiText } from '../../../lib/fonts';
 import { CoverGradient } from '../../../components/CoverGradient';
 import { RichDescription } from '../../../components/RichDescription';
@@ -311,31 +312,47 @@ export default function EventScreen() {
               </View>
               <Pressable onPress={share}>
                 <Glass tint={ink.glassTint} radius={radius.pill} style={styles.shareButton}>
+                  <Ionicons name="share-outline" size={14} color={ink.text} />
                   <Text style={[styles.shareText, { color: ink.text }]}>Share link</Text>
                 </Glass>
               </Pressable>
             </View>
 
             <Glass tint={ink.glassTint} radius={radius.md} style={styles.metaCard}>
-              <Text style={[styles.metaLine, { color: ink.text }]}>
-                🗓️ {formatEventDate(event.date)} · {formatEventTime(event.date)}
-              </Text>
-              {event.location ? (
+              <View style={styles.metaRow}>
+                <Ionicons name="calendar-outline" size={16} color={ink.subtext} style={styles.metaIcon} />
                 <Text style={[styles.metaLine, { color: ink.text }]}>
-                  📍 {event.location}
-                  {event.city ? `, ${event.city}` : ''}
+                  {formatEventDate(event.date)} · {formatEventTime(event.date)}
                 </Text>
+              </View>
+              {event.location ? (
+                <View style={styles.metaRow}>
+                  <Ionicons name="location-outline" size={16} color={ink.subtext} style={styles.metaIcon} />
+                  <Text style={[styles.metaLine, { color: ink.text }]}>
+                    {event.location}
+                    {event.city ? `, ${event.city}` : ''}
+                  </Text>
+                </View>
               ) : null}
               {event.costPerPerson ? (
-                <Text style={[styles.metaLine, { color: ink.text }]}>💸 {event.costPerPerson}</Text>
+                <View style={styles.metaRow}>
+                  <Ionicons name="cash-outline" size={16} color={ink.subtext} style={styles.metaIcon} />
+                  <Text style={[styles.metaLine, { color: ink.text }]}>{event.costPerPerson}</Text>
+                </View>
               ) : null}
               {event.dressCode ? (
-                <Text style={[styles.metaLine, { color: ink.text }]}>👗 {event.dressCode}</Text>
+                <View style={styles.metaRow}>
+                  <Ionicons name="shirt-outline" size={16} color={ink.subtext} style={styles.metaIcon} />
+                  <Text style={[styles.metaLine, { color: ink.text }]}>{event.dressCode}</Text>
+                </View>
               ) : null}
               {spotsLeft != null ? (
-                <Text style={[styles.metaLine, { color: ink.text }]}>
-                  🎟️ {spotsLeft > 0 ? `${spotsLeft} spots left` : 'Event is full'}
-                </Text>
+                <View style={styles.metaRow}>
+                  <Ionicons name="ticket-outline" size={16} color={ink.subtext} style={styles.metaIcon} />
+                  <Text style={[styles.metaLine, { color: ink.text }]}>
+                    {spotsLeft > 0 ? `${spotsLeft} spots left` : 'Event is full'}
+                  </Text>
+                </View>
               ) : null}
             </Glass>
 
@@ -389,20 +406,32 @@ export default function EventScreen() {
                     );
                   }
                 }}
-                style={({ pressed }) => [
-                  styles.buyButton,
-                  { backgroundColor: ink.dark ? '#FFFFFF' : '#171717' },
-                  pressed && { opacity: 0.85, transform: [{ scale: 0.98 }] },
-                ]}
+                style={({ pressed }) => [pressed && { opacity: 0.85, transform: [{ scale: 0.98 }] }]}
               >
-                <Ionicons
-                  name={hasTicket ? 'checkmark-circle' : 'ticket-outline'}
-                  size={20}
-                  color={ink.dark ? '#171717' : '#FFFFFF'}
-                />
-                <Text style={[styles.buyButtonText, { color: ink.dark ? '#171717' : '#FFFFFF' }]}>
-                  {hasTicket ? 'Ticket purchased' : 'Buy ticket'}
-                </Text>
+                {/* The same molten-chrome CTA used across the app — sits on top
+                    of any per-event theme color and always reads as premium. */}
+                <LinearGradient
+                  colors={[...brand.glow]}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 1 }}
+                  style={styles.buyButton}
+                >
+                  <LinearGradient
+                    pointerEvents="none"
+                    colors={['rgba(255,255,255,0.55)', 'rgba(255,255,255,0)']}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 0, y: 1 }}
+                    style={styles.buyButtonSheen}
+                  />
+                  <Ionicons
+                    name={hasTicket ? 'checkmark-circle' : 'ticket-outline'}
+                    size={20}
+                    color={colors.onAccent}
+                  />
+                  <Text style={styles.buyButtonText}>
+                    {hasTicket ? 'Ticket purchased' : 'Buy ticket'}
+                  </Text>
+                </LinearGradient>
               </Pressable>
             ) : null}
 
@@ -678,17 +707,28 @@ const styles = StyleSheet.create({
     ...uiText(16, '700'),
   },
   shareButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
     paddingHorizontal: spacing.md,
-    paddingVertical: 8,
+    paddingVertical: 9,
   },
   shareText: {
     ...uiText(14, '600'),
   },
   metaCard: {
     padding: spacing.md,
-    gap: spacing.sm,
+    gap: spacing.sm + 2,
+  },
+  metaRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  metaIcon: {
+    width: 24,
   },
   metaLine: {
+    flex: 1,
     ...uiText(16, '500'),
   },
   sectionHead: {
@@ -729,14 +769,23 @@ const styles = StyleSheet.create({
     borderRadius: radius.pill,
     paddingVertical: 16,
     paddingHorizontal: spacing.xl,
+    overflow: 'hidden',
     shadowColor: '#000',
     shadowOpacity: 0.25,
     shadowRadius: 12,
     shadowOffset: { width: 0, height: 6 },
     elevation: 5,
   },
+  buyButtonSheen: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    height: '55%',
+  },
   buyButtonText: {
     ...uiText(17, '700'),
+    color: colors.onAccent,
   },
   guestSummary: {
     padding: spacing.md,
@@ -816,7 +865,7 @@ const styles = StyleSheet.create({
     width: 26,
     height: 26,
     borderRadius: 13,
-    backgroundColor: 'rgba(0,0,0,0.12)',
+    backgroundColor: 'rgba(255,255,255,0.12)',
     borderWidth: 1,
     alignItems: 'center',
     justifyContent: 'center',

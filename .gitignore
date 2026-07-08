@@ -17,3 +17,4 @@ app/android/
 server/public/
 # uploaded images (dev)
 server/uploads/
+.gstack/

@@ -27,8 +27,10 @@ const API_ORIGIN =
   process.env.EXPO_PUBLIC_API_URL ??
   (Platform.OS === 'web'
     ? __DEV__
-      ? // Dev web runs on Metro's port; the API is a separate origin.
-        'http://localhost:3001'
+      ? // Dev web runs on Metro's port; the API is a separate origin on the
+        // same machine. Derive the host from the page URL so phones on the
+        // LAN (http://192.168.x.x:8081) reach the Mac, not themselves.
+        `http://${typeof window !== 'undefined' ? window.location.hostname : 'localhost'}:3001`
       : // The exported web app is served by the API server itself.
         ''
     : devHost && devHost !== 'localhost' && devHost !== '127.0.0.1'

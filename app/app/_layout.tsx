@@ -92,6 +92,32 @@ function RootNavigator() {
       'content',
       'width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover'
     );
+    // Mirror the exported shell CSS (see scripts/postexport.mjs) so the dev
+    // server behaves like production: black shell, no rubber-banding, no grey
+    // tap flash, and a dynamic-toolbar-aware viewport height on mobile Safari.
+    if (!doc.getElementById('iykyk-shell-css')) {
+      const style = doc.createElement('style');
+      style.id = 'iykyk-shell-css';
+      style.textContent = `
+        html, body { background-color: #000000; }
+        body {
+          overscroll-behavior-y: none;
+          -webkit-tap-highlight-color: transparent;
+          -webkit-touch-callout: none;
+          -webkit-text-size-adjust: 100%;
+          text-size-adjust: 100%;
+        }
+        html, body, #root { height: 100%; }
+        @supports (height: 100dvh) {
+          html, body, #root { height: 100dvh; }
+        }
+        #root {
+          padding-top: env(safe-area-inset-top);
+          padding-bottom: env(safe-area-inset-bottom);
+        }
+      `;
+      doc.head.appendChild(style);
+    }
   }, []);
 
   useEffect(() => {
@@ -183,7 +209,7 @@ function WebFrame({ children }: { children: React.ReactNode }) {
 const frameStyles = StyleSheet.create({
   page: {
     flex: 1,
-    // Cream surround — the phone column sits on the same warm canvas.
+    // Black surround — the phone column sits on the same nocturnal canvas.
     backgroundColor: colors.bg,
     alignItems: 'center',
   },
@@ -192,15 +218,15 @@ const frameStyles = StyleSheet.create({
     width: '100%',
     maxWidth: 430,
     backgroundColor: colors.bg,
-    // Neutral depth only, soft on the light canvas.
-    ...(Platform.OS === 'web' ? { boxShadow: '0 0 24px rgba(0,0,0,0.18)' } : null),
+    // A faint silver halo separates the column from the black surround.
+    ...(Platform.OS === 'web' ? { boxShadow: '0 0 24px rgba(255,255,255,0.10)' } : null),
   },
 });
 
 export default function RootLayout() {
   return (
     <AuthProvider>
-      <StatusBar style="dark" />
+      <StatusBar style="light" />
       <WebFrame>
         <RootNavigator />
       </WebFrame>

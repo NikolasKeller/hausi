@@ -13,13 +13,15 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { brand, colors, radius, spacing } from '../lib/theme';
 import { uiText } from '../lib/fonts';
 
-export type ButtonVariant = 'primary' | 'vibrant' | 'paper' | 'ghost' | 'danger';
+export type ButtonVariant = 'primary' | 'vibrant' | 'chrome' | 'paper' | 'ghost' | 'danger';
 
 // The Partiful button family (on the dark canvas):
 //   primary  — solid WHITE pill, dark text. The high-contrast action, like
 //              Partiful's "Sign in" / "See more on the app".
 //   vibrant  — the party gradient fill (heliotrope→pink→blue), white text. The
 //              hero CTA ("Create invite").
+//   chrome   — the molten-silver gradient pill with a top sheen highlight —
+//              the "liquid chrome" CTA used for the primary action on forms.
 //   paper    — same white fill / dark text (kept for callers).
 //   ghost    — transparent + a hairline border. `tone` sets the ink/label to
 //              white (default) — used on top of vibrant surfaces too.
@@ -66,6 +68,34 @@ export function Button({
           end={{ x: 1, y: 1 }}
           style={[styles.button, styles.solid]}
         >
+          {label(colors.onAccent)}
+        </LinearGradient>
+      </Pressable>
+    );
+  }
+
+  // Chrome: the molten-silver ramp with a soft top-edge sheen, so it reads as
+  // brushed metal rather than a flat fill — the CTA for forms/auth.
+  if (variant === 'chrome') {
+    return (
+      <Pressable
+        onPress={onPress}
+        disabled={isDisabled}
+        style={({ pressed }) => [pressed && styles.pressed, isDisabled && styles.disabled, style]}
+      >
+        <LinearGradient
+          colors={[...brand.glow]}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={[styles.button, styles.solid, styles.chromeClip]}
+        >
+          <LinearGradient
+            pointerEvents="none"
+            colors={['rgba(255,255,255,0.55)', 'rgba(255,255,255,0)']}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 0, y: 1 }}
+            style={styles.chromeSheen}
+          />
           {label(colors.onAccent)}
         </LinearGradient>
       </Pressable>
@@ -153,6 +183,16 @@ const styles = StyleSheet.create({
   ghost: {
     borderWidth: 1.5,
     backgroundColor: 'transparent',
+  },
+  chromeClip: {
+    overflow: 'hidden',
+  },
+  chromeSheen: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    height: '55%',
   },
   pressed: {
     opacity: 0.85,

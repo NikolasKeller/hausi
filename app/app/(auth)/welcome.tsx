@@ -10,16 +10,36 @@ import {
   View,
 } from 'react-native';
 import { useRouter } from 'expo-router';
+import { Asset } from 'expo-asset';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { LinearGradient } from 'expo-linear-gradient';
 import { Button } from '../../components/ui';
 import { useAuth } from '../../lib/auth';
 import { uiText } from '../../lib/fonts';
 import { colors, spacing } from '../../lib/theme';
 
-// The chrome "iykyk" artwork — a square render on a warm cream ground. The
-// screen fills with the same cream and feathers the artwork's edges into it.
-const WORDMARK = require('../../assets/wordmark-chrome.png');
+// The animated liquid-silver logo on a pure-black ground — the loop morphs
+// into the "iykyk" lettering, so it carries the brand alone. On web (the
+// launch platform) it's a muted looping MP4 — 225KB vs the 1.5MB GIF that
+// native falls back to.
+const LOGO_LOOP_GIF = require('../../assets/brand/logo-liquid.gif');
+const LOGO_LOOP_MP4 = require('../../assets/brand/logo-liquid.mp4');
+
+const LOOP_SIZE = 320;
+
+function LogoLoop() {
+  if (Platform.OS === 'web') {
+    return React.createElement('video', {
+      src: Asset.fromModule(LOGO_LOOP_MP4).uri,
+      autoPlay: true,
+      muted: true,
+      loop: true,
+      playsInline: true,
+      'aria-hidden': true,
+      style: { width: LOOP_SIZE, height: LOOP_SIZE, objectFit: 'contain' },
+    });
+  }
+  return <Image source={LOGO_LOOP_GIF} style={styles.logoLoop} resizeMode="contain" />;
+}
 
 // react-native-web has no native driver; silence its fallback warning.
 const useNativeDriver = Platform.OS !== 'web';
@@ -66,7 +86,8 @@ export default function WelcomeScreen() {
 
   return (
     <View style={styles.screen}>
-      {/* The artwork, centered and contained — never stretched. */}
+      {/* The liquid logo loop, centered — its black ground melts into the
+          canvas seamlessly. */}
       <Animated.View
         pointerEvents="none"
         style={[
@@ -85,16 +106,8 @@ export default function WelcomeScreen() {
           },
         ]}
       >
-        <Image source={WORDMARK} style={styles.art} resizeMode="contain" />
+        <LogoLoop />
       </Animated.View>
-      {/* Feather the square artwork's top/bottom edges into the canvas so its
-          slight vignette never shows a seam. */}
-      <LinearGradient
-        colors={[colors.bg, 'rgba(207,199,189,0)', 'rgba(207,199,189,0)', colors.bg]}
-        locations={[0, 0.3, 0.7, 1]}
-        style={StyleSheet.absoluteFill}
-        pointerEvents="none"
-      />
 
       <SafeAreaView style={styles.safe}>
         <View style={{ flex: 1 }} />
@@ -125,18 +138,18 @@ export default function WelcomeScreen() {
 const styles = StyleSheet.create({
   screen: {
     flex: 1,
-    // Matches the artwork's cream ground so the square image melts into the
-    // full screen.
+    // Matches the artwork's black ground so both renders melt into the screen.
     backgroundColor: colors.bg,
     overflow: 'hidden',
   },
   artWrap: {
     alignItems: 'center',
     justifyContent: 'center',
+    paddingBottom: 120, // keep the art clear of the CTA block
   },
-  art: {
-    width: '100%',
-    height: '80%',
+  logoLoop: {
+    width: LOOP_SIZE,
+    height: LOOP_SIZE,
   },
   safe: {
     flex: 1,

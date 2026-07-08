@@ -162,22 +162,19 @@ export function GlassTabBar({ state, descriptors, navigation }: TabBarProps) {
   );
 }
 
+// Flat, edge-to-edge dark bar (the approved "obsidian" direction): near-black
+// fill, a single silver hairline on top, no floating pill. The bubble survives
+// as a faint silver wash gliding under the active tab.
 const styles = StyleSheet.create({
   wrap: {
-    paddingHorizontal: spacing.lg,
-    backgroundColor: 'transparent',
+    paddingHorizontal: 0,
+    backgroundColor: 'rgba(8,8,8,0.98)',
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: 'rgba(255,255,255,0.14)',
   },
   bar: {
-    backgroundColor: 'rgba(247,244,238,0.96)',
-    borderRadius: radius.pill,
-    borderWidth: 1,
-    borderColor: 'rgba(0,0,0,0.08)',
-    padding: 4,
-    shadowColor: '#4A4438',
-    shadowOpacity: 0.22,
-    shadowRadius: 24,
-    shadowOffset: { width: 0, height: 12 },
-    elevation: 12,
+    paddingTop: 6,
+    paddingHorizontal: spacing.md,
   },
   row: {
     flexDirection: 'row',
@@ -187,10 +184,8 @@ const styles = StyleSheet.create({
     position: 'absolute',
     top: 0,
     bottom: 0,
-    borderRadius: radius.pill,
-    backgroundColor: 'rgba(0,0,0,0.07)',
-    borderWidth: 1,
-    borderColor: 'rgba(0,0,0,0.06)',
+    borderRadius: radius.md,
+    backgroundColor: 'rgba(255,255,255,0.06)',
   },
   tab: {
     flex: 1,
