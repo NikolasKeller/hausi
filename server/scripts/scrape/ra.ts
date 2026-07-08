@@ -1,4 +1,5 @@
 import type { CityConfig, ScrapedEvent } from './types.js';
+import { pickOrganizerName } from './organizer.js';
 import { htmlToText, politeFetch, zonedTimeToUtc } from './util.js';
 
 // Resident Advisor public GraphQL (same endpoint the ra.co event listings use).
@@ -19,6 +20,7 @@ const LISTINGS_QUERY = `query GET_EVENT_LISTINGS($filters: FilterInputDtoInput, 
         contentUrl
         images { filename }
         venue { name address }
+        promoters { name }
         isTicketed
         tickets(queryType: AVAILABLE) { priceRetail isAddOn currency { code } }
       }
@@ -42,6 +44,7 @@ interface RaEvent {
   contentUrl: string;
   images: { filename: string }[];
   venue: { name: string; address: string | null } | null;
+  promoters: { name: string | null }[] | null;
   isTicketed: boolean | null;
   tickets: RaTicket[] | null;
 }
@@ -100,11 +103,12 @@ export async function scrapeRa(config: CityConfig, take = 30, horizonDays = 30):
     if (!price) continue; // free / no purchasable ticket — paid events only
     // RA startTime is venue-local; treating it in the city's timezone.
     const startAt = zonedRaTime(ev.startTime, config.timeZone);
+    const description = ev.content ? htmlToText(ev.content).slice(0, 2500) : '';
     out.push({
       source: 'ra',
       sourceUrl: `https://ra.co${ev.contentUrl}`,
       title: ev.title.trim(),
-      description: ev.content ? htmlToText(ev.content).slice(0, 2500) : '',
+      description,
       startAt,
       venueName: ev.venue?.name ?? '',
       address: ev.venue?.address ?? '',
@@ -115,6 +119,12 @@ export async function scrapeRa(config: CityConfig, take = 30, horizonDays = 30):
       // RA sells the ticket on its own event page — a real paid checkout
       // (unlike lu.ma's free signups), so it's an acceptable buy target.
       ticketUrl: `https://ra.co${ev.contentUrl}`,
+      organizerName: pickOrganizerName({
+        promoterName: ev.promoters?.[0]?.name,
+        venueName: ev.venue?.name,
+        title: ev.title,
+        description,
+      }),
     });
   }
   return out;
