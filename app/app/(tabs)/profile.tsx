@@ -39,7 +39,8 @@ function ProfileScreen() {
   const [profile, setProfile] = useState<MyProfile | null>(null);
   // Events with a bought ticket (any non-hosted event on "my events" — buying
   // marks them GOING server-side).
-  const [tickets, setTickets] = useState<EventSummary[]>([]);
+  // Favorited events (heart toggle) — reuses the "interested"/MAYBE RSVP.
+  const [favorites, setFavorites] = useState<EventSummary[]>([]);
   // Agent-purchased tickets (with the generated PDF once done).
   const [ticketJobs, setTicketJobs] = useState<TicketJobInfo[]>([]);
   const [error, setError] = useState<string | null>(null);
@@ -57,7 +58,7 @@ function ProfileScreen() {
     // Best-effort — the profile renders fine without the ticket list.
     try {
       const res = await api.myEvents();
-      setTickets(res.events.filter((ev) => !ev.isHost));
+      setFavorites(res.events.filter((ev) => ev.myRsvp === 'MAYBE'));
     } catch {
       // keep whatever we had
     }
@@ -84,7 +85,7 @@ function ProfileScreen() {
         }
         try {
           const res = await api.myEvents();
-          if (active) setTickets(res.events.filter((ev) => !ev.isHost));
+          if (active) setFavorites(res.events.filter((ev) => ev.myRsvp === 'MAYBE'));
         } catch {
           // best-effort
         }
@@ -192,17 +193,16 @@ function ProfileScreen() {
           </View>
         </View>
 
-        {/* Events with a bought ticket — tapping "Buy ticket" on an event
-            files it here (and on the calendar). */}
+        {/* Favorited events — tap the heart on an event to save it here. */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>My events</Text>
-          {tickets.length === 0 ? (
+          <Text style={styles.sectionTitle}>Favorites</Text>
+          {favorites.length === 0 ? (
             <Text style={styles.ticketsEmpty}>
-              No tickets yet - grab one on an event page 🎟️
+              No favorites yet - tap the heart on an event 🤍
             </Text>
           ) : (
             <View style={styles.ticketList}>
-              {tickets.map((ev) => (
+              {favorites.map((ev) => (
                 <EventCard key={ev.id} event={ev} />
               ))}
             </View>
