@@ -196,6 +196,35 @@ model PlusOne {
   @@index([rsvpId])
 }
 
+// An agentic ticket-purchase job: the server-side agent visits the event's
+// checkout page (demo provider or the real ticket URL) and buys a ticket with
+// the user's Agent Wallet. Card data is NEVER stored — it lives only in the
+// job runner's memory while the job executes; this row keeps just the masked
+// tail (cardLast4) for display. Like Upload, plain IDs instead of relations so
+// the existing models stay untouched.
+// status: checking | available | soldout | purchasing | done | failed
+//   (SQLite has no enums). A job is created in "checking" (availability), moves
+//   to "available"/"soldout", then on payment to "purchasing" and done/failed.
+// provider: demo (server-hosted test checkout) | web (the event's real ticket URL)
+model TicketJob {
+  id         String   @id @default(cuid())
+  userId     String
+  eventId    String
+  status     String   @default("checking")
+  provider   String   @default("demo")
+  // "/uploads/tickets/<uuid>.pdf" once the agent generated the ticket PDF.
+  pdfPath    String   @default("")
+  buyerName  String   @default("")
+  cardLast4  String   @default("")
+  // Human-readable failure reason ("bot protection", "no card field found"…).
+  error      String   @default("")
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@index([userId])
+  @@index([eventId, userId])
+}
+
 // type: "comment" (user-written) | "system" (activity entries like "X is going")
 //     | "blast" (host announcement, also texted to guests)
 model Comment {

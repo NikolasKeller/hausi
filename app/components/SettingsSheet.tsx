@@ -15,15 +15,18 @@ interface Props {
   onClose: () => void;
   onEditProfile: () => void;
   onShareProfile: () => void;
+  // Opens the Agent Wallet sheet (purchase details for agentic ticket buying).
+  onEditWallet: () => void;
   onLogout: () => void;
 }
 
 // Settings bottom sheet — the gear on the profile header opens this menu instead
 // of logging out on the spot. Log out is just one option among the rest, and it
 // wears the warm-linen card chrome shared with the rest of the app's sheets.
-export function SettingsSheet({ onClose, onEditProfile, onShareProfile, onLogout }: Props) {
+export function SettingsSheet({ onClose, onEditProfile, onShareProfile, onEditWallet, onLogout }: Props) {
   const options: Option[] = [
     { icon: 'pencil', label: 'Edit profile', onPress: onEditProfile },
+    { icon: 'card-outline', label: 'Agent Wallet', onPress: onEditWallet },
     { icon: 'share-outline', label: 'Share profile', onPress: onShareProfile },
     { icon: 'log-out-outline', label: 'Log out', onPress: onLogout, destructive: true },
   ];
