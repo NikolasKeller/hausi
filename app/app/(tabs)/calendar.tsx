@@ -293,9 +293,11 @@ function CalendarScreen() {
             <Text style={styles.panelTitle}>
               {selectedIsToday ? <Text style={styles.panelStrong}>Today </Text> : null}
               <Text style={selectedIsToday ? styles.panelMuted : styles.panelStrong}>
-                {`${String(selected.getDate()).padStart(2, '0')}/${String(
-                  selected.getMonth() + 1
-                ).padStart(2, '0')}/${selected.getFullYear()}`}
+                {selected.toLocaleDateString(undefined, {
+                  weekday: 'long',
+                  month: 'long',
+                  day: 'numeric',
+                })}
               </Text>
             </Text>
 
@@ -415,7 +417,7 @@ const styles = StyleSheet.create({
     // name ("September") in the row alongside the chevrons, so every month
     // matches it and the title never resizes as you page through months.
     ...display(32),
-    color: colors.text,
+    color: colors.helio,
     flexShrink: 1,
   },
   chevrons: {
@@ -506,7 +508,7 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   dayNumberSelected: {
-    color: colors.bg,
+    color: '#FFFFFF',
     fontWeight: '800',
   },
   dayEmoji: {
@@ -517,33 +519,35 @@ const styles = StyleSheet.create({
     height: 36,
     borderRadius: 18,
   },
+  // A bottom-sheet look: the panel bleeds to the screen edges, rounds only its
+  // top corners and separates from the grid with a soft fill (no hard border).
   panel: {
     flex: 1,
-    backgroundColor: colors.card,
-    borderWidth: 1,
-    borderColor: colors.cardBorder,
-    borderRadius: radius.lg,
+    backgroundColor: 'rgba(255,255,255,0.05)',
+    borderTopLeftRadius: radius.xl,
+    borderTopRightRadius: radius.xl,
+    marginHorizontal: -spacing.md,
+    marginBottom: -spacing.md,
     padding: spacing.lg,
     gap: spacing.md,
-    ...shadow.card,
   },
   panelHandle: {
     alignSelf: 'center',
-    width: 44,
+    width: 40,
     height: 4,
     borderRadius: 2,
-    backgroundColor: colors.cardBorder,
+    backgroundColor: 'rgba(255,255,255,0.25)',
   },
   panelTitle: {
-    fontSize: 17,
+    fontSize: 15,
     textAlign: 'center',
   },
   panelStrong: {
-    ...uiText(17, '800'),
+    ...uiText(15, '800'),
     color: colors.text,
   },
   panelMuted: {
-    ...uiText(17, '600'),
+    ...uiText(15, '600'),
     color: colors.muted,
   },
   panelScroll: {
@@ -568,12 +572,13 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
   },
   emptyTitle: {
-    ...display(36),
+    ...display(24),
     color: colors.text,
     textAlign: 'center',
   },
   planButton: {
-    alignSelf: 'stretch',
+    alignSelf: 'center',
+    minWidth: 200,
   },
   listSections: {
     gap: spacing.md,

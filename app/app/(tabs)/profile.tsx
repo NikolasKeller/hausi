@@ -34,7 +34,8 @@ function Stat({ label, value }: { label: string; value: number }) {
   );
 }
 
-export default withScreenBackground(ProfileScreen);
+// No violet bloom here — the profile sits on the plain dark canvas.
+export default withScreenBackground(ProfileScreen, { bloom: false });
 
 function ProfileScreen() {
   const router = useRouter();

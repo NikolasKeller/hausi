@@ -1,10 +1,31 @@
 import React from 'react';
 import { StyleSheet, View } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
 import { colors } from '../lib/theme';
 
-// The app-wide backdrop: a flat near-black base.
-export function ScreenBackground({ children }: { children?: React.ReactNode }) {
-  return <View style={styles.fill}>{children}</View>;
+// The app-wide backdrop: near-black with a soft violet bloom falling from the
+// top of the screen (the Partiful-style lit-at-night glow). `bloom` can be
+// turned off for screens that want the plain dark canvas (e.g. Profile).
+export function ScreenBackground({
+  children,
+  bloom = true,
+}: {
+  children?: React.ReactNode;
+  bloom?: boolean;
+}) {
+  return (
+    <View style={styles.fill}>
+      {bloom ? (
+        <LinearGradient
+          colors={['rgba(124,82,222,0.55)', 'rgba(94,58,180,0.22)', 'rgba(12,12,14,0)']}
+          locations={[0, 0.45, 1]}
+          style={styles.bloom}
+          pointerEvents="none"
+        />
+      ) : null}
+      {children}
+    </View>
+  );
 }
 
 // Wraps a screen so it carries its own opaque backdrop. On web the tab
@@ -14,11 +35,12 @@ export function ScreenBackground({ children }: { children?: React.ReactNode }) {
 // giving each scene an opaque ScreenBackground makes the focused tab fully
 // occlude them, independent of the react-native-screens web shim.
 export function withScreenBackground<P extends object>(
-  Screen: React.ComponentType<P>
+  Screen: React.ComponentType<P>,
+  opts?: { bloom?: boolean }
 ): React.ComponentType<P> {
   function ScreenWithBackground(props: P) {
     return (
-      <ScreenBackground>
+      <ScreenBackground bloom={opts?.bloom}>
         <Screen {...props} />
       </ScreenBackground>
     );
@@ -34,5 +56,12 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: colors.bg,
     overflow: 'hidden',
+  },
+  bloom: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    height: 320,
   },
 });

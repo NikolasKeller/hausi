@@ -16,7 +16,7 @@ import { api } from '../../lib/api';
 import { useAuth } from '../../lib/auth';
 import { notify } from '../../lib/dialogs';
 import { colors, radius, spacing, shadow } from '../../lib/theme';
-import { titleFontStyle, display, displayTitle, uiText, kicker } from '../../lib/fonts';
+import { titleFontStyle, display, uiText, kicker } from '../../lib/fonts';
 import { CoverGradient } from '../../components/CoverGradient';
 import { Avatar } from '../../components/Avatar';
 import { Button } from '../../components/ui';
@@ -277,7 +277,16 @@ function HomeScreen() {
 
         {trending.list.length > 0 ? (
           <View style={styles.sectionGroup}>
-            <Text style={styles.sectionTitle}>{trending.title}</Text>
+            <View style={styles.sectionHeadRow}>
+              <Text style={styles.sectionTitle}>{trending.title}</Text>
+              <Pressable
+                onPress={() => router.push('/explore')}
+                style={({ pressed }) => [styles.viewAllPill, pressed && { opacity: 0.7 }]}
+                hitSlop={6}
+              >
+                <Text style={styles.viewAllText}>View all</Text>
+              </Pressable>
+            </View>
             <ScrollView
               horizontal
               showsHorizontalScrollIndicator={false}
@@ -389,27 +398,49 @@ function AvatarCluster({ faces }: { faces: { name: string; avatarImage: string }
   );
 }
 
-// A trending event from the discover feed: cover poster, date, and how many
-// people are interested — tap through to the event page.
+// A trending event from the discover feed — the big discovery card: an
+// attribution strip when a mutual is in, the cover poster, then title, date ·
+// city, a description snippet and the interested count.
 function TrendingCard({ event }: { event: ExploreEvent }) {
   const router = useRouter();
+  const meta = [formatEventDate(event.date), event.city || event.location]
+    .filter(Boolean)
+    .join(' · ');
   return (
     <Pressable
       onPress={() => router.push(`/event/${event.slug}`)}
-      style={({ pressed }) => [styles.recentCard, pressed && { opacity: 0.85 }]}
+      style={({ pressed }) => [styles.trendingCard, pressed && { opacity: 0.9 }]}
     >
-      <CoverGradient theme={event.coverTheme} image={event.coverImage} style={styles.recentCover} emojiOpacity={0.25}>
-        <Text style={[styles.recentTitle, displayTitle]} numberOfLines={2}>
+      {event.friendGoing ? (
+        <View style={styles.trendingAttrib}>
+          <Avatar name={event.friendGoing.name} image={event.friendGoing.avatarImage} size={20} />
+          <Text style={styles.trendingAttribText} numberOfLines={1}>
+            <Text style={styles.trendingAttribName}>{event.friendGoing.name}</Text> is interested
+          </Text>
+        </View>
+      ) : null}
+      <CoverGradient
+        theme={event.coverTheme}
+        image={event.coverImage}
+        style={styles.trendingCover}
+        emojiOpacity={0.3}
+      />
+      <View style={styles.trendingBody}>
+        <Text style={styles.trendingTitle} numberOfLines={2}>
           {event.title}
         </Text>
-      </CoverGradient>
-      <View style={styles.trendingMeta}>
         <Text style={styles.trendingDate} numberOfLines={1}>
-          {formatEventDate(event.date)}
+          {meta}
         </Text>
-        {event.interested > 0 ? (
-          <Text style={styles.trendingInterested}>{event.interested} interested</Text>
+        {event.description.trim() ? (
+          <Text style={styles.trendingDesc} numberOfLines={2}>
+            {event.description.trim()}
+          </Text>
         ) : null}
+        <View style={styles.trendingFooter}>
+          <Ionicons name="star-outline" size={16} color={colors.muted} />
+          <Text style={styles.trendingInterested}>{event.interested} Interested</Text>
+        </View>
       </View>
     </Pressable>
   );
@@ -451,12 +482,8 @@ const styles = StyleSheet.create({
     position: 'relative',
   },
   wordmark: {
-    ...display(38),
+    ...display(24),
     color: colors.text,
-    textAlign: 'center',
-    textShadowColor: 'rgba(255,106,43,0.6)',
-    textShadowOffset: { width: 0, height: 0 },
-    textShadowRadius: 14,
   },
   sectionGroup: {
     gap: spacing.md,
@@ -466,8 +493,25 @@ const styles = StyleSheet.create({
     ...kicker(colors.accent),
     marginBottom: -spacing.xs,
   },
+  sectionHeadRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: spacing.sm,
+  },
   sectionTitle: {
-    ...display(30),
+    ...display(21),
+    color: colors.text,
+  },
+  viewAllPill: {
+    borderRadius: radius.pill,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.35)',
+    paddingHorizontal: spacing.md,
+    paddingVertical: 6,
+  },
+  viewAllText: {
+    ...uiText(13, '600'),
     color: colors.text,
   },
   welcomeBanner: {
@@ -614,45 +658,60 @@ const styles = StyleSheet.create({
     ...uiText(14, '600'),
     color: colors.text,
   },
-  recentCard: {
-    width: 178,
+  trendingCard: {
+    width: 300,
     backgroundColor: colors.card,
-    borderRadius: radius.md,
+    borderRadius: radius.xl,
     borderWidth: 1,
     borderColor: colors.cardBorder,
     overflow: 'hidden',
     ...shadow.card,
   },
-  recentCover: {
-    height: 124,
-    padding: spacing.sm,
-    justifyContent: 'flex-end',
+  trendingAttrib: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+    backgroundColor: 'rgba(255,255,255,0.06)',
   },
-  recentTitle: {
-    color: '#fff',
-    fontSize: 20,
-    lineHeight: 22,
-    // Reserve exactly two lines and top-align, so every card's title starts on
-    // the same horizontal line regardless of one- vs two-line length.
-    height: 44,
-    textAlignVertical: 'top',
-    fontWeight: '800',
-    letterSpacing: -0.3,
-    textShadowColor: 'rgba(0,0,0,0.35)',
-    textShadowOffset: { width: 0, height: 1 },
-    textShadowRadius: 4,
+  trendingAttribText: {
+    ...uiText(12),
+    color: colors.muted,
+    flex: 1,
   },
-  trendingMeta: {
-    padding: spacing.sm,
-    paddingTop: 6,
-    gap: 2,
+  trendingAttribName: {
+    ...uiText(12, '700'),
+    color: colors.text,
+  },
+  trendingCover: {
+    height: 220,
+  },
+  trendingBody: {
+    padding: spacing.md,
+    gap: spacing.xs,
+  },
+  trendingTitle: {
+    ...display(19, { tracking: -0.01 }),
+    color: colors.text,
   },
   trendingDate: {
-    ...uiText(12, '700'),
+    ...uiText(13, '700'),
     color: colors.muted,
   },
+  trendingDesc: {
+    ...uiText(13),
+    color: colors.muted,
+    lineHeight: 18,
+  },
+  trendingFooter: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingTop: spacing.xs,
+  },
   trendingInterested: {
-    ...uiText(12, '700'),
-    color: colors.accent,
+    ...uiText(13, '700'),
+    color: colors.muted,
   },
 });

@@ -108,8 +108,9 @@ function RootNavigator() {
       if (segments[0] !== 'setup') router.replace('/setup');
     } else if (user && (inAuthGroup || pendingPath)) {
       // Restore where the user was heading (e.g. an invite link) — also for
-      // first-timers, who finish profile setup before this fires.
-      const target = pendingPath ?? '/';
+      // first-timers, who finish profile setup before this fires. Fresh
+      // sign-ins land on Explore, the app's first tab.
+      const target = pendingPath ?? '/explore';
       pendingPath = null;
       if (pathname !== target) router.replace(target as never);
     }

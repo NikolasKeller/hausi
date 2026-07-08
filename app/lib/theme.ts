@@ -1,25 +1,25 @@
-// iykyk design system — a stark near-black (#111) canvas, white League Gothic
-// type, translucent white surfaces/hairlines, and a single warm orange as the
-// signature accent (glowing white-on-black look). Dark, bold, nightlife-flavored.
+// iykyk design system — a stark near-black canvas with a violet bloom falling
+// from the top, white type, translucent white surfaces/hairlines, and a
+// heliotrope-violet signature accent. Dark, soft-glow, nightlife-flavored.
 
 // ── App palette (dark canvas) ────────────────────────────────────────────────
 export const colors = {
   // Surfaces
-  bg: '#111111',        // near-black canvas
+  bg: '#0C0C0E',        // near-black canvas
   card: '#1C1C1E',      // elevated dark card
   cardBorder: 'rgba(255,255,255,0.10)', // hairline on dark
   inputBg: 'rgba(255,255,255,0.07)',    // translucent field fill
   // Type
   text: '#FFFFFF',      // white ink
   muted: 'rgba(255,255,255,0.56)',      // dimmed white
-  // Brand / accent — warm glowing orange
-  accent: '#FF6A2B',
-  accentDark: '#D2491A',
-  violet: '#FF8A3D',    // warm secondary (kept name for back-compat)
-  helio: '#FF6A2B',     // same as accent
+  // Brand / accent — heliotrope violet
+  accent: '#8B5CF6',
+  accentDark: '#6D3BDD',
+  violet: '#8B5CF6',
+  helio: '#A78BFA',     // lighter heliotrope tint (headlines, glows)
   // High-contrast solid fill (a white pill on the dark canvas)
   ink: '#FFFFFF',
-  // Text on the orange/gradient accent fill
+  // Text on the violet/gradient accent fill
   onAccent: '#FFFFFF',
   // Text on a white solid fill
   onInk: '#111111',
@@ -34,7 +34,7 @@ export const colors = {
 // dark-on-dark surface scheme so "paper" cards read as Partiful's dark panels.
 export const light = {
   // Surfaces
-  bg: '#111111', // dark canvas
+  bg: '#0C0C0E', // dark canvas
   paper: '#1C1C1E', // elevated dark card / panel
   // Ink & type ramp (white → dim)
   ink: '#FFFFFF',
@@ -54,17 +54,17 @@ export const light = {
 
 // ── Vibrant brand gradients (the festive party surface) ──────────────────────
 // A dusk→night ramp for dark hero backgrounds.
-export const dusk = ['#E8927C', '#B76E9B', '#6E4E8E', '#3B2E5E', '#241B3A'] as const;
+export const dusk = ['#B497D6', '#8E6BB8', '#5E4590', '#352A58', '#1C1633'] as const;
 
 export const brand = {
-  // The signature gradient — warm amber → orange → deep ember.
-  party: ['#FFB061', '#FF6A2B', '#D2491A'] as const,
-  // Soft warm washes for light section backgrounds.
-  partyPink: ['#FFD8B0', '#FFC089'] as const,
-  periwinkle: ['rgba(255,138,61,0.28)', 'rgba(255,255,255,0)'] as const,
-  spearmint: ['#FFC089', '#FFE0C2'] as const,
-  // Amber → orange — the primary action gradient.
-  glow: ['#FF8A3D', '#E24E12'] as const,
+  // The signature gradient — heliotrope → violet → deep indigo.
+  party: ['#C4A7FF', '#8B5CF6', '#5B34C4'] as const,
+  // Soft violet washes for section backgrounds.
+  partyPink: ['#E4D6FF', '#C9B2FF'] as const,
+  periwinkle: ['rgba(139,92,246,0.28)', 'rgba(255,255,255,0)'] as const,
+  spearmint: ['#C9B2FF', '#E9E0FF'] as const,
+  // Heliotrope → violet — the primary action gradient.
+  glow: ['#A78BFA', '#6D3BDD'] as const,
 };
 
 // Kept for back-compat (the primary action gradient).
