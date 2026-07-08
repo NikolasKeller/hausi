@@ -20,13 +20,6 @@ export function formatEventTime(iso: string): string {
   return new Date(iso).toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' });
 }
 
-const STATUS_LABEL: Record<string, string> = {
-  GOING: 'Going',
-  MAYBE: 'Maybe',
-  CANT: "Can't go",
-  WAITLIST: 'Waitlist',
-};
-
 export function EventCard({ event }: { event: EventSummary }) {
   const router = useRouter();
   // Photo covers get white type over a scrim; the plain paper cover needs dark
@@ -50,6 +43,8 @@ export function EventCard({ event }: { event: EventSummary }) {
           {event.title}
         </Text>
       </CoverGradient>
+      {/* No attendee counters / RSVP status labels — tickets are bought at the
+          source, so the card only carries the event's own facts. */}
       <View style={styles.body}>
         <View style={{ flex: 1, gap: spacing.xs }}>
           <Text style={styles.date}>
@@ -61,14 +56,6 @@ export function EventCard({ event }: { event: EventSummary }) {
               {event.isHost ? 'You are hosting' : `Hosted by ${event.host.name}`}
             </Text>
           </View>
-        </View>
-        <View style={styles.badges}>
-          <View style={styles.goingPill}>
-            <Text style={styles.going}>{event.counts.going} going</Text>
-          </View>
-          {event.myRsvp && !event.isHost ? (
-            <Text style={styles.myStatus}>{STATUS_LABEL[event.myRsvp]}</Text>
-          ) : null}
         </View>
       </View>
     </Pressable>
@@ -137,27 +124,5 @@ const styles = StyleSheet.create({
     ...uiText(13, '500'),
     color: colors.muted,
     flexShrink: 1,
-  },
-  badges: {
-    alignItems: 'flex-end',
-    gap: spacing.xs,
-  },
-  // Soft, quiet pill on the warm-white card — subtle success text on a hairline
-  // chip instead of the loud bright-green fill.
-  goingPill: {
-    backgroundColor: colors.card,
-    borderRadius: radius.pill,
-    borderWidth: 1,
-    borderColor: colors.cardBorder,
-    paddingHorizontal: spacing.sm,
-    paddingVertical: 4,
-  },
-  going: {
-    ...uiText(13, '600'),
-    color: colors.success,
-  },
-  myStatus: {
-    ...uiText(12, '600'),
-    color: colors.muted,
   },
 });
