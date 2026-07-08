@@ -3,7 +3,6 @@ import { ActivityIndicator, Platform, Pressable, StyleSheet, Text, View } from '
 import { Stack, usePathname, useRouter, useSegments } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useFonts } from 'expo-font';
-import { LinearGradient } from 'expo-linear-gradient';
 import { enableScreens } from 'react-native-screens';
 import { AuthProvider, useAuth } from '../lib/auth';
 import { FONTS_TO_LOAD } from '../lib/fonts';
@@ -74,6 +73,26 @@ function RootNavigator() {
       devSignIn().catch(() => {});
     }
   }, [initializing, user, devSignIn]);
+
+  // Web: lock the viewport so mobile Safari doesn't zoom into a focused input
+  // (which would push a screen's title out of view). Done at runtime so it also
+  // covers the Expo dev server, whose HTML template we can't edit — the static
+  // build sets the same meta via postexport.mjs.
+  useEffect(() => {
+    if (Platform.OS !== 'web') return;
+    const doc = (globalThis as any).document;
+    if (!doc?.head) return;
+    let meta = doc.querySelector('meta[name="viewport"]');
+    if (!meta) {
+      meta = doc.createElement('meta');
+      meta.setAttribute('name', 'viewport');
+      doc.head.appendChild(meta);
+    }
+    meta.setAttribute(
+      'content',
+      'width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover'
+    );
+  }, []);
 
   useEffect(() => {
     if (initializing) return;
@@ -174,16 +193,6 @@ function WebFrame({ children }: { children: React.ReactNode }) {
   if (Platform.OS !== 'web') return <>{children}</>;
   return (
     <View style={frameStyles.page}>
-      {/* Dark nightlife surround so the phone column reads as a lit screen
-          floating on a near-black desk with a faint warm/orange bloom. */}
-      <LinearGradient
-        colors={['#241811', '#17110D', '#0D0A08']}
-        locations={[0, 0.5, 1]}
-        start={{ x: 0.2, y: 0 }}
-        end={{ x: 0.8, y: 1 }}
-        style={StyleSheet.absoluteFill}
-        pointerEvents="none"
-      />
       <View style={frameStyles.phone}>{children}</View>
     </View>
   );
@@ -192,7 +201,8 @@ function WebFrame({ children }: { children: React.ReactNode }) {
 const frameStyles = StyleSheet.create({
   page: {
     flex: 1,
-    backgroundColor: '#0C0A0F',
+    // Entirely black surround — the phone column sits on a flat near-black desk.
+    backgroundColor: colors.bg,
     alignItems: 'center',
   },
   phone: {
@@ -200,9 +210,8 @@ const frameStyles = StyleSheet.create({
     width: '100%',
     maxWidth: 430,
     backgroundColor: colors.bg,
-    ...(Platform.OS === 'web'
-      ? { boxShadow: '0 0 64px rgba(255,106,43,0.28), 0 0 24px rgba(0,0,0,0.5)' }
-      : null),
+    // Neutral depth only (no coloured bloom) so the background stays black.
+    ...(Platform.OS === 'web' ? { boxShadow: '0 0 24px rgba(0,0,0,0.5)' } : null),
   },
 });
 

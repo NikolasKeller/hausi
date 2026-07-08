@@ -145,6 +145,14 @@ export const api = {
   login(data: { email: string; password: string }) {
     return request<AuthResponse>('/auth/login', { method: 'POST', body: JSON.stringify(data) });
   },
+  // Localhost-only: sign in past the SMS flow. The server 404s this anywhere
+  // but the developer's own machine, so it's safe that this exists in the app.
+  devLogin(opts: { phone?: string; name?: string } = {}) {
+    return request<PhoneVerifyResponse>('/auth/dev/login', {
+      method: 'POST',
+      body: JSON.stringify(opts),
+    });
+  },
   myEvents() {
     return request<{ events: EventSummary[] }>('/events');
   },

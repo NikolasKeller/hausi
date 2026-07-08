@@ -222,7 +222,7 @@ const styles = StyleSheet.create({
   },
   fab: {
     position: 'absolute',
-    right: spacing.md,
+    right: spacing.xl,
     width: 60,
     height: 60,
     borderRadius: 30,

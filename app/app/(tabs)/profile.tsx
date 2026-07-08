@@ -245,6 +245,8 @@ const styles = StyleSheet.create({
     justifyContent: 'flex-end',
     backgroundColor: colors.bg,
     overflow: 'hidden',
+    // Nudge the photo down from the very top so it isn't glued to the edge.
+    marginTop: spacing.xl,
   },
   heroFallback: {
     ...StyleSheet.absoluteFillObject,

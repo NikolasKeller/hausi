@@ -32,7 +32,7 @@ const headTags = `
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     <meta name="apple-mobile-web-app-title" content="iykyk" />
     <style>
-      html, body { background-color: #0E0B16; }
+      html, body { background-color: #111111; }
       body { overscroll-behavior-y: none; }
       #root {
         padding-top: env(safe-area-inset-top);
