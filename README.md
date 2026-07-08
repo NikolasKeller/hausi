@@ -142,6 +142,58 @@ screen, installable via "Add to Home Screen") alongside the API under `/api`.
 On iPhones: open the link in Safari → Share → **Add to Home Screen** to get the
 full-screen app. Android/Chrome offers "Install app" automatically.
 
+## Continuous Expo Go delivery (EAS Update)
+
+Two GitHub Actions keep the app runnable in **Expo Go** on your phone at all times:
+
+| Workflow | Trigger | EAS Update target |
+| --- | --- | --- |
+| `.github/workflows/eas-update-production.yml` | every push/merge to `main` | channel/branch **`production`** |
+| `.github/workflows/eas-update-preview.yml` | every PR (opened/updated) | a branch named after the PR's git branch, plus an auto-updated **PR comment with a QR code** |
+
+**How to open it on your iPhone:**
+
+- **Latest main:** open Expo Go (logged in with the project owner's Expo
+  account) → Projects → *iykyk* → branch `production`. The production
+  workflow's job summary also prints a stable `exp://u.expo.dev/...` link and
+  QR code — scan it once, it always resolves to the latest published update.
+- **A PR preview:** scan the QR code from the bot comment on the PR.
+
+**One-time setup** (required before the workflows can publish):
+
+```bash
+cd app
+npm i -g eas-cli
+eas login                 # Expo account
+eas init                  # links the repo to an EAS project (writes extra.eas.projectId into app.json — commit it)
+```
+
+Then create an access token at <https://expo.dev/settings/access-tokens> and
+add it to the GitHub repo as a secret:
+
+```bash
+gh secret set EXPO_TOKEN
+```
+
+Notes:
+
+- `runtimeVersion` uses the `appVersion` policy — bump `expo.version` in
+  `app/app.json` whenever native dependencies change, so old clients don't
+  receive incompatible updates. Expo Go itself only checks the SDK version
+  (currently 54).
+- Updates only ship JS/asset changes. Adding native modules still requires a
+  new build (and doesn't affect Expo Go as long as the modules are part of
+  Expo Go).
+- The published bundle talks to the API at `EXPO_PUBLIC_API_URL` (server
+  origin, no `/api`), baked in at publish time. Both workflows read it from a
+  **repository variable** — set it to your deployed server (e.g. the Railway
+  domain), otherwise the app on your phone falls back to `localhost` and
+  cannot reach the API:
+
+  ```bash
+  gh variable set EXPO_PUBLIC_API_URL --body "https://<your-railway-domain>"
+  ```
+
 ## Native device builds (EAS)
 
 The repo also ships `app/eas.json` and bundle identifiers (`com.iykyk.app`) for

@@ -1,0 +1,74 @@
+name: EAS Update — production
+
+on:
+  push:
+    branches: [main]
+
+concurrency:
+  group: eas-update-production
+  cancel-in-progress: true
+
+jobs:
+  update:
+    name: Publish main to production channel
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check for EXPO_TOKEN
+        run: |
+          if [ -z "${{ secrets.EXPO_TOKEN }}" ]; then
+            echo "Missing EXPO_TOKEN secret. Create an access token at https://expo.dev/settings/access-tokens and add it as a repository secret named EXPO_TOKEN."
+            exit 1
+          fi
+
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: app/package-lock.json
+
+      - name: Setup EAS
+        uses: expo/expo-github-action@v8
+        with:
+          eas-version: latest
+          token: ${{ secrets.EXPO_TOKEN }}
+
+      - name: Install dependencies
+        working-directory: app
+        run: npm ci
+
+      - name: Publish update
+        id: update
+        working-directory: app
+        env:
+          # Server origin the published app talks to (e.g. the Railway domain).
+          # Without it the bundle falls back to localhost and cannot reach the API on a phone.
+          EXPO_PUBLIC_API_URL: ${{ vars.EXPO_PUBLIC_API_URL }}
+        run: |
+          eas update --channel production --non-interactive \
+            --message "$(git log -1 --pretty=%s | head -c 200)" \
+            --json > update-output.json
+          cat update-output.json
+
+      - name: Write job summary with Expo Go links
+        working-directory: app
+        run: |
+          PROJECT_ID=$(jq -r '.expo.extra.eas.projectId // empty' app.json)
+          GROUP_ID=$(jq -r '.[0].group // empty' update-output.json)
+          RUNTIME=$(jq -r '.[0].runtimeVersion // empty' update-output.json)
+          {
+            echo "## EAS Update published to \`production\`"
+            echo ""
+            echo "**Stable Expo Go link (always latest main):**"
+            echo ""
+            echo "\`exp://u.expo.dev/${PROJECT_ID}?channel-name=production&runtime-version=${RUNTIME}\`"
+            echo ""
+            echo "**This exact revision:** \`exp://u.expo.dev/update/$(jq -r '.[0].id' update-output.json)\`"
+            echo ""
+            echo "**QR code:**"
+            echo ""
+            echo "![QR](https://qr.expo.dev/eas-update?projectId=${PROJECT_ID}&groupId=${GROUP_ID}&appScheme=exp&host=u.expo.dev)"
+          } >> "$GITHUB_STEP_SUMMARY"
