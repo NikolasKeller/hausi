@@ -22,7 +22,6 @@ import { shareText } from '../../lib/share';
 import { colors, radius, shadow, spacing } from '../../lib/theme';
 import { display, uiText } from '../../lib/fonts';
 import { Avatar } from '../../components/Avatar';
-import { AgentWalletSheet } from '../../components/AgentWalletSheet';
 import { Button } from '../../components/ui';
 import { EventCard, formatEventDate } from '../../components/EventCard';
 import { ChromeText } from '../../components/ChromeText';
@@ -45,8 +44,6 @@ function ProfileScreen() {
   const [ticketJobs, setTicketJobs] = useState<TicketJobInfo[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [settingsOpen, setSettingsOpen] = useState(false);
-  const [walletOpen, setWalletOpen] = useState(false);
-
   const load = useCallback(async () => {
     try {
       const res = await api.myProfile();
@@ -279,11 +276,9 @@ function ProfileScreen() {
           onClose={() => setSettingsOpen(false)}
           onEditProfile={() => router.push('/edit-profile')}
           onShareProfile={shareProfile}
-          onEditWallet={() => setWalletOpen(true)}
           onLogout={confirmLogout}
         />
       ) : null}
-      {walletOpen ? <AgentWalletSheet mode="edit" onClose={() => setWalletOpen(false)} /> : null}
     </View>
   );
 }
@@ -320,8 +315,9 @@ const styles = StyleSheet.create({
     // Transparent so the paper texture shows through — no flat block/bar.
     backgroundColor: 'transparent',
     overflow: 'hidden',
-    // Nudge the photo down from the very top so it isn't glued to the edge.
-    marginTop: spacing.xl,
+    // Nudge the photo down from the very top so it isn't glued to the edge
+    // (+12 on top of the old spacing.xl per user feedback).
+    marginTop: spacing.xl + 12,
   },
   heroFallback: {
     ...StyleSheet.absoluteFillObject,

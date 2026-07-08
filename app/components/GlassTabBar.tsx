@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import {
   Animated,
+  Image,
   LayoutChangeEvent,
   PanResponder,
   Pressable,
@@ -11,6 +12,9 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { colors, radius, spacing } from '../lib/theme';
 import { uiText } from '../lib/fonts';
+
+// The same paper stock the screens sit on — the bar area continues the sheet.
+const PAPER = require('../assets/paper-texture.png');
 
 // Minimal shape of the props expo-router / react-navigation hands a custom
 // tabBar. Typed loosely to avoid a hard dependency on the navigator's types.
@@ -115,6 +119,9 @@ export function GlassTabBar({ state, descriptors, navigation }: TabBarProps) {
 
   return (
     <View style={[styles.wrap, { paddingBottom: insets.bottom + spacing.sm }]}>
+      {/* The paper texture runs on under the floating pill, so the bar area is
+          the same continuous sheet as the rest of the app. */}
+      <Image source={PAPER} style={StyleSheet.absoluteFill} resizeMode="cover" />
       <View style={styles.bar}>
         <View
           ref={rowRef}

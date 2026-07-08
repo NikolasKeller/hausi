@@ -349,19 +349,23 @@ function ExploreScreen() {
                 header used (display(32)) so the header footprint is unchanged. */}
             <Image source={WORDMARK} style={styles.headerLogo} resizeMode="contain" />
           </View>
-          <Pressable
-            onPress={toggleCityMenu}
-            style={({ pressed }) => [styles.cityPill, pressed && { opacity: 0.8 }]}
-          >
-            <Text style={styles.cityPillText} numberOfLines={1}>
-              {cityLabel}
-            </Text>
-            <Ionicons
-              name={cityMenuOpen ? 'chevron-up' : 'chevron-down'}
-              size={14}
-              color={colors.text}
-            />
-          </Pressable>
+          {/* The pill only appears once the city is resolved — no "…" flash.
+              The row's height is carried by the logo, so nothing jumps. */}
+          {city !== null ? (
+            <Pressable
+              onPress={toggleCityMenu}
+              style={({ pressed }) => [styles.cityPill, pressed && { opacity: 0.8 }]}
+            >
+              <Text style={styles.cityPillText} numberOfLines={1}>
+                {cityLabel}
+              </Text>
+              <Ionicons
+                name={cityMenuOpen ? 'chevron-up' : 'chevron-down'}
+                size={14}
+                color={colors.text}
+              />
+            </Pressable>
+          ) : null}
         </View>
 
         {city === null && error ? (
@@ -594,12 +598,13 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   headerLogo: {
-    // A touch bigger; width follows the wordmark's aspect ratio (892×694 ≈
-    // 1.285). marginTop nudges it down so its mid-line sits level with the
-    // city pill (the wordmark's ink is top-heavy, so it otherwise reads high).
+    // Width follows the wordmark's aspect ratio (892×694 ≈ 1.285). marginTop
+    // drops the logo so its OPTICAL mid-line (the letter mass — the i-dot and
+    // tall ascenders sit in the image's top half and read as empty height)
+    // lines up with the city pill's centre.
     height: 54,
     width: 54 * 1.285,
-    marginTop: 8,
+    marginTop: 15,
   },
   cityPill: {
     flexDirection: 'row',
