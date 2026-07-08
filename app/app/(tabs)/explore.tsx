@@ -139,36 +139,38 @@ function ExploreScreen() {
   const load = useCallback(
     async (isActive: () => boolean) => {
       try {
-        let target = city;
-        if (target === null) {
-          // First load: default to where the user actually is. We ask for
-          // location here (once — city is only null on the very first open), so
-          // Explore opens on the user's real city instead of a saved default.
-          // If they deny or it fails, fall back to their saved city below.
-          let located: string | null = null;
-          try {
-            const loc = await locateCity();
-            located = loc.city;
-            myLocationRef.current = loc;
-            setMyLocation(loc);
-          } catch {
-            // Denied / GPS failed — fall back to the saved city below.
-          }
-          if (located) {
-            target = located;
-          } else {
-            const feed = await api.home().catch(() => null);
-            target = feed?.city ?? '';
-          }
-        }
-        const res = await api.explore(target || undefined, category);
-        if (!isActive()) return;
         if (city === null) {
-          // Lock in the default city; fall back to the first city from the API.
-          const fallback = res.cities[0] ?? '';
-          setCity(target || fallback);
-          if (!target && fallback) return; // effect re-runs scoped to the fallback
+          // First load: pick the initial city from a full (all-cities) fetch.
+          // Prefer the user's saved city when it actually has events; otherwise
+          // open on the city with the MOST public events (so Explore never
+          // opens empty, and lands on the busiest place — e.g. Munich — rather
+          // than an alphabetical first). The "Use my location" button still
+          // lets the user switch to where they are.
+          const feed = await api.home().catch(() => null);
+          const savedCity = (feed?.city ?? '').trim();
+          const all = await api.explore(undefined, category);
+          if (!isActive()) return;
+          const counts = new Map<string, number>();
+          for (const e of all.events) {
+            const k = e.city?.trim();
+            if (k) counts.set(k, (counts.get(k) ?? 0) + 1);
+          }
+          let chosen = savedCity;
+          if (!(savedCity && (counts.get(savedCity) ?? 0) > 0)) {
+            let bestN = 0;
+            for (const [k, n] of counts.entries()) {
+              if (n > bestN) {
+                bestN = n;
+                chosen = k;
+              }
+            }
+            if (!chosen) chosen = all.cities[0] ?? savedCity;
+          }
+          setCity(chosen);
+          return; // effect re-runs scoped to the chosen city
         }
+        const res = await api.explore(city || undefined, category);
+        if (!isActive()) return;
         setEvents(res.events);
         setError(null);
       } catch (e) {

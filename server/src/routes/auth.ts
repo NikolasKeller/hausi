@@ -49,6 +49,31 @@ const loginSchema = z.object({
   password: z.string().min(1),
 });
 
+// Dev login: default account when no phone is supplied, matching the app's
+// DEV_PHONE so repeated sign-ins land on the same profile.
+const DEV_PHONE = '+10000000001';
+
+const devLoginSchema = z.object({
+  phone: phoneField.optional(),
+  name: z.string().trim().max(60).optional(),
+});
+
+// The dev login mints a session with NO SMS/OTP step, so it must never be
+// reachable off the developer's own machine. Two independent gates: it's off
+// in production, and the TCP connection must originate from loopback. The
+// second gate is the important one — Railway (and any real proxy) terminates
+// the connection at its edge, so c.env.incoming.socket.remoteAddress is the
+// proxy's address, never 127.0.0.1/::1. We deliberately ignore x-forwarded-for
+// here (it's client-spoofable) and trust only the raw socket peer address.
+function devLoginAllowed(c: Context): boolean {
+  if (process.env.NODE_ENV === 'production') return false;
+  const remote =
+    (c.env as { incoming?: { socket?: { remoteAddress?: string | null } } })?.incoming?.socket
+      ?.remoteAddress ?? '';
+  const addr = remote.replace(/^::ffff:/, '');
+  return addr === '::1' || addr === '127.0.0.1' || addr.startsWith('127.');
+}
+
 async function authResponse(user: {
   id: string;
   name: string;
@@ -346,6 +371,26 @@ authRoutes.post('/login', async (c) => {
     return c.json({ error: 'Wrong email or password' }, 401);
   }
   return sessionJson(c, user);
+});
+
+// Localhost-only shortcut past the SMS/OTP flow. Upserts a dev account (or the
+// one for the given phone) and returns a session directly. Guarded by
+// devLoginAllowed so it 404s anywhere but the developer's local machine, and it
+// works even when Twilio IS configured (unlike the devCode fallback).
+authRoutes.post('/dev/login', async (c) => {
+  if (!devLoginAllowed(c)) return c.json({ error: 'Not found' }, 404);
+  const parsed = devLoginSchema.safeParse(await c.req.json().catch(() => ({})));
+  const rawPhone = parsed.success && parsed.data.phone ? parsed.data.phone : DEV_PHONE;
+  const phone = normalizePhone(rawPhone);
+  const name = parsed.success ? parsed.data.name?.trim() : undefined;
+
+  const user = await db.user.upsert({
+    where: { phone },
+    create: { phone, name: name ?? 'Dev', avatarEmoji: '🛠️' },
+    update: name ? { name } : {},
+  });
+  await claimPlusOneSpots(user.id, phone);
+  return sessionJson(c, user, { isNew: user.name.trim() === '' });
 });
 
 // Restore a session from the durable cookie when the client has no stored token

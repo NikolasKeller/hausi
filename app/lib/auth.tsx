@@ -23,6 +23,9 @@ interface AuthContextValue {
   // Dev-only shortcut past auth while the SMS flow is under construction.
   // Works only while the server runs without a real SMS provider.
   devSignIn: () => Promise<void>;
+  // Localhost-only shortcut past the SMS flow. Hits a server endpoint that
+  // 404s off the developer's machine, so it works even with Twilio enabled.
+  devLogin: () => Promise<{ isNew: boolean }>;
   logout: () => Promise<void>;
   // Refresh the cached session user after a profile edit.
   updateUser: (user: SessionUser) => void;
@@ -122,6 +125,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           sessionUser = { ...sessionUser, name: upd.user.name, avatarEmoji: upd.user.avatarEmoji };
         }
         await persist({ token: res.token, user: sessionUser });
+      },
+      devLogin: async () => {
+        const res = await api.devLogin();
+        await persist({ token: res.token, user: res.user });
+        return { isNew: res.isNew };
       },
       logout: async () => {
         api.serverLogout().catch(() => {}); // clear the durable cookie too

@@ -7,7 +7,7 @@
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "dark",
-    "backgroundColor": "#0E0B16",
+    "backgroundColor": "#111111",
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.iykyk.app",
@@ -27,8 +27,8 @@
       "favicon": "./assets/favicon.png",
       "bundler": "metro",
       "output": "single",
-      "themeColor": "#0E0B16",
-      "backgroundColor": "#0E0B16"
+      "themeColor": "#111111",
+      "backgroundColor": "#111111"
     },
     "plugins": [
       "expo-router",

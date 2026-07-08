@@ -1,0 +1,77 @@
+// Country dial codes for the phone-number entry picker. Searchable by name or
+// code. Not exhaustive, but covers the common set; the picker filters this list.
+export interface Country {
+  name: string;
+  code: string; // E.164 dial prefix, e.g. "+49"
+  flag: string;
+}
+
+export const COUNTRIES: Country[] = [
+  { name: 'Germany', code: '+49', flag: '🇩🇪' },
+  { name: 'Austria', code: '+43', flag: '🇦🇹' },
+  { name: 'Switzerland', code: '+41', flag: '🇨🇭' },
+  { name: 'United States', code: '+1', flag: '🇺🇸' },
+  { name: 'United Kingdom', code: '+44', flag: '🇬🇧' },
+  { name: 'France', code: '+33', flag: '🇫🇷' },
+  { name: 'Spain', code: '+34', flag: '🇪🇸' },
+  { name: 'Italy', code: '+39', flag: '🇮🇹' },
+  { name: 'Netherlands', code: '+31', flag: '🇳🇱' },
+  { name: 'Belgium', code: '+32', flag: '🇧🇪' },
+  { name: 'Portugal', code: '+351', flag: '🇵🇹' },
+  { name: 'Ireland', code: '+353', flag: '🇮🇪' },
+  { name: 'Denmark', code: '+45', flag: '🇩🇰' },
+  { name: 'Sweden', code: '+46', flag: '🇸🇪' },
+  { name: 'Norway', code: '+47', flag: '🇳🇴' },
+  { name: 'Finland', code: '+358', flag: '🇫🇮' },
+  { name: 'Iceland', code: '+354', flag: '🇮🇸' },
+  { name: 'Poland', code: '+48', flag: '🇵🇱' },
+  { name: 'Czechia', code: '+420', flag: '🇨🇿' },
+  { name: 'Slovakia', code: '+421', flag: '🇸🇰' },
+  { name: 'Hungary', code: '+36', flag: '🇭🇺' },
+  { name: 'Romania', code: '+40', flag: '🇷🇴' },
+  { name: 'Bulgaria', code: '+359', flag: '🇧🇬' },
+  { name: 'Greece', code: '+30', flag: '🇬🇷' },
+  { name: 'Croatia', code: '+385', flag: '🇭🇷' },
+  { name: 'Slovenia', code: '+386', flag: '🇸🇮' },
+  { name: 'Serbia', code: '+381', flag: '🇷🇸' },
+  { name: 'Luxembourg', code: '+352', flag: '🇱🇺' },
+  { name: 'Liechtenstein', code: '+423', flag: '🇱🇮' },
+  { name: 'Estonia', code: '+372', flag: '🇪🇪' },
+  { name: 'Latvia', code: '+371', flag: '🇱🇻' },
+  { name: 'Lithuania', code: '+370', flag: '🇱🇹' },
+  { name: 'Ukraine', code: '+380', flag: '🇺🇦' },
+  { name: 'Russia', code: '+7', flag: '🇷🇺' },
+  { name: 'Turkey', code: '+90', flag: '🇹🇷' },
+  { name: 'Canada', code: '+1', flag: '🇨🇦' },
+  { name: 'Mexico', code: '+52', flag: '🇲🇽' },
+  { name: 'Brazil', code: '+55', flag: '🇧🇷' },
+  { name: 'Argentina', code: '+54', flag: '🇦🇷' },
+  { name: 'Chile', code: '+56', flag: '🇨🇱' },
+  { name: 'Colombia', code: '+57', flag: '🇨🇴' },
+  { name: 'Peru', code: '+51', flag: '🇵🇪' },
+  { name: 'Australia', code: '+61', flag: '🇦🇺' },
+  { name: 'New Zealand', code: '+64', flag: '🇳🇿' },
+  { name: 'Japan', code: '+81', flag: '🇯🇵' },
+  { name: 'South Korea', code: '+82', flag: '🇰🇷' },
+  { name: 'China', code: '+86', flag: '🇨🇳' },
+  { name: 'Hong Kong', code: '+852', flag: '🇭🇰' },
+  { name: 'Singapore', code: '+65', flag: '🇸🇬' },
+  { name: 'India', code: '+91', flag: '🇮🇳' },
+  { name: 'Indonesia', code: '+62', flag: '🇮🇩' },
+  { name: 'Malaysia', code: '+60', flag: '🇲🇾' },
+  { name: 'Thailand', code: '+66', flag: '🇹🇭' },
+  { name: 'Philippines', code: '+63', flag: '🇵🇭' },
+  { name: 'Vietnam', code: '+84', flag: '🇻🇳' },
+  { name: 'United Arab Emirates', code: '+971', flag: '🇦🇪' },
+  { name: 'Saudi Arabia', code: '+966', flag: '🇸🇦' },
+  { name: 'Israel', code: '+972', flag: '🇮🇱' },
+  { name: 'South Africa', code: '+27', flag: '🇿🇦' },
+  { name: 'Nigeria', code: '+234', flag: '🇳🇬' },
+  { name: 'Kenya', code: '+254', flag: '🇰🇪' },
+  { name: 'Egypt', code: '+20', flag: '🇪🇬' },
+  { name: 'Morocco', code: '+212', flag: '🇲🇦' },
+];
+
+// The default selection when the phone screen opens.
+export const DEFAULT_COUNTRY: Country =
+  COUNTRIES.find((c) => c.code === '+49') ?? COUNTRIES[0];
