@@ -162,11 +162,20 @@ async function scrapeCity(cityName?: string) {
         skipped++;
         continue;
       }
+      // Early dedupe short-circuit BEFORE translating: on idempotent re-runs
+      // most candidates already exist, and translation hits a rate-limited API
+      // — don't spend that quota (or risk exhausting it before genuinely new
+      // events) on rows that will only fail the dedupe check anyway.
+      const title = e.title.slice(0, 120);
+      if (existing.has(dedupeKey(title, e.city, e.startAt))) {
+        skipped++;
+        continue;
+      }
       // Final checklist, evaluated on the exact row that would be inserted.
       const desc = await buildDescription(e);
       if (desc.translated) translatedCount++;
       const candidate: EventCandidate = {
-        title: e.title.slice(0, 120),
+        title,
         description: desc.text,
         date: e.startAt,
         location: buildLocation(e),
