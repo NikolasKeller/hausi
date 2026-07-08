@@ -1,15 +1,14 @@
 import React from 'react';
-import { Platform, StyleSheet, Text, type TextStyle, View } from 'react-native';
-import MaskedView from '@react-native-masked-view/masked-view';
-import { LinearGradient } from 'expo-linear-gradient';
-import { chrome, colors } from '../lib/theme';
+import { StyleSheet, Text, type TextStyle } from 'react-native';
 
-// A real polished-chrome headline: the text is used as a mask over a vertical
-// steel gradient. Reserved for LARGE display type — on small/body text a chrome
-// gradient washes out and hurts legibility, so those stay graphite (colors.text).
+// A metallic silver headline that stays pixel-sharp on every platform.
 //
-// The gradient's dark middle band keeps big headlines readable on the light
-// paper canvas; a faint drop shadow grounds the letters.
+// The earlier MaskedView + LinearGradient version looked soft in Expo Go: the
+// text mask is rasterised (and the grounding drop-shadow added a halo), so the
+// letters blurred. Sharpness/legibility matter more than a literal gradient, so
+// large headlines now use native text rendering with a solid steel colour plus
+// a crisp 1px light bevel (a hard highlight, radius 0 — no blur). It reads as
+// brushed metal while staying perfectly crisp. API is unchanged.
 export function ChromeText({
   children,
   style,
@@ -19,47 +18,21 @@ export function ChromeText({
   style?: TextStyle | TextStyle[];
   numberOfLines?: number;
 }) {
-  const flat = StyleSheet.flatten(style) || {};
-  // The mask must be opaque where letters are; colour is irrelevant.
-  const maskTextStyle: TextStyle = { ...flat, color: '#000' };
-  // The sizing text under the gradient is invisible but reserves the layout.
-  const ghostTextStyle: TextStyle = { ...flat, opacity: 0 };
-
   return (
-    <View style={styles.wrap}>
-      <MaskedView
-        maskElement={
-          <Text style={maskTextStyle} numberOfLines={numberOfLines}>
-            {children}
-          </Text>
-        }
-      >
-        <LinearGradient
-          colors={[...chrome]}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 0, y: 1 }}
-        >
-          <Text style={ghostTextStyle} numberOfLines={numberOfLines}>
-            {children}
-          </Text>
-        </LinearGradient>
-      </MaskedView>
-    </View>
+    <Text style={[style, styles.metalOverride]} numberOfLines={numberOfLines}>
+      {children}
+    </Text>
   );
 }
 
 const styles = StyleSheet.create({
-  wrap: {
-    // A soft graphite shadow under the metal so headlines keep an edge on the
-    // bright paper (native only; harmless elsewhere).
-    ...Platform.select({
-      ios: {
-        shadowColor: colors.accentDark,
-        shadowOpacity: 0.25,
-        shadowRadius: 3,
-        shadowOffset: { width: 0, height: 1 },
-      },
-      default: {},
-    }),
+  // Applied AFTER the caller's style so the metal colour + crisp bevel win,
+  // while size/font/tracking from the caller are preserved.
+  metalOverride: {
+    color: '#565C66', // steel graphite — metallic, high-contrast on paper
+    // Hard 1px highlight below each stroke → embossed metal, no blur.
+    textShadowColor: 'rgba(255,255,255,0.6)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 0,
   },
 });

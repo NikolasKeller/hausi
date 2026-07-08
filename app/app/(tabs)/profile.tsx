@@ -122,30 +122,29 @@ function ProfileScreen() {
       <ScrollView contentContainerStyle={styles.container}>
         <View style={styles.hero}>
           {photo ? (
-            <Image source={{ uri: photo }} style={StyleSheet.absoluteFill} resizeMode="cover" />
+            <>
+              <Image source={{ uri: photo }} style={StyleSheet.absoluteFill} resizeMode="cover" />
+              {/* Scrims only exist WITH a photo: a top darkener for the buttons
+                  and a fade that melts the photo into the paper canvas. Without
+                  a photo neither renders, so the hero is just the avatar on
+                  paper — no stray grey band. */}
+              <LinearGradient
+                colors={['rgba(0,0,0,0.45)', 'transparent']}
+                style={styles.topScrim}
+                pointerEvents="none"
+              />
+              <LinearGradient
+                colors={['transparent', 'transparent', colors.bg]}
+                locations={[0, 0.4, 0.72]}
+                style={StyleSheet.absoluteFill}
+                pointerEvents="none"
+              />
+            </>
           ) : (
             <View style={styles.heroFallback}>
-              <Avatar name={profile.name} image={null} size={160} />
+              <Avatar name={profile.name} image={null} size={140} />
             </View>
           )}
-          {/* Top scrim keeps the buttons legible over a busy photo — only
-              needed when there actually is one (it would read as a stray grey
-              band on the plain fallback). */}
-          {photo ? (
-            <LinearGradient
-              colors={['rgba(0,0,0,0.45)', 'transparent']}
-              style={styles.topScrim}
-              pointerEvents="none"
-            />
-          ) : null}
-          {/* Photo fades fully into the page background high up, so it ends
-              well above the name — nothing bleeds down behind the stats. */}
-          <LinearGradient
-            colors={['transparent', 'transparent', colors.bg]}
-            locations={[0, 0.4, 0.72]}
-            style={StyleSheet.absoluteFill}
-            pointerEvents="none"
-          />
 
           <View style={[styles.heroButtons, { top: insets.top + spacing.sm }]}>
             <Pressable
@@ -233,14 +232,15 @@ const styles = StyleSheet.create({
     height: 360,
     width: '100%',
     justifyContent: 'flex-end',
-    backgroundColor: colors.bg,
+    // Transparent so the paper texture shows through — no flat block/bar.
+    backgroundColor: 'transparent',
     overflow: 'hidden',
     // Nudge the photo down from the very top so it isn't glued to the edge.
     marginTop: spacing.xl,
   },
   heroFallback: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: colors.card,
+    // No fill — just the avatar centered on the paper canvas.
     alignItems: 'center',
     justifyContent: 'center',
     // Sit the avatar low in the hero, close to the name below it.
@@ -264,9 +264,10 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: 'rgba(0,0,0,0.35)',
+    // Light glass so it reads on both the paper canvas and over a photo.
+    backgroundColor: 'rgba(255,255,255,0.7)',
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.18)',
+    borderColor: 'rgba(0,0,0,0.10)',
     alignItems: 'center',
     justifyContent: 'center',
   },
