@@ -34,7 +34,8 @@ export function pickOrganizerName(input: {
 }): string {
   const promoter = clean(input.promoterName);
   const venue = clean(input.venueName);
-  const context = `${input.title}\n${input.description.slice(0, 600)}`;
+  // Full description: RA copy often names the promoter only deep in the text.
+  const context = `${input.title}\n${input.description}`;
 
   if (promoter && (input.authoritative || mentions(context, promoter))) return promoter;
   if (venue) return venue;
