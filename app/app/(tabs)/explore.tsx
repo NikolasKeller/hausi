@@ -605,6 +605,9 @@ const styles = StyleSheet.create({
     // city pill exactly — no manual offset needed.
     height: 34,
     width: 34 * (863 / 409),
+    // Sit a touch lower than the mathematical centre — the i-dot makes the
+    // wordmark read higher than it is, so a small drop looks level with the pill.
+    marginTop: 6,
   },
   cityPill: {
     flexDirection: 'row',
