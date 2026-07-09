@@ -101,7 +101,7 @@ export default function PhoneScreen() {
               <TextInput
                 value={digits}
                 onChangeText={(t) => setDigits(t.replace(/[^0-9 ]/g, ''))}
-                placeholder="(123) 456-7890"
+                placeholder="123 456 7890"
                 placeholderTextColor={colors.muted}
                 keyboardType="phone-pad"
                 autoFocus
