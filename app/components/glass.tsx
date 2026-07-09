@@ -23,6 +23,7 @@ export function Glass({
   tint = 'dark',
   radius = R.lg,
   border = true,
+  borderColor,
   sheen = true,
   fill,
   style,
@@ -32,6 +33,9 @@ export function Glass({
   tint?: 'light' | 'dark' | 'default';
   radius?: number;
   border?: boolean;
+  // Optional override for the hairline border color (e.g. a barely-there
+  // ring for the "clear" glass variant).
+  borderColor?: string;
   sheen?: boolean;
   // Optional extra tint wash painted over the blur (e.g. 'rgba(255,255,255,0.12)').
   fill?: string;
@@ -46,6 +50,7 @@ export function Glass({
       style={[
         { borderRadius: radius, overflow: 'hidden' },
         border && (dark ? styles.borderDark : styles.borderLight),
+        border && borderColor ? { borderColor } : null,
         style,
       ]}
     >
@@ -75,7 +80,11 @@ export function Glass({
 export function GlassPill({
   active,
   tint = 'light',
-  intensity = 60,
+  intensity,
+  // 'milky' — the opaque white wash used on calendar/profile.
+  // 'clear' — true see-through glass: almost no wash, just blur + a thin
+  // light ring, for surfaces sitting directly over a moody photo backdrop.
+  variant = 'milky',
   fill,
   style,
   children,
@@ -83,25 +92,43 @@ export function GlassPill({
   active?: boolean;
   tint?: 'light' | 'dark' | 'default';
   intensity?: number;
+  variant?: 'milky' | 'clear';
   fill?: string;
   style?: StyleProp<ViewStyle>;
   children?: React.ReactNode;
 }) {
   const dark = tint === 'dark';
+  const clear = variant === 'clear';
+  // The web blur polyfill bakes its tint wash in proportion to `intensity`
+  // (see the ChromeCard note below), so the clear variant needs a lower
+  // baseline to stay see-through — it still reads as blur, just lighter.
+  const resolvedIntensity = intensity ?? (clear ? 34 : 60);
   const resolvedFill =
-    fill ?? (dark
+    fill ??
+    (dark
       ? active
         ? 'rgba(255,255,255,0.18)'
         : undefined
-      : active
-        ? colors.glassStrong
-        : colors.glass);
+      : clear
+        ? active
+          ? colors.glassClearStrong
+          : colors.glassClear
+        : active
+          ? colors.glassStrong
+          : colors.glass);
+  // expo-blur's web polyfill bakes a tint-specific wash straight into the
+  // blur (see getBackgroundColor): 'light' is ~66% opaque white at high
+  // intensity, which drowns out a low-alpha custom fill. 'default' bakes in
+  // far less (~30%), so the clear variant actually stays see-through.
+  const blurTint = dark ? 'dark' : clear ? 'default' : 'light';
   return (
     <Glass
       radius={R.pill}
-      intensity={active ? intensity + 14 : intensity}
-      tint={tint}
+      intensity={active ? resolvedIntensity + 14 : resolvedIntensity}
+      tint={blurTint}
       fill={resolvedFill}
+      sheen={!clear}
+      borderColor={clear ? colors.glassClearBorder : undefined}
       style={[styles.pill, style]}
     >
       {children}
@@ -117,6 +144,7 @@ export function GlassPill({
 export function ChromeCard({
   radius: r = R.lg,
   strong = false,
+  variant = 'milky',
   style,
   children,
 }: {
@@ -125,23 +153,53 @@ export function ChromeCard({
   // surface (e.g. inside the calendar's bottom-sheet panel), so they still
   // read as a distinct pane rather than blending into it.
   strong?: boolean;
+  // 'milky' — opaque white glass with dark ink text (calendar/profile/explore
+  // list rows). 'clear' — true see-through glass, almost no wash, just blur +
+  // a thin light ring, so the ambient backdrop reads straight through.
+  variant?: 'milky' | 'clear';
   style?: StyleProp<ViewStyle>;
   children?: React.ReactNode;
 }) {
+  const clear = variant === 'clear';
+  const fillColor = clear
+    ? strong
+      ? colors.glassClearStrong
+      : colors.glassClear
+    : strong
+      ? colors.glassStrong
+      : colors.glass;
   return (
-    <View style={[{ borderRadius: r }, styles.chromeOuter, style]}>
-      <BlurView intensity={85} tint="light" style={[styles.chromeBlur, { borderRadius: r }]}>
+    <View
+      style={[
+        { borderRadius: r },
+        styles.chromeOuter,
+        clear && { borderColor: colors.glassClearBorder, shadowOpacity: 0 },
+        style,
+      ]}
+    >
+      {/* expo-blur's web polyfill bakes a tint-specific wash straight into
+          the blur, scaled by intensity (see getBackgroundColor) — 'light' at
+          85 is ~66% opaque white, which drowns out a low-alpha custom fill.
+          The clear variant drops to 'default' tint + a lower intensity so
+          the card stays genuinely see-through while still reading as blur. */}
+      <BlurView
+        intensity={clear ? 34 : 85}
+        tint={clear ? 'default' : 'light'}
+        style={[styles.chromeBlur, { borderRadius: r }]}
+      >
         <View
           pointerEvents="none"
-          style={[
-            StyleSheet.absoluteFill,
-            { backgroundColor: strong ? colors.glassStrong : colors.glass, borderRadius: r },
-          ]}
+          style={[StyleSheet.absoluteFill, { backgroundColor: fillColor, borderRadius: r }]}
         />
-        {/* Top-edge sheen so the surface reads as glass, not flat paint. */}
+        {/* Top-edge sheen so the surface reads as glass, not flat paint —
+            kept very faint on the clear variant so it stays see-through. */}
         <LinearGradient
           pointerEvents="none"
-          colors={['rgba(255,255,255,0.55)', 'rgba(255,255,255,0.08)', 'rgba(255,255,255,0)']}
+          colors={
+            clear
+              ? ['rgba(255,255,255,0.16)', 'rgba(255,255,255,0.03)', 'rgba(255,255,255,0)']
+              : ['rgba(255,255,255,0.55)', 'rgba(255,255,255,0.08)', 'rgba(255,255,255,0)']
+          }
           locations={[0, 0.4, 1]}
           start={{ x: 0, y: 0 }}
           end={{ x: 0, y: 1 }}

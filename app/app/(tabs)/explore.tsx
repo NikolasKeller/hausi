@@ -17,14 +17,18 @@ import { api } from '../../lib/api';
 import { searchCities } from '../../lib/geocoding';
 import { hasLocationPermission, locateCity, type LocatedCity } from '../../lib/location';
 import { getRecentCities, recordRecentCity } from '../../lib/recentCities';
-import { colors, radius, spacing, shadow } from '../../lib/theme';
-import { display, uiText, kicker } from '../../lib/fonts';
-import { CoverGradient } from '../../components/CoverGradient';
+import { colors, radius, spacing } from '../../lib/theme';
+import { uiText, kicker } from '../../lib/fonts';
 import { Button } from '../../components/ui';
 import { withScreenBackground } from '../../components/ScreenBackground';
 import { formatEventDate } from '../../components/EventCard';
 import { Avatar } from '../../components/Avatar';
 import { ChromeCard, GlassPill } from '../../components/glass';
+
+// A softer, more abstract glow than the other tabs' nightlife-crowd photo —
+// closer to the reference's blurred lock-screen wallpaper — so the true
+// see-through "clear" glass cards below have something quiet to float over.
+const EXPLORE_BG = require('../../assets/brand/explore-bg-blur.png');
 
 // Monochrome line icons instead of the colorful category emojis — everything
 // in the chrome UI stays black/silver; color is reserved for event artwork.
@@ -54,14 +58,9 @@ function ExploreCard({ event }: { event: ExploreEvent }) {
       onPress={() => router.push(`/event/${event.slug}`)}
       style={({ pressed }) => [styles.card, pressed && { opacity: 0.85 }]}
     >
-      <ChromeCard radius={radius.lg} style={shadow.card}>
-        <CoverGradient
-          theme={event.coverTheme}
-          image={event.coverImage}
-          style={styles.poster}
-          emojiOpacity={0.25}
-          dim={false}
-        />
+      {/* Cover art hidden for now while we dial in the true see-through
+          glass card — the whole card is the clear-glass surface itself. */}
+      <ChromeCard radius={radius.lg} variant="clear">
         <View style={styles.cardBody}>
           {event.friendGoing ? (
             <Text style={styles.friendStrip} numberOfLines={1}>
@@ -90,7 +89,7 @@ function ExploreCard({ event }: { event: ExploreEvent }) {
   );
 }
 
-export default withScreenBackground(ExploreScreen);
+export default withScreenBackground(ExploreScreen, { image: EXPLORE_BG, bloom: false });
 
 function ExploreScreen() {
   // city: null = not resolved yet, '' = all cities, otherwise a city name.
@@ -336,15 +335,15 @@ function ExploreScreen() {
             />
           </View>
           <Pressable onPress={toggleCityMenu} style={({ pressed }) => [pressed && { opacity: 0.8 }]}>
-            <GlassPill active={cityMenuOpen} style={styles.cityPill}>
-              <Ionicons name="location-outline" size={14} color={colors.onGlass} />
+            <GlassPill active={cityMenuOpen} variant="clear" style={styles.cityPill}>
+              <Ionicons name="location-outline" size={14} color={colors.text} />
               <Text style={styles.cityPillText} numberOfLines={1}>
                 {cityLabel}
               </Text>
               <Ionicons
                 name={cityMenuOpen ? 'chevron-up' : 'chevron-down'}
                 size={14}
-                color={colors.onGlass}
+                color={colors.text}
               />
             </GlassPill>
           </Pressable>
@@ -375,11 +374,11 @@ function ExploreScreen() {
                     onPress={() => selectCategory(chip.key)}
                     style={({ pressed }) => [pressed && { opacity: 0.8 }]}
                   >
-                    <GlassPill active={active} style={styles.chip}>
+                    <GlassPill active={active} variant="clear" style={styles.chip}>
                       <Ionicons
                         name={CATEGORY_ICONS[chip.key]}
                         size={14}
-                        color={colors.onGlass}
+                        color={colors.text}
                       />
                       <Text style={styles.chipLabel}>{chip.label}</Text>
                     </GlassPill>
@@ -419,14 +418,14 @@ function ExploreScreen() {
         {cityMenuOpen ? (
           <>
             <Pressable style={styles.menuBackdrop} onPress={closeCityMenu} />
-            <ChromeCard radius={radius.md} style={styles.cityMenu}>
+            <ChromeCard radius={radius.md} variant="clear" style={styles.cityMenu}>
               <View style={styles.citySearchRow}>
-                <Ionicons name="search" size={16} color={colors.onGlassMuted} />
+                <Ionicons name="search" size={16} color={colors.muted} />
                 <TextInput
                   value={citySearch}
                   onChangeText={setCitySearch}
                   placeholder="Search any city…"
-                  placeholderTextColor={colors.onGlassMuted}
+                  placeholderTextColor={colors.muted}
                   style={styles.citySearchInput}
                   autoFocus
                   autoCorrect={false}
@@ -453,7 +452,7 @@ function ExploreScreen() {
                           ]}
                         >
                           <View style={styles.menuItemLeft}>
-                            <Ionicons name="location-outline" size={15} color={colors.onGlassMuted} />
+                            <Ionicons name="location-outline" size={15} color={colors.muted} />
                             <Text
                               style={[styles.menuItemText, active && styles.menuItemTextActive]}
                             >
@@ -461,14 +460,14 @@ function ExploreScreen() {
                             </Text>
                           </View>
                           {active ? (
-                            <Ionicons name="checkmark" size={16} color={colors.onGlass} />
+                            <Ionicons name="checkmark" size={16} color={colors.text} />
                           ) : null}
                         </Pressable>
                       );
                     })}
                     {citySearching ? (
                       <View style={styles.citySearchState}>
-                        <ActivityIndicator size="small" color={colors.onGlass} />
+                        <ActivityIndicator size="small" color={colors.text} />
                       </View>
                     ) : suggestions.length === 0 && query.length >= 2 ? (
                       <Text style={styles.citySearchEmpty}>
@@ -484,9 +483,9 @@ function ExploreScreen() {
                     >
                       <View style={styles.locationIcon}>
                         {locating ? (
-                          <ActivityIndicator size="small" color={colors.onGlass} />
+                          <ActivityIndicator size="small" color={colors.text} />
                         ) : (
-                          <Ionicons name="navigate" size={18} color={colors.onGlass} />
+                          <Ionicons name="navigate" size={18} color={colors.text} />
                         )}
                       </View>
                       <View style={styles.locationTextWrap}>
@@ -501,13 +500,13 @@ function ExploreScreen() {
                       style={[styles.menuItem, recentCities.length > 0 && styles.menuItemBorder]}
                     >
                       <View style={styles.menuItemLeft}>
-                        <Ionicons name="earth-outline" size={15} color={colors.onGlassMuted} />
+                        <Ionicons name="earth-outline" size={15} color={colors.muted} />
                         <Text style={[styles.menuItemText, city === '' && styles.menuItemTextActive]}>
                           All cities
                         </Text>
                       </View>
                       {city === '' ? (
-                        <Ionicons name="checkmark" size={16} color={colors.onGlass} />
+                        <Ionicons name="checkmark" size={16} color={colors.text} />
                       ) : null}
                     </Pressable>
                     {recentCities.length > 0 ? (
@@ -525,7 +524,7 @@ function ExploreScreen() {
                               ]}
                             >
                               <View style={styles.menuItemLeft}>
-                                <Ionicons name="time-outline" size={15} color={colors.onGlassMuted} />
+                                <Ionicons name="time-outline" size={15} color={colors.muted} />
                                 <Text
                                   style={[
                                     styles.menuItemText,
@@ -536,7 +535,7 @@ function ExploreScreen() {
                                 </Text>
                               </View>
                               {active ? (
-                                <Ionicons name="checkmark" size={16} color={colors.onGlass} />
+                                <Ionicons name="checkmark" size={16} color={colors.text} />
                               ) : null}
                             </Pressable>
                           );
@@ -602,7 +601,7 @@ const styles = StyleSheet.create({
   },
   cityPillText: {
     ...uiText(14, '600'),
-    color: colors.onGlass,
+    color: colors.text,
     flexShrink: 1,
   },
   menuBackdrop: {
@@ -628,11 +627,11 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.md,
     paddingVertical: 10,
     borderBottomWidth: 1,
-    borderColor: colors.glassBorder,
+    borderColor: colors.glassClearBorder,
   },
   citySearchInput: {
     flex: 1,
-    color: colors.onGlass,
+    color: colors.text,
     // 16px avoids mobile Safari's auto-zoom when this autoFocus input opens.
     fontSize: 16,
     // Give the line box its full height (+ a hair of headroom) so the
@@ -652,7 +651,7 @@ const styles = StyleSheet.create({
   },
   menuItemBorder: {
     borderBottomWidth: 1,
-    borderBottomColor: colors.glassBorder,
+    borderBottomColor: colors.glassClearBorder,
   },
   menuItemLeft: {
     flexDirection: 'row',
@@ -662,11 +661,11 @@ const styles = StyleSheet.create({
   },
   menuItemText: {
     ...uiText(15),
-    color: colors.onGlass,
+    color: colors.text,
   },
   menuItemTextActive: {
     ...uiText(15, '700'),
-    color: colors.onGlass,
+    color: colors.text,
   },
   locationRow: {
     flexDirection: 'row',
@@ -687,10 +686,10 @@ const styles = StyleSheet.create({
   },
   locationSubtitle: {
     ...uiText(13),
-    color: colors.onGlassMuted,
+    color: colors.muted,
   },
   recentHeader: {
-    ...kicker(colors.onGlassMuted),
+    ...kicker(colors.muted),
     paddingHorizontal: spacing.md,
     paddingTop: spacing.md,
     paddingBottom: spacing.xs,
@@ -701,7 +700,7 @@ const styles = StyleSheet.create({
   },
   citySearchEmpty: {
     ...uiText(14),
-    color: colors.onGlassMuted,
+    color: colors.muted,
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.md,
   },
@@ -725,7 +724,7 @@ const styles = StyleSheet.create({
   },
   chipLabel: {
     ...uiText(14, '600'),
-    color: colors.onGlass,
+    color: colors.text,
   },
   inlineState: {
     alignItems: 'center',
@@ -747,29 +746,29 @@ const styles = StyleSheet.create({
   card: {
     width: '48%',
   },
-  poster: {
-    height: 240,
-  },
   cardBody: {
-    padding: spacing.sm,
-    paddingHorizontal: spacing.md,
+    // No poster art right now — the card is just the clear-glass surface,
+    // so it gets normal padding on every side instead of sitting under one.
+    padding: spacing.md,
+    minHeight: 132,
+    justifyContent: 'center',
     gap: spacing.xs,
   },
   friendStrip: {
     ...uiText(12),
-    color: colors.onGlassMuted,
+    color: colors.muted,
   },
   friendName: {
-    color: colors.onGlass,
+    color: colors.text,
     fontWeight: '700',
   },
   cardTitle: {
     ...uiText(15, '700'),
-    color: colors.onGlass,
+    color: colors.text,
   },
   cardMeta: {
     ...uiText(13, '600'),
-    color: colors.onGlassMuted,
+    color: colors.muted,
   },
   facesRow: {
     flexDirection: 'row',
@@ -780,11 +779,11 @@ const styles = StyleSheet.create({
   faceWrap: {
     borderRadius: 999,
     borderWidth: 1.5,
-    borderColor: colors.glass,
+    borderColor: 'rgba(0,0,0,0.3)',
   },
   facesLabel: {
     ...uiText(12, '600'),
-    color: colors.onGlassMuted,
+    color: colors.muted,
     marginLeft: 2,
   },
 });

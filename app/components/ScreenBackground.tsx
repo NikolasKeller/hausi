@@ -1,25 +1,28 @@
 import React from 'react';
-import { Image, StyleSheet, View } from 'react-native';
+import { Image, ImageSourcePropType, StyleSheet, View } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { colors } from '../lib/theme';
 
-// The ambient event-photo backdrop every milky glass card floats over — a
-// moody, blurred nightlife shot (crowd + bokeh light) rather than a flat
-// black canvas, so the frosted cards actually have something to refract.
-// A dark scrim keeps foreground text legible over the busiest parts of the
-// photo without flattening it into black.
+// The ambient event-photo backdrop every glass card floats over — a moody,
+// blurred shot (crowd + bokeh light) rather than a flat black canvas, so the
+// frosted cards actually have something to refract. A dark scrim keeps
+// foreground text legible over the busiest parts of the photo without
+// flattening it into black. Screens can pass their own `image` to swap the
+// mood (e.g. Explore's softer glow) while sharing the same scrim treatment.
 const EVENT_BG = require('../assets/brand/event-bg-blur.png');
 
 export function ScreenBackground({
   children,
   bloom = true,
+  image = EVENT_BG,
 }: {
   children?: React.ReactNode;
   bloom?: boolean;
+  image?: ImageSourcePropType;
 }) {
   return (
     <View style={styles.fill}>
-      <Image source={EVENT_BG} style={StyleSheet.absoluteFill} resizeMode="cover" />
+      <Image source={image} style={StyleSheet.absoluteFill} resizeMode="cover" />
       <LinearGradient
         pointerEvents="none"
         colors={['rgba(0,0,0,0.55)', 'rgba(0,0,0,0.30)', 'rgba(0,0,0,0.55)']}
@@ -47,11 +50,11 @@ export function ScreenBackground({
 // occlude them, independent of the react-native-screens web shim.
 export function withScreenBackground<P extends object>(
   Screen: React.ComponentType<P>,
-  opts?: { bloom?: boolean }
+  opts?: { bloom?: boolean; image?: ImageSourcePropType }
 ): React.ComponentType<P> {
   function ScreenWithBackground(props: P) {
     return (
-      <ScreenBackground bloom={opts?.bloom}>
+      <ScreenBackground bloom={opts?.bloom} image={opts?.image}>
         <Screen {...props} />
       </ScreenBackground>
     );
