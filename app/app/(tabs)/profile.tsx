@@ -2,7 +2,6 @@ import React, { useCallback, useState } from 'react';
 import {
   ActivityIndicator,
   Image,
-  Linking,
   Platform,
   Pressable,
   ScrollView,
@@ -12,6 +11,7 @@ import {
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
+import * as WebBrowser from 'expo-web-browser';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import type { EventSummary, MyProfile, TicketJobInfo } from '../../shared/types';
@@ -231,7 +231,9 @@ function ProfileScreen() {
                       if (Platform.OS === 'web') {
                         (globalThis as any).window?.open(pdfUrl, '_blank');
                       } else {
-                        Linking.openURL(pdfUrl).catch(() => {});
+                        // In-app browser: consistent with Buy ticket, and no
+                        // universal-link interception.
+                        WebBrowser.openBrowserAsync(pdfUrl).catch(() => {});
                       }
                     }}
                     style={({ pressed }) => [styles.ticketRow, pressed && styles.pressed]}
@@ -316,8 +318,8 @@ const styles = StyleSheet.create({
     backgroundColor: 'transparent',
     overflow: 'hidden',
     // Nudge the photo down from the very top so it isn't glued to the edge
-    // (+12 on top of the old spacing.xl per user feedback).
-    marginTop: spacing.xl + 12,
+    // (raised twice per user feedback: xl+12 → xl+24).
+    marginTop: spacing.xl + 24,
   },
   heroFallback: {
     ...StyleSheet.absoluteFillObject,

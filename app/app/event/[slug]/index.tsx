@@ -12,6 +12,7 @@ import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import * as Linking from 'expo-linking';
+import * as WebBrowser from 'expo-web-browser';
 import { type EventDetail } from '../../../shared/types';
 import { api } from '../../../lib/api';
 import { useAuth } from '../../../lib/auth';
@@ -47,10 +48,17 @@ function ticketInfo(description: string, ticketUrl?: string): { url: string | nu
 }
 
 // Hero title sizing: comfortable for short names, one step smaller for long
-// scraped titles so they wrap in ~1–3 lines instead of towering.
+// scraped titles so they wrap in ~1–3 lines instead of towering. The generous
+// lineHeight (1.4×) leaves room for tall ascenders/apostrophes — the decorative
+// faces (Pacifico/Bungee/Playfair) clip at tighter values ("YE's …").
 function titleSizeStyle(title: string) {
   const size = title.length > 60 ? 24 : 28;
-  return { fontSize: size, lineHeight: Math.round(size * 1.18), letterSpacing: -0.5 };
+  return {
+    fontSize: size,
+    lineHeight: Math.round(size * 1.4),
+    letterSpacing: -0.5,
+    includeFontPadding: true as const,
+  };
 }
 
 // One item in the floating bottom action bar (icon over a small label).
@@ -145,14 +153,16 @@ export default function EventScreen() {
   );
 
   // Buying a ticket is a simple redirect to the event's own ticket/checkout
-  // page — no in-app purchase. (The agentic purchase flow — Playwright agent,
-  // demo provider, ticket PDF, wallet screens — still lives in the repo, just
-  // decoupled from this screen so we can pick it back up later.)
+  // page — no in-app purchase. Opened in the in-app browser (SFSafariView):
+  // plain Linking.openURL lets iOS intercept ra.co/eventbrite links as
+  // universal links and bounce users into the App Store when the partner app
+  // isn't installed. (The agentic purchase flow still lives in the repo, just
+  // decoupled from this screen.)
   function openTicket(url: string) {
     if (Platform.OS === 'web') {
       (globalThis as any).window?.open(url, '_blank');
     } else {
-      Linking.openURL(url).catch(() => notify('Could not open link', url));
+      WebBrowser.openBrowserAsync(url).catch(() => notify('Could not open link', url));
     }
   }
 

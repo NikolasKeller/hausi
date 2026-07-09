@@ -54,7 +54,8 @@
           "locationWhenInUsePermission": "iykyk uses your location to find parties happening near you."
         }
       ],
-      "expo-video"
+      "expo-video",
+      "expo-web-browser"
     ],
     "extra": {
       "router": {},
