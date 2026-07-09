@@ -88,7 +88,6 @@ export default function PhoneScreen() {
             contentContainerStyle={styles.content}
             keyboardShouldPersistTaps="handled"
           >
-            <View style={{ flex: 0.5 }} />
             <Text style={styles.title}>Join the club</Text>
 
             <View style={styles.phoneRow}>
@@ -102,7 +101,7 @@ export default function PhoneScreen() {
               <TextInput
                 value={digits}
                 onChangeText={(t) => setDigits(t.replace(/[^0-9 ]/g, ''))}
-                placeholder="(123) 456-7890"
+                placeholder="123 456 7890"
                 placeholderTextColor={colors.muted}
                 keyboardType="phone-pad"
                 autoFocus
@@ -168,7 +167,6 @@ export default function PhoneScreen() {
             ) : null}
 
             <ErrorText message={error} />
-            <View style={{ flex: 1 }} />
 
             <Button
               title={sending ? 'Sending…' : 'Send code'}
@@ -176,9 +174,8 @@ export default function PhoneScreen() {
               onPress={sendCode}
               loading={sending}
               disabled={sending}
-              style={canSubmit ? undefined : styles.buttonDisabled}
+              style={StyleSheet.flatten([styles.button, canSubmit ? null : styles.buttonDisabled])}
             />
-            <View style={{ height: spacing.xl }} />
           </ScrollView>
         </KeyboardAvoidingView>
       </SafeAreaView>
@@ -190,22 +187,30 @@ const styles = StyleSheet.create({
   safe: {
     flex: 1,
   },
+  // Everything centers as one calm block in the viewport — no flex spacers
+  // pushing the button below the fold on short (web) windows. The column is
+  // capped a touch narrower than the 430px web phone frame for a quieter look.
   content: {
     flexGrow: 1,
+    justifyContent: 'center',
+    width: '100%',
+    maxWidth: 380,
+    alignSelf: 'center',
     padding: spacing.lg,
     gap: spacing.md,
   },
   title: {
     color: colors.text,
-    ...display(56),
+    ...display(38),
     textAlign: 'center',
-    marginBottom: spacing.lg,
+    marginBottom: spacing.md,
   },
   phoneRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: spacing.sm,
+    // Tight gap so the prefix and number read as one continuous line.
+    gap: 6,
   },
   // Borderless inline country prefix (e.g. "🇩🇪 +49") — no box/bubble.
   countryInline: {
@@ -216,15 +221,18 @@ const styles = StyleSheet.create({
   },
   phonePrefix: {
     color: colors.text,
-    ...uiText(30),
+    ...uiText(22),
   },
-  // Borderless inline phone field — plain text on the canvas, no box.
+  // Borderless inline phone field — plain text on the canvas, no box. Not
+  // flex-1: it hugs the prefix (left-aligned) so the two read as one line
+  // instead of the number floating in the middle of the row. minWidth keeps
+  // the tap target comfortable while empty.
   phoneInputInline: {
-    flex: 1,
-    ...uiText(30),
+    ...uiText(22),
     color: colors.text,
-    lineHeight: 38,
-    textAlign: 'center',
+    lineHeight: 28,
+    textAlign: 'left',
+    minWidth: 150,
     paddingVertical: 6,
   },
   // Kill the browser's blue focus ring on web (react-native-web maps these).
@@ -246,7 +254,8 @@ const styles = StyleSheet.create({
     borderBottomColor: colors.cardBorder,
   },
   pickerScroll: {
-    maxHeight: 260,
+    // Short enough that the centered block still fits small web windows.
+    maxHeight: 200,
   },
   pickerItem: {
     flexDirection: 'row',
@@ -282,10 +291,13 @@ const styles = StyleSheet.create({
     borderColor: colors.cardBorder,
     borderRadius: radius.sm,
     paddingHorizontal: spacing.md,
-    ...uiText(18),
+    ...uiText(16),
     color: colors.text,
-    lineHeight: 22,
-    paddingVertical: 14,
+    lineHeight: 20,
+    paddingVertical: 12,
+  },
+  button: {
+    marginTop: spacing.md,
   },
   buttonDisabled: {
     opacity: 0.5,
