@@ -22,9 +22,6 @@ export function formatEventTime(iso: string): string {
 
 export function EventCard({ event }: { event: EventSummary }) {
   const router = useRouter();
-  // Photo covers get white type over a scrim; the plain paper cover needs dark
-  // graphite type to stay legible.
-  const hasPhoto = Boolean(event.coverImage);
   return (
     <Pressable
       onPress={() => router.push(`/event/${event.slug}`)}
@@ -36,17 +33,18 @@ export function EventCard({ event }: { event: EventSummary }) {
             <Text style={styles.canceledText}>CANCELED</Text>
           </View>
         ) : null}
-        <Text
-          style={[styles.title, hasPhoto ? styles.titleOnPhoto : styles.titleOnPaper, titleFontStyle(event.titleFont)]}
-          numberOfLines={2}
-        >
-          {event.title}
-        </Text>
       </CoverGradient>
       {/* No attendee counters / RSVP status labels — tickets are bought at the
-          source, so the card only carries the event's own facts. */}
+          source, so the card only carries the event's own facts. The title
+          lives below the cover, never on the image itself. */}
       <View style={styles.body}>
         <View style={{ flex: 1, gap: spacing.xs }}>
+          <Text
+            style={[styles.bodyTitle, titleFontStyle(event.titleFont)]}
+            numberOfLines={2}
+          >
+            {event.title}
+          </Text>
           <Text style={styles.date}>
             {formatEventDate(event.date)} · {formatEventTime(event.date)}
           </Text>
@@ -76,19 +74,10 @@ const styles = StyleSheet.create({
     padding: spacing.lg,
     justifyContent: 'flex-end',
   },
-  title: {
-    fontSize: 38,
-    letterSpacing: -1,
-  },
-  // On a photo cover: white type with a shadow for legibility over imagery.
-  titleOnPhoto: {
-    color: '#fff',
-    textShadowColor: 'rgba(0,0,0,0.35)',
-    textShadowOffset: { width: 0, height: 2 },
-    textShadowRadius: 6,
-  },
-  // On the plain paper cover: graphite ink, no shadow.
-  titleOnPaper: {
+  // Title sits in the card body below the cover, in the event's chosen face.
+  bodyTitle: {
+    fontSize: 18,
+    letterSpacing: -0.3,
     color: colors.text,
   },
   // CANCELED badge also sits on the cover hero — keep it legible on dark imagery.
