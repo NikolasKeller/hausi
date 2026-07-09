@@ -209,7 +209,8 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: spacing.sm,
+    // Tight gap so the prefix and number read as one continuous line.
+    gap: 6,
   },
   // Borderless inline country prefix (e.g. "🇩🇪 +49") — no box/bubble.
   countryInline: {
@@ -222,13 +223,16 @@ const styles = StyleSheet.create({
     color: colors.text,
     ...uiText(22),
   },
-  // Borderless inline phone field — plain text on the canvas, no box.
+  // Borderless inline phone field — plain text on the canvas, no box. Not
+  // flex-1: it hugs the prefix (left-aligned) so the two read as one line
+  // instead of the number floating in the middle of the row. minWidth keeps
+  // the tap target comfortable while empty.
   phoneInputInline: {
-    flex: 1,
     ...uiText(22),
     color: colors.text,
     lineHeight: 28,
-    textAlign: 'center',
+    textAlign: 'left',
+    minWidth: 150,
     paddingVertical: 6,
   },
   // Kill the browser's blue focus ring on web (react-native-web maps these).
