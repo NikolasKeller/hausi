@@ -57,6 +57,13 @@ async function main() {
     // a stable key. Title uniquely identifies each curated featured event.
     const existing = await db.event.findFirst({ where: { title: e.title } });
     if (existing) {
+      // Backfill: existing curated events predate the ticketUrl field — patch
+      // it in so the buy-ticket button appears without recreating the event.
+      // Only ever fills an EMPTY ticketUrl; never overwrites a set one.
+      if (e.ticketUrl && !existing.ticketUrl) {
+        await db.event.update({ where: { id: existing.id }, data: { ticketUrl: e.ticketUrl } });
+        console.log(`add-events: backfilled ticketUrl for "${e.title}"`);
+      }
       skipped += 1;
       continue;
     }
