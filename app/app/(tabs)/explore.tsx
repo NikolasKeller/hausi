@@ -603,11 +603,11 @@ const styles = StyleSheet.create({
     // guess still looked high). With no dead space, the image centre IS the
     // letter centre, so the row's alignItems:'center' lines it up with the
     // city pill exactly — no manual offset needed.
-    height: 34,
-    width: 34 * (863 / 409),
+    height: 28,
+    width: 28 * (863 / 409),
     // Sit a touch lower than the mathematical centre — the i-dot makes the
     // wordmark read higher than it is, so a small drop looks level with the pill.
-    marginTop: 6,
+    marginTop: 8,
   },
   cityPill: {
     flexDirection: 'row',
@@ -817,8 +817,10 @@ const styles = StyleSheet.create({
     textShadowOffset: { width: 0, height: 2 },
     textShadowRadius: 6,
   },
+  // The no-photo cover stays a light paper "flyer" on the midnight canvas, so
+  // its title keeps hardcoded graphite ink rather than the (light) theme ink.
   posterTitleOnPaper: {
-    color: colors.text,
+    color: '#2B2E33',
   },
   cardBody: {
     padding: spacing.sm,
