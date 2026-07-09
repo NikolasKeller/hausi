@@ -3,7 +3,7 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import type { EventSummary } from '../shared/types';
 import { colors, radius, shadow, spacing } from '../lib/theme';
-import { titleFontStyle, uiText, kicker } from '../lib/fonts';
+import { uiText, kicker } from '../lib/fonts';
 import { CoverGradient } from './CoverGradient';
 import { Avatar } from './Avatar';
 
@@ -39,10 +39,7 @@ export function EventCard({ event }: { event: EventSummary }) {
           lives below the cover, never on the image itself. */}
       <View style={styles.body}>
         <View style={{ flex: 1, gap: spacing.xs }}>
-          <Text
-            style={[styles.bodyTitle, titleFontStyle(event.titleFont)]}
-            numberOfLines={2}
-          >
+          <Text style={styles.bodyTitle} numberOfLines={2}>
             {event.title}
           </Text>
           <Text style={styles.date}>
@@ -74,10 +71,10 @@ const styles = StyleSheet.create({
     padding: spacing.lg,
     justifyContent: 'flex-end',
   },
-  // Title sits in the card body below the cover, in the event's chosen face.
+  // Small, quiet title line above the date — plain UI face, not the event's
+  // decorative title font, so calendar rows stay compact and uniform.
   bodyTitle: {
-    fontSize: 18,
-    letterSpacing: -0.3,
+    ...uiText(14, '700'),
     color: colors.text,
   },
   // CANCELED badge also sits on the cover hero — keep it legible on dark imagery.
