@@ -2,10 +2,10 @@ import React from 'react';
 import { Image, StyleSheet, View } from 'react-native';
 import { colors } from '../lib/theme';
 
-const PAPER = require('../assets/paper-texture.png');
+const NIGHT = require('../assets/nightlife-bokeh.jpg');
 
-// Auth backdrop: the same full-bleed paper texture as the rest of the app. The
-// `confetti` prop is kept for API compatibility with callers but no longer
+// Auth backdrop: the same full-bleed nightlife bokeh as the rest of the app.
+// The `confetti` prop is kept for API compatibility with callers but no longer
 // renders anything.
 export function AuroraBackground({
   children,
@@ -17,7 +17,7 @@ export function AuroraBackground({
 }) {
   return (
     <View style={styles.fill}>
-      <Image source={PAPER} style={StyleSheet.absoluteFill} resizeMode="cover" />
+      <Image source={NIGHT} style={StyleSheet.absoluteFill} resizeMode="cover" />
       {children}
     </View>
   );

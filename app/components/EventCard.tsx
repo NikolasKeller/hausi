@@ -87,9 +87,11 @@ const styles = StyleSheet.create({
     textShadowOffset: { width: 0, height: 2 },
     textShadowRadius: 6,
   },
-  // On the plain paper cover: graphite ink, no shadow.
+  // On the plain paper cover: graphite ink, no shadow. Hardcoded — the cover
+  // stays a light paper "flyer" even on the midnight canvas, so it must not
+  // follow the (now light) theme ink.
   titleOnPaper: {
-    color: colors.text,
+    color: '#2B2E33',
   },
   // CANCELED badge also sits on the cover hero — keep it legible on dark imagery.
   canceledBadge: {

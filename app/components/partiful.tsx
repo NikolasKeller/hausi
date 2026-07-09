@@ -200,12 +200,12 @@ export function PaperBackground({
   children?: React.ReactNode;
   decor?: boolean;
 }) {
-  // Partiful aesthetic: a near-black canvas with a soft violet→pink bloom
-  // falling from the top, like the app's lit-screen nightlife feel.
+  // Nightlife aesthetic: the midnight canvas with a soft light wash falling
+  // from the top, like a lit room.
   return (
     <View style={styles.paperFill}>
       <LinearGradient
-        colors={['rgba(255,255,255,0.45)', 'rgba(255,255,255,0.15)', 'rgba(255,255,255,0)']}
+        colors={['rgba(255,255,255,0.10)', 'rgba(255,255,255,0.04)', 'rgba(255,255,255,0)']}
         locations={[0, 0.5, 1]}
         style={styles.washTop}
         pointerEvents="none"
@@ -249,7 +249,7 @@ const styles = StyleSheet.create({
     borderRadius: radius.pill,
     paddingVertical: 6,
     paddingHorizontal: 12,
-    backgroundColor: 'rgba(0,0,0,0.06)',
+    backgroundColor: 'rgba(255,255,255,0.10)',
   },
   pillText: {
     fontSize: 12,

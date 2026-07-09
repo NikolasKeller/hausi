@@ -17,14 +17,14 @@ import { Glass, GlassPill } from './glass';
 import { colors, radius, spacing } from '../lib/theme';
 import { uiText } from '../lib/fonts';
 
-const PAPER = require('../assets/paper-texture.png');
+const NIGHT = require('../assets/nightlife-bokeh.jpg');
 
 // ── ThemeBackground ───────────────────────────────────────────────────────────
-// The event page / editor surface. Every event sits on the app's calm paper
-// design background — no coloured gradients, no emoji watermark and no animated
-// effect overlays, so the whole product reads as one continuous chrome-on-paper
-// sheet. `theme` / `effect` are accepted for call-site compatibility but no
-// longer paint anything.
+// The event page / editor surface. Every event sits on the app's nightlife
+// bokeh backdrop — no coloured gradients, no emoji watermark and no animated
+// effect overlays, so the whole product reads as one continuous night scene.
+// `theme` / `effect` are accepted for call-site compatibility but no longer
+// paint anything.
 export function ThemeBackground({
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   theme,
@@ -40,7 +40,7 @@ export function ThemeBackground({
 }) {
   return (
     <View style={[styles.fill, { backgroundColor: colors.bg }, style]}>
-      <Image source={PAPER} style={StyleSheet.absoluteFill} resizeMode="cover" />
+      <Image source={NIGHT} style={StyleSheet.absoluteFill} resizeMode="cover" />
       {children}
     </View>
   );

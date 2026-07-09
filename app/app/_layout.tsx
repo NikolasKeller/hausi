@@ -183,7 +183,7 @@ function WebFrame({ children }: { children: React.ReactNode }) {
 const frameStyles = StyleSheet.create({
   page: {
     flex: 1,
-    // Cream surround — the phone column sits on the same warm canvas.
+    // Midnight surround — the phone column sits on the same night canvas.
     backgroundColor: colors.bg,
     alignItems: 'center',
   },
@@ -192,15 +192,15 @@ const frameStyles = StyleSheet.create({
     width: '100%',
     maxWidth: 430,
     backgroundColor: colors.bg,
-    // Neutral depth only, soft on the light canvas.
-    ...(Platform.OS === 'web' ? { boxShadow: '0 0 24px rgba(0,0,0,0.18)' } : null),
+    // A faint light rim so the column reads against the dark surround.
+    ...(Platform.OS === 'web' ? { boxShadow: '0 0 0 1px rgba(255,255,255,0.08), 0 0 32px rgba(0,0,0,0.8)' } : null),
   },
 });
 
 export default function RootLayout() {
   return (
     <AuthProvider>
-      <StatusBar style="dark" />
+      <StatusBar style="light" />
       <WebFrame>
         <RootNavigator />
       </WebFrame>

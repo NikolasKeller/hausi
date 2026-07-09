@@ -814,8 +814,10 @@ const styles = StyleSheet.create({
     textShadowOffset: { width: 0, height: 2 },
     textShadowRadius: 6,
   },
+  // The no-photo cover stays a light paper "flyer" on the midnight canvas, so
+  // its title keeps hardcoded graphite ink rather than the (light) theme ink.
   posterTitleOnPaper: {
-    color: colors.text,
+    color: '#2B2E33',
   },
   cardBody: {
     padding: spacing.sm,
