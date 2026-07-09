@@ -598,13 +598,13 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   headerLogo: {
-    // Width follows the wordmark's aspect ratio (892×694 ≈ 1.285). marginTop
-    // drops the logo so its OPTICAL mid-line (the letter mass — the i-dot and
-    // tall ascenders sit in the image's top half and read as empty height)
-    // lines up with the city pill's centre.
-    height: 54,
-    width: 54 * 1.285,
-    marginTop: 15,
+    // The asset is now TIGHT-cropped (863×409 — the old file carried ~42%
+    // empty transparent space below the letters, which is why every marginTop
+    // guess still looked high). With no dead space, the image centre IS the
+    // letter centre, so the row's alignItems:'center' lines it up with the
+    // city pill exactly — no manual offset needed.
+    height: 34,
+    width: 34 * (863 / 409),
   },
   cityPill: {
     flexDirection: 'row',
