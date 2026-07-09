@@ -79,6 +79,7 @@ async function main() {
         isPublic: true,
         costPerPerson: e.costPerPerson,
         dressCode: e.dressCode,
+        ticketUrl: e.ticketUrl ?? '',
         hostId: host.id,
       },
     });

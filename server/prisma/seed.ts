@@ -92,6 +92,7 @@ async function main() {
         isPublic: true,
         costPerPerson: e.costPerPerson,
         dressCode: e.dressCode,
+        ticketUrl: e.ticketUrl ?? '',
         hostId: e.organizerName ? orgHosts.get(e.organizerName)! : ye.id,
         // The host organizes the event and is not counted as a going guest.
       },
