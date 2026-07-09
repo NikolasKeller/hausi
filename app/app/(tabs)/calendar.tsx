@@ -10,17 +10,17 @@ import {
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { BlurView } from 'expo-blur';
 import { useFocusEffect } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import type { EventSummary } from '../../shared/types';
 import { api, mediaUrl } from '../../lib/api';
-import { thinDisplay, thinLabel, uiText } from '../../lib/fonts';
-import { colors, glass, radius, spacing } from '../../lib/theme';
+import { display, kicker, uiText } from '../../lib/fonts';
+import { colors, radius, shadow, spacing } from '../../lib/theme';
 import { COVERS } from '../../lib/covers';
 import { EventCard } from '../../components/EventCard';
 import { Button } from '../../components/ui';
 import { withScreenBackground } from '../../components/ScreenBackground';
-import { MilkyCard } from '../../components/MilkyCard';
 
 const MONTHS = [
   'January',
@@ -210,28 +210,38 @@ function CalendarScreen() {
 
   const header = (
     <View style={styles.header}>
-      <Text style={styles.screenKicker}>Date Night Planner</Text>
       <View style={styles.monthRow}>
         <View style={styles.monthTitleWrap}>
+          {/* Month name at one fixed size. When viewing another year, the year
+              is appended so it stays visible without a purple eyebrow label. */}
           <Text style={styles.monthTitle} numberOfLines={1}>
             {isViewingCurrentYear ? MONTHS[view.month] : `${MONTHS[view.month]} ${view.year}`}
           </Text>
         </View>
         {mode === 'grid' ? (
           <View style={styles.chevrons}>
-            <Pressable onPress={() => shiftMonth(-1)} style={styles.chevronButton} hitSlop={6}>
-              <Ionicons name="chevron-back" size={18} color={colors.text} />
+            <Pressable onPress={() => shiftMonth(-1)} hitSlop={6}>
+              <BlurView intensity={75} tint="light" style={styles.chevronButton}>
+                <View pointerEvents="none" style={styles.chevronFill} />
+                <Ionicons name="chevron-back" size={18} color={colors.onGlass} />
+              </BlurView>
             </Pressable>
-            <Pressable onPress={() => shiftMonth(1)} style={styles.chevronButton} hitSlop={6}>
-              <Ionicons name="chevron-forward" size={18} color={colors.text} />
+            <Pressable onPress={() => shiftMonth(1)} hitSlop={6}>
+              <BlurView intensity={75} tint="light" style={styles.chevronButton}>
+                <View pointerEvents="none" style={styles.chevronFill} />
+                <Ionicons name="chevron-forward" size={18} color={colors.onGlass} />
+              </BlurView>
             </Pressable>
           </View>
         ) : null}
       </View>
       {mode === 'grid' ? (
         <View style={styles.headerActions}>
-          <Pressable onPress={goToToday} style={styles.todayPill} hitSlop={4}>
-            <Text style={styles.todayPillText}>Today</Text>
+          <Pressable onPress={goToToday} hitSlop={4}>
+            <BlurView intensity={75} tint="light" style={styles.todayPill}>
+              <View pointerEvents="none" style={styles.chevronFill} />
+              <Text style={styles.todayPillText}>Today</Text>
+            </BlurView>
           </Pressable>
         </View>
       ) : null}
@@ -299,39 +309,38 @@ function CalendarScreen() {
             ))}
           </View>
 
-          <View style={styles.panel}>
-            <MilkyCard radius={radius.milkyLg} style={styles.panelCard} contentStyle={styles.panelInner}>
-              <View style={styles.panelHandle} />
-              <Text style={styles.panelTitle}>
-                {selectedIsToday ? <Text style={styles.panelStrong}>Today </Text> : null}
-                <Text style={selectedIsToday ? styles.panelMuted : styles.panelStrong}>
-                  {selected.toLocaleDateString(undefined, {
-                    weekday: 'long',
-                    month: 'long',
-                    day: 'numeric',
-                  })}
-                </Text>
+          <BlurView intensity={90} tint="light" style={styles.panel}>
+            <View pointerEvents="none" style={styles.panelFill} />
+            <View style={styles.panelHandle} />
+            <Text style={styles.panelTitle}>
+              {selectedIsToday ? <Text style={styles.panelStrong}>Today </Text> : null}
+              <Text style={selectedIsToday ? styles.panelMuted : styles.panelStrong}>
+                {selected.toLocaleDateString(undefined, {
+                  weekday: 'long',
+                  month: 'long',
+                  day: 'numeric',
+                })}
               </Text>
+            </Text>
 
-              {selectedEvents.length === 0 ? (
-                <View style={styles.emptyState}>
-                  <View style={styles.emptyBody}>
-                    <Text style={styles.emptyTitle}>{EMPTY_TITLE}</Text>
-                  </View>
+            {selectedEvents.length === 0 ? (
+              <View style={styles.emptyState}>
+                <View style={styles.emptyBody}>
+                  <Text style={styles.emptyTitle}>{EMPTY_TITLE}</Text>
                 </View>
-              ) : (
-                <ScrollView
-                  style={styles.panelScroll}
-                  contentContainerStyle={styles.panelEvents}
-                  showsVerticalScrollIndicator={false}
-                >
-                  {selectedEvents.map((ev) => (
-                    <EventCard key={ev.id} event={ev} />
-                  ))}
-                </ScrollView>
-              )}
-            </MilkyCard>
-          </View>
+              </View>
+            ) : (
+              <ScrollView
+                style={styles.panelScroll}
+                contentContainerStyle={styles.panelEvents}
+                showsVerticalScrollIndicator={false}
+              >
+                {selectedEvents.map((ev) => (
+                  <EventCard key={ev.id} event={ev} strong />
+                ))}
+              </ScrollView>
+            )}
+          </BlurView>
         </View>
       </SafeAreaView>
     );
@@ -410,60 +419,70 @@ const styles = StyleSheet.create({
     gap: spacing.md,
   },
   header: {
-    gap: 4,
-    marginBottom: spacing.xs,
-  },
-  screenKicker: {
-    ...thinLabel(12),
-    color: glass.textMuted,
-    textAlign: 'center',
+    flexDirection: 'row',
+    alignItems: 'flex-end',
+    justifyContent: 'space-between',
+    gap: spacing.sm,
   },
   monthRow: {
     flexDirection: 'row',
     alignItems: 'flex-end',
     gap: spacing.sm,
-  },
-  monthTitleWrap: {
     flex: 1,
   },
+  monthTitleWrap: {
+    // Fill the row so the chevrons always land at the same spot on the right,
+    // regardless of the month name's length (e.g. "May" vs "September").
+    flex: 1,
+    gap: spacing.xs,
+  },
+  kicker: {
+    color: colors.accent,
+  },
   monthTitle: {
-    ...thinDisplay(32),
-    color: glass.text,
+    // One fixed size for all 12 months. 32 is the size that fits the longest
+    // name ("September") in the row alongside the chevrons, so every month
+    // matches it and the title never resizes as you page through months.
+    ...display(32),
+    color: colors.helio,
     flexShrink: 1,
   },
   chevrons: {
     flexDirection: 'row',
     gap: spacing.xs,
-    marginBottom: 4,
+    marginBottom: spacing.xs,
   },
   chevronButton: {
     width: 32,
     height: 32,
     borderRadius: 16,
-    backgroundColor: glass.fillLite,
+    overflow: 'hidden',
     borderWidth: 1,
-    borderColor: glass.borderSoft,
+    borderColor: colors.glassBorder,
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  chevronFill: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: colors.glass,
   },
   headerActions: {
     flexDirection: 'row',
     alignItems: 'center',
-    alignSelf: 'flex-end',
     gap: spacing.sm,
+    marginBottom: spacing.xs,
   },
   todayPill: {
+    overflow: 'hidden',
     borderWidth: 1,
-    borderColor: glass.borderSoft,
-    backgroundColor: glass.fillLite,
+    borderColor: colors.glassBorder,
     borderRadius: radius.pill,
     paddingHorizontal: spacing.sm,
     paddingVertical: 6,
   },
   todayPillText: {
-    ...thinLabel(12),
-    color: glass.text,
-    fontStyle: 'normal',
+    ...uiText(12, '600'),
+    color: colors.onGlass,
   },
   // Swipe-down affordance at the top of the list view (mirror of panelHandle).
   listHandle: {
@@ -478,12 +497,10 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
   },
   weekdayLabel: {
-    ...thinLabel(10),
+    ...kicker(),
     flex: 1,
     textAlign: 'center',
-    color: glass.textFaint,
-    fontStyle: 'normal',
-    letterSpacing: 0.8,
+    color: colors.muted,
   },
   grid: {
     // Constant height for every month (see MAX_WEEK_ROWS). Rows flex to share
@@ -509,22 +526,23 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   dayCircleToday: {
-    borderWidth: 1.5,
-    borderColor: glass.text,
+    borderWidth: 2,
+    borderColor: colors.text,
   },
   dayCircleSelected: {
-    backgroundColor: 'rgba(255,255,255,0.18)',
+    backgroundColor: colors.glassStrong,
     borderWidth: 1,
-    borderColor: glass.border,
+    borderColor: colors.glassBorder,
   },
   dayNumber: {
-    ...thinLabel(15),
-    color: glass.text,
-    fontStyle: 'normal',
+    color: colors.text,
+    fontSize: 16,
+    fontWeight: '600',
   },
   dayNumberSelected: {
-    color: glass.text,
-    fontStyle: 'italic',
+    // The selected day fills with milky glass — flip the number to ink.
+    color: colors.onGlass,
+    fontWeight: '800',
   },
   dayEmoji: {
     fontSize: 20,
@@ -538,41 +556,39 @@ const styles = StyleSheet.create({
   // top corners and separates from the grid with a soft fill (no hard border).
   panel: {
     flex: 1,
+    overflow: 'hidden',
+    borderTopLeftRadius: radius.xl,
+    borderTopRightRadius: radius.xl,
+    borderWidth: 1,
+    borderColor: colors.glassSheetBorder,
+    borderBottomWidth: 0,
     marginHorizontal: -spacing.md,
     marginBottom: -spacing.md,
-  },
-  panelCard: {
-    flex: 1,
-    borderTopLeftRadius: radius.milkyLg,
-    borderTopRightRadius: radius.milkyLg,
-    borderBottomLeftRadius: 0,
-    borderBottomRightRadius: 0,
-  },
-  panelInner: {
-    flex: 1,
+    padding: spacing.lg,
     gap: spacing.md,
-    paddingTop: spacing.md,
+  },
+  panelFill: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: colors.glassSheet,
   },
   panelHandle: {
     alignSelf: 'center',
     width: 40,
     height: 4,
     borderRadius: 2,
-    backgroundColor: 'rgba(255,255,255,0.22)',
+    backgroundColor: 'rgba(255,255,255,0.35)',
   },
   panelTitle: {
     fontSize: 15,
     textAlign: 'center',
   },
   panelStrong: {
-    ...thinLabel(15),
-    color: glass.text,
-    fontStyle: 'italic',
+    ...uiText(15, '800'),
+    color: colors.text,
   },
   panelMuted: {
-    ...thinLabel(15),
-    color: glass.textMuted,
-    fontStyle: 'normal',
+    ...uiText(15, '600'),
+    color: colors.muted,
   },
   panelScroll: {
     flex: 1,
@@ -596,8 +612,8 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
   },
   emptyTitle: {
-    ...thinDisplay(24),
-    color: glass.text,
+    ...display(24),
+    color: colors.text,
     textAlign: 'center',
   },
   listSections: {
@@ -609,12 +625,11 @@ const styles = StyleSheet.create({
     gap: spacing.sm,
   },
   sectionTitle: {
-    ...thinDisplay(28),
-    color: glass.text,
+    ...display(30),
+    color: colors.text,
   },
   sectionEmpty: {
-    ...thinLabel(14),
-    color: glass.textMuted,
-    fontStyle: 'normal',
+    ...uiText(15),
+    color: colors.muted,
   },
 });

@@ -10,7 +10,7 @@ import {
 } from 'react-native';
 import { BlurView } from 'expo-blur';
 import { LinearGradient } from 'expo-linear-gradient';
-import { radius as R } from '../lib/theme';
+import { colors, radius as R } from '../lib/theme';
 
 // ── Glass ─────────────────────────────────────────────────────────────────────
 // A real frosted-glass surface: a live backdrop blur of whatever sits behind it
@@ -19,12 +19,12 @@ import { radius as R } from '../lib/theme';
 // pane of glass rather than a flat white overlay. Elements take on the hue and
 // brightness of the ambient gradient they float over.
 export function Glass({
-  intensity = 40,
+  intensity = 28,
   tint = 'dark',
-  radius = R.milkySm,
+  radius = R.lg,
   border = true,
   sheen = true,
-  fill = 'rgba(255,255,255,0.12)',
+  fill,
   style,
   children,
 }: {
@@ -33,6 +33,7 @@ export function Glass({
   radius?: number;
   border?: boolean;
   sheen?: boolean;
+  // Optional extra tint wash painted over the blur (e.g. 'rgba(255,255,255,0.12)').
   fill?: string;
   style?: StyleProp<ViewStyle>;
   children?: React.ReactNode;
@@ -54,7 +55,7 @@ export function Glass({
           pointerEvents="none"
           colors={
             dark
-              ? ['rgba(255,255,255,0.18)', 'rgba(255,255,255,0)']
+              ? ['rgba(255,255,255,0.12)', 'rgba(255,255,255,0)']
               : ['rgba(255,255,255,0.38)', 'rgba(255,255,255,0.04)']
           }
           start={{ x: 0, y: 0 }}
@@ -69,26 +70,38 @@ export function Glass({
 
 // A frosted pill — the minimal-contrast tappable chip used for filters, tags,
 // and toolbar capsules. `active` gives it a brighter fill to read as selected.
+// Defaults to the milky light-glass wash (matches ChromeCard); pass an
+// explicit `fill` to override.
 export function GlassPill({
   active,
-  tint = 'dark',
-  intensity = 22,
+  tint = 'light',
+  intensity = 60,
+  fill,
   style,
   children,
 }: {
   active?: boolean;
   tint?: 'light' | 'dark' | 'default';
   intensity?: number;
+  fill?: string;
   style?: StyleProp<ViewStyle>;
   children?: React.ReactNode;
 }) {
   const dark = tint === 'dark';
+  const resolvedFill =
+    fill ?? (dark
+      ? active
+        ? 'rgba(255,255,255,0.18)'
+        : undefined
+      : active
+        ? colors.glassStrong
+        : colors.glass);
   return (
     <Glass
       radius={R.pill}
-      intensity={active ? intensity + 18 : intensity}
+      intensity={active ? intensity + 14 : intensity}
       tint={tint}
-      fill={active ? (dark ? 'rgba(255,255,255,0.18)' : 'rgba(255,255,255,0.34)') : undefined}
+      fill={resolvedFill}
       style={[styles.pill, style]}
     >
       {children}
@@ -96,32 +109,47 @@ export function GlassPill({
   );
 }
 
-// ── ChromeCard / MilkyCard alias ──────────────────────────────────────────────
-// True milky frosted glass for hero surfaces; MilkySurface-style fill for lists.
-import { MilkyCard, MilkySurface } from './MilkyCard';
-
+// ── ChromeCard ────────────────────────────────────────────────────────────────
+// The signature feed surface: real "milky" frosted glass — a live backdrop
+// blur (BlurView) under a semi-opaque white wash, a bright rim-light border,
+// and a glossy top-edge sheen, so it reads like a genuine pane of glass
+// floating over the ambient event-photo backdrop rather than a flat card.
 export function ChromeCard({
-  radius: r,
+  radius: r = R.lg,
+  strong = false,
   style,
   children,
-  milky = false,
 }: {
   radius?: number;
+  // A slightly more opaque wash for cards nested inside another glass
+  // surface (e.g. inside the calendar's bottom-sheet panel), so they still
+  // read as a distinct pane rather than blending into it.
+  strong?: boolean;
   style?: StyleProp<ViewStyle>;
   children?: React.ReactNode;
-  milky?: boolean;
 }) {
-  if (milky) {
-    return (
-      <MilkyCard radius={r} style={style} contentStyle={{ padding: 0 }}>
-        {children}
-      </MilkyCard>
-    );
-  }
   return (
-    <MilkySurface radius={r ?? R.milkySm} style={style}>
-      {children}
-    </MilkySurface>
+    <View style={[{ borderRadius: r }, styles.chromeOuter, style]}>
+      <BlurView intensity={85} tint="light" style={[styles.chromeBlur, { borderRadius: r }]}>
+        <View
+          pointerEvents="none"
+          style={[
+            StyleSheet.absoluteFill,
+            { backgroundColor: strong ? colors.glassStrong : colors.glass, borderRadius: r },
+          ]}
+        />
+        {/* Top-edge sheen so the surface reads as glass, not flat paint. */}
+        <LinearGradient
+          pointerEvents="none"
+          colors={['rgba(255,255,255,0.55)', 'rgba(255,255,255,0.08)', 'rgba(255,255,255,0)']}
+          locations={[0, 0.4, 1]}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 0, y: 1 }}
+          style={StyleSheet.absoluteFill}
+        />
+        {children}
+      </BlurView>
+    </View>
   );
 }
 
@@ -258,6 +286,19 @@ export function withAmbientBackground<P extends object>(
 const styles = StyleSheet.create({
   borderLight: { borderWidth: 1, borderColor: 'rgba(255,255,255,0.55)' },
   borderDark: { borderWidth: 1, borderColor: 'rgba(255,255,255,0.16)' },
+  chromeOuter: {
+    overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: colors.glassBorder,
+    shadowColor: '#000000',
+    shadowOpacity: 0.35,
+    shadowRadius: 18,
+    shadowOffset: { width: 0, height: 8 },
+    elevation: 6,
+  },
+  chromeBlur: {
+    overflow: 'hidden',
+  },
   glassLabel: {
     fontSize: 12,
     fontWeight: '700',

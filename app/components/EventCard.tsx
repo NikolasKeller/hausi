@@ -2,11 +2,11 @@ import React from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import type { EventSummary } from '../shared/types';
-import { glass, radius, spacing } from '../lib/theme';
-import { thinLabel, titleFontStyle } from '../lib/fonts';
+import { colors, radius, shadow, spacing } from '../lib/theme';
+import { titleFontStyle, uiText, kicker } from '../lib/fonts';
 import { CoverGradient } from './CoverGradient';
 import { Avatar } from './Avatar';
-import { MilkyCard } from './MilkyCard';
+import { ChromeCard } from './glass';
 
 export function formatEventDate(iso: string): string {
   const date = new Date(iso);
@@ -28,20 +28,15 @@ const STATUS_LABEL: Record<string, string> = {
   WAITLIST: 'Waitlist',
 };
 
-export function EventCard({ event }: { event: EventSummary }) {
+export function EventCard({ event, strong }: { event: EventSummary; strong?: boolean }) {
   const router = useRouter();
   return (
     <Pressable
       onPress={() => router.push(`/event/${event.slug}`)}
-      style={({ pressed }) => [pressed && { opacity: 0.88 }]}
+      style={({ pressed }) => [pressed && { opacity: 0.85 }]}
     >
-      <MilkyCard radius={radius.milkySm} contentStyle={styles.cardInner}>
-        <CoverGradient
-          theme={event.coverTheme}
-          image={event.coverImage}
-          style={styles.cover}
-          emojiOpacity={0.3}
-        >
+      <ChromeCard radius={radius.md} strong={strong} style={shadow.card}>
+        <CoverGradient theme={event.coverTheme} image={event.coverImage} style={styles.cover} emojiOpacity={0.45}>
           {event.canceledAt ? (
             <View style={styles.canceledBadge}>
               <Text style={styles.canceledText}>CANCELED</Text>
@@ -57,7 +52,7 @@ export function EventCard({ event }: { event: EventSummary }) {
               {formatEventDate(event.date)} · {formatEventTime(event.date)}
             </Text>
             <View style={styles.hostRow}>
-              <Avatar name={event.host.name} image={event.host.avatarImage} size={24} />
+              <Avatar name={event.host.name} image={event.host.avatarImage} size={26} />
               <Text style={styles.hostName} numberOfLines={1}>
                 {event.isHost ? 'You are hosting' : `Hosted by ${event.host.name}`}
               </Text>
@@ -65,60 +60,57 @@ export function EventCard({ event }: { event: EventSummary }) {
           </View>
           <View style={styles.badges}>
             <View style={styles.goingRow}>
-              <Avatar name={event.host.name} image={event.host.avatarImage} size={18} />
-              <Text style={styles.going}>+{event.counts.going}</Text>
+              <Avatar name={event.host.name} image={event.host.avatarImage} size={20} />
+              <Text style={styles.going}>+{event.counts.going} going</Text>
             </View>
             {event.myRsvp && !event.isHost ? (
               <Text style={styles.myStatus}>{STATUS_LABEL[event.myRsvp]}</Text>
             ) : null}
           </View>
         </View>
-      </MilkyCard>
+      </ChromeCard>
     </Pressable>
   );
 }
 
 const styles = StyleSheet.create({
-  cardInner: { padding: 0, overflow: 'hidden' },
   cover: {
-    minHeight: 130,
-    padding: spacing.md,
+    minHeight: 150,
+    padding: spacing.lg,
     justifyContent: 'flex-end',
   },
-  canceledBadge: {
-    position: 'absolute',
-    top: spacing.sm,
-    left: spacing.sm,
-    backgroundColor: 'rgba(0,0,0,0.55)',
-    borderRadius: radius.pill,
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-  },
-  canceledText: {
-    ...thinLabel(10),
-    color: '#FFFFFF',
-    fontStyle: 'normal',
-    letterSpacing: 0.8,
-  },
+  // The title sits on the colorful/dark CoverGradient hero, so white stays here.
   title: {
-    fontSize: 22,
-    fontWeight: '700',
-    letterSpacing: -0.5,
-    color: '#FFFFFF',
+    color: '#fff',
+    fontSize: 38,
+    letterSpacing: -1,
     textShadowColor: 'rgba(0,0,0,0.35)',
     textShadowOffset: { width: 0, height: 2 },
     textShadowRadius: 6,
   },
+  // CANCELED badge also sits on the cover hero — keep it legible on dark imagery.
+  canceledBadge: {
+    position: 'absolute',
+    top: spacing.md,
+    right: spacing.md,
+    backgroundColor: colors.ink,
+    borderRadius: radius.pill,
+    paddingHorizontal: spacing.md,
+    paddingVertical: 6,
+  },
+  canceledText: {
+    ...kicker(colors.danger),
+    fontSize: 12,
+  },
   body: {
     flexDirection: 'row',
-    alignItems: 'flex-end',
-    gap: spacing.sm,
-    padding: spacing.md,
+    alignItems: 'center',
+    padding: spacing.lg,
+    gap: spacing.md,
   },
   date: {
-    ...thinLabel(12),
-    color: glass.textMuted,
-    fontStyle: 'normal',
+    ...uiText(14, '600'),
+    color: colors.onGlassMuted,
   },
   hostRow: {
     flexDirection: 'row',
@@ -126,28 +118,27 @@ const styles = StyleSheet.create({
     gap: spacing.sm,
   },
   hostName: {
-    ...thinLabel(13),
-    color: glass.text,
-    fontStyle: 'normal',
-    flex: 1,
+    ...uiText(13, '500'),
+    color: colors.onGlass,
+    flexShrink: 1,
   },
   badges: {
     alignItems: 'flex-end',
-    gap: 4,
+    gap: spacing.xs,
   },
+  // The approved "going" treatment: tiny avatar + "+N going" in dim ink,
+  // no loud pill.
   goingRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 4,
+    gap: spacing.xs,
   },
   going: {
-    ...thinLabel(11),
-    color: glass.textFaint,
-    fontStyle: 'normal',
+    ...uiText(13, '600'),
+    color: colors.onGlassMuted,
   },
   myStatus: {
-    ...thinLabel(10),
-    color: glass.text,
-    fontStyle: 'italic',
+    ...uiText(12, '600'),
+    color: colors.onGlass,
   },
 });

@@ -28,6 +28,18 @@ export const colors = {
   danger: '#FF5A5F',
   success: '#4ADE80',
   warning: '#FACC15',
+  // ── Milky glass (real frosted-glass cards over the event-photo backdrop) ──
+  // A light, semi-opaque wash + blur — the "milky" white glass surface, not a
+  // flat dark card. Text sitting on it needs dark ink, not the silver ramp.
+  glass: 'rgba(255,255,255,0.55)',
+  glassStrong: 'rgba(255,255,255,0.72)',
+  glassBorder: 'rgba(255,255,255,0.65)',
+  // A thinner wash for large containing surfaces (bottom sheets, panels) so
+  // the milky cards nested inside still stand out as distinct glass panes.
+  glassSheet: 'rgba(255,255,255,0.16)',
+  glassSheetBorder: 'rgba(255,255,255,0.30)',
+  onGlass: '#15161B',
+  onGlassMuted: 'rgba(21,22,27,0.62)',
 };
 
 // ── Elevated surfaces (kept under the `light` name for back-compat) ───────────
@@ -91,31 +103,14 @@ export const spacing = {
   section: 80,
 };
 
-// Glassmorphism radii — generous squircles like the reference dashboards.
+// Partiful radii: nav 4, inputs/buttons 8, cards/images 12, modals 16, pill.
 export const radius = {
   xs: 4,
   sm: 8,
   md: 12,
   lg: 16,
   xl: 24,
-  milkySm: 28,
-  milky: 36,
-  milkyLg: 44,
   pill: 999,
-};
-
-// Milky frosted-glass tokens — the "frosted pane" look on the black canvas.
-export const glass = {
-  fill: 'rgba(255,255,255,0.16)',
-  fillStrong: 'rgba(255,255,255,0.24)',
-  fillLite: 'rgba(255,255,255,0.11)',
-  border: 'rgba(255,255,255,0.28)',
-  borderSoft: 'rgba(255,255,255,0.12)',
-  blur: 48,
-  blurNav: 40,
-  text: '#FFFFFF',
-  textMuted: 'rgba(255,255,255,0.55)',
-  textFaint: 'rgba(255,255,255,0.38)',
 };
 
 // Layered elevation. On the black canvas shadows read as soft darkness under
@@ -134,12 +129,5 @@ export const shadow = {
     shadowRadius: 28,
     shadowOffset: { width: 0, height: 14 },
     elevation: 12,
-  },
-  milky: {
-    shadowColor: '#000000',
-    shadowOpacity: 0.45,
-    shadowRadius: 32,
-    shadowOffset: { width: 0, height: 16 },
-    elevation: 10,
   },
 };

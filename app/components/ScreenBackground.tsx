@@ -1,66 +1,57 @@
 import React from 'react';
-import { Image, Platform, StyleSheet, View } from 'react-native';
-import { BlurView } from 'expo-blur';
+import { Image, StyleSheet, View } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { colors } from '../lib/theme';
 
-const WORDMARK = require('../assets/wordmark-chrome-dark.png');
+// The ambient event-photo backdrop every milky glass card floats over — a
+// moody, blurred nightlife shot (crowd + bokeh light) rather than a flat
+// black canvas, so the frosted cards actually have something to refract.
+// A dark scrim keeps foreground text legible over the busiest parts of the
+// photo without flattening it into black.
+const EVENT_BG = require('../assets/brand/event-bg-blur.png');
 
-// The app-wide backdrop: pure black with the iykyk wordmark ghosted into the
-// canvas (replacing the blurred-athlete photo from the reference dashboards).
-// A faint silver bloom falls from the top so milky glass cards have depth to
-// read against.
 export function ScreenBackground({
   children,
   bloom = true,
-  watermark = true,
 }: {
   children?: React.ReactNode;
   bloom?: boolean;
-  watermark?: boolean;
 }) {
   return (
     <View style={styles.fill}>
-      {watermark ? (
-        <View pointerEvents="none" style={styles.watermarkWrap}>
-          {Platform.OS === 'web' ? (
-            <View style={styles.watermarkBlurWeb}>
-              <Image source={WORDMARK} style={styles.watermark} resizeMode="contain" />
-            </View>
-          ) : (
-            <BlurView intensity={28} tint="dark" style={styles.watermarkBlur}>
-              <Image source={WORDMARK} style={styles.watermark} resizeMode="contain" />
-            </BlurView>
-          )}
-        </View>
-      ) : null}
+      <Image source={EVENT_BG} style={StyleSheet.absoluteFill} resizeMode="cover" />
+      <LinearGradient
+        pointerEvents="none"
+        colors={['rgba(0,0,0,0.55)', 'rgba(0,0,0,0.30)', 'rgba(0,0,0,0.55)']}
+        locations={[0, 0.45, 1]}
+        style={StyleSheet.absoluteFill}
+      />
       {bloom ? (
         <LinearGradient
-          colors={['rgba(255,255,255,0.08)', 'rgba(255,255,255,0.03)', 'rgba(255,255,255,0)']}
+          colors={['rgba(255,255,255,0.10)', 'rgba(255,255,255,0.03)', 'rgba(255,255,255,0)']}
           locations={[0, 0.45, 1]}
           style={styles.bloom}
           pointerEvents="none"
         />
       ) : null}
-      <LinearGradient
-        pointerEvents="none"
-        colors={['rgba(0,0,0,0)', 'rgba(0,0,0,0.55)']}
-        start={{ x: 0.5, y: 0.55 }}
-        end={{ x: 0.5, y: 1 }}
-        style={StyleSheet.absoluteFill}
-      />
       {children}
     </View>
   );
 }
 
+// Wraps a screen so it carries its own opaque backdrop. On web the tab
+// navigator stacks every mounted tab with position:absolute and only lifts the
+// focused one to the top (zIndex 0) — the others sit at zIndex -1 directly
+// behind it. A transparent scene therefore lets the blurred tabs bleed through;
+// giving each scene an opaque ScreenBackground makes the focused tab fully
+// occlude them, independent of the react-native-screens web shim.
 export function withScreenBackground<P extends object>(
   Screen: React.ComponentType<P>,
-  opts?: { bloom?: boolean; watermark?: boolean }
+  opts?: { bloom?: boolean }
 ): React.ComponentType<P> {
   function ScreenWithBackground(props: P) {
     return (
-      <ScreenBackground bloom={opts?.bloom} watermark={opts?.watermark}>
+      <ScreenBackground bloom={opts?.bloom}>
         <Screen {...props} />
       </ScreenBackground>
     );
@@ -77,36 +68,11 @@ const styles = StyleSheet.create({
     backgroundColor: colors.bg,
     overflow: 'hidden',
   },
-  watermarkWrap: {
-    ...StyleSheet.absoluteFillObject,
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingTop: 40,
-  },
-  watermarkBlur: {
-    width: '140%',
-    height: '50%',
-    overflow: 'hidden',
-    opacity: 0.22,
-  },
-  watermarkBlurWeb: {
-    width: '140%',
-    height: '50%',
-    opacity: 0.18,
-    ...(Platform.OS === 'web'
-      ? ({ filter: 'blur(36px) brightness(1.2)' } as object)
-      : null),
-  },
-  watermark: {
-    width: '100%',
-    height: '100%',
-    opacity: 0.9,
-  },
   bloom: {
     position: 'absolute',
     top: 0,
     left: 0,
     right: 0,
-    height: 360,
+    height: 320,
   },
 });

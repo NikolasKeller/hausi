@@ -110,13 +110,13 @@ export function Button({
         style={({ pressed }) => [
           styles.button,
           styles.solid,
-          { backgroundColor: '#FFFFFF' },
+          { backgroundColor: colors.ink },
           pressed && styles.pressed,
           isDisabled && styles.disabled,
           style,
         ]}
       >
-        {label('#0A0A0A')}
+        {label(colors.onInk)}
       </Pressable>
     );
   }
