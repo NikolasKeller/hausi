@@ -26,6 +26,9 @@ export type FeaturedEvent = {
   // seeds then host the event under that organizer's org account instead of
   // wrongly crediting YE. Omitted = YE Munich's own event.
   organizerName?: string;
+  // The organizer's real ticket page (buy-button target), verified against the
+  // event's title/date. Omitted = no ticket link found (button stays hidden).
+  ticketUrl?: string;
 };
 
 export const FEATURED_EVENTS: FeaturedEvent[] = [
@@ -82,6 +85,9 @@ export const FEATURED_EVENTS: FeaturedEvent[] = [
     costPerPerson: '15 EUR',
     dressCode: '',
     organizerName: 'PAPItutmirleid',
+    // Organizer's own event page ("papi's festival", Sat 11 July 2026, Space
+    // for Skate) with the ticket checkout; verified 2026-07-09.
+    ticketUrl: 'https://www.papitutmirleid.com/pages/papi-summer-big-ass-party',
   },
   {
     title: "YE's Magic Garden",
@@ -111,6 +117,9 @@ export const FEATURED_EVENTS: FeaturedEvent[] = [
     category: 'music',
     costPerPerson: 'From 17 EUR',
     dressCode: '',
+    // YE's own shop page for this event (11.07 YE's MAGIC GARDEN, add-to-cart
+    // checkout); verified 2026-07-09.
+    ticketUrl: 'https://ye-munich.com/11-07-yes-magic-garden/',
   },
   {
     title: 'YE Open Air - Regensburg',
@@ -145,6 +154,9 @@ export const FEATURED_EVENTS: FeaturedEvent[] = [
     category: 'music',
     costPerPerson: 'From 23 EUR',
     dressCode: '',
+    // YE's own shop page (18.07 YE OPENAIR AT Gutshof PÜRKELGUT — Regensburg,
+    // add-to-cart checkout); verified 2026-07-09.
+    ticketUrl: 'https://ye-munich.com/18-07-ye-openair-at-gutshof-puerkelgut-regensburg/',
   },
   {
     title: 'YE Goes Pavillon Beach',
