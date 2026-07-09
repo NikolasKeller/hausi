@@ -88,7 +88,6 @@ export default function PhoneScreen() {
             contentContainerStyle={styles.content}
             keyboardShouldPersistTaps="handled"
           >
-            <View style={{ flex: 0.5 }} />
             <Text style={styles.title}>Join the club</Text>
 
             <View style={styles.phoneRow}>
@@ -168,7 +167,6 @@ export default function PhoneScreen() {
             ) : null}
 
             <ErrorText message={error} />
-            <View style={{ flex: 1 }} />
 
             <Button
               title={sending ? 'Sending…' : 'Send code'}
@@ -176,9 +174,8 @@ export default function PhoneScreen() {
               onPress={sendCode}
               loading={sending}
               disabled={sending}
-              style={canSubmit ? undefined : styles.buttonDisabled}
+              style={StyleSheet.flatten([styles.button, canSubmit ? null : styles.buttonDisabled])}
             />
-            <View style={{ height: spacing.xl }} />
           </ScrollView>
         </KeyboardAvoidingView>
       </SafeAreaView>
@@ -190,16 +187,23 @@ const styles = StyleSheet.create({
   safe: {
     flex: 1,
   },
+  // Everything centers as one calm block in the viewport — no flex spacers
+  // pushing the button below the fold on short (web) windows. The column is
+  // capped a touch narrower than the 430px web phone frame for a quieter look.
   content: {
     flexGrow: 1,
+    justifyContent: 'center',
+    width: '100%',
+    maxWidth: 380,
+    alignSelf: 'center',
     padding: spacing.lg,
     gap: spacing.md,
   },
   title: {
     color: colors.text,
-    ...display(56),
+    ...display(38),
     textAlign: 'center',
-    marginBottom: spacing.lg,
+    marginBottom: spacing.md,
   },
   phoneRow: {
     flexDirection: 'row',
@@ -216,14 +220,14 @@ const styles = StyleSheet.create({
   },
   phonePrefix: {
     color: colors.text,
-    ...uiText(30),
+    ...uiText(22),
   },
   // Borderless inline phone field — plain text on the canvas, no box.
   phoneInputInline: {
     flex: 1,
-    ...uiText(30),
+    ...uiText(22),
     color: colors.text,
-    lineHeight: 38,
+    lineHeight: 28,
     textAlign: 'center',
     paddingVertical: 6,
   },
@@ -246,7 +250,8 @@ const styles = StyleSheet.create({
     borderBottomColor: colors.cardBorder,
   },
   pickerScroll: {
-    maxHeight: 260,
+    // Short enough that the centered block still fits small web windows.
+    maxHeight: 200,
   },
   pickerItem: {
     flexDirection: 'row',
@@ -282,10 +287,13 @@ const styles = StyleSheet.create({
     borderColor: colors.cardBorder,
     borderRadius: radius.sm,
     paddingHorizontal: spacing.md,
-    ...uiText(18),
+    ...uiText(16),
     color: colors.text,
-    lineHeight: 22,
-    paddingVertical: 14,
+    lineHeight: 20,
+    paddingVertical: 12,
+  },
+  button: {
+    marginTop: spacing.md,
   },
   buttonDisabled: {
     opacity: 0.5,
