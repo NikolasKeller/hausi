@@ -6,14 +6,33 @@ import { classify, politeFetch, sleep, zonedTimeToUtc } from './util.js';
 // embed the full result set as window.__SERVER_DATA__ — name, summary, local
 // start date/time, timezone, venue and image, no API key needed.
 // Eventbrite rate-limits hard (429 after bursts), so searches are spaced out
-// and kept to a handful of lifestyle keywords per city.
-
+// and kept to lifestyle keywords per city.
+//
+// Term selection (2026-07-10): the set is deliberately spread across event
+// TYPES so a city feed isn't dominated by one format (Berlin used to end up
+// mostly speed-dating). Former terms run-club / yoga / coffee-meetup were
+// dropped: their results are free-signup style and always die at the
+// non-ticket-signup validation check, so those searches were pure waste.
 const SEARCH_TERMS = [
-  'run-club',
+  // dating (kept, but the inserter caps each category bucket per run)
   'speed-dating',
-  'yoga',
-  'coffee-meetup',
+  // nightlife / parties
   'rooftop-party',
+  // comedy & shows
+  'comedy',
+  // arts & crafts
+  'paint-and-sip',
+  'pottery',
+  'life-drawing',
+  // food & drink
+  'wine-tasting',
+  'supper-club',
+  // dance & music participation
+  'salsa',
+  'karaoke',
+  // games & social formats
+  'pub-quiz',
+  // active social
   'social-sports',
 ];
 
@@ -84,6 +103,11 @@ function extractServerData(html: string): EbResult[] {
   }
 }
 
+// Accepted events per search term: keeps the per-candidate page fetches (the
+// slow, rate-limited part) bounded now that the term list is longer, and stops
+// a single prolific term from flooding the city's candidate pool.
+const MAX_ACCEPTED_PER_TERM = 8;
+
 export async function scrapeEventbrite(config: CityConfig): Promise<ScrapedEvent[]> {
   if (!config.eventbriteSlug) return [];
   const out: ScrapedEvent[] = [];
@@ -101,14 +125,22 @@ export async function scrapeEventbrite(config: CityConfig): Promise<ScrapedEvent
       continue;
     }
 
+    let acceptedForTerm = 0;
     for (const r of results) {
+      if (acceptedForTerm >= MAX_ACCEPTED_PER_TERM) break;
       if (!r.url || seenUrls.has(r.url)) continue;
       if (r.is_online_event || r.is_cancelled) continue;
       if (!r.start_date || !r.start_time || !r.timezone) continue;
       // Search results can bleed into neighbouring towns; require the venue
-      // city to match (Eventbrite uses the English name on .com).
+      // city to match (Eventbrite uses the English name on .com). Cities whose
+      // Eventbrite spelling differs (Washington DC → "Washington", NYC
+      // boroughs, "Ciudad de México" …) list accepted aliases in their config.
       const venueCity = r.primary_venue?.address?.city?.trim().toLowerCase() ?? '';
-      if (venueCity && venueCity !== config.name.toLowerCase()) continue;
+      const acceptedCities = [
+        config.name.toLowerCase(),
+        ...(config.eventbriteCityAliases ?? []),
+      ];
+      if (venueCity && !acceptedCities.includes(venueCity)) continue;
       const cls = classify(r.name, r.summary ?? '');
       if (!cls) continue;
       // Paid events only: one extra page fetch per candidate for price+organizer.
@@ -119,6 +151,7 @@ export async function scrapeEventbrite(config: CityConfig): Promise<ScrapedEvent
       if (page == null) continue;
       seenUrls.add(r.url);
       if (!page.price) continue;
+      acceptedForTerm++;
       const description = (r.summary ?? '').trim();
       out.push({
         source: 'eventbrite',

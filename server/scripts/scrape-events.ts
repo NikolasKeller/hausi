@@ -7,17 +7,30 @@ import { scrapeRa } from './scrape/ra.js';
 import { scrapeEventbrite } from './scrape/eventbrite.js';
 import { translateToEnglish } from './scrape/translate.js';
 import type { ScrapedEvent } from './scrape/types.js';
-import { classify, isValidEvent, RA_CLASSIFIED, sleep } from './scrape/util.js';
+import { classify, isValidEvent, RA_CLASSIFIED, sleep, type Classified } from './scrape/util.js';
 import {
   dedupeKey,
+  TARGET_CITIES,
   validateEvent,
   ValidationStats,
   type EventCandidate,
 } from './scrape/validate.js';
 
+// scrape/validate.ts is deliberately self-contained (copied next to external
+// import scripts), so its city allowlist is a hardcoded mirror of CITIES.
+// Fail fast if the two ever drift — otherwise every event of the missing city
+// would silently fail the 'city' check.
+{
+  const allowed = new Set<string>(TARGET_CITIES);
+  const missing = CITIES.filter((c) => !allowed.has(c.name)).map((c) => c.name);
+  if (missing.length) {
+    throw new Error(`cities missing from TARGET_CITIES in scrape/validate.ts: ${missing.join(', ')}`);
+  }
+}
+
 // Scrapes hyped lifestyle/social/nightlife events (run clubs, raves, rooftop
-// parties, yoga, dating, coffee socials …) for European capitals from real
-// public sources — Resident Advisor and Eventbrite — and inserts them as
+// parties, yoga, dating, coffee socials …) for major cities worldwide from
+// real public sources — Resident Advisor and Eventbrite — and inserts them as
 // public events into the app DB.
 //
 // Sourcing rule (user correction, 2026-07-08):
@@ -46,6 +59,12 @@ import {
 // The description limit lives in app/shared/types.ts (LIMITS.description=4000).
 
 const MAX_PER_CITY_PER_RUN = 35;
+// Diversity guard: hard cap per event-type bucket (dating, nightlife, comedy,
+// food, …) per city per run, so no single format dominates a feed the way
+// speed-dating used to dominate Berlin. Buckets that still have room are
+// filled first; only when every other bucket is exhausted may an over-cap
+// bucket fill the remaining slots (so RA-only cities still get volume).
+const MAX_PER_BUCKET_PER_RUN = 8;
 const HORIZON_DAYS = 60;
 const DESCRIPTION_LIMIT = 4000;
 
@@ -138,7 +157,13 @@ async function scrapeCity(cityName?: string) {
     process.exit(1);
   }
 
-  const report: { city: string; added: number; skipped: number; bySource: Record<string, number> }[] = [];
+  const report: {
+    city: string;
+    added: number;
+    skipped: number;
+    bySource: Record<string, number>;
+    byBucket: Record<string, number>;
+  }[] = [];
   const stats = new ValidationStats();
   let translatedCount = 0;
   let scoutFallbacks = 0;
@@ -159,19 +184,34 @@ async function scrapeCity(cityName?: string) {
       console.warn(`  scrape error for ${config.name}:`, e);
     }
 
-    // Rank hyped-first within each source group, then interleave sources so a
-    // city page isn't 30 techno events followed by nothing else.
+    // Classify up front: the event-type bucket (dating, nightlife, comedy, …)
+    // drives both the interleaving and the per-type cap below.
     const valid = collected.filter((e) => isValidEvent(e, now, horizon));
-    const bySource = new Map<string, ScrapedEvent[]>();
+    let skipped = 0;
+    const classified: { e: ScrapedEvent; cls: Classified }[] = [];
     for (const e of valid) {
-      const list = bySource.get(e.source) ?? [];
-      list.push(e);
-      bySource.set(e.source, list);
+      const cls = e.source === 'ra' ? RA_CLASSIFIED : classify(e.title, e.description);
+      if (!cls) {
+        skipped++;
+        continue;
+      }
+      classified.push({ e, cls });
     }
-    for (const list of bySource.values()) list.sort((a, b) => b.hype - a.hype);
-    const interleaved: ScrapedEvent[] = [];
-    const lists = [...bySource.values()];
-    for (let i = 0; interleaved.length < valid.length; i++) {
+
+    // Diversity mix: rank hyped-first WITHIN each bucket, then round-robin
+    // ACROSS buckets (dating[0], nightlife[0], comedy[0], …, dating[1], …) so
+    // the insert order — and therefore what fills the 35 city slots — is a mix
+    // of event types, never 20 speed-dating nights back to back.
+    const byBucket = new Map<string, typeof classified>();
+    for (const item of classified) {
+      const list = byBucket.get(item.cls.bucket) ?? [];
+      list.push(item);
+      byBucket.set(item.cls.bucket, list);
+    }
+    for (const list of byBucket.values()) list.sort((a, b) => b.e.hype - a.e.hype);
+    const interleaved: typeof classified = [];
+    const lists = [...byBucket.values()];
+    for (let i = 0; interleaved.length < classified.length; i++) {
       let pushed = false;
       for (const list of lists) {
         if (i < list.length) {
@@ -183,24 +223,17 @@ async function scrapeCity(cityName?: string) {
     }
 
     let added = 0;
-    let skipped = 0;
     const sourceCounts: Record<string, number> = {};
-    for (const e of interleaved) {
-      if (added >= MAX_PER_CITY_PER_RUN) break;
-      const cls = e.source === 'ra' ? RA_CLASSIFIED : classify(e.title, e.description);
-      if (!cls) {
-        skipped++;
-        continue;
-      }
+    const bucketCounts: Record<string, number> = {};
+
+    // Validate/translate/insert one candidate; returns true when inserted.
+    const tryInsert = async ({ e, cls }: { e: ScrapedEvent; cls: Classified }): Promise<boolean> => {
       // Early dedupe short-circuit BEFORE translating: on idempotent re-runs
       // most candidates already exist, and translation hits a rate-limited API
       // — don't spend that quota (or risk exhausting it before genuinely new
       // events) on rows that will only fail the dedupe check anyway.
       const title = e.title.slice(0, 120);
-      if (existing.has(dedupeKey(title, e.city, e.startAt))) {
-        skipped++;
-        continue;
-      }
+      if (existing.has(dedupeKey(title, e.city, e.startAt))) return false;
       // Final checklist, evaluated on the exact row that would be inserted.
       const desc = await buildDescription(e);
       if (desc.translated) translatedCount++;
@@ -222,12 +255,11 @@ async function scrapeCity(cityName?: string) {
       });
       stats.record(result);
       if (!result.ok) {
-        skipped++;
         // Dupes are routine on re-runs; only spell out real quality failures.
         if (!(result.failures.length === 1 && result.failures[0] === 'dedupe')) {
           console.log(`  ✗ dropped "${candidate.title.slice(0, 60)}": ${result.failures.join(', ')}`);
         }
-        continue;
+        return false;
       }
       // Host = the real organizer/promoter from the source; the neutral scout
       // account only hosts events whose organizer couldn't be determined.
@@ -255,16 +287,43 @@ async function scrapeCity(cityName?: string) {
       existing.add(dedupeKey(candidate.title, candidate.city, candidate.date));
       added++;
       sourceCounts[e.source] = (sourceCounts[e.source] ?? 0) + 1;
+      bucketCounts[cls.bucket] = (bucketCounts[cls.bucket] ?? 0) + 1;
+      return true;
+    };
+
+    // Pass 1 — respect the per-bucket cap: candidates from a bucket that
+    // already hit its cap are deferred, not dropped.
+    const deferred: typeof classified = [];
+    for (const item of interleaved) {
+      if (added >= MAX_PER_CITY_PER_RUN) break;
+      if ((bucketCounts[item.cls.bucket] ?? 0) >= MAX_PER_BUCKET_PER_RUN) {
+        deferred.push(item);
+        continue;
+      }
+      if (!(await tryInsert(item))) skipped++;
     }
-    console.log(`  inserted ${added}, skipped ${skipped} (validation/dupes/off-topic)  ${JSON.stringify(sourceCounts)}`);
-    report.push({ city: config.name, added, skipped, bySource: sourceCounts });
+    // Pass 2 — only when every bucket had its fair chance and slots remain
+    // (e.g. an RA-only city where nightlife is all there is), let over-cap
+    // buckets fill the rest instead of leaving the city half-empty.
+    for (const item of deferred) {
+      if (added >= MAX_PER_CITY_PER_RUN) break;
+      if (!(await tryInsert(item))) skipped++;
+    }
+
+    console.log(`  inserted ${added}, skipped ${skipped} (validation/dupes/off-topic)  sources=${JSON.stringify(sourceCounts)} mix=${JSON.stringify(bucketCounts)}`);
+    report.push({ city: config.name, added, skipped, bySource: sourceCounts, byBucket: bucketCounts });
     await sleep(1000);
   }
 
   console.log('\n=== SUMMARY ===');
   for (const r of report) {
     const gap = r.added < 20 ? '  ⚠ <20 new this run' : '';
-    console.log(`${r.city.padEnd(12)} +${String(r.added).padStart(3)}  ${JSON.stringify(r.bySource)}${gap}`);
+    // Flag runs where a single event type still ate more than half the city's
+    // new events — a hint that the other search terms found nothing there.
+    const buckets = Object.entries(r.byBucket);
+    const dominant = buckets.find(([, n]) => r.added >= 6 && n > r.added / 2);
+    const skew = dominant ? `  ⚠ ${dominant[0]} is ${dominant[1]}/${r.added} of the mix` : '';
+    console.log(`${r.city.padEnd(12)} +${String(r.added).padStart(3)}  ${JSON.stringify(r.bySource)}  mix=${JSON.stringify(r.byBucket)}${gap}${skew}`);
   }
   const total = report.reduce((s, r) => s + r.added, 0);
   console.log(`total inserted: ${total}`);
