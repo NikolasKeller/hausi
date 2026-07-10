@@ -5,6 +5,7 @@ import { StatusBar } from 'expo-status-bar';
 import { useFonts } from 'expo-font';
 import { enableScreens } from 'react-native-screens';
 import { AuthProvider, useAuth } from '../lib/auth';
+import { peekPendingPath, setPendingPath, takePendingPath } from '../lib/pendingPath';
 import { FONTS_TO_LOAD } from '../lib/fonts';
 import { colors, spacing } from '../lib/theme';
 
@@ -47,13 +48,16 @@ function ModalClose() {
   );
 }
 
-// Where a signed-out user was heading (e.g. an invite deep link) — restored
-// after auth. Module scope, NOT a ref: the navigator remounts on web after
-// the first redirect, and refs don't survive that.
-let pendingPath: string | null = null;
 // Distinguishes "just pressed log out" (had a session) from "arrived signed
 // out via a link" — logout should land on the intro, not the phone screen.
 let hadSession = false;
+
+// Invite pages are public: anyone with the link can view the event signed out
+// (the API's by-slug endpoint doesn't require auth either). Everything else
+// still funnels through the auth flow.
+function isPublicEventPath(pathname: string | null | undefined): boolean {
+  return !!pathname && /^\/(e|event)\//.test(pathname);
+}
 
 function RootNavigator() {
   const { user, initializing, devSignIn } = useAuth();
@@ -135,21 +139,20 @@ function RootNavigator() {
   useEffect(() => {
     if (initializing) return;
     const inAuthGroup = segments[0] === '(auth)';
-    if (!user && !inAuthGroup) {
+    if (!user && !inAuthGroup && !isPublicEventPath(pathname)) {
       const arrivedViaLink = !hadSession && pathname && pathname !== '/';
-      if (arrivedViaLink) pendingPath = pathname;
+      if (arrivedViaLink) setPendingPath(pathname);
       // Invitees jump straight to phone entry; everyone else gets the intro.
       router.replace(arrivedViaLink ? '/phone' : '/welcome');
     } else if (user && !user.name.trim()) {
       // Onboarding is mandatory: until a name is saved, every route —
       // including a reload or a typed URL — funnels back to profile setup.
       if (segments[0] !== 'setup') router.replace('/setup');
-    } else if (user && (inAuthGroup || pendingPath)) {
+    } else if (user && (inAuthGroup || peekPendingPath())) {
       // Restore where the user was heading (e.g. an invite link) — also for
       // first-timers, who finish profile setup before this fires. Fresh
       // sign-ins land on Explore, the app's first tab.
-      const target = pendingPath ?? '/explore';
-      pendingPath = null;
+      const target = takePendingPath() ?? '/explore';
       if (pathname !== target) router.replace(target as never);
     }
     hadSession = !!user;

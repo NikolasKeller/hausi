@@ -16,6 +16,7 @@ import * as WebBrowser from 'expo-web-browser';
 import { type EventDetail } from '../../../shared/types';
 import { api } from '../../../lib/api';
 import { useAuth } from '../../../lib/auth';
+import { setPendingPath } from '../../../lib/pendingPath';
 import { confirmDialog, notify } from '../../../lib/dialogs';
 import { recordRecentEvent, removeRecentEvent } from '../../../lib/recents';
 import { shareText } from '../../../lib/share';
@@ -174,6 +175,15 @@ export default function EventScreen() {
     } else {
       WebBrowser.openBrowserAsync(url).catch(() => notify('Could not open link', url));
     }
+  }
+
+  // Signed-out invite viewers (a shared link opened in a plain browser) can
+  // see the page but must sign in to interact — remember this event so the
+  // auth flow lands them right back here.
+  function signIn() {
+    if (!event) return;
+    setPendingPath(`/event/${event.slug}`);
+    router.push('/phone');
   }
 
   async function share() {
@@ -516,13 +526,28 @@ export default function EventScreen() {
           and, for guests, only — action: a full-width Buy-ticket button that
           opens the event's own ticket/checkout page in the browser. Hidden when
           the event has no ticket link. Host-only management sits in a compact
-          pill beside it. */}
-      {ticket.url || event.canManage ? (
+          pill beside it. Signed-out invite viewers get a Sign-in CTA instead. */}
+      {ticket.url || event.canManage || !user ? (
         <View
           pointerEvents="box-none"
           style={[styles.actionBarWrap, { paddingBottom: insets.bottom + spacing.sm }]}
         >
           <View style={styles.actionBarRow}>
+            {!user ? (
+              <Pressable
+                onPress={signIn}
+                style={({ pressed }) => [
+                  styles.buyButton,
+                  styles.signInButtonBar,
+                  pressed && styles.buyButtonPressed,
+                ]}
+              >
+                <Ionicons name="person-add-outline" size={20} color={colors.onAccent} />
+                <Text style={[styles.buyButtonText, { color: colors.onAccent }]}>
+                  Sign in to join
+                </Text>
+              </Pressable>
+            ) : null}
             {ticket.url ? (
               <Pressable
                 onPress={() => openTicket(ticket.url!)}
@@ -652,6 +677,11 @@ const styles = StyleSheet.create({
   buyButtonPressed: {
     opacity: 0.9,
     transform: [{ scale: 0.99 }],
+  },
+  // Accent-colored full-width CTA for signed-out invite viewers.
+  signInButtonBar: {
+    flex: 1,
+    backgroundColor: colors.accent,
   },
   // Compact glass pill holding host-only management actions beside the button.
   manageBar: {

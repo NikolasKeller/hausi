@@ -58,7 +58,7 @@ EXPO_PUBLIC_API_URL=http://192.168.x.x:3001 npx expo start
 
 - **Auth** – signup/login with email + password (JWT in `expo-secure-store`), emoji avatars
 - **Events** – create, edit, delete; six gradient/emoji cover themes, four title fonts (Classic/Literary/Fancy/Eclectic) and animated effects (confetti/sparkles/balloons) with live preview; date/time picker; optional guest cap
-- **Invite links** – native share sheet; the invite deep link opens the event directly, signed-out guests are routed through signup first. In Expo Go the Share button emits a working `exp://<host>:8081/--/e/<slug>` link; the `iykyk://e/<slug>` scheme takes effect in a development/standalone build (`npx expo run:ios`)
+- **Invite links** – native share sheet; the invite deep link opens the event directly. The invite page is viewable without an account (links opened in Safari/Chrome just work); signing in is only required to RSVP or interact. In Expo Go the Share button emits a working `exp://<host>:8081/--/e/<slug>` link; the `iykyk://e/<slug>` scheme takes effect in a development/standalone build (`npx expo run:ios`)
 - **RSVPs** – Going / Maybe / Can't with plus-ones; per-event plus-one limit; hosts can open/close RSVPs
 - **Waitlist** – full events queue GOING requests; freed spots auto-promote FIFO with a notification
 - **Guest list** – emoji avatars grouped by status with live counters (going/maybe/waitlist); hosts can remove guests

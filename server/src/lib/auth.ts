@@ -38,26 +38,40 @@ export function clearSessionCookie(c: Context): void {
 
 export type AuthVariables = { userId: string };
 
-export const requireAuth: MiddlewareHandler<{ Variables: AuthVariables }> = async (c, next) => {
+// Resolve the caller's user id from the Bearer token or the session cookie.
+// Returns null when there's no credential, the token is invalid/expired, or
+// the user no longer exists (e.g. after re-seeding the database).
+async function resolveUserId(c: Context): Promise<string | null> {
   const header = c.req.header('Authorization');
   const bearer = header?.startsWith('Bearer ') ? header.slice('Bearer '.length) : undefined;
   // Fall back to the session cookie when there's no Bearer token — e.g. a
   // returning web user whose localStorage was cleared but whose cookie lives.
   const raw = bearer ?? getCookie(c, SESSION_COOKIE);
-  if (!raw) {
-    return c.json({ error: 'Missing Authorization header' }, 401);
-  }
+  if (!raw) return null;
   let userId: string;
   try {
     const payload = await verify(raw, JWT_SECRET, 'HS256');
     if (typeof payload.sub !== 'string') throw new Error('bad sub');
     userId = payload.sub;
   } catch {
-    return c.json({ error: 'Invalid or expired token' }, 401);
+    return null;
   }
-  // The token may outlive its user (e.g. after re-seeding the database).
   const user = await db.user.findUnique({ where: { id: userId }, select: { id: true } });
-  if (!user) return c.json({ error: 'Invalid or expired token' }, 401);
-  c.set('userId', user.id);
+  return user?.id ?? null;
+}
+
+export const requireAuth: MiddlewareHandler<{ Variables: AuthVariables }> = async (c, next) => {
+  const userId = await resolveUserId(c);
+  if (!userId) return c.json({ error: 'Invalid or expired token' }, 401);
+  c.set('userId', userId);
+  await next();
+};
+
+// For routes that work signed out but personalize when a session exists
+// (e.g. a shared invite link opened in a plain browser). userId is '' for
+// anonymous callers — the empty string never matches a real user id, so
+// viewer-specific fields (myRsvp, isHost, canManage) simply come back empty.
+export const optionalAuth: MiddlewareHandler<{ Variables: AuthVariables }> = async (c, next) => {
+  c.set('userId', (await resolveUserId(c)) ?? '');
   await next();
 };

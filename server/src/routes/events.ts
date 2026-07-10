@@ -2,7 +2,7 @@ import { Hono } from 'hono';
 import { z } from 'zod';
 import type { Prisma } from '@prisma/client';
 import { db } from '../lib/db.js';
-import { requireAuth, type AuthVariables } from '../lib/auth.js';
+import { optionalAuth, requireAuth, type AuthVariables } from '../lib/auth.js';
 import {
   canManageEvent,
   commentType,
@@ -168,6 +168,28 @@ async function promoteWaitlist(tx: Prisma.TransactionClient, eventId: string) {
 }
 
 export const eventRoutes = new Hono<{ Variables: AuthVariables }>();
+
+// Invite links (/e/<slug>) open in whatever browser the recipient's messaging
+// app hands them to — usually one with no iykyk session. The invite page must
+// therefore be viewable signed out; registered BEFORE the requireAuth gate so
+// it stays public. With a session, optionalAuth personalizes the response
+// (myRsvp, canManage, pending co-host invite).
+eventRoutes.get('/by-slug/:slug', optionalAuth, async (c) => {
+  const userId = c.get('userId');
+  const event = await db.event.findUnique({
+    where: { slug: c.req.param('slug') },
+    include: eventInclude,
+  });
+  // Canceled events are treated as gone — the page 404s like a deleted one.
+  if (!event || event.canceledAt) return c.json({ error: 'Event not found' }, 404);
+  // The viewer's phone lets toEventDetail surface a pending co-host invite
+  // addressed to them (Accept/Decline banner on the event page).
+  const viewer = userId
+    ? await db.user.findUnique({ where: { id: userId }, select: { phone: true } })
+    : null;
+  return c.json({ event: toEventDetail(event, userId, viewer?.phone) });
+});
+
 eventRoutes.use('*', requireAuth);
 
 // Feed: events I host, co-host or have RSVP'd to.
@@ -231,20 +253,6 @@ eventRoutes.post('/', async (c) => {
     actorName: me.name,
   });
   return c.json({ event: toEventDetail(event, userId) }, 201);
-});
-
-eventRoutes.get('/by-slug/:slug', async (c) => {
-  const userId = c.get('userId');
-  const event = await db.event.findUnique({
-    where: { slug: c.req.param('slug') },
-    include: eventInclude,
-  });
-  // Canceled events are treated as gone — the page 404s like a deleted one.
-  if (!event || event.canceledAt) return c.json({ error: 'Event not found' }, 404);
-  // The viewer's phone lets toEventDetail surface a pending co-host invite
-  // addressed to them (Accept/Decline banner on the event page).
-  const viewer = await db.user.findUnique({ where: { id: userId }, select: { phone: true } });
-  return c.json({ event: toEventDetail(event, userId, viewer?.phone) });
 });
 
 // Given a list of slugs, return the subset that still exists. The app caches
