@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Image,
+  Platform,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -12,15 +13,26 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
+import { DateTimePickerAndroid } from '@react-native-community/datetimepicker';
 import { CATEGORIES, CATEGORY_META, type Category, type ExploreEvent } from '../../shared/types';
 import { api } from '../../lib/api';
 import { useAuth } from '../../lib/auth';
+import {
+  eventDateFilterLabel,
+  fromLocalDateKey,
+  getEventDateRange,
+  startOfLocalDay,
+  toLocalDateKey,
+  type EventDateFilter,
+  type EventDatePreset,
+} from '../../lib/eventDateFilter';
 import { searchCities } from '../../lib/geocoding';
 import { hasLocationPermission, locateCity, type LocatedCity } from '../../lib/location';
 import { getRecentCities, recordRecentCity } from '../../lib/recentCities';
 import { colors, radius, spacing, shadow } from '../../lib/theme';
 import { uiText, kicker } from '../../lib/fonts';
 import { CoverGradient } from '../../components/CoverGradient';
+import { DateFilterSheet } from '../../components/DateFilterSheet';
 import { Button } from '../../components/ui';
 import { withScreenBackground } from '../../components/ScreenBackground';
 import { formatEventDate } from '../../components/EventCard';
@@ -37,6 +49,13 @@ const CATEGORY_CHIPS: { key: Category | 'all'; emoji: string; label: string }[] 
     emoji: CATEGORY_META[c].emoji,
     label: CATEGORY_META[c].label,
   })),
+];
+
+const DATE_CHIPS: { key: EventDatePreset; label: string }[] = [
+  { key: 'any', label: 'Any date' },
+  { key: 'today', label: 'Today' },
+  { key: 'tomorrow', label: 'Tomorrow' },
+  { key: 'weekend', label: 'This weekend' },
 ];
 
 function ExploreCard({ event }: { event: ExploreEvent }) {
@@ -105,6 +124,12 @@ function ExploreScreen() {
   // city: null = not resolved yet, '' = all cities, otherwise a city name.
   const [city, setCity] = useState<string | null>(null);
   const [category, setCategory] = useState<Category | 'all'>('all');
+  // Free-text event search: searchInput follows the keystrokes, search is the
+  // debounced value that actually drives the (server-side) query.
+  const [searchInput, setSearchInput] = useState('');
+  const [search, setSearch] = useState('');
+  const [dateFilter, setDateFilter] = useState<EventDateFilter>({ kind: 'any' });
+  const [datePickerOpen, setDatePickerOpen] = useState(false);
   const [events, setEvents] = useState<ExploreEvent[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [cityMenuOpen, setCityMenuOpen] = useState(false);
@@ -132,6 +157,14 @@ function ExploreScreen() {
   useEffect(() => {
     cityRef.current = city;
   }, [city]);
+
+  // Commit the search text after a pause so we don't refetch on every
+  // keystroke. The current results stay on screen until the new ones land —
+  // no blank flash while typing.
+  useEffect(() => {
+    const timer = setTimeout(() => setSearch(searchInput.trim()), 300);
+    return () => clearTimeout(timer);
+  }, [searchInput]);
 
   // Debounced live city search: query Open-Meteo for real cities as the user
   // types, deduped by name. Aborts the in-flight request on each keystroke.
@@ -177,6 +210,7 @@ function ExploreScreen() {
   const load = useCallback(
     async (isActive: () => boolean) => {
       try {
+        const dateRange = getEventDateRange(dateFilter);
         if (city === null) {
           // First load: pick the initial city from a full (all-cities) fetch.
           // Prefer the user's saved city when it actually has events; otherwise
@@ -186,7 +220,7 @@ function ExploreScreen() {
           // lets the user switch to where they are.
           const feed = await api.home().catch(() => null);
           const savedCity = (feed?.city ?? '').trim();
-          const all = await api.explore(undefined, category);
+          const all = await api.explore(undefined, category, dateRange, search);
           if (!isActive()) return;
           const counts = new Map<string, number>();
           for (const e of all.events) {
@@ -207,7 +241,7 @@ function ExploreScreen() {
           setCity(chosen);
           return; // effect re-runs scoped to the chosen city
         }
-        const res = await api.explore(city || undefined, category);
+        const res = await api.explore(city || undefined, category, dateRange, search);
         if (!isActive()) return;
         setEvents(res.events);
         setError(null);
@@ -215,7 +249,7 @@ function ExploreScreen() {
         if (isActive()) setError(e instanceof Error ? e.message : 'Could not load events');
       }
     },
-    [city, category]
+    [city, category, dateFilter, search]
   );
 
   useFocusEffect(
@@ -320,7 +354,62 @@ function ExploreScreen() {
     }
   }
 
+  function selectDatePreset(next: EventDatePreset) {
+    if (dateFilter.kind === next) return;
+    setEvents(null);
+    setDateFilter({ kind: next });
+  }
+
+  function selectCustomDate(date: string) {
+    if (dateFilter.kind === 'date' && dateFilter.date === date) return;
+    setEvents(null);
+    setDateFilter({ kind: 'date', date });
+  }
+
+  function openCustomDatePicker() {
+    const minimum = startOfLocalDay(new Date());
+    const current = dateFilter.kind === 'date' ? fromLocalDateKey(dateFilter.date) : null;
+    const value = current && current.getTime() >= minimum.getTime() ? current : minimum;
+
+    if (Platform.OS === 'android') {
+      DateTimePickerAndroid.open({
+        value,
+        minimumDate: minimum,
+        mode: 'date',
+        onChange: (event, selected) => {
+          if (event.type === 'set' && selected) {
+            selectCustomDate(toLocalDateKey(selected));
+          }
+        },
+      });
+      return;
+    }
+
+    setDatePickerOpen(true);
+  }
+
+  function clearFilters() {
+    if (category === 'all' && dateFilter.kind === 'any' && !search && !searchInput) return;
+    setEvents(null);
+    setCategory('all');
+    setDateFilter({ kind: 'any' });
+    setSearchInput('');
+    setSearch('');
+  }
+
   const cityLabel = city === null ? '…' : city === '' ? 'All cities' : city;
+  const hasActiveFilters = category !== 'all' || dateFilter.kind !== 'any' || search !== '';
+  const customDateLabel =
+    dateFilter.kind === 'date' ? eventDateFilterLabel(dateFilter) : 'Pick a date';
+  const filterSummary = [
+    search ? `“${search}”` : null,
+    category !== 'all' ? CATEGORY_META[category].label : null,
+    dateFilter.kind !== 'any' ? eventDateFilterLabel(dateFilter) : null,
+  ]
+    .filter(Boolean)
+    .join(' · ');
+  const pickerDate =
+    dateFilter.kind === 'date' ? dateFilter.date : toLocalDateKey(new Date());
   const query = citySearch.trim();
   // Suggestions only appear while typing — the resting menu shows My Location
   // and recents instead. Results are real cities from the live geocoder.
@@ -374,31 +463,138 @@ function ExploreScreen() {
             <ActivityIndicator color={colors.accent} size="large" />
           </View>
         ) : (
-          <ScrollView contentContainerStyle={styles.content}>
-            <ScrollView
-              horizontal
-              showsHorizontalScrollIndicator={false}
-              contentContainerStyle={styles.chipsRow}
-            >
-              {CATEGORY_CHIPS.map((chip) => {
-                const active = category === chip.key;
-                return (
+          <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
+            {/* Free-text event search — matches title, description, city and
+                host name, combinable with the category/date filters below. */}
+            <View style={styles.searchRow}>
+              <Ionicons name="search" size={16} color={colors.muted} />
+              <TextInput
+                value={searchInput}
+                onChangeText={setSearchInput}
+                placeholder="Search events…"
+                placeholderTextColor={colors.muted}
+                style={styles.searchInput}
+                autoCorrect={false}
+                autoCapitalize="none"
+                returnKeyType="search"
+                onSubmitEditing={() => setSearch(searchInput.trim())}
+              />
+              {searchInput ? (
+                <Pressable
+                  onPress={() => {
+                    setSearchInput('');
+                    setSearch('');
+                  }}
+                  hitSlop={8}
+                  accessibilityRole="button"
+                  accessibilityLabel="Clear search"
+                >
+                  <Ionicons name="close-circle" size={18} color={colors.muted} />
+                </Pressable>
+              ) : null}
+            </View>
+
+            <View style={styles.filters}>
+              <View style={styles.filterHeader}>
+                <Text style={styles.filterTitle}>Filters</Text>
+                {hasActiveFilters ? (
                   <Pressable
-                    key={chip.key}
-                    onPress={() => selectCategory(chip.key)}
+                    accessibilityRole="button"
+                    accessibilityLabel="Clear category and date filters"
+                    onPress={clearFilters}
+                    hitSlop={6}
                     style={({ pressed }) => [
-                      styles.chip,
-                      active && styles.chipActive,
-                      pressed && { opacity: 0.8 },
+                      styles.clearFilters,
+                      pressed && { opacity: 0.65 },
                     ]}
                   >
-                    <Text style={[styles.chipLabel, active && styles.chipLabelActive]}>
-                      {chip.label}
-                    </Text>
+                    <Ionicons name="close" size={14} color={colors.muted} />
+                    <Text style={styles.clearFiltersText}>Clear</Text>
                   </Pressable>
-                );
-              })}
-            </ScrollView>
+                ) : null}
+              </View>
+
+              <Text style={styles.filterGroupLabel}>Category</Text>
+              <ScrollView
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                contentContainerStyle={styles.chipsRow}
+              >
+                {CATEGORY_CHIPS.map((chip) => {
+                  const active = category === chip.key;
+                  return (
+                    <Pressable
+                      key={chip.key}
+                      accessibilityRole="button"
+                      accessibilityState={{ selected: active }}
+                      onPress={() => selectCategory(chip.key)}
+                      style={({ pressed }) => [
+                        styles.chip,
+                        active && styles.chipActive,
+                        pressed && { opacity: 0.8 },
+                      ]}
+                    >
+                      <Text style={[styles.chipLabel, active && styles.chipLabelActive]}>
+                        {chip.label}
+                      </Text>
+                    </Pressable>
+                  );
+                })}
+              </ScrollView>
+
+              <Text style={styles.filterGroupLabel}>Date</Text>
+              <ScrollView
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                contentContainerStyle={styles.chipsRow}
+              >
+                {DATE_CHIPS.map((chip) => {
+                  const active = dateFilter.kind === chip.key;
+                  return (
+                    <Pressable
+                      key={chip.key}
+                      accessibilityRole="button"
+                      accessibilityState={{ selected: active }}
+                      onPress={() => selectDatePreset(chip.key)}
+                      style={({ pressed }) => [
+                        styles.chip,
+                        active && styles.chipActive,
+                        pressed && { opacity: 0.8 },
+                      ]}
+                    >
+                      <Text style={[styles.chipLabel, active && styles.chipLabelActive]}>
+                        {chip.label}
+                      </Text>
+                    </Pressable>
+                  );
+                })}
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityState={{ selected: dateFilter.kind === 'date' }}
+                  onPress={openCustomDatePicker}
+                  style={({ pressed }) => [
+                    styles.chip,
+                    styles.customDateChip,
+                    dateFilter.kind === 'date' && styles.chipActive,
+                    pressed && { opacity: 0.8 },
+                  ]}
+                >
+                  <Ionicons
+                    name="calendar-outline"
+                    size={14}
+                    color={dateFilter.kind === 'date' ? colors.onInk : colors.text}
+                  />
+                  <Text
+                    style={[
+                      styles.chipLabel,
+                      dateFilter.kind === 'date' && styles.chipLabelActive,
+                    ]}
+                  >
+                    {customDateLabel}
+                  </Text>
+                </Pressable>
+              </ScrollView>
+            </View>
 
             {error ? (
               <View style={styles.inlineState}>
@@ -414,9 +610,15 @@ function ExploreScreen() {
               <View style={styles.inlineState}>
                 <Text style={styles.errorEmoji}>🫥</Text>
                 <Text style={styles.emptyText}>
-                  Nothing here yet - be the first to throw something public in{' '}
-                  {city || 'your city'}
+                  {hasActiveFilters
+                    ? `No events match ${filterSummary} in ${city || 'the selected cities'}.`
+                    : `Nothing here yet - be the first to throw something public in ${
+                        city || 'your city'
+                      }`}
                 </Text>
+                {hasActiveFilters ? (
+                  <Button title="Clear filters" variant="ghost" onPress={clearFilters} />
+                ) : null}
               </View>
             ) : (
               <View style={styles.grid}>
@@ -551,6 +753,15 @@ function ExploreScreen() {
               </ScrollView>
             </View>
           </>
+        ) : null}
+
+        {datePickerOpen ? (
+          <DateFilterSheet
+            value={pickerDate}
+            minimumDate={new Date()}
+            onSelect={selectCustomDate}
+            onClose={() => setDatePickerOpen(false)}
+          />
         ) : null}
       </View>
     </SafeAreaView>
@@ -726,13 +937,67 @@ const styles = StyleSheet.create({
   content: {
     paddingBottom: spacing.xl * 2,
   },
+  searchRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    marginHorizontal: spacing.md,
+    marginTop: spacing.sm,
+    paddingHorizontal: spacing.md,
+    paddingVertical: 10,
+    backgroundColor: colors.card,
+    borderWidth: 1,
+    borderColor: colors.cardBorder,
+    borderRadius: radius.pill,
+    ...shadow.card,
+  },
+  searchInput: {
+    flex: 1,
+    color: colors.text,
+    // 16px avoids mobile Safari's auto-zoom; explicit line box keeps the
+    // placeholder from clipping on RN-Web (same fix as the city search).
+    fontSize: 16,
+    lineHeight: 22,
+    minHeight: 24,
+    paddingVertical: 0,
+  },
+  filters: {
+    gap: spacing.sm,
+    paddingTop: spacing.sm,
+    paddingBottom: spacing.lg,
+  },
+  filterHeader: {
+    minHeight: 28,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: spacing.md,
+  },
+  filterTitle: {
+    ...kicker(colors.muted),
+  },
+  clearFilters: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 2,
+    paddingHorizontal: 9,
+    paddingVertical: 5,
+    borderRadius: radius.pill,
+    backgroundColor: colors.inputBg,
+  },
+  clearFiltersText: {
+    ...uiText(12, '700'),
+    color: colors.muted,
+  },
+  filterGroupLabel: {
+    ...uiText(13, '700'),
+    color: colors.text,
+    paddingHorizontal: spacing.md,
+  },
   chipsRow: {
     flexDirection: 'row',
     gap: spacing.sm,
     paddingHorizontal: spacing.md,
-    paddingTop: spacing.sm,
-    // Clear separation between the chip row and the event grid below.
-    paddingBottom: spacing.lg,
   },
   chip: {
     flexDirection: 'row',
@@ -756,6 +1021,9 @@ const styles = StyleSheet.create({
   chipLabelActive: {
     // Sits on the white active pill (colors.ink) — needs dark ink to stay legible.
     color: colors.onInk,
+  },
+  customDateChip: {
+    gap: 6,
   },
   inlineState: {
     alignItems: 'center',

@@ -108,10 +108,10 @@ demoCheckoutRoutes.get('/:eventId', async (c) => {
           <input id="cc-csc" name="cc-csc" autocomplete="cc-csc" inputmode="numeric" placeholder="123" required>
         </div>
       </div>
-      <div class="price">1 × General Admission — ${esc(price)}</div>
+      <div class="price">1 × General Admission: ${esc(price)}</div>
       <button type="submit">Buy ticket</button>
     </form>
-    <div class="note">Demo checkout — no real payment happens here.</div>
+    <div class="note">Demo checkout, no real payment happens here.</div>
   </div>
 </body></html>`);
 });
@@ -149,7 +149,7 @@ demoCheckoutRoutes.post('/:eventId/confirm', async (c) => {
     <img class="qr" src="${qrDataUrl}" alt="Ticket QR code">
     <div class="code">${esc(ticketCode)}</div>
     <div class="meta" style="margin-top:16px">1 × General Admission · ${esc(name)} · card ending in ${esc(last4)}</div>
-    <div class="note">Show this QR code at the door. Demo ticket — not valid for real entry.</div>
+    <div class="note">Show this QR code at the door. Demo ticket, not valid for real entry.</div>
   </div>
 </body></html>`);
 });

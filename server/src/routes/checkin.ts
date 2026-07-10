@@ -94,7 +94,7 @@ checkinRoutes.get('/:code', async (c) => {
     <div class="meta">${esc(when)}${event.location ? `<br>${esc(event.location)}${event.city ? `, ${esc(event.city)}` : ''}` : ''}</div>
     <div class="guest">
       <div class="name">${esc(user.name || 'Guest')}</div>
-      <div class="role">${esc(role)}${role === 'Waitlist' ? ' — admit if space allows' : ''}</div>
+      <div class="role">${esc(role)}${role === 'Waitlist' ? ': admit if space allows' : ''}</div>
     </div>
     <div class="note">Status checked live against the guest list just now.</div>`)
   );

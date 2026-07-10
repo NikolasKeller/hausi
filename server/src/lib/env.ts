@@ -1,15 +1,10 @@
-import { existsSync, readFileSync } from 'node:fs';
-import path from 'node:path';
+import { dirname, resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
+import { config } from 'dotenv';
 
-// Minimal .env loader (the Prisma CLI reads .env itself, but the Node
-// runtime doesn't). Values already present in the environment win.
-const envPath = path.join(process.cwd(), '.env');
-if (existsSync(envPath)) {
-  for (const line of readFileSync(envPath, 'utf8').split('\n')) {
-    const match = line.match(/^\s*([A-Z0-9_]+)\s*=\s*(.*)\s*$/);
-    if (!match) continue;
-    const [, key, raw] = match;
-    if (process.env[key] !== undefined) continue;
-    process.env[key] = raw.replace(/^"(.*)"$/, '$1');
-  }
-}
+// Resolve from this module instead of process.cwd(), so `server/.env` is also
+// loaded when the server is started from the repository root. Environment
+// variables supplied by Railway/the shell always win, and dotenv stays quiet
+// so secret values can never end up in startup logs.
+const serverRoot = resolve(dirname(fileURLToPath(import.meta.url)), '../..');
+config({ path: resolve(serverRoot, '.env'), override: false, quiet: true });

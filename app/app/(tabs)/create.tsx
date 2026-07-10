@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Image,
@@ -15,9 +15,20 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import * as Linking from 'expo-linking';
-import type { Category, EventDetail } from '../../shared/types';
+import {
+  EVENT_DRAFT_CHAT_LIMITS,
+  LIMITS,
+  MAX_PLUS_ONES,
+  type Category,
+  type EventDetail,
+  type EventDraftChatDraft,
+  type EventDraftChatRequest,
+  type EventDraftChatResponse,
+  type EventDraftQuestion,
+} from '../../shared/types';
 import { api } from '../../lib/api';
 import { notify } from '../../lib/dialogs';
+import { extractEventBrief, normalizeTicketPrice } from '../../lib/eventDraft';
 import { pickRawImage, uploadCroppedImage, type PickedImage } from '../../lib/imageUpload';
 import { copyLink, shareText, textInvite } from '../../lib/share';
 import { colors, radius, shadow, spacing } from '../../lib/theme';
@@ -27,35 +38,141 @@ import { DateTimeSheet } from '../../components/DateTimeSheet';
 import { formatEventDate, formatEventTime } from '../../components/EventCard';
 import { withScreenBackground } from '../../components/ScreenBackground';
 
-type Step = 'vibe' | 'details' | 'guests' | 'preview';
+type Stage =
+  | 'brief'
+  | 'title'
+  | 'description'
+  | 'when'
+  | 'location'
+  | 'visibility'
+  | 'capacity'
+  | 'plusOnes'
+  | 'price'
+  | 'image'
+  | 'preview';
 
-const STEPS: { key: Step; label: string }[] = [
-  { key: 'vibe', label: 'Vibe' },
-  { key: 'details', label: 'Details' },
-  { key: 'guests', label: 'Guests' },
-  { key: 'preview', label: 'Preview' },
+type QuestionStage = Exclude<Stage, 'brief' | 'preview'>;
+
+const QUESTION_STAGE_BY_DRAFT_FIELD: Record<EventDraftQuestion, QuestionStage> = {
+  title: 'title',
+  description: 'description',
+  date: 'when',
+  location: 'location',
+  visibility: 'visibility',
+  capacity: 'capacity',
+  plusOnes: 'plusOnes',
+  price: 'price',
+};
+
+const EMPTY_CHAT_DRAFT: EventDraftChatDraft = {
+  title: null,
+  description: null,
+  date: null,
+  locationHint: null,
+  selectedLocation: null,
+  category: null,
+  isPublic: null,
+  hideLocation: null,
+  capacity: { kind: 'unknown', maxGuests: null },
+  plusOneLimit: null,
+  entry: { kind: 'unknown', price: null },
+};
+
+interface ChatMessage {
+  id: number;
+  role: 'assistant' | 'user';
+  text: string;
+  tags?: string[];
+}
+
+const QUESTION_COPY: Record<QuestionStage, string> = {
+  title: 'What should it be called?',
+  description: 'What should guests know?',
+  when: 'When is it happening?',
+  location: 'Where is it happening?',
+  visibility: 'Public or invite-only?',
+  capacity: 'How many people can come?',
+  plusOnes: 'Can guests bring a +1?',
+  price: 'Free or ticketed?',
+  image: 'Want a cover image? You can skip this.',
+};
+
+const CATEGORY_VISUALS: Record<
+  Category,
+  { emoji: string; tint: string; label: string }
+> = {
+  music: { emoji: '🪩', tint: '#6D5AE6', label: 'Music' },
+  community: { emoji: '✨', tint: '#D95E9F', label: 'Community' },
+  food: { emoji: '🍝', tint: '#D79B42', label: 'Food' },
+  arts: { emoji: '🎨', tint: '#398A87', label: 'Arts' },
+  sports: { emoji: '🏀', tint: '#4E8E55', label: 'Sports' },
+  other: { emoji: '✨', tint: '#6D7280', label: 'Event' },
+};
+
+const STARTER_PROMPTS = [
+  'A birthday dinner for 12 friends next Friday at 7pm',
+  'A public Sunday run club, free, plus-ones welcome',
+  'An invite-only rooftop party with tickets for €15',
 ];
 
-const VIBES: {
-  label: string;
-  emoji: string;
-  category: Category;
-  tint: string;
-  description: string;
-}[] = [
-  { label: 'Night out', emoji: '🪩', category: 'music', tint: '#6D5AE6', description: 'Late, loud, unforgettable.' },
-  { label: 'House party', emoji: '🏠', category: 'community', tint: '#EF6F57', description: 'Your place, your people.' },
-  { label: 'Dinner', emoji: '🍝', category: 'food', tint: '#D79B42', description: 'Good food, better company.' },
-  { label: 'Birthday', emoji: '🎂', category: 'community', tint: '#D95E9F', description: 'One night with main-character energy.' },
-  { label: 'Culture', emoji: '🎨', category: 'arts', tint: '#398A87', description: 'Art, cinema, ideas and people.' },
-  { label: 'Movement', emoji: '🏀', category: 'sports', tint: '#4E8E55', description: 'Play, sweat, connect.' },
-];
+// On mobile web KeyboardAvoidingView is a no-op AND the app shell pins the
+// page (body fixed + visual-viewport snap-back in _layout), so the on-screen
+// keyboard simply overlays the composer — people were typing blind. Measure
+// how much of this screen the keyboard covers via visualViewport and hand it
+// back as a bottom inset that lifts the composer above the keyboard.
+function useWebKeyboardInset(hostRef: React.RefObject<View | null>): number {
+  const [inset, setInset] = useState(0);
+  useEffect(() => {
+    if (Platform.OS !== 'web' || typeof window === 'undefined') return;
+    const viewport = window.visualViewport;
+    if (!viewport) return;
+    const update = () => {
+      const host = hostRef.current as unknown as {
+        getBoundingClientRect?: () => { bottom: number };
+      } | null;
+      const viewportBottom = viewport.offsetTop + viewport.height;
+      const hostBottom =
+        host?.getBoundingClientRect?.().bottom ?? window.innerHeight;
+      const next = Math.max(0, Math.round(hostBottom - viewportBottom));
+      // Anything smaller is browser-chrome jitter, not a keyboard.
+      setInset(next >= 60 ? next : 0);
+    };
+    update();
+    viewport.addEventListener('resize', update);
+    viewport.addEventListener('scroll', update);
+    window.addEventListener('focusin', update);
+    window.addEventListener('focusout', update);
+    return () => {
+      viewport.removeEventListener('resize', update);
+      viewport.removeEventListener('scroll', update);
+      window.removeEventListener('focusin', update);
+      window.removeEventListener('focusout', update);
+    };
+  }, [hostRef]);
+  return inset;
+}
 
-function tomorrowAtEight(): Date {
-  const d = new Date();
-  d.setDate(d.getDate() + 1);
-  d.setHours(20, 0, 0, 0);
-  return d;
+function nextEvening(): Date {
+  const date = new Date();
+  date.setDate(date.getDate() + 1);
+  date.setHours(19, 0, 0, 0);
+  return date;
+}
+
+function hasOwn<T extends object>(value: T, key: PropertyKey): boolean {
+  return Object.prototype.hasOwnProperty.call(value, key);
+}
+
+function clientChatEnvironment(): Pick<EventDraftChatRequest, 'timeZone' | 'locale'> {
+  try {
+    const resolved = Intl.DateTimeFormat().resolvedOptions();
+    return {
+      ...(resolved.timeZone ? { timeZone: resolved.timeZone } : {}),
+      ...(resolved.locale ? { locale: resolved.locale } : {}),
+    };
+  } catch {
+    return {};
+  }
 }
 
 function Counter({
@@ -69,13 +186,13 @@ function Counter({
   label: string;
   hint: string;
   value: number;
-  onChange: (n: number) => void;
+  onChange: (value: number) => void;
   min: number;
   max: number;
 }) {
   return (
     <View style={styles.counterRow}>
-      <View style={{ flex: 1 }}>
+      <View style={styles.flex}>
         <Text style={styles.controlTitle}>{label}</Text>
         <Text style={styles.controlHint}>{hint}</Text>
       </View>
@@ -111,14 +228,14 @@ function ToggleRow({
   label: string;
   hint: string;
   value: boolean;
-  onChange: (next: boolean) => void;
+  onChange: (value: boolean) => void;
 }) {
   return (
     <Pressable onPress={() => onChange(!value)} style={styles.toggleRow}>
       <View style={styles.controlIcon}>
         <Ionicons name={icon} size={20} color={colors.text} />
       </View>
-      <View style={{ flex: 1 }}>
+      <View style={styles.flex}>
         <Text style={styles.controlTitle}>{label}</Text>
         <Text style={styles.controlHint}>{hint}</Text>
       </View>
@@ -129,83 +246,562 @@ function ToggleRow({
   );
 }
 
+function ChoicePill({
+  label,
+  selected,
+  onPress,
+}: {
+  label: string;
+  selected: boolean;
+  onPress: () => void;
+}) {
+  return (
+    <Pressable
+      onPress={onPress}
+      style={[styles.choicePill, selected && styles.choicePillSelected]}
+    >
+      {selected ? <Ionicons name="checkmark" size={15} color={colors.onInk} /> : null}
+      <Text style={[styles.choicePillText, selected && styles.choicePillTextSelected]}>
+        {label}
+      </Text>
+    </Pressable>
+  );
+}
+
 function CreateEventScreen() {
   const router = useRouter();
-  const [step, setStep] = useState<Step>('vibe');
-  const [vibeIndex, setVibeIndex] = useState(0);
+  const scrollRef = useRef<ScrollView>(null);
+  const screenRef = useRef<View>(null);
+  const nextMessageId = useRef(1);
+  const mountedRef = useRef(true);
+  const aiAbortRef = useRef<AbortController | null>(null);
+  const lastAiRequestRef = useRef<EventDraftChatRequest | null>(null);
+
+  // Mobile-web keyboard: lift the composer above the overlaying keyboard and
+  // keep the newest chat messages in view while it is open.
+  const webKeyboardInset = useWebKeyboardInset(screenRef);
+  useEffect(() => {
+    if (webKeyboardInset > 0) {
+      scrollRef.current?.scrollToEnd({ animated: false });
+    }
+  }, [webKeyboardInset]);
+
+  const [stage, setStage] = useState<Stage>('brief');
+  const [queue, setQueue] = useState<QuestionStage[]>([]);
+  const [editingFromPreview, setEditingFromPreview] = useState(false);
+  const [chatDraft, setChatDraft] = useState<EventDraftChatDraft>(EMPTY_CHAT_DRAFT);
+  const [messages, setMessages] = useState<ChatMessage[]>([
+    {
+      id: 0,
+      role: 'assistant',
+      text: 'What do you want to host? Tell me in your own words.',
+    },
+  ]);
+  const [composer, setComposer] = useState('');
+  const [questionError, setQuestionError] = useState('');
+  const [publishError, setPublishError] = useState('');
+  const [aiBusy, setAiBusy] = useState(false);
+  const [aiError, setAiError] = useState('');
+  const [aiPaused, setAiPaused] = useState(false);
+
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
-  const [date, setDate] = useState(tomorrowAtEight);
+  const [date, setDate] = useState<Date | null>(null);
+  const [dateSeed, setDateSeed] = useState(nextEvening);
   const [dateOpen, setDateOpen] = useState(false);
   const [location, setLocation] = useState('');
   const [city, setCity] = useState('');
-  const [image, setImage] = useState<PickedImage | null>(null);
-  const [imageBusy, setImageBusy] = useState(false);
+  const [category, setCategory] = useState<Category>('other');
   const [isPublic, setIsPublic] = useState(false);
   const [hideLocation, setHideLocation] = useState(false);
-  const [maxGuests, setMaxGuests] = useState(30);
+  const [capacityMode, setCapacityMode] = useState<'limited' | 'unlimited'>('limited');
+  const [capacityInput, setCapacityInput] = useState('30');
+  const [maxGuests, setMaxGuests] = useState<number | null>(30);
   const [plusOnes, setPlusOnes] = useState(1);
   const [paid, setPaid] = useState(false);
   const [price, setPrice] = useState('');
+  const [image, setImage] = useState<PickedImage | null>(null);
+  const [imageResolved, setImageResolved] = useState(false);
+  const [imageBusy, setImageBusy] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [created, setCreated] = useState<EventDetail | null>(null);
 
-  const vibe = VIBES[vibeIndex];
-  const currentIndex = STEPS.findIndex((s) => s.key === step);
-  const canContinue = useMemo(() => {
-    if (step === 'vibe') return title.trim().length >= 2;
-    if (step === 'details') return Boolean(location && date.getTime() > Date.now());
-    if (step === 'guests') return !paid || price.trim().length > 0;
-    return true;
-  }, [step, title, location, date, paid, price]);
+  useEffect(
+    () => () => {
+      mountedRef.current = false;
+      aiAbortRef.current?.abort();
+    },
+    []
+  );
+
+  const visual = CATEGORY_VISUALS[category];
+  const validationIssues = useMemo(() => {
+    const issues: string[] = [];
+    if (title.trim().length < 2) issues.push('Add an event title.');
+    if (!date || Number.isNaN(date.getTime())) issues.push('Choose a date and time.');
+    else if (date.getTime() <= Date.now()) issues.push('Choose a date and time in the future.');
+    if (!location.trim()) issues.push('Choose a location from address search.');
+    if (
+      maxGuests != null &&
+      (!Number.isInteger(maxGuests) || maxGuests < 1 || maxGuests > LIMITS.maxGuests)
+    ) {
+      issues.push(`Guest limit must be between 1 and ${LIMITS.maxGuests}.`);
+    }
+    if (plusOnes < 0 || plusOnes > MAX_PLUS_ONES) {
+      issues.push(`Plus-ones must be between 0 and ${MAX_PLUS_ONES}.`);
+    }
+    if (paid && !normalizeTicketPrice(price)) issues.push('Enter a valid ticket price.');
+    return issues;
+  }, [date, location, maxGuests, paid, plusOnes, price, title]);
+  const canPublish = validationIssues.length === 0;
+
+  const statusLabel =
+    aiBusy
+      ? 'Thinking with AI…'
+      : stage === 'brief'
+        ? 'Start with an idea'
+        : stage === 'preview'
+          ? 'Ready to review'
+          : editingFromPreview
+            ? 'Editing your draft'
+            : `${queue.length} ${queue.length === 1 ? 'detail' : 'details'} left`;
+
+  function appendMessages(
+    ...items: Omit<ChatMessage, 'id'>[]
+  ) {
+    setMessages((current) => [
+      ...current,
+      ...items.map((item) => ({ ...item, id: nextMessageId.current++ })),
+    ]);
+  }
+
+  function buildAiRequest(userText: string, draft: EventDraftChatDraft): EventDraftChatRequest {
+    const candidates = [
+      ...messages.map((message) => ({ role: message.role, content: message.text })),
+      { role: 'user' as const, content: userText },
+    ];
+    const selected: EventDraftChatRequest['messages'] = [];
+    let charactersLeft = EVENT_DRAFT_CHAT_LIMITS.totalMessageCharacters;
+
+    for (
+      let index = candidates.length - 1;
+      index >= 0 && selected.length < EVENT_DRAFT_CHAT_LIMITS.history && charactersLeft > 0;
+      index -= 1
+    ) {
+      const candidate = candidates[index];
+      const content = candidate.content
+        .trim()
+        .slice(0, Math.min(EVENT_DRAFT_CHAT_LIMITS.message, charactersLeft));
+      if (!content) continue;
+      selected.unshift({ role: candidate.role, content });
+      charactersLeft -= content.length;
+    }
+
+    return {
+      messages: selected,
+      draft,
+      ...clientChatEnvironment(),
+    };
+  }
+
+  function applyChatDraft(draft: EventDraftChatDraft) {
+    setChatDraft(draft);
+    setTitle(draft.title ?? '');
+    setDescription(draft.description ?? '');
+
+    const parsedDate = draft.date ? new Date(draft.date) : null;
+    if (parsedDate && !Number.isNaN(parsedDate.getTime()) && parsedDate.getTime() > Date.now()) {
+      setDate(parsedDate);
+      setDateSeed(parsedDate);
+    } else {
+      setDate(null);
+    }
+
+    setLocation(draft.selectedLocation?.location ?? '');
+    setCity(draft.selectedLocation?.city ?? '');
+    setCategory(draft.category ?? 'other');
+    setIsPublic(draft.isPublic ?? false);
+    setHideLocation(draft.hideLocation ?? false);
+
+    if (draft.capacity.kind === 'unlimited') {
+      setCapacityMode('unlimited');
+      setMaxGuests(null);
+    } else if (draft.capacity.kind === 'limited') {
+      setCapacityMode('limited');
+      setCapacityInput(String(draft.capacity.maxGuests));
+      setMaxGuests(draft.capacity.maxGuests);
+    } else {
+      setCapacityMode('limited');
+      setCapacityInput('30');
+      setMaxGuests(30);
+    }
+
+    setPlusOnes(draft.plusOneLimit ?? 1);
+    if (draft.entry.kind === 'paid') {
+      setPaid(true);
+      setPrice(draft.entry.price ?? '');
+    } else {
+      setPaid(false);
+      setPrice('');
+    }
+  }
+
+  function tagsForDraft(draft: EventDraftChatDraft): string[] {
+    const tags: string[] = [CATEGORY_VISUALS[draft.category ?? 'other'].label];
+    if (draft.title) tags.push(draft.title);
+    if (draft.date) {
+      tags.push(`${formatEventDate(draft.date)}, ${formatEventTime(draft.date)}`);
+    }
+    if (draft.isPublic !== null) tags.push(draft.isPublic ? 'Public' : 'Invite only');
+    if (draft.capacity.kind === 'unlimited') tags.push('No guest limit');
+    if (draft.capacity.kind === 'limited') tags.push(`${draft.capacity.maxGuests} guests`);
+    if (draft.entry.kind === 'free') tags.push('Free');
+    if (draft.entry.kind === 'paid' && draft.entry.price) tags.push(`€${draft.entry.price}`);
+    return tags.slice(0, 6);
+  }
+
+  function pendingQuestions(result: EventDraftChatResponse): QuestionStage[] {
+    const pending = result.missingFields.map((field) => QUESTION_STAGE_BY_DRAFT_FIELD[field]);
+    const preferred = result.nextField
+      ? QUESTION_STAGE_BY_DRAFT_FIELD[result.nextField]
+      : undefined;
+    const ordered = preferred
+      ? [preferred, ...pending.filter((question) => question !== preferred)]
+      : pending;
+    if (!imageResolved) ordered.push('image');
+    return ordered;
+  }
+
+  async function runAiTurn(
+    request: EventDraftChatRequest,
+    options: { fallback?: () => void; showTags?: boolean } = {}
+  ) {
+    aiAbortRef.current?.abort();
+    const controller = new AbortController();
+    aiAbortRef.current = controller;
+    lastAiRequestRef.current = request;
+    setAiBusy(true);
+    setAiError('');
+    const timeout = setTimeout(() => controller.abort(), 26_000);
+
+    try {
+      const result = await api.chatEventDraft(request, controller.signal);
+      if (!mountedRef.current || aiAbortRef.current !== controller) return;
+      applyChatDraft(result.draft);
+      const pending = pendingQuestions(result);
+      setQueue(pending);
+      setStage(pending[0] ?? 'preview');
+      appendMessages({
+        role: 'assistant',
+        text: result.assistantMessage,
+        ...(options.showTags ? { tags: tagsForDraft(result.draft) } : {}),
+      });
+      setAiPaused(false);
+      lastAiRequestRef.current = null;
+    } catch (error) {
+      if (!mountedRef.current || aiAbortRef.current !== controller) return;
+      const reason = controller.signal.aborted
+        ? 'The AI request timed out.'
+        : error instanceof Error
+          ? error.message
+          : 'The AI could not be reached.';
+      setAiError(`${reason} Local guidance is active, so you can keep going.`);
+      setAiPaused(true);
+      options.fallback?.();
+    } finally {
+      clearTimeout(timeout);
+      if (mountedRef.current && aiAbortRef.current === controller) {
+        aiAbortRef.current = null;
+        setAiBusy(false);
+      }
+    }
+  }
+
+  function retryAi() {
+    const request = lastAiRequestRef.current;
+    if (!request || aiBusy) return;
+    void runAiTurn(request);
+  }
+
+  function showNextQuestion(questions: QuestionStage[]) {
+    const next = questions[0];
+    if (next) {
+      setStage(next);
+      appendMessages({ role: 'assistant', text: QUESTION_COPY[next] });
+      return;
+    }
+    setStage('preview');
+    appendMessages({
+      role: 'assistant',
+      text: 'That’s everything I need. I made a preview. Check it carefully, change anything you want, then publish when it feels right.',
+    });
+  }
+
+  function submitBrief() {
+    if (aiBusy) return;
+    const brief = composer.trim();
+    if (brief.length < 3) {
+      setQuestionError('Tell me a little more about the event.');
+      return;
+    }
+
+    const extracted = extractEventBrief(brief);
+    const useBriefAsDescription =
+      brief.length >= 48 || brief.split(/\s+/).filter(Boolean).length >= 6;
+    const localDraft: EventDraftChatDraft = {
+      title: extracted.title ?? null,
+      description: useBriefAsDescription ? brief : null,
+      date: extracted.date?.toISOString() ?? null,
+      locationHint: null,
+      // A typed place is never silently trusted as an address. Only the
+      // LocationPicker can commit this field after geocoding.
+      selectedLocation: null,
+      category: extracted.category,
+      isPublic: hasOwn(extracted, 'isPublic') ? Boolean(extracted.isPublic) : null,
+      hideLocation: hasOwn(extracted, 'hideLocation')
+        ? Boolean(extracted.hideLocation)
+        : null,
+      capacity: hasOwn(extracted, 'maxGuests')
+        ? extracted.maxGuests == null
+          ? { kind: 'unlimited', maxGuests: null }
+          : { kind: 'limited', maxGuests: extracted.maxGuests }
+        : { kind: 'unknown', maxGuests: null },
+      plusOneLimit: hasOwn(extracted, 'plusOneLimit')
+        ? (extracted.plusOneLimit ?? 0)
+        : null,
+      entry: hasOwn(extracted, 'paid')
+        ? extracted.paid
+          ? { kind: 'paid', price: extracted.price ?? null }
+          : { kind: 'free', price: null }
+        : { kind: 'unknown', price: null },
+    };
+    const questions: QuestionStage[] = [];
+    if (!localDraft.title || localDraft.title.length < 2) questions.push('title');
+    if (localDraft.description === null) questions.push('description');
+    if (!localDraft.date) questions.push('when');
+    questions.push('location');
+    if (localDraft.isPublic === null || localDraft.hideLocation === null) {
+      questions.push('visibility');
+    }
+    if (localDraft.capacity.kind === 'unknown') questions.push('capacity');
+    if (localDraft.plusOneLimit === null) questions.push('plusOnes');
+    if (
+      localDraft.entry.kind === 'unknown' ||
+      (localDraft.entry.kind === 'paid' && !localDraft.entry.price)
+    ) {
+      questions.push('price');
+    }
+    questions.push('image');
+
+    setComposer('');
+    setQuestionError('');
+    setQueue(questions);
+    if (extracted.dateSeed && !extracted.date) setDateSeed(extracted.dateSeed);
+    applyChatDraft(localDraft);
+    const request = buildAiRequest(brief, localDraft);
+    appendMessages({ role: 'user', text: brief });
+    void runAiTurn(request, {
+      showTags: true,
+      fallback: () => {
+        appendMessages({
+          role: 'assistant',
+          text: useBriefAsDescription
+            ? 'Great, I’ll use that as the event description. I pulled these details from your message; you can edit all of them before publishing.'
+            : 'Great, I started the draft and pulled out what I could. I’ll ask for a little more detail, and you can edit everything before publishing.',
+          tags: tagsForDraft(localDraft),
+        });
+        showNextQuestion(questions);
+      },
+    });
+  }
+
+  function completeQuestion(answer: string, nextDraft: EventDraftChatDraft = chatDraft) {
+    if (stage === 'brief' || stage === 'preview' || aiBusy) return;
+    const current = stage;
+    setChatDraft(nextDraft);
+    appendMessages({ role: 'user', text: answer });
+    setQuestionError('');
+
+    if (editingFromPreview) {
+      setEditingFromPreview(false);
+      setStage('preview');
+      appendMessages({
+        role: 'assistant',
+        text: 'Updated. The preview below now reflects your change.',
+      });
+      return;
+    }
+
+    const remaining =
+      queue[0] === current ? queue.slice(1) : queue.filter((item) => item !== current);
+    setQueue(remaining);
+    if (current === 'image') {
+      setImageResolved(true);
+      showNextQuestion(remaining);
+      return;
+    }
+
+    const request = buildAiRequest(answer, nextDraft);
+    lastAiRequestRef.current = request;
+    if (aiPaused) {
+      showNextQuestion(remaining);
+      return;
+    }
+    void runAiTurn(request, { fallback: () => showNextQuestion(remaining) });
+  }
+
+  function submitTextAnswer() {
+    if (stage === 'title') {
+      const value = title.trim();
+      if (value.length < 2) {
+        setQuestionError('Use at least two characters for the title.');
+        return;
+      }
+      completeQuestion(value, { ...chatDraft, title: value });
+    } else if (stage === 'description') {
+      const value = description.trim();
+      completeQuestion(value || 'No additional description', {
+        ...chatDraft,
+        description: value,
+      });
+    }
+  }
+
+  function completeDate() {
+    if (!date || Number.isNaN(date.getTime()) || date.getTime() <= Date.now()) {
+      setQuestionError('Choose a date and time in the future.');
+      return;
+    }
+    completeQuestion(
+      `${formatEventDate(date.toISOString())} at ${formatEventTime(date.toISOString())}`,
+      { ...chatDraft, date: date.toISOString() }
+    );
+  }
+
+  function completeLocation() {
+    if (!location.trim()) {
+      setQuestionError('Choose a place from the address results.');
+      return;
+    }
+    completeQuestion(location, {
+      ...chatDraft,
+      selectedLocation: { location: location.trim(), city: city.trim() },
+    });
+  }
+
+  function completeCapacity() {
+    if (capacityMode === 'unlimited') {
+      setMaxGuests(null);
+      completeQuestion('No guest limit', {
+        ...chatDraft,
+        capacity: { kind: 'unlimited', maxGuests: null },
+      });
+      return;
+    }
+    const value = Number(capacityInput);
+    if (!Number.isInteger(value) || value < 1 || value > LIMITS.maxGuests) {
+      setQuestionError(`Enter a whole number between 1 and ${LIMITS.maxGuests}.`);
+      return;
+    }
+    setMaxGuests(value);
+    completeQuestion(`${value} guests maximum`, {
+      ...chatDraft,
+      capacity: { kind: 'limited', maxGuests: value },
+    });
+  }
+
+  function completePrice() {
+    if (!paid) {
+      setPrice('');
+      completeQuestion('Free entry', {
+        ...chatDraft,
+        entry: { kind: 'free', price: null },
+      });
+      return;
+    }
+    const normalized = normalizeTicketPrice(price);
+    if (!normalized) {
+      setQuestionError('Enter a valid price greater than zero.');
+      return;
+    }
+    setPrice(normalized);
+    completeQuestion(`€${normalized} per ticket`, {
+      ...chatDraft,
+      entry: { kind: 'paid', price: normalized },
+    });
+  }
+
+  function editFromPreview(next: QuestionStage) {
+    setEditingFromPreview(true);
+    setQuestionError('');
+    setPublishError('');
+    setStage(next);
+    appendMessages({
+      role: 'assistant',
+      text: `Let’s change it. ${QUESTION_COPY[next]}`,
+    });
+  }
 
   async function chooseImage() {
     if (imageBusy) return;
     setImageBusy(true);
     try {
-      setImage(await pickRawImage());
+      const picked = await pickRawImage();
+      if (picked) setImage(picked);
     } finally {
       setImageBusy(false);
     }
   }
 
   async function publish() {
-    if (submitting || !canContinue) return;
+    if (submitting) return;
+    if (!canPublish || !date) {
+      setPublishError(validationIssues[0] ?? 'Check the event details before publishing.');
+      return;
+    }
+
     setSubmitting(true);
+    setPublishError('');
     try {
       let coverImage = '';
       if (image) {
+        if (image.width <= 0 || image.height <= 0) {
+          throw new Error('That cover image could not be read. Choose it again or remove it.');
+        }
         const targetRatio = 4 / 3;
         const sourceRatio = image.width / image.height;
-        const width = sourceRatio > targetRatio ? Math.floor(image.height * targetRatio) : image.width;
-        const height = sourceRatio > targetRatio ? image.height : Math.floor(image.width / targetRatio);
-        coverImage =
-          (await uploadCroppedImage(image.uri, {
-            originX: Math.max(0, Math.floor((image.width - width) / 2)),
-            originY: Math.max(0, Math.floor((image.height - height) / 2)),
-            width,
-            height,
-          })) ?? '';
+        const width =
+          sourceRatio > targetRatio ? Math.floor(image.height * targetRatio) : image.width;
+        const height =
+          sourceRatio > targetRatio ? image.height : Math.floor(image.width / targetRatio);
+        const uploaded = await uploadCroppedImage(image.uri, {
+          originX: Math.max(0, Math.floor((image.width - width) / 2)),
+          originY: Math.max(0, Math.floor((image.height - height) / 2)),
+          width,
+          height,
+        });
+        if (!uploaded) throw new Error('The cover image could not be uploaded. Please try again.');
+        coverImage = uploaded;
       }
 
       const result = await api.createEvent({
         title: title.trim(),
         description: description.trim(),
         date: date.toISOString(),
-        location,
-        city,
-        category: vibe.category,
+        location: location.trim(),
+        ...(city.trim() ? { city: city.trim() } : {}),
+        category,
         isPublic,
         hideLocation,
         coverImage,
         maxGuests,
         plusOneLimit: plusOnes,
-        costPerPerson: paid ? price.trim() : '',
+        costPerPerson: paid ? (normalizeTicketPrice(price) ?? '') : '',
         rsvpsOpen: true,
       });
       setCreated(result.event);
-    } catch (e) {
-      notify('Could not publish', e instanceof Error ? e.message : 'Try again');
+    } catch (error) {
+      notify('Could not publish', error instanceof Error ? error.message : 'Try again');
     } finally {
       setSubmitting(false);
     }
@@ -215,8 +811,582 @@ function CreateEventScreen() {
     if (!created) return;
     const link = Linking.createURL(`e/${created.slug}`);
     await shareText(
-      `${created.title} — ${formatEventDate(created.date)} at ${formatEventTime(created.date)}\n${link}`,
+      `${created.title}, ${formatEventDate(created.date)} at ${formatEventTime(
+        created.date
+      )}\n${link}`,
       link
+    );
+  }
+
+  function renderQuestionCard() {
+    if (stage === 'brief') {
+      return (
+        <View style={styles.starterArea}>
+          <Text style={styles.starterLabel}>NEED A START?</Text>
+          {STARTER_PROMPTS.map((prompt) => (
+            <Pressable key={prompt} onPress={() => setComposer(prompt)} style={styles.starterPrompt}>
+              <Text style={styles.starterPromptText}>{prompt}</Text>
+              <Ionicons name="arrow-up-outline" size={16} color={colors.muted} />
+            </Pressable>
+          ))}
+        </View>
+      );
+    }
+
+    if (stage === 'title' || stage === 'description' || stage === 'preview') return null;
+
+    if (stage === 'when') {
+      return (
+        <View style={styles.questionCard}>
+          <Pressable
+            onPress={() => {
+              if (!date) setDate(dateSeed);
+              setDateOpen(true);
+            }}
+            style={styles.dateChoice}
+          >
+            <View style={[styles.questionIcon, { backgroundColor: `${visual.tint}35` }]}>
+              <Ionicons name="calendar-outline" size={22} color={colors.text} />
+            </View>
+            <View style={styles.flex}>
+              <Text style={styles.fieldLabel}>DATE &amp; TIME</Text>
+              <Text style={[styles.dateChoiceValue, !date && styles.placeholderText]}>
+                {date
+                  ? `${formatEventDate(date.toISOString())} · ${formatEventTime(
+                      date.toISOString()
+                    )}`
+                  : 'Choose when it starts'}
+              </Text>
+            </View>
+            <Ionicons name="chevron-forward" size={18} color={colors.muted} />
+          </Pressable>
+        </View>
+      );
+    }
+
+    if (stage === 'location') {
+      return (
+        <View style={[styles.questionCard, styles.locationCard]}>
+          {chatDraft.locationHint && !location ? (
+            <View style={styles.locationHint}>
+              <Ionicons name="sparkles-outline" size={16} color={colors.accent} />
+              <Text style={styles.locationHintText}>
+                AI suggestion: {chatDraft.locationHint}. Search and select the real result below.
+              </Text>
+            </View>
+          ) : null}
+          <LocationPicker
+            label="EVENT LOCATION"
+            labelColor={colors.muted}
+            value={location}
+            city={city}
+            onChange={(nextLocation, nextCity) => {
+              setLocation(nextLocation);
+              setCity(nextCity);
+              setQuestionError('');
+            }}
+          />
+        </View>
+      );
+    }
+
+    if (stage === 'visibility') {
+      return (
+        <View style={styles.questionCard}>
+          <ToggleRow
+            icon={isPublic ? 'earth-outline' : 'lock-closed-outline'}
+            label={isPublic ? 'Public event' : 'Invite only'}
+            hint={
+              isPublic
+                ? 'Sent for review before it can appear in Explore.'
+                : 'Only people with the invite link can open it.'
+            }
+            value={isPublic}
+            onChange={setIsPublic}
+          />
+          <View style={styles.divider} />
+          <ToggleRow
+            icon={hideLocation ? 'eye-off-outline' : 'location-outline'}
+            label={hideLocation ? 'Reveal address after RSVP' : 'Show the address'}
+            hint={
+              hideLocation
+                ? 'Confirmed guests unlock the exact location.'
+                : 'Everyone with access can see the exact location.'
+            }
+            value={hideLocation}
+            onChange={setHideLocation}
+          />
+        </View>
+      );
+    }
+
+    if (stage === 'capacity') {
+      return (
+        <View style={styles.questionCard}>
+          <Text style={styles.fieldLabel}>CAPACITY</Text>
+          <View style={styles.choiceRow}>
+            <ChoicePill
+              label="Set a limit"
+              selected={capacityMode === 'limited'}
+              onPress={() => setCapacityMode('limited')}
+            />
+            <ChoicePill
+              label="No limit"
+              selected={capacityMode === 'unlimited'}
+              onPress={() => setCapacityMode('unlimited')}
+            />
+          </View>
+          {capacityMode === 'limited' ? (
+            <View style={styles.numberInputRow}>
+              <Ionicons name="people-outline" size={20} color={colors.muted} />
+              <TextInput
+                value={capacityInput}
+                onChangeText={(value) => {
+                  setCapacityInput(value.replace(/\D/g, ''));
+                  setQuestionError('');
+                }}
+                keyboardType="number-pad"
+                placeholder="30"
+                placeholderTextColor={colors.muted}
+                maxLength={5}
+                style={styles.numberInput}
+              />
+              <Text style={styles.inputSuffix}>guests maximum</Text>
+            </View>
+          ) : (
+            <Text style={styles.questionHint}>
+              Guests can RSVP without a capacity or waitlist.
+            </Text>
+          )}
+        </View>
+      );
+    }
+
+    if (stage === 'plusOnes') {
+      return (
+        <View style={styles.questionCard}>
+          <Counter
+            label="Plus-ones per guest"
+            hint={
+              plusOnes === 0
+                ? 'Named guests only.'
+                : plusOnes === 1
+                  ? 'Each guest can bring one person.'
+                  : `Each guest can bring up to ${plusOnes} people.`
+            }
+            value={plusOnes}
+            onChange={setPlusOnes}
+            min={0}
+            max={MAX_PLUS_ONES}
+          />
+        </View>
+      );
+    }
+
+    if (stage === 'price') {
+      return (
+        <View style={styles.questionCard}>
+          <Text style={styles.fieldLabel}>ENTRY</Text>
+          <View style={styles.choiceRow}>
+            <ChoicePill label="Free" selected={!paid} onPress={() => setPaid(false)} />
+            <ChoicePill label="Paid tickets" selected={paid} onPress={() => setPaid(true)} />
+          </View>
+          {paid ? (
+            <View style={styles.numberInputRow}>
+              <Text style={styles.currency}>€</Text>
+              <TextInput
+                value={price}
+                onChangeText={(value) => {
+                  setPrice(value.replace(/[^0-9,.]/g, ''));
+                  setQuestionError('');
+                }}
+                keyboardType="decimal-pad"
+                placeholder="25"
+                placeholderTextColor={colors.muted}
+                maxLength={10}
+                style={styles.numberInput}
+              />
+              <Text style={styles.inputSuffix}>per ticket</Text>
+            </View>
+          ) : (
+            <Text style={styles.questionHint}>The invite will clearly show free entry.</Text>
+          )}
+        </View>
+      );
+    }
+
+    return (
+      <View style={styles.questionCard}>
+        <Pressable onPress={chooseImage} disabled={imageBusy} style={styles.imagePicker}>
+          {image ? (
+            <>
+              <Image source={{ uri: image.uri }} style={StyleSheet.absoluteFill} resizeMode="cover" />
+              <View style={styles.imageScrim} />
+              <View style={styles.changeImagePill}>
+                <Ionicons name="camera" size={14} color={colors.onInk} />
+                <Text style={styles.changeImageText}>Change image</Text>
+              </View>
+            </>
+          ) : (
+            <>
+              <View style={[styles.imageIcon, { backgroundColor: `${visual.tint}35` }]}>
+                {imageBusy ? (
+                  <ActivityIndicator color={colors.text} />
+                ) : (
+                  <Ionicons name="image-outline" size={26} color={colors.text} />
+                )}
+              </View>
+              <Text style={styles.imageTitle}>Add a cover image</Text>
+              <Text style={styles.imageHint}>Optional · cropped to fit the event page</Text>
+            </>
+          )}
+        </Pressable>
+        {image ? (
+          <Pressable onPress={() => setImage(null)} style={styles.removeImageButton}>
+            <Ionicons name="trash-outline" size={16} color={colors.muted} />
+            <Text style={styles.removeImageText}>Remove cover</Text>
+          </Pressable>
+        ) : null}
+      </View>
+    );
+  }
+
+  function renderPreview() {
+    if (stage !== 'preview') return null;
+    return (
+      <>
+        <View style={styles.previewHeading}>
+          <Text style={styles.stepTitle}>Your event page</Text>
+          <Text style={styles.stepSubtitle}>
+            This is the information guests will see. Tap any row below to change it.
+          </Text>
+        </View>
+
+        <View style={styles.previewCard}>
+          <View style={[styles.previewHero, { backgroundColor: visual.tint }]}>
+            {image ? (
+              <>
+                <Image source={{ uri: image.uri }} style={StyleSheet.absoluteFill} resizeMode="cover" />
+                <View style={styles.previewScrim} />
+              </>
+            ) : (
+              <>
+                <View style={styles.previewGlow} />
+                <Text style={styles.previewEmoji}>{visual.emoji}</Text>
+              </>
+            )}
+            <View style={styles.previewPrivacy}>
+              <Ionicons
+                name={isPublic ? 'earth' : 'lock-closed'}
+                size={12}
+                color="#fff"
+              />
+              <Text style={styles.previewPrivacyText}>
+                {isPublic ? 'Public request' : 'Invite only'}
+              </Text>
+            </View>
+          </View>
+          <View style={styles.previewBody}>
+            <Text style={styles.previewTitle}>{title.trim()}</Text>
+            {date ? (
+              <Text style={styles.previewMeta}>
+                {formatEventDate(date.toISOString())} · {formatEventTime(date.toISOString())}
+              </Text>
+            ) : null}
+            <Text style={styles.previewMeta} numberOfLines={2}>
+              📍 {hideLocation ? `${city || 'Exact location'} · revealed after RSVP` : location}
+            </Text>
+            <View style={styles.previewPills}>
+              <View style={styles.previewPill}>
+                <Text style={styles.previewPillText}>
+                  👥 {maxGuests == null ? 'No limit' : `${maxGuests} spots`}
+                </Text>
+              </View>
+              <View style={styles.previewPill}>
+                <Text style={styles.previewPillText}>
+                  {paid ? `🎟️ €${normalizeTicketPrice(price) ?? price}` : '✨ Free'}
+                </Text>
+              </View>
+              <View style={styles.previewPill}>
+                <Text style={styles.previewPillText}>
+                  {plusOnes ? `+${plusOnes} allowed` : 'No +1s'}
+                </Text>
+              </View>
+            </View>
+            {description.trim() ? (
+              <Text style={styles.previewDescription}>{description.trim()}</Text>
+            ) : null}
+            <View style={styles.rsvpPreview}>
+              <View style={[styles.rsvpButton, { backgroundColor: visual.tint }]}>
+                <Text style={styles.rsvpButtonText}>I’m in</Text>
+              </View>
+              <View style={styles.rsvpButtonGhost}>
+                <Text style={styles.rsvpButtonGhostText}>Maybe</Text>
+              </View>
+              <View style={styles.rsvpButtonGhost}>
+                <Text style={styles.rsvpButtonGhostText}>Can’t</Text>
+              </View>
+            </View>
+          </View>
+        </View>
+
+        <View style={styles.editCard}>
+          <PreviewEditRow
+            icon="text-outline"
+            label="Title"
+            value={title.trim()}
+            onPress={() => editFromPreview('title')}
+          />
+          <View style={styles.divider} />
+          <PreviewEditRow
+            icon="document-text-outline"
+            label="Description"
+            value={description.trim() || 'No description'}
+            onPress={() => editFromPreview('description')}
+          />
+          <View style={styles.divider} />
+          <PreviewEditRow
+            icon="calendar-outline"
+            label="Date & time"
+            value={
+              date
+                ? `${formatEventDate(date.toISOString())} · ${formatEventTime(date.toISOString())}`
+                : 'Missing'
+            }
+            onPress={() => editFromPreview('when')}
+          />
+          <View style={styles.divider} />
+          <PreviewEditRow
+            icon="location-outline"
+            label="Location"
+            value={location || 'Missing'}
+            onPress={() => editFromPreview('location')}
+          />
+          <View style={styles.divider} />
+          <PreviewEditRow
+            icon={isPublic ? 'earth-outline' : 'lock-closed-outline'}
+            label="Access"
+            value={`${isPublic ? 'Public' : 'Invite only'} · ${
+              hideLocation ? 'address after RSVP' : 'address visible'
+            }`}
+            onPress={() => editFromPreview('visibility')}
+          />
+          <View style={styles.divider} />
+          <PreviewEditRow
+            icon="people-outline"
+            label="Guests"
+            value={`${maxGuests == null ? 'No limit' : `${maxGuests} max`} · ${
+              plusOnes ? `+${plusOnes}` : 'no +1s'
+            }`}
+            onPress={() => editFromPreview('capacity')}
+          />
+          <View style={styles.divider} />
+          <PreviewEditRow
+            icon="person-add-outline"
+            label="Plus-ones"
+            value={plusOnes ? `Up to ${plusOnes} per guest` : 'Not allowed'}
+            onPress={() => editFromPreview('plusOnes')}
+          />
+          <View style={styles.divider} />
+          <PreviewEditRow
+            icon="ticket-outline"
+            label="Entry"
+            value={paid ? `€${normalizeTicketPrice(price) ?? price} per ticket` : 'Free'}
+            onPress={() => editFromPreview('price')}
+          />
+          <View style={styles.divider} />
+          <PreviewEditRow
+            icon="image-outline"
+            label="Cover"
+            value={image ? 'Cover image added' : 'No cover image'}
+            onPress={() => editFromPreview('image')}
+          />
+        </View>
+
+        {isPublic ? (
+          <View style={styles.reviewNote}>
+            <Ionicons name="shield-checkmark-outline" size={20} color={colors.warning} />
+            <Text style={styles.reviewNoteText}>
+              Public events are submitted for review. Your invite link works immediately, but the
+              event stays out of Explore until approved.
+            </Text>
+          </View>
+        ) : null}
+
+        {!canPublish ? (
+          <View style={styles.validationCard}>
+            <Text style={styles.validationTitle}>Before you publish</Text>
+            {validationIssues.map((issue) => (
+              <Text key={issue} style={styles.validationText}>
+                • {issue}
+              </Text>
+            ))}
+          </View>
+        ) : null}
+      </>
+    );
+  }
+
+  function renderFooter() {
+    if (stage === 'brief' || stage === 'title' || stage === 'description') {
+      const value = stage === 'brief' ? composer : stage === 'title' ? title : description;
+      const setValue =
+        stage === 'brief' ? setComposer : stage === 'title' ? setTitle : setDescription;
+      const canSend =
+        !aiBusy &&
+        (stage === 'description' ? true : value.trim().length >= (stage === 'title' ? 2 : 3));
+      return (
+        <View style={styles.composerFooter}>
+          <View style={styles.composerBox}>
+            <TextInput
+              value={value}
+              onChangeText={(next) => {
+                setValue(next);
+                setQuestionError('');
+              }}
+              placeholder={
+                stage === 'brief'
+                  ? 'Describe the event you want to host…'
+                  : stage === 'title'
+                    ? 'Event title'
+                    : 'Event description'
+              }
+              placeholderTextColor={colors.muted}
+              editable={!aiBusy}
+              multiline={stage !== 'title'}
+              maxLength={
+                stage === 'title'
+                  ? LIMITS.title
+                  : stage === 'brief'
+                    ? EVENT_DRAFT_CHAT_LIMITS.message
+                    : LIMITS.description
+              }
+              textAlignVertical="top"
+              style={[styles.composerInput, stage === 'title' && styles.composerInputSingle]}
+              returnKeyType={stage === 'title' ? 'send' : 'default'}
+              onSubmitEditing={stage === 'title' ? submitTextAnswer : undefined}
+              // Web chat convention: Enter sends, Shift+Enter makes a newline.
+              // (The single-line title stage already sends via onSubmitEditing.)
+              onKeyPress={
+                Platform.OS === 'web' && stage !== 'title'
+                  ? (event) => {
+                      const native = event.nativeEvent as { key?: string; shiftKey?: boolean };
+                      if (native.key === 'Enter' && !native.shiftKey) {
+                        event.preventDefault();
+                        if (canSend) {
+                          (stage === 'brief' ? submitBrief : submitTextAnswer)();
+                        }
+                      }
+                    }
+                  : undefined
+              }
+            />
+            <Pressable
+              onPress={stage === 'brief' ? submitBrief : submitTextAnswer}
+              disabled={!canSend}
+              accessibilityRole="button"
+              accessibilityLabel="Send"
+              // Keep the tap from blurring the input first: on mobile web the
+              // closing keyboard reflows the page mid-tap and the click lands
+              // somewhere else — the send press was silently swallowed.
+              {...(Platform.OS === 'web'
+                ? ({
+                    onMouseDown: (event: { preventDefault?: () => void }) =>
+                      event.preventDefault?.(),
+                  } as Record<string, unknown>)
+                : {})}
+              style={[styles.sendButton, !canSend && styles.sendButtonDisabled]}
+            >
+              <Ionicons
+                name="arrow-up"
+                size={21}
+                color={canSend ? colors.onInk : colors.muted}
+              />
+            </Pressable>
+          </View>
+          {questionError ? <Text style={styles.footerError}>{questionError}</Text> : null}
+        </View>
+      );
+    }
+
+    let label = 'Continue';
+    let onPress = () => completeQuestion('');
+    let disabled = false;
+
+    if (stage === 'when') {
+      label = 'Use this date & time';
+      onPress = completeDate;
+      disabled = !date || date.getTime() <= Date.now();
+    } else if (stage === 'location') {
+      label = 'Use this location';
+      onPress = completeLocation;
+      disabled = !location.trim();
+    } else if (stage === 'visibility') {
+      label = 'Save access settings';
+      onPress = () =>
+        completeQuestion(
+          `${isPublic ? 'Public event' : 'Invite only'}; ${
+            hideLocation ? 'address after RSVP' : 'address visible'
+          }`,
+          { ...chatDraft, isPublic, hideLocation }
+        );
+    } else if (stage === 'capacity') {
+      label = 'Save guest limit';
+      onPress = completeCapacity;
+    } else if (stage === 'plusOnes') {
+      label = 'Save plus-ones';
+      onPress = () =>
+        completeQuestion(plusOnes ? `Up to ${plusOnes} per guest` : 'No plus-ones', {
+          ...chatDraft,
+          plusOneLimit: plusOnes,
+        });
+    } else if (stage === 'price') {
+      label = 'Save entry price';
+      onPress = completePrice;
+      disabled = paid && !normalizeTicketPrice(price);
+    } else if (stage === 'image') {
+      label = editingFromPreview ? 'Save cover' : 'Build event preview';
+      onPress = () => completeQuestion(image ? 'Cover image added' : 'Skip cover image');
+    } else if (stage === 'preview') {
+      label = isPublic ? 'Submit & create event' : 'Publish event';
+      onPress = publish;
+      disabled = !canPublish || submitting;
+    }
+
+    return (
+      <View style={styles.actionFooter}>
+        {questionError || publishError ? (
+          <Text style={styles.footerError}>{questionError || publishError}</Text>
+        ) : null}
+        <Pressable
+          onPress={onPress}
+          disabled={disabled || submitting || aiBusy}
+          style={[
+            styles.primaryButton,
+            (disabled || submitting || aiBusy) && styles.primaryButtonDisabled,
+          ]}
+        >
+          {submitting || aiBusy ? (
+            <ActivityIndicator color={colors.onInk} />
+          ) : (
+            <>
+              <Text
+                style={[
+                  styles.primaryButtonText,
+                  disabled && styles.primaryButtonTextDisabled,
+                ]}
+              >
+                {label}
+              </Text>
+              <Ionicons
+                name={stage === 'preview' ? 'sparkles' : 'arrow-forward'}
+                size={19}
+                color={disabled ? colors.muted : colors.onInk}
+              />
+            </>
+          )}
+        </Pressable>
+      </View>
     );
   }
 
@@ -224,7 +1394,7 @@ function CreateEventScreen() {
     return (
       <SafeAreaView style={styles.safe}>
         <View style={styles.success}>
-          <View style={[styles.successSeal, { backgroundColor: vibe.tint }]}>
+          <View style={[styles.successSeal, { backgroundColor: visual.tint }]}>
             <Ionicons name="checkmark" size={50} color="#fff" />
           </View>
           <Text style={styles.successKicker}>
@@ -245,7 +1415,7 @@ function CreateEventScreen() {
               <Pressable
                 onPress={() => {
                   const link = Linking.createURL(`e/${created.slug}`);
-                  textInvite('', `You're invited: ${created.title}\n${link}`, link);
+                  textInvite('', `You’re invited: ${created.title}\n${link}`, link);
                 }}
                 style={styles.quickShare}
               >
@@ -273,371 +1443,156 @@ function CreateEventScreen() {
   }
 
   return (
-    <SafeAreaView style={styles.safe} edges={['top']}>
+    // Bottom inset stays with the tab bar below the scene; padding it here too
+    // opened a wide dead band between the composer and the task bar.
+    <SafeAreaView ref={screenRef} style={styles.safe} edges={['top']}>
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-        style={{ flex: 1 }}
+        style={[styles.flex, webKeyboardInset > 0 && { paddingBottom: webKeyboardInset }]}
       >
         <View style={styles.header}>
           <View>
-            <Text style={styles.eyebrow}>EVENT STUDIO</Text>
-            <Text style={styles.headerTitle}>Make it happen.</Text>
+            <Text style={styles.eyebrow}>GUIDED EVENT CREATION</Text>
+            <Text style={styles.headerStatus}>{statusLabel}</Text>
           </View>
-          <Pressable onPress={() => router.replace('/explore')} style={styles.closeButton}>
+          <Pressable
+            onPress={() => (router.canGoBack() ? router.back() : router.replace('/explore'))}
+            style={styles.closeButton}
+          >
             <Ionicons name="close" size={20} color={colors.text} />
           </Pressable>
         </View>
 
-        <View style={styles.progress}>
-          {STEPS.map((item, index) => (
-            <View key={item.key} style={styles.progressItem}>
-              <View
-                style={[
-                  styles.progressLine,
-                  index <= currentIndex && { backgroundColor: vibe.tint },
-                ]}
-              />
-              <Text style={[styles.progressLabel, index === currentIndex && styles.progressLabelOn]}>
-                {item.label}
-              </Text>
-            </View>
-          ))}
-        </View>
-
         <ScrollView
+          ref={scrollRef}
           contentContainerStyle={styles.content}
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
+          onContentSizeChange={() => scrollRef.current?.scrollToEnd({ animated: true })}
         >
-          {step === 'vibe' ? (
-            <>
-              <View>
-                <Text style={styles.stepTitle}>What are we making?</Text>
-                <Text style={styles.stepSubtitle}>Start with a feeling. You can refine it later.</Text>
-              </View>
-              <View style={styles.vibeGrid}>
-                {VIBES.map((item, index) => {
-                  const selected = index === vibeIndex;
-                  return (
-                    <Pressable
-                      key={item.label}
-                      onPress={() => setVibeIndex(index)}
-                      style={[
-                        styles.vibeCard,
-                        selected && { borderColor: item.tint, backgroundColor: `${item.tint}24` },
-                      ]}
-                    >
-                      <Text style={styles.vibeEmoji}>{item.emoji}</Text>
-                      <Text style={styles.vibeTitle}>{item.label}</Text>
-                      <Text style={styles.vibeDescription}>{item.description}</Text>
-                      {selected ? (
-                        <View style={[styles.selectedDot, { backgroundColor: item.tint }]}>
-                          <Ionicons name="checkmark" size={13} color="#fff" />
-                        </View>
-                      ) : null}
-                    </Pressable>
-                  );
-                })}
-              </View>
-              <View>
-                <Text style={styles.fieldLabel}>EVENT NAME</Text>
-                <TextInput
-                  value={title}
-                  onChangeText={setTitle}
-                  placeholder="The one everyone talks about"
-                  placeholderTextColor={colors.muted}
-                  maxLength={120}
-                  style={styles.titleInput}
-                />
-              </View>
-            </>
-          ) : null}
-
-          {step === 'details' ? (
-            <>
-              <View>
-                <Text style={styles.stepTitle}>Set the scene.</Text>
-                <Text style={styles.stepSubtitle}>The essentials people need before they say yes.</Text>
-              </View>
-              <Pressable onPress={() => setDateOpen(true)} style={styles.detailCard}>
-                <View style={[styles.detailIcon, { backgroundColor: `${vibe.tint}30` }]}>
-                  <Ionicons name="calendar-outline" size={22} color={colors.text} />
-                </View>
-                <View style={{ flex: 1 }}>
-                  <Text style={styles.fieldLabel}>WHEN</Text>
-                  <Text style={styles.detailValue}>
-                    {formatEventDate(date.toISOString())} · {formatEventTime(date.toISOString())}
-                  </Text>
-                </View>
-                <Ionicons name="chevron-forward" size={18} color={colors.muted} />
-              </Pressable>
-              <View style={styles.locationWrap}>
-                <LocationPicker
-                  label="WHERE"
-                  labelColor={colors.muted}
-                  value={location}
-                  city={city}
-                  onChange={(nextLocation, nextCity) => {
-                    setLocation(nextLocation);
-                    setCity(nextCity);
-                  }}
-                />
-              </View>
-              <Pressable onPress={chooseImage} style={styles.imagePicker}>
-                {image ? (
-                  <Image source={{ uri: image.uri }} style={StyleSheet.absoluteFill} resizeMode="cover" />
-                ) : (
-                  <>
-                    <View style={[styles.imageIcon, { backgroundColor: `${vibe.tint}35` }]}>
-                      {imageBusy ? (
-                        <ActivityIndicator color={colors.text} />
-                      ) : (
-                        <Ionicons name="image-outline" size={26} color={colors.text} />
-                      )}
-                    </View>
-                    <Text style={styles.imageTitle}>Add a cover</Text>
-                    <Text style={styles.imageHint}>A strong image makes the invite feel real.</Text>
-                  </>
-                )}
-                {image ? (
-                  <View style={styles.changeImagePill}>
-                    <Ionicons name="camera" size={14} color={colors.onInk} />
-                    <Text style={styles.changeImageText}>Change</Text>
-                  </View>
-                ) : null}
-              </Pressable>
-              <View>
-                <Text style={styles.fieldLabel}>THE STORY</Text>
-                <TextInput
-                  value={description}
-                  onChangeText={setDescription}
-                  placeholder="What should people know? Dress code, energy, surprises…"
-                  placeholderTextColor={colors.muted}
-                  multiline
-                  maxLength={4000}
-                  textAlignVertical="top"
-                  style={styles.descriptionInput}
-                />
-              </View>
-            </>
-          ) : null}
-
-          {step === 'guests' ? (
-            <>
-              <View>
-                <Text style={styles.stepTitle}>Your door, your rules.</Text>
-                <Text style={styles.stepSubtitle}>Keep it intimate, open it up, or sell the night.</Text>
-              </View>
-              <View style={styles.settingsCard}>
-                <ToggleRow
-                  icon={isPublic ? 'earth-outline' : 'lock-closed-outline'}
-                  label={isPublic ? 'Public event' : 'Invite only'}
-                  hint={
-                    isPublic
-                      ? 'Submitted to admins before it appears in Explore.'
-                      : 'Only people with your link can see it.'
-                  }
-                  value={isPublic}
-                  onChange={setIsPublic}
-                />
-                <View style={styles.divider} />
-                <ToggleRow
-                  icon="location-outline"
-                  label={hideLocation ? 'Hide exact location' : 'Show exact location'}
-                  hint={
-                    hideLocation
-                      ? 'Confirmed guests unlock the address.'
-                      : 'Everyone with access sees the address.'
-                  }
-                  value={hideLocation}
-                  onChange={setHideLocation}
-                />
-                <View style={styles.divider} />
-                <Counter
-                  label="Maximum guests"
-                  hint="Going guests and their +1s count."
-                  value={maxGuests}
-                  onChange={setMaxGuests}
-                  min={2}
-                  max={500}
-                />
-                <View style={styles.divider} />
-                <Counter
-                  label="Plus-ones per guest"
-                  hint={plusOnes ? `Each guest can bring up to ${plusOnes}.` : 'Named guests only.'}
-                  value={plusOnes}
-                  onChange={setPlusOnes}
-                  min={0}
-                  max={10}
-                />
-                <View style={styles.divider} />
-                <ToggleRow
-                  icon="ticket-outline"
-                  label={paid ? 'Paid tickets' : 'Free entry'}
-                  hint={paid ? 'Show a ticket price on the invite.' : 'No ticket price.'}
-                  value={paid}
-                  onChange={setPaid}
-                />
-                {paid ? (
-                  <View style={styles.priceWrap}>
-                    <Text style={styles.currency}>€</Text>
-                    <TextInput
-                      value={price}
-                      onChangeText={setPrice}
-                      keyboardType="decimal-pad"
-                      placeholder="25"
-                      placeholderTextColor={colors.muted}
-                      style={styles.priceInput}
-                    />
-                    <Text style={styles.priceSuffix}>per ticket</Text>
-                  </View>
-                ) : null}
-              </View>
-              <View style={styles.socialNote}>
-                <View style={[styles.socialIcon, { backgroundColor: `${vibe.tint}30` }]}>
-                  <Ionicons name="people-outline" size={22} color={colors.text} />
-                </View>
-                <View style={{ flex: 1 }}>
-                  <Text style={styles.socialTitle}>Social by default</Text>
-                  <Text style={styles.socialBody}>
-                    Guests RSVP yes, maybe or no. You see the live guest list and mutual friends.
-                  </Text>
-                </View>
-              </View>
-            </>
-          ) : null}
-
-          {step === 'preview' ? (
-            <>
-              <View>
-                <Text style={styles.stepTitle}>This is the invite.</Text>
-                <Text style={styles.stepSubtitle}>One last look before your people see it.</Text>
-              </View>
-              <View style={styles.previewCard}>
-                <View style={[styles.previewHero, { backgroundColor: vibe.tint }]}>
-                  {image ? (
-                    <>
-                      <Image source={{ uri: image.uri }} style={StyleSheet.absoluteFill} resizeMode="cover" />
-                      <View style={styles.previewScrim} />
-                    </>
-                  ) : (
-                    <Text style={styles.previewEmoji}>{vibe.emoji}</Text>
-                  )}
-                  <View style={styles.previewPrivacy}>
-                    <Ionicons
-                      name={isPublic ? 'earth' : 'lock-closed'}
-                      size={12}
-                      color="#fff"
-                    />
-                    <Text style={styles.previewPrivacyText}>{isPublic ? 'Public' : 'Invite only'}</Text>
-                  </View>
-                </View>
-                <View style={styles.previewBody}>
-                  <Text style={styles.previewTitle}>{title.trim()}</Text>
-                  <Text style={styles.previewMeta}>
-                    {formatEventDate(date.toISOString())} · {formatEventTime(date.toISOString())}
-                  </Text>
-                  <Text style={styles.previewMeta} numberOfLines={2}>
-                    📍 {hideLocation ? `${city || 'Location'} · revealed after RSVP` : location}
-                  </Text>
-                  <View style={styles.previewPills}>
-                    <View style={styles.previewPill}>
-                      <Text style={styles.previewPillText}>👥 {maxGuests} spots</Text>
-                    </View>
-                    <View style={styles.previewPill}>
-                      <Text style={styles.previewPillText}>
-                        {paid ? `🎟️ €${price}` : '✨ Free'}
-                      </Text>
-                    </View>
-                    <View style={styles.previewPill}>
-                      <Text style={styles.previewPillText}>+{plusOnes}</Text>
-                    </View>
-                  </View>
-                  {description.trim() ? (
-                    <Text style={styles.previewDescription} numberOfLines={4}>
-                      {description.trim()}
-                    </Text>
-                  ) : null}
-                  <View style={styles.rsvpPreview}>
-                    <View style={[styles.rsvpButton, { backgroundColor: vibe.tint }]}>
-                      <Text style={styles.rsvpButtonText}>I'm in</Text>
-                    </View>
-                    <View style={styles.rsvpButtonGhost}>
-                      <Text style={styles.rsvpButtonGhostText}>Maybe</Text>
-                    </View>
-                    <View style={styles.rsvpButtonGhost}>
-                      <Text style={styles.rsvpButtonGhostText}>Can't</Text>
-                    </View>
-                  </View>
-                </View>
-              </View>
-            </>
-          ) : null}
-        </ScrollView>
-
-        <View style={styles.footer}>
-          {currentIndex > 0 ? (
-            <Pressable
-              onPress={() => setStep(STEPS[currentIndex - 1].key)}
-              style={styles.backButton}
+          {messages.map((message) => (
+            <View
+              key={message.id}
+              style={[
+                styles.messageRow,
+                message.role === 'user' && styles.messageRowUser,
+              ]}
             >
-              <Ionicons name="arrow-back" size={20} color={colors.text} />
-            </Pressable>
-          ) : null}
-          <Pressable
-            onPress={() => {
-              if (step === 'preview') publish();
-              else if (canContinue) setStep(STEPS[currentIndex + 1].key);
-            }}
-            disabled={!canContinue || submitting}
-            style={[
-              styles.primaryButton,
-              { flex: 1, backgroundColor: canContinue ? colors.ink : colors.inputBg },
-            ]}
-          >
-            {submitting ? (
-              <ActivityIndicator color={colors.onInk} />
-            ) : (
-              <>
+              <View
+                style={[
+                  styles.messageContent,
+                  message.role === 'user' && styles.userBubble,
+                ]}
+              >
                 <Text
                   style={[
-                    styles.primaryButtonText,
-                    !canContinue && { color: colors.muted },
+                    styles.messageText,
+                    message.role === 'user' && styles.userMessageText,
                   ]}
                 >
-                  {step === 'preview' ? 'Publish event' : 'Continue'}
+                  {message.text}
                 </Text>
-                <Ionicons
-                  name={step === 'preview' ? 'sparkles' : 'arrow-forward'}
-                  size={19}
-                  color={canContinue ? colors.onInk : colors.muted}
-                />
-              </>
-            )}
-          </Pressable>
-        </View>
+                {message.tags?.length ? (
+                  <View style={styles.messageTags}>
+                    {message.tags.map((tag) => (
+                      <View key={tag} style={styles.messageTag}>
+                        <Text style={styles.messageTagText}>{tag}</Text>
+                      </View>
+                    ))}
+                  </View>
+                ) : null}
+              </View>
+            </View>
+          ))}
+
+          {aiBusy ? (
+            <View style={styles.messageRow}>
+              <View style={[styles.messageContent, styles.thinkingBubble]}>
+                <ActivityIndicator size="small" color={colors.accent} />
+                <Text style={styles.thinkingText}>Thinking about your event…</Text>
+              </View>
+            </View>
+          ) : null}
+
+          {aiError ? (
+            <View style={styles.aiErrorCard}>
+              <View style={styles.aiErrorCopy}>
+                <Ionicons name="cloud-offline-outline" size={18} color={colors.warning} />
+                <Text style={styles.aiErrorText}>{aiError}</Text>
+              </View>
+              <Pressable onPress={retryAi} disabled={aiBusy} style={styles.retryButton}>
+                <Ionicons name="refresh" size={15} color={colors.text} />
+                <Text style={styles.retryButtonText}>Retry AI</Text>
+              </Pressable>
+            </View>
+          ) : null}
+
+          {renderQuestionCard()}
+          {renderPreview()}
+        </ScrollView>
+
+        {renderFooter()}
 
         {dateOpen ? (
-          <DateTimeSheet date={date} onChange={setDate} onClose={() => setDateOpen(false)} />
+          <DateTimeSheet
+            date={date ?? dateSeed}
+            onChange={(next) => {
+              setDate(next);
+              setQuestionError('');
+            }}
+            onClose={() => setDateOpen(false)}
+          />
         ) : null}
       </KeyboardAvoidingView>
     </SafeAreaView>
   );
 }
 
+function PreviewEditRow({
+  icon,
+  label,
+  value,
+  onPress,
+}: {
+  icon: React.ComponentProps<typeof Ionicons>['name'];
+  label: string;
+  value: string;
+  onPress: () => void;
+}) {
+  return (
+    <Pressable onPress={onPress} style={styles.editRow}>
+      <View style={styles.editIcon}>
+        <Ionicons name={icon} size={18} color={colors.text} />
+      </View>
+      <View style={styles.flex}>
+        <Text style={styles.editLabel}>{label}</Text>
+        <Text style={styles.editValue} numberOfLines={2}>
+          {value}
+        </Text>
+      </View>
+      <View style={styles.editAction}>
+        <Text style={styles.editActionText}>Edit</Text>
+      </View>
+    </Pressable>
+  );
+}
+
 export default withScreenBackground(CreateEventScreen, { bloom: false });
 
 const styles = StyleSheet.create({
+  flex: { flex: 1 },
   safe: { flex: 1, backgroundColor: 'transparent' },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: spacing.md,
-    paddingTop: spacing.sm,
+    paddingVertical: spacing.sm,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: colors.cardBorder,
   },
-  eyebrow: { ...uiText(11, '700', { tracking: 0.12 }), color: colors.muted },
-  headerTitle: { ...display(28), color: colors.text },
+  eyebrow: { ...uiText(10, '700', { tracking: 0.1 }), color: colors.muted },
+  headerStatus: { ...uiText(13, '600'), color: colors.text, marginTop: 1 },
   closeButton: {
     width: 38,
     height: 38,
@@ -648,89 +1603,196 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  progress: {
-    flexDirection: 'row',
-    gap: 6,
-    paddingHorizontal: spacing.md,
-    marginTop: spacing.md,
+  content: {
+    padding: spacing.md,
+    paddingTop: spacing.lg,
+    paddingBottom: spacing.xl,
+    gap: spacing.md,
   },
-  progressItem: { flex: 1, gap: 5 },
-  progressLine: { height: 3, borderRadius: 2, backgroundColor: colors.inputBg },
-  progressLabel: { ...uiText(10, '600'), color: colors.muted },
-  progressLabelOn: { color: colors.text },
-  content: { padding: spacing.md, paddingBottom: spacing.xl, gap: spacing.lg },
-  stepTitle: { ...display(30), color: colors.text },
-  stepSubtitle: { ...uiText(14), color: colors.muted, marginTop: 4 },
-  vibeGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
-  vibeCard: {
-    width: '48.5%',
-    minHeight: 128,
+  messageRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 10,
+    paddingRight: spacing.lg,
+  },
+  messageRowUser: { justifyContent: 'flex-end', paddingRight: 0, paddingLeft: spacing.xl },
+  messageContent: { flexShrink: 1, maxWidth: '92%', paddingTop: 3 },
+  userBubble: {
+    backgroundColor: colors.inputBg,
+    borderWidth: 1,
+    borderColor: colors.cardBorder,
+    borderRadius: 18,
+    borderBottomRightRadius: 6,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+  },
+  thinkingBubble: {
+    minHeight: 38,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  thinkingText: { ...uiText(12, '600'), color: colors.muted },
+  messageText: { ...uiText(15, '500', { lineHeight: 1.5 }), color: colors.text },
+  userMessageText: { ...uiText(14, '500', { lineHeight: 1.45 }) },
+  messageTags: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: 10 },
+  messageTag: {
+    backgroundColor: colors.inputBg,
+    borderRadius: radius.pill,
+    borderWidth: 1,
+    borderColor: colors.cardBorder,
+    paddingHorizontal: 9,
+    paddingVertical: 4,
+  },
+  messageTagText: { ...uiText(11, '600'), color: colors.text },
+  aiErrorCard: {
+    backgroundColor: 'rgba(232,178,60,0.10)',
+    borderWidth: 1,
+    borderColor: 'rgba(232,178,60,0.28)',
+    borderRadius: radius.md,
+    padding: 12,
+    gap: 10,
+  },
+  aiErrorCopy: { flexDirection: 'row', alignItems: 'flex-start', gap: 8 },
+  aiErrorText: { ...uiText(11, '500', { lineHeight: 1.4 }), color: colors.text, flex: 1 },
+  retryButton: {
+    alignSelf: 'flex-start',
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    backgroundColor: colors.inputBg,
+    borderRadius: radius.pill,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+  },
+  retryButtonText: { ...uiText(11, '700'), color: colors.text },
+  starterArea: { gap: spacing.sm, marginTop: spacing.xs },
+  starterLabel: { ...uiText(10, '700', { tracking: 0.1 }), color: colors.muted },
+  starterPrompt: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    backgroundColor: colors.card,
+    borderWidth: 1,
+    borderColor: colors.cardBorder,
+    borderRadius: radius.md,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+  },
+  starterPromptText: { ...uiText(12, '500'), color: colors.text, flex: 1 },
+  questionCard: {
     backgroundColor: colors.card,
     borderWidth: 1,
     borderColor: colors.cardBorder,
     borderRadius: radius.lg,
     padding: spacing.md,
-    position: 'relative',
-  },
-  vibeEmoji: { fontSize: 28, marginBottom: 8 },
-  vibeTitle: { ...uiText(15, '700'), color: colors.text },
-  vibeDescription: { ...uiText(12), color: colors.muted, marginTop: 2 },
-  selectedDot: {
-    position: 'absolute',
-    right: 10,
-    top: 10,
-    width: 22,
-    height: 22,
-    borderRadius: 11,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  fieldLabel: { ...uiText(11, '700', { tracking: 0.1 }), color: colors.muted },
-  titleInput: {
-    ...display(24),
-    color: colors.text,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.cardBorder,
-    paddingVertical: spacing.sm,
-  },
-  detailCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
     gap: spacing.md,
-    padding: spacing.md,
-    backgroundColor: colors.card,
-    borderWidth: 1,
-    borderColor: colors.cardBorder,
-    borderRadius: radius.md,
+    ...shadow.card,
   },
-  detailIcon: {
+  locationCard: { zIndex: 40 },
+  locationHint: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 7,
+    backgroundColor: colors.inputBg,
+    borderRadius: radius.md,
+    padding: 10,
+  },
+  locationHintText: { ...uiText(11, '500', { lineHeight: 1.4 }), color: colors.muted, flex: 1 },
+  fieldLabel: { ...uiText(10, '700', { tracking: 0.1 }), color: colors.muted },
+  dateChoice: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
+  questionIcon: {
     width: 44,
     height: 44,
     borderRadius: 14,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  detailValue: { ...uiText(15, '600'), color: colors.text, marginTop: 2 },
-  locationWrap: {
-    zIndex: 10,
-    backgroundColor: colors.card,
-    borderRadius: radius.md,
-    padding: spacing.md,
+  dateChoiceValue: { ...uiText(15, '600'), color: colors.text, marginTop: 2 },
+  placeholderText: { color: colors.muted },
+  toggleRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
+  controlIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: 13,
+    backgroundColor: colors.inputBg,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  controlTitle: { ...uiText(14, '700'), color: colors.text },
+  controlHint: { ...uiText(11), color: colors.muted, marginTop: 1 },
+  divider: { height: StyleSheet.hairlineWidth, backgroundColor: colors.cardBorder },
+  switchTrack: {
+    width: 48,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: colors.inputBg,
+    padding: 3,
+  },
+  switchTrackOn: { backgroundColor: colors.success },
+  switchKnob: { width: 22, height: 22, borderRadius: 11, backgroundColor: colors.muted },
+  switchKnobOn: { backgroundColor: '#fff', transform: [{ translateX: 20 }] },
+  choiceRow: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
+  choicePill: {
+    minHeight: 42,
+    borderRadius: radius.pill,
     borderWidth: 1,
     borderColor: colors.cardBorder,
+    backgroundColor: colors.inputBg,
+    paddingHorizontal: 14,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 5,
   },
+  choicePillSelected: { backgroundColor: colors.ink, borderColor: colors.ink },
+  choicePillText: { ...uiText(13, '600'), color: colors.text },
+  choicePillTextSelected: { color: colors.onInk },
+  numberInputRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    backgroundColor: colors.inputBg,
+    borderRadius: radius.md,
+    borderWidth: 1,
+    borderColor: colors.cardBorder,
+    paddingHorizontal: spacing.md,
+  },
+  numberInput: {
+    ...display(23),
+    color: colors.text,
+    flex: 1,
+    minWidth: 60,
+    paddingVertical: 10,
+  },
+  inputSuffix: { ...uiText(11), color: colors.muted },
+  currency: { ...display(23), color: colors.text },
+  questionHint: { ...uiText(12), color: colors.muted },
+  counterRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
+  counter: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  counterButton: {
+    width: 34,
+    height: 34,
+    borderRadius: 17,
+    backgroundColor: colors.inputBg,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  counterValue: { ...uiText(16, '700'), color: colors.text, minWidth: 26, textAlign: 'center' },
+  disabled: { opacity: 0.3 },
   imagePicker: {
-    height: 180,
-    borderRadius: radius.lg,
+    height: 190,
+    borderRadius: radius.md,
     overflow: 'hidden',
     borderWidth: 1,
     borderStyle: 'dashed',
     borderColor: colors.cardBorder,
-    backgroundColor: colors.card,
+    backgroundColor: colors.inputBg,
     alignItems: 'center',
     justifyContent: 'center',
     gap: 4,
   },
+  imageScrim: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(0,0,0,0.18)' },
   imageIcon: {
     width: 52,
     height: 52,
@@ -739,8 +1801,8 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     marginBottom: 4,
   },
-  imageTitle: { ...uiText(15, '700'), color: colors.text },
-  imageHint: { ...uiText(12), color: colors.muted },
+  imageTitle: { ...uiText(14, '700'), color: colors.text },
+  imageHint: { ...uiText(11), color: colors.muted },
   changeImagePill: {
     position: 'absolute',
     right: 10,
@@ -753,97 +1815,34 @@ const styles = StyleSheet.create({
     paddingHorizontal: 10,
     paddingVertical: 6,
   },
-  changeImageText: { ...uiText(12, '700'), color: colors.onInk },
-  descriptionInput: {
-    ...uiText(15),
-    minHeight: 130,
-    marginTop: 6,
-    backgroundColor: colors.card,
-    borderWidth: 1,
-    borderColor: colors.cardBorder,
-    borderRadius: radius.md,
-    color: colors.text,
-    padding: spacing.md,
-  },
-  settingsCard: {
-    backgroundColor: colors.card,
-    borderWidth: 1,
-    borderColor: colors.cardBorder,
-    borderRadius: radius.lg,
-    padding: spacing.md,
-    gap: spacing.md,
-  },
-  toggleRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
-  counterRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
-  controlIcon: {
-    width: 40,
-    height: 40,
-    borderRadius: 13,
-    backgroundColor: colors.inputBg,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  controlTitle: { ...uiText(15, '700'), color: colors.text },
-  controlHint: { ...uiText(12), color: colors.muted, marginTop: 1 },
-  divider: { height: StyleSheet.hairlineWidth, backgroundColor: colors.cardBorder },
-  switchTrack: {
-    width: 48,
-    height: 28,
-    borderRadius: 14,
-    backgroundColor: colors.inputBg,
-    padding: 3,
-  },
-  switchTrackOn: { backgroundColor: colors.success },
-  switchKnob: { width: 22, height: 22, borderRadius: 11, backgroundColor: colors.muted },
-  switchKnobOn: { backgroundColor: '#fff', transform: [{ translateX: 20 }] },
-  counter: { flexDirection: 'row', alignItems: 'center', gap: 10 },
-  counterButton: {
-    width: 34,
-    height: 34,
-    borderRadius: 17,
-    backgroundColor: colors.inputBg,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  counterValue: { ...uiText(16, '700'), color: colors.text, minWidth: 26, textAlign: 'center' },
-  disabled: { opacity: 0.3 },
-  priceWrap: {
+  changeImageText: { ...uiText(11, '700'), color: colors.onInk },
+  removeImageButton: {
+    alignSelf: 'center',
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: colors.inputBg,
-    borderRadius: radius.md,
-    paddingHorizontal: spacing.md,
+    gap: 5,
+    paddingVertical: 3,
   },
-  currency: { ...display(24), color: colors.text },
-  priceInput: { ...display(24), color: colors.text, flex: 1, paddingVertical: 10 },
-  priceSuffix: { ...uiText(12), color: colors.muted },
-  socialNote: {
-    flexDirection: 'row',
-    gap: spacing.md,
-    backgroundColor: colors.card,
-    borderRadius: radius.lg,
-    padding: spacing.md,
-    borderWidth: 1,
-    borderColor: colors.cardBorder,
-  },
-  socialIcon: {
-    width: 44,
-    height: 44,
-    borderRadius: 15,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  socialTitle: { ...uiText(15, '700'), color: colors.text },
-  socialBody: { ...uiText(13), color: colors.muted, marginTop: 2 },
+  removeImageText: { ...uiText(12, '600'), color: colors.muted },
+  previewHeading: { marginTop: spacing.sm },
+  stepTitle: { ...display(28), color: colors.text },
+  stepSubtitle: { ...uiText(13), color: colors.muted, marginTop: 4 },
   previewCard: {
     backgroundColor: '#F4F1EB',
     borderRadius: radius.xl,
     overflow: 'hidden',
     ...shadow.float,
   },
-  previewHero: { height: 180, alignItems: 'center', justifyContent: 'center' },
+  previewHero: { height: 200, alignItems: 'center', justifyContent: 'center', overflow: 'hidden' },
   previewScrim: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(0,0,0,0.18)' },
-  previewEmoji: { fontSize: 72 },
+  previewGlow: {
+    position: 'absolute',
+    width: 190,
+    height: 190,
+    borderRadius: 95,
+    backgroundColor: 'rgba(255,255,255,0.16)',
+  },
+  previewEmoji: { fontSize: 76 },
   previewPrivacy: {
     position: 'absolute',
     top: 12,
@@ -851,15 +1850,15 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     gap: 5,
     alignItems: 'center',
-    backgroundColor: 'rgba(0,0,0,0.55)',
+    backgroundColor: 'rgba(0,0,0,0.58)',
     borderRadius: radius.pill,
     paddingHorizontal: 9,
     paddingVertical: 5,
   },
-  previewPrivacyText: { ...uiText(11, '700'), color: '#fff' },
+  previewPrivacyText: { ...uiText(10, '700'), color: '#fff' },
   previewBody: { padding: spacing.md },
   previewTitle: { ...display(28), color: '#171717' },
-  previewMeta: { ...uiText(14, '600'), color: 'rgba(23,23,23,0.65)', marginTop: 3 },
+  previewMeta: { ...uiText(13, '600'), color: 'rgba(23,23,23,0.65)', marginTop: 3 },
   previewPills: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: spacing.md },
   previewPill: {
     backgroundColor: 'rgba(23,23,23,0.08)',
@@ -867,10 +1866,10 @@ const styles = StyleSheet.create({
     paddingHorizontal: 10,
     paddingVertical: 5,
   },
-  previewPillText: { ...uiText(12, '700'), color: '#171717' },
+  previewPillText: { ...uiText(11, '700'), color: '#171717' },
   previewDescription: {
-    ...uiText(14, '400', { lineHeight: 1.5 }),
-    color: 'rgba(23,23,23,0.75)',
+    ...uiText(13, '400', { lineHeight: 1.5 }),
+    color: 'rgba(23,23,23,0.76)',
     marginTop: spacing.md,
   },
   rsvpPreview: { flexDirection: 'row', gap: 6, marginTop: spacing.md },
@@ -880,7 +1879,7 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
     alignItems: 'center',
   },
-  rsvpButtonText: { ...uiText(13, '700'), color: '#fff' },
+  rsvpButtonText: { ...uiText(12, '700'), color: '#fff' },
   rsvpButtonGhost: {
     flex: 1,
     borderRadius: radius.pill,
@@ -889,27 +1888,104 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: 'rgba(23,23,23,0.15)',
   },
-  rsvpButtonGhostText: { ...uiText(13, '700'), color: '#171717' },
-  footer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.sm,
-    padding: spacing.md,
-    paddingTop: spacing.sm,
-    backgroundColor: 'rgba(8,11,22,0.95)',
-    borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: colors.cardBorder,
-  },
-  backButton: {
-    width: 50,
-    height: 50,
-    borderRadius: 25,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: colors.inputBg,
+  rsvpButtonGhostText: { ...uiText(12, '700'), color: '#171717' },
+  editCard: {
+    backgroundColor: colors.card,
     borderWidth: 1,
     borderColor: colors.cardBorder,
+    borderRadius: radius.lg,
+    paddingHorizontal: spacing.md,
   },
+  editRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, paddingVertical: 13 },
+  editIcon: {
+    width: 36,
+    height: 36,
+    borderRadius: 12,
+    backgroundColor: colors.inputBg,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  editLabel: { ...uiText(11, '700'), color: colors.muted },
+  editValue: { ...uiText(13, '600'), color: colors.text, marginTop: 1 },
+  editAction: {
+    backgroundColor: colors.inputBg,
+    borderRadius: radius.pill,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+  },
+  editActionText: { ...uiText(11, '700'), color: colors.text },
+  reviewNote: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: spacing.sm,
+    backgroundColor: 'rgba(232,178,60,0.10)',
+    borderWidth: 1,
+    borderColor: 'rgba(232,178,60,0.25)',
+    borderRadius: radius.md,
+    padding: spacing.md,
+  },
+  reviewNoteText: { ...uiText(12), color: colors.text, flex: 1 },
+  validationCard: {
+    backgroundColor: 'rgba(255,90,96,0.10)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,90,96,0.28)',
+    borderRadius: radius.md,
+    padding: spacing.md,
+    gap: 3,
+  },
+  validationTitle: { ...uiText(13, '700'), color: colors.danger },
+  validationText: { ...uiText(12), color: colors.text },
+  composerFooter: {
+    paddingHorizontal: spacing.md,
+    paddingTop: spacing.sm,
+    paddingBottom: spacing.sm,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: colors.cardBorder,
+    backgroundColor: 'rgba(8,11,22,0.97)',
+  },
+  composerBox: {
+    flexDirection: 'row',
+    alignItems: 'flex-end',
+    gap: spacing.sm,
+    minHeight: 54,
+    maxHeight: 150,
+    backgroundColor: colors.card,
+    borderWidth: 1,
+    borderColor: colors.cardBorder,
+    borderRadius: 20,
+    paddingLeft: spacing.md,
+    paddingRight: 6,
+    paddingVertical: 6,
+  },
+  composerInput: {
+    ...uiText(14),
+    color: colors.text,
+    flex: 1,
+    minHeight: 40,
+    maxHeight: 130,
+    paddingTop: 9,
+    paddingBottom: 7,
+  },
+  composerInputSingle: { paddingTop: 10 },
+  sendButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 14,
+    backgroundColor: colors.ink,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  sendButtonDisabled: { backgroundColor: colors.inputBg },
+  actionFooter: {
+    paddingHorizontal: spacing.md,
+    paddingTop: spacing.sm,
+    paddingBottom: spacing.sm,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: colors.cardBorder,
+    backgroundColor: 'rgba(8,11,22,0.97)',
+    gap: 6,
+  },
+  footerError: { ...uiText(11, '600'), color: colors.danger, paddingHorizontal: 4 },
   primaryButton: {
     minHeight: 50,
     borderRadius: radius.pill,
@@ -920,7 +1996,9 @@ const styles = StyleSheet.create({
     gap: spacing.sm,
     paddingHorizontal: spacing.lg,
   },
-  primaryButtonText: { ...uiText(15, '700'), color: colors.onInk },
+  primaryButtonDisabled: { backgroundColor: colors.inputBg },
+  primaryButtonText: { ...uiText(14, '700'), color: colors.onInk },
+  primaryButtonTextDisabled: { color: colors.muted },
   secondaryButton: {
     minHeight: 50,
     borderRadius: radius.pill,
@@ -929,7 +2007,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  secondaryButtonText: { ...uiText(15, '700'), color: colors.text },
+  secondaryButtonText: { ...uiText(14, '700'), color: colors.text },
   success: {
     flex: 1,
     alignItems: 'center',
@@ -945,10 +2023,10 @@ const styles = StyleSheet.create({
     marginBottom: spacing.lg,
     ...shadow.float,
   },
-  successKicker: { ...uiText(12, '700', { tracking: 0.12 }), color: colors.muted },
-  successTitle: { ...display(36), color: colors.text, textAlign: 'center', marginTop: 6 },
+  successKicker: { ...uiText(11, '700', { tracking: 0.12 }), color: colors.muted },
+  successTitle: { ...display(34), color: colors.text, textAlign: 'center', marginTop: 6 },
   successBody: {
-    ...uiText(15, '400', { lineHeight: 1.5 }),
+    ...uiText(14, '400', { lineHeight: 1.5 }),
     color: colors.muted,
     textAlign: 'center',
     marginTop: spacing.sm,
@@ -966,5 +2044,5 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     gap: 6,
   },
-  quickShareText: { ...uiText(13, '700'), color: colors.text },
+  quickShareText: { ...uiText(12, '700'), color: colors.text },
 });

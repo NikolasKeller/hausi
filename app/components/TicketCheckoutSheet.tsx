@@ -196,7 +196,7 @@ export function TicketCheckoutSheet({
                   <Ionicons name="open-outline" size={13} color={colors.muted} />
                 </Pressable>
               ) : (
-                <Text style={styles.mockNote}>Demo checkout — no real payment happens here.</Text>
+                <Text style={styles.mockNote}>Demo checkout, no real payment happens here.</Text>
               )}
             </>
           ) : step === 'processing' ? (
@@ -205,7 +205,7 @@ export function TicketCheckoutSheet({
                 🎟️
               </Animated.Text>
               <Text style={styles.stageTitle}>Securing your ticket…</Text>
-              <Text style={styles.stageBody}>Hold tight — confirming your spot.</Text>
+              <Text style={styles.stageBody}>Hold tight, confirming your spot.</Text>
             </View>
           ) : (
             <View style={styles.stage}>
@@ -215,7 +215,7 @@ export function TicketCheckoutSheet({
               <Animated.View style={[styles.doneContent, { opacity: contentFade }]}>
                 <Text style={styles.stageTitle}>You're in! 🎉</Text>
                 <Text style={styles.stageBody}>
-                  Your ticket is saved in your Wallet here in the app — the QR at the door is all
+                  Your ticket is saved in your Wallet here in the app. The QR at the door is all
                   you need.
                 </Text>
                 <Button title="View in Wallet" onPress={viewInWallet} style={{ alignSelf: 'stretch' }} />

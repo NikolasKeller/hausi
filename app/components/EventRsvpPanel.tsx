@@ -271,7 +271,7 @@ export function EventRsvpPanel({
             : spotsLeft === 0 && mine?.status !== 'GOING'
               ? 'The event is full. Join the waitlist anyway.'
               : spotsLeft == null
-                ? 'Let the host know — your response updates the guest list instantly.'
+                ? 'Let the host know. Your response updates the guest list instantly.'
                 : `${spotsLeft} ${spotsLeft === 1 ? 'spot' : 'spots'} left.`}
       </Text>
 

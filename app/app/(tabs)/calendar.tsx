@@ -1,6 +1,7 @@
 import React, { useCallback, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
+  Animated,
   Image,
   PanResponder,
   Pressable,
@@ -10,7 +11,7 @@ import {
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useFocusEffect } from 'expo-router';
+import { useFocusEffect, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import type { EventSummary } from '../../shared/types';
 import { api, mediaUrl } from '../../lib/api';
@@ -51,6 +52,14 @@ const MAX_WEEK_ROWS = 6;
 const GRID_ROW_HEIGHT = 46;
 const GRID_HEIGHT = MAX_WEEK_ROWS * GRID_ROW_HEIGHT;
 
+// The events list is a sheet that slides up OVER the calendar (instead of the
+// old hard view swap, which read as "woah, where did the calendar go"). When
+// open it stops this far short of the top, so the dimmed month header still
+// peeks out behind it and the way back is obvious.
+const SHEET_TOP_GAP = 68;
+
+const SHEET_SPRING = { useNativeDriver: true, friction: 10, tension: 90 };
+
 // Cells for a month grid: leading/trailing nulls pad to full weeks.
 function buildMonthCells(year: number, month: number): (Date | null)[] {
   const startPad = new Date(year, month, 1).getDay();
@@ -71,6 +80,7 @@ function chunkWeeks(cells: (Date | null)[]): (Date | null)[][] {
 export default withScreenBackground(CalendarScreen);
 
 function CalendarScreen() {
+  const router = useRouter();
   const [events, setEvents] = useState<EventSummary[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [reloadKey, setReloadKey] = useState(0);
@@ -80,6 +90,23 @@ function CalendarScreen() {
     const now = new Date();
     return { year: now.getFullYear(), month: now.getMonth() };
   });
+
+  // 0 = sheet parked below the screen (grid mode), 1 = sheet open. Driven by
+  // the finger while dragging and by a spring on release, so the list glides
+  // over the calendar instead of hard-swapping views.
+  const sheetProgress = useRef(new Animated.Value(0)).current;
+  const [containerH, setContainerH] = useState(0);
+  const containerHRef = useRef(0);
+
+  const openSheet = useCallback(() => {
+    setMode('list');
+    Animated.spring(sheetProgress, { ...SHEET_SPRING, toValue: 1 }).start();
+  }, [sheetProgress]);
+
+  const closeSheet = useCallback(() => {
+    setMode('grid');
+    Animated.spring(sheetProgress, { ...SHEET_SPRING, toValue: 0 }).start();
+  }, [sheetProgress]);
 
   useFocusEffect(
     useCallback(() => {
@@ -132,22 +159,34 @@ function CalendarScreen() {
     return { upcoming: up, past: pa };
   }, [events]);
 
-  // Swipe up anywhere on the calendar to pull up the full list of events —
-  // the panel handle below the grid hints at the gesture. Only claim decisive
-  // upward drags so day taps and the panel's internal scroll still work.
+  // Swipe up anywhere on the calendar to pull the events sheet over the grid.
+  // The sheet tracks the finger while dragging (no hard swap) and springs to
+  // its resting spot on release. Only claim decisive upward drags so day taps
+  // and the panel's internal scroll still work.
+  const travel = useCallback(
+    () => Math.max(1, (containerHRef.current || 1200) - SHEET_TOP_GAP),
+    []
+  );
   const swipeUp = useMemo(
     () =>
       PanResponder.create({
         onMoveShouldSetPanResponder: (_e, g) =>
           g.dy < -10 && Math.abs(g.dy) > Math.abs(g.dx),
+        onPanResponderMove: (_e, g) => {
+          sheetProgress.setValue(Math.min(1, Math.max(0, -g.dy / travel())));
+        },
         onPanResponderRelease: (_e, g) => {
-          if (g.dy < -50 || (g.dy < -20 && g.vy < -0.4)) setMode('list');
+          if (g.dy < -50 || (g.dy < -20 && g.vy < -0.4)) openSheet();
+          else Animated.spring(sheetProgress, { ...SHEET_SPRING, toValue: 0 }).start();
+        },
+        onPanResponderTerminate: () => {
+          Animated.spring(sheetProgress, { ...SHEET_SPRING, toValue: 0 }).start();
         },
       }),
-    []
+    [openSheet, sheetProgress, travel]
   );
 
-  // The mirror gesture in list mode: swipe down to fall back to the grid —
+  // The mirror gesture on the open sheet: drag down to reveal the grid again —
   // hinted by the handle above the list. Only claimed while the list is
   // scrolled to the very top, so normal downward scrolling keeps working.
   const listAtTop = useRef(true);
@@ -156,11 +195,18 @@ function CalendarScreen() {
       PanResponder.create({
         onMoveShouldSetPanResponder: (_e, g) =>
           listAtTop.current && g.dy > 10 && Math.abs(g.dy) > Math.abs(g.dx),
+        onPanResponderMove: (_e, g) => {
+          sheetProgress.setValue(Math.min(1, Math.max(0, 1 - g.dy / travel())));
+        },
         onPanResponderRelease: (_e, g) => {
-          if (g.dy > 50 || (g.dy > 20 && g.vy > 0.4)) setMode('grid');
+          if (g.dy > 50 || (g.dy > 20 && g.vy > 0.4)) closeSheet();
+          else Animated.spring(sheetProgress, { ...SHEET_SPRING, toValue: 1 }).start();
+        },
+        onPanResponderTerminate: () => {
+          Animated.spring(sheetProgress, { ...SHEET_SPRING, toValue: 1 }).start();
         },
       }),
-    []
+    [closeSheet, sheetProgress, travel]
   );
 
   function shiftMonth(delta: number) {
@@ -222,36 +268,59 @@ function CalendarScreen() {
             {isViewingCurrentYear ? MONTHS[view.month] : `${MONTHS[view.month]} ${view.year}`}
           </ChromeText>
         </View>
-        {mode === 'grid' ? (
-          <View style={styles.chevrons}>
-            <Pressable onPress={() => shiftMonth(-1)} style={styles.chevronButton} hitSlop={6}>
-              <Ionicons name="chevron-back" size={18} color={colors.text} />
-            </Pressable>
-            <Pressable onPress={() => shiftMonth(1)} style={styles.chevronButton} hitSlop={6}>
-              <Ionicons name="chevron-forward" size={18} color={colors.text} />
-            </Pressable>
-          </View>
-        ) : null}
-      </View>
-      {mode === 'grid' ? (
-        <View style={styles.headerActions}>
-          <Pressable onPress={goToToday} style={styles.todayPill} hitSlop={4}>
-            <Text style={styles.todayPillText}>Today</Text>
+        <View style={styles.chevrons}>
+          <Pressable onPress={() => shiftMonth(-1)} style={styles.chevronButton} hitSlop={6}>
+            <Ionicons name="chevron-back" size={18} color={colors.text} />
+          </Pressable>
+          <Pressable onPress={() => shiftMonth(1)} style={styles.chevronButton} hitSlop={6}>
+            <Ionicons name="chevron-forward" size={18} color={colors.text} />
           </Pressable>
         </View>
-      ) : null}
+      </View>
+      <View style={styles.headerActions}>
+        <Pressable onPress={goToToday} style={styles.todayPill} hitSlop={4}>
+          <Text style={styles.todayPillText}>Today</Text>
+        </Pressable>
+      </View>
     </View>
   );
 
-  // Grid mode fills the screen exactly: the header + month grid take their
-  // natural height at the top and the "Today" panel flexes to fill the rest,
-  // so its CTA is always fully in view without scrolling (the panel scrolls
-  // internally only when a day holds more events than fit). List mode keeps a
-  // plain ScrollView since it can grow arbitrarily long.
-  if (mode === 'grid') {
-    return (
-      <SafeAreaView edges={['top']} style={styles.safe}>
-        <View style={styles.gridContent} {...swipeUp.panHandlers}>
+  // Sheet choreography: the events list rides sheetProgress from parked below
+  // the screen (0) to just under the top edge (1) while the calendar recedes —
+  // dimming and shrinking slightly — so it visibly stays "behind" the list.
+  const sheetTranslateY = sheetProgress.interpolate({
+    inputRange: [0, 1],
+    outputRange: [containerH || 1200, SHEET_TOP_GAP],
+  });
+  const gridOpacity = sheetProgress.interpolate({
+    inputRange: [0, 1],
+    outputRange: [1, 0.3],
+  });
+  const gridScale = sheetProgress.interpolate({
+    inputRange: [0, 1],
+    outputRange: [1, 0.96],
+  });
+
+  // One stacked layout: the grid fills the screen (header + month grid on top,
+  // the "Today" panel flexing below) and the events sheet lives above it,
+  // parked off-screen until a swipe pulls it up over the calendar.
+  return (
+    <SafeAreaView edges={['top']} style={styles.safe}>
+      <View
+        style={styles.stack}
+        onLayout={(e) => {
+          setContainerH(e.nativeEvent.layout.height);
+          containerHRef.current = e.nativeEvent.layout.height;
+        }}
+      >
+        <Animated.View
+          style={[
+            styles.gridContent,
+            { opacity: gridOpacity, transform: [{ scale: gridScale }] },
+          ]}
+          pointerEvents={mode === 'grid' ? 'auto' : 'none'}
+          {...(mode === 'grid' ? swipeUp.panHandlers : {})}
+        >
           {header}
 
           <View style={styles.weekdayRow}>
@@ -305,7 +374,16 @@ function CalendarScreen() {
           </View>
 
           <View style={styles.panel}>
-            <View style={styles.panelHandle} />
+            {/* Tap or swipe up: both pull the events sheet over the grid. */}
+            <Pressable
+              onPress={openSheet}
+              hitSlop={8}
+              accessibilityRole="button"
+              accessibilityLabel="Show all my events"
+              style={styles.panelHandleWrap}
+            >
+              <View style={styles.panelHandle} />
+            </Pressable>
             <Text style={styles.panelTitle}>
               {selectedIsToday ? <Text style={styles.panelStrong}>Today </Text> : null}
               <Text style={selectedIsToday ? styles.panelMuted : styles.panelStrong}>
@@ -321,6 +399,13 @@ function CalendarScreen() {
               <View style={styles.emptyState}>
                 <View style={styles.emptyBody}>
                   <Text style={styles.emptyTitle}>{EMPTY_TITLE}</Text>
+                  {/* An empty day shouldn't dead-end — send people to the
+                      events feed to find something for it. */}
+                  <Button
+                    title="Explore events"
+                    variant="primary"
+                    onPress={() => router.push('/explore')}
+                  />
                 </View>
               </View>
             ) : (
@@ -335,46 +420,61 @@ function CalendarScreen() {
               </ScrollView>
             )}
           </View>
-        </View>
-      </SafeAreaView>
-    );
-  }
+        </Animated.View>
 
-  return (
-    <SafeAreaView edges={['top']} style={styles.safe}>
-      <View style={{ flex: 1 }} {...swipeDown.panHandlers}>
-        <ScrollView
-          contentContainerStyle={styles.content}
-          onScroll={(e) => {
-            listAtTop.current = e.nativeEvent.contentOffset.y <= 0;
-          }}
-          scrollEventThrottle={16}
+        {/* The events sheet — rides over the dimmed calendar instead of
+            replacing it, so pulling it up never reads as the calendar
+            vanishing. A strip of the grid stays visible above the sheet and
+            tapping the handle (or dragging down) brings it back. */}
+        <Animated.View
+          style={[styles.sheet, { transform: [{ translateY: sheetTranslateY }] }]}
+          pointerEvents={mode === 'list' ? 'auto' : 'none'}
+          {...swipeDown.panHandlers}
         >
-          {/* Mirrors the grid panel's handle: swipe down to fall back to the
-              calendar grid. */}
-          <View style={styles.listHandle} />
-          {header}
+          <Pressable
+            onPress={closeSheet}
+            hitSlop={8}
+            accessibilityRole="button"
+            accessibilityLabel="Back to calendar"
+            style={styles.listHandleWrap}
+          >
+            <View style={styles.listHandle} />
+          </Pressable>
+          <ScrollView
+            contentContainerStyle={styles.content}
+            onScroll={(e) => {
+              listAtTop.current = e.nativeEvent.contentOffset.y <= 0;
+            }}
+            scrollEventThrottle={16}
+          >
+            <View style={styles.listSections}>
+              <View style={styles.sectionHead}>
+                <Text style={styles.sectionTitle}>Upcoming</Text>
+              </View>
+              {upcoming.length === 0 ? (
+                <View style={styles.sectionEmptyWrap}>
+                  <Text style={styles.sectionEmpty}>Nothing planned - yet 👀</Text>
+                  <Button
+                    title="Explore events"
+                    variant="primary"
+                    onPress={() => router.push('/explore')}
+                  />
+                </View>
+              ) : (
+                upcoming.map((ev) => <EventCard key={ev.id} event={ev} />)
+              )}
 
-          <View style={styles.listSections}>
-            <View style={styles.sectionHead}>
-              <Text style={styles.sectionTitle}>Upcoming</Text>
+              {past.length > 0 ? (
+                <>
+                  <Text style={[styles.sectionTitle, { marginTop: spacing.lg }]}>Past</Text>
+                  {past.map((ev) => (
+                    <EventCard key={ev.id} event={ev} />
+                  ))}
+                </>
+              ) : null}
             </View>
-            {upcoming.length === 0 ? (
-              <Text style={styles.sectionEmpty}>Nothing planned - yet 👀</Text>
-            ) : (
-              upcoming.map((ev) => <EventCard key={ev.id} event={ev} />)
-            )}
-
-            {past.length > 0 ? (
-              <>
-                <Text style={[styles.sectionTitle, { marginTop: spacing.lg }]}>Past</Text>
-                {past.map((ev) => (
-                  <EventCard key={ev.id} event={ev} />
-                ))}
-              </>
-            ) : null}
-          </View>
-        </ScrollView>
+          </ScrollView>
+        </Animated.View>
       </View>
     </SafeAreaView>
   );
@@ -402,8 +502,13 @@ const styles = StyleSheet.create({
   },
   content: {
     padding: spacing.md,
+    paddingTop: spacing.xs,
     paddingBottom: spacing.xl * 2,
     gap: spacing.lg,
+  },
+  // Hosts both layers: the calendar grid below and the events sheet above.
+  stack: {
+    flex: 1,
   },
   // Grid mode fills the screen so the panel below the calendar is always fully
   // visible; children take their natural height and the panel flexes to fill.
@@ -411,6 +516,22 @@ const styles = StyleSheet.create({
     flex: 1,
     padding: spacing.md,
     gap: spacing.md,
+  },
+  // The events list as an overlay sheet: parked below the screen and slid up
+  // by sheetProgress, over the receding calendar.
+  sheet: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(13,17,29,0.98)',
+    borderTopLeftRadius: radius.xl,
+    borderTopRightRadius: radius.xl,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.12)',
+    ...shadow.float,
+  },
+  listHandleWrap: {
+    alignSelf: 'stretch',
+    alignItems: 'center',
+    paddingVertical: spacing.sm,
   },
   header: {
     flexDirection: 'row',
@@ -474,14 +595,13 @@ const styles = StyleSheet.create({
     ...uiText(12, '600'),
     color: colors.text,
   },
-  // Swipe-down affordance at the top of the list view (mirror of panelHandle).
+  // Swipe-down affordance at the top of the events sheet (mirror of
+  // panelHandle); its wrapper is tappable as an explicit way back.
   listHandle: {
-    alignSelf: 'center',
     width: 40,
     height: 4,
     borderRadius: 2,
-    backgroundColor: 'rgba(255,255,255,0.28)',
-    marginBottom: spacing.xs,
+    backgroundColor: 'rgba(255,255,255,0.35)',
   },
   weekdayRow: {
     flexDirection: 'row',
@@ -552,8 +672,13 @@ const styles = StyleSheet.create({
     padding: spacing.lg,
     gap: spacing.md,
   },
+  panelHandleWrap: {
+    alignSelf: 'stretch',
+    alignItems: 'center',
+    marginVertical: -spacing.xs,
+    paddingVertical: spacing.xs,
+  },
   panelHandle: {
-    alignSelf: 'center',
     width: 40,
     height: 4,
     borderRadius: 2,
@@ -612,5 +737,9 @@ const styles = StyleSheet.create({
   sectionEmpty: {
     ...uiText(15),
     color: colors.muted,
+  },
+  sectionEmptyWrap: {
+    gap: spacing.md,
+    alignItems: 'flex-start',
   },
 });

@@ -39,7 +39,7 @@ export const FEATURED_EVENTS: FeaturedEvent[] = [
       '',
       'In cozy seating areas you can enjoy ice-cold drinks and treats from the food stand while the day\'s musicians delight your ears. And this time there\'s something for your eyes too: the Munich collective Isarseide enchants you with a breathtaking aerial performance on vertical silks and rope attached to the crane.',
       '',
-      'Line-up (A–Z):',
+      'Line-up (A-Z):',
       '- Atric [Tipping Point / Leipzig]',
       '- Basti Steinacker [Korajo / Munich]',
       '- Bonjour Ben [Freiland, It Works / Rostock]',

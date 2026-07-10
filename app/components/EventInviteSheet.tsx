@@ -115,7 +115,7 @@ export function EventInviteSheet({
           <ActivityIndicator color={colors.accent} style={{ marginVertical: spacing.lg }} />
         ) : people.length === 0 ? (
           <Text style={styles.empty}>
-            Add friends or meet people at events — they'll appear here for one-tap invites.
+            Add friends or meet people at events, and they'll appear here for one-tap invites.
           </Text>
         ) : (
           <ScrollView style={styles.peopleScroll} contentContainerStyle={styles.people}>

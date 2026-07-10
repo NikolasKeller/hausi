@@ -162,7 +162,7 @@ export async function checkAvailability(url: string): Promise<AvailabilityResult
     // The demo shop states availability explicitly; trust that marker first.
     const explicitSoldOut = await page.locator('[data-sold-out]').count().catch(() => 0);
     if (explicitSoldOut > 0 || SOLD_OUT.test(bodyText)) {
-      return { status: 'soldout', reason: 'This event is sold out — no tickets available.' };
+      return { status: 'soldout', reason: 'This event is sold out. No tickets available.' };
     }
 
     const buy = await findBuyButton(page);
@@ -171,7 +171,7 @@ export async function checkAvailability(url: string): Promise<AvailabilityResult
     return {
       status: 'unknown',
       reason:
-        'Could not confirm availability automatically (no recognizable buy button — often behind bot protection).',
+        'Could not confirm availability automatically (no recognizable buy button, often behind bot protection).',
     };
   } catch (e) {
     return { status: 'unknown', reason: e instanceof Error ? e.message : 'Availability check failed' };

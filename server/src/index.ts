@@ -1,3 +1,4 @@
+import './lib/env.js';
 import { existsSync } from 'node:fs';
 import { readFile } from 'node:fs/promises';
 import { join } from 'node:path';
@@ -20,6 +21,7 @@ import { walletRoutes } from './routes/wallet.js';
 import { adminRoutes } from './routes/admin.js';
 import { checkinRoutes } from './routes/checkin.js';
 import { demoCheckoutRoutes } from './routes/demoCheckout.js';
+import { eventDraftRoutes } from './routes/eventDrafts.js';
 import { MIME_BY_EXT, UPLOAD_DIR } from './lib/uploads.js';
 import { TICKET_DIR } from './lib/ticketAgent.js';
 
@@ -36,6 +38,7 @@ api.get('/health', (c) => c.json({ name: 'iykyk API', ok: true }));
 api.get('/config', (c) => c.json({ inviteRequired: INVITE_CODE != null }));
 api.route('/auth', authRoutes);
 api.route('/events', eventRoutes);
+api.route('/event-drafts', eventDraftRoutes);
 api.route('/discover', discoverRoutes);
 api.route('/me', meRoutes);
 api.route('/friends', friendRoutes);

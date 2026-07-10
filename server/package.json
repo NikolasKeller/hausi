@@ -8,14 +8,17 @@
     "start": "tsx src/index.ts",
     "seed": "tsx prisma/seed.ts",
     "add-events": "tsx prisma/add-events.ts",
+    "fix-titles": "tsx prisma/rename-em-dash-titles.ts",
     "scrape": "tsx scripts/scrape-events.ts",
     "db:push": "DATABASE_URL=${DATABASE_URL:-file:./dev.db} prisma db push",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "test:event-draft": "tsx --test src/lib/eventDraftAi.test.ts"
   },
   "dependencies": {
     "@hono/node-server": "^1.14.0",
     "@prisma/client": "^6.8.0",
     "bcryptjs": "^3.0.2",
+    "dotenv": "^17.4.2",
     "hono": "^4.7.0",
     "libphonenumber-js": "^1.13.8",
     "playwright": "^1.61.1",

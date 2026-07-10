@@ -1,14 +1,21 @@
 import React from 'react';
 import { Image, StyleSheet, View } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
 import { colors } from '../lib/theme';
 
 // The nightlife ambience the whole app sits on — a generated midnight-blue
 // backdrop with soft out-of-focus city/stage lights (amber + cool blue bokeh).
 const NIGHT = require('../assets/nightlife-bokeh.jpg');
 
+// Fine grain layered over the scrim so the darkened area reads as a textured
+// surface instead of a flat colour block.
+const PAPER = require('../assets/paper-texture.png');
+
 // The app-wide backdrop: a full-bleed bokeh image over a matching flat
-// fallback. `bloom` is kept for call-site compatibility; the backdrop already
-// carries its own light, so it no longer paints an extra overlay.
+// fallback. The bokeh stays ambient up top but settles into a calm, grainy
+// gradient toward the bottom — bright warm lights near the tab bar used to
+// read like a photo bleeding under the content. `bloom` is kept for call-site
+// compatibility; the backdrop already carries its own light.
 export function ScreenBackground({
   children,
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -20,6 +27,17 @@ export function ScreenBackground({
   return (
     <View style={styles.fill}>
       <Image source={NIGHT} style={StyleSheet.absoluteFill} resizeMode="cover" />
+      <LinearGradient
+        colors={['rgba(8,11,22,0)', 'rgba(8,11,22,0.55)', 'rgba(8,11,22,0.92)']}
+        locations={[0, 0.55, 1]}
+        style={StyleSheet.absoluteFill}
+        pointerEvents="none"
+      />
+      <Image
+        source={PAPER}
+        style={[StyleSheet.absoluteFill, styles.grain]}
+        resizeMode="cover"
+      />
       {children}
     </View>
   );
@@ -53,5 +71,8 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: colors.bg,
     overflow: 'hidden',
+  },
+  grain: {
+    opacity: 0.05,
   },
 });

@@ -180,7 +180,7 @@ function ProfileScreen() {
   return (
     <View style={styles.safe}>
       <ScrollView contentContainerStyle={styles.container}>
-        <View style={styles.hero}>
+        <View style={[styles.hero, !photo && styles.heroCompact]}>
           {photo ? (
             <>
               <Image source={{ uri: photo }} style={StyleSheet.absoluteFill} resizeMode="cover" />
@@ -193,9 +193,11 @@ function ProfileScreen() {
                 style={styles.topScrim}
                 pointerEvents="none"
               />
+              {/* The photo ends decisively at two-thirds of the hero — a longer
+                  tail made it look like the picture smeared down the page. */}
               <LinearGradient
                 colors={['transparent', 'transparent', colors.bg]}
-                locations={[0, 0.4, 0.72]}
+                locations={[0, 0.35, 0.66]}
                 style={StyleSheet.absoluteFill}
                 pointerEvents="none"
               />
@@ -234,7 +236,28 @@ function ProfileScreen() {
           <ChromeText style={styles.bigName} numberOfLines={2}>
             {profile.name}
           </ChromeText>
-          <Text style={styles.username}>@{profile.username}</Text>
+          {/* The handle is editable — tap to open the profile editor. Accounts
+              still on the auto-generated fallback get an explicit
+              "pick your username" prompt instead of the ugly random handle. */}
+          {profile.hasCustomUsername ? (
+            <Pressable
+              onPress={() => router.push('/edit-profile')}
+              hitSlop={8}
+              style={({ pressed }) => [styles.usernameRow, pressed && styles.pressed]}
+            >
+              <Text style={styles.username}>@{profile.username}</Text>
+              <Ionicons name="pencil-outline" size={12} color={colors.muted} />
+            </Pressable>
+          ) : (
+            <Pressable
+              onPress={() => router.push('/edit-profile')}
+              hitSlop={8}
+              style={({ pressed }) => [styles.usernamePickPill, pressed && styles.pressed]}
+            >
+              <Ionicons name="at" size={13} color={colors.text} />
+              <Text style={styles.usernamePickText}>pick your username</Text>
+            </Pressable>
+          )}
           <View style={styles.pillRow}>
             <View style={styles.joinedPill}>
               <Ionicons name="sparkles" size={13} color={colors.accent} />
@@ -523,13 +546,20 @@ const styles = StyleSheet.create({
     // (raised twice per user feedback: xl+12 → xl+24).
     marginTop: spacing.xl + 24,
   },
+  // Without a photo the hero shrinks and the initials avatar drops to its
+  // bottom edge, so it sits right above the name instead of floating in the
+  // middle of a photo-sized empty band.
+  heroCompact: {
+    height: 236,
+  },
   heroFallback: {
     ...StyleSheet.absoluteFillObject,
-    // No fill — just the avatar centered on the paper canvas.
+    // No fill — just the avatar on the canvas, anchored low near the name.
     alignItems: 'center',
-    justifyContent: 'center',
-    // Sit the avatar low in the hero, close to the name below it.
-    paddingBottom: 16,
+    justifyContent: 'flex-end',
+    // heroContent overlaps the hero's bottom by spacing.huge (60); this keeps
+    // the avatar clear of the name while staying visually attached to it.
+    paddingBottom: spacing.huge + 12,
   },
   topScrim: {
     position: 'absolute',
@@ -568,10 +598,31 @@ const styles = StyleSheet.create({
     color: colors.text,
     textAlign: 'center',
   },
+  usernameRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    marginTop: -spacing.sm,
+  },
   username: {
     ...uiText(14, '600'),
     color: colors.muted,
+  },
+  usernamePickPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
     marginTop: -spacing.sm,
+    backgroundColor: 'rgba(255,255,255,0.10)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.16)',
+    borderRadius: radius.pill,
+    paddingHorizontal: spacing.md,
+    paddingVertical: 5,
+  },
+  usernamePickText: {
+    ...uiText(13, '700'),
+    color: colors.text,
   },
   pillRow: {
     flexDirection: 'row',

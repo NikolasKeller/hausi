@@ -45,9 +45,6 @@ export default function TabsLayout() {
         name="create"
         options={{
           title: 'Create',
-          tabBarIcon: ({ color }) => (
-            <Ionicons name="add" size={26} color={color} />
-          ),
         }}
       />
       {/* Hidden "/" redirect — never shown in the bar. */}

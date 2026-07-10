@@ -270,7 +270,8 @@ async function scrapeCity(cityName?: string) {
       await db.event.create({
         data: {
           slug: makeSlug(candidate.title),
-          title: candidate.title,
+          // App copy rule: no em dashes, including imported titles.
+          title: candidate.title.replace(/\s*—\s*/g, ': '),
           description: candidate.description,
           coverTheme: cls.coverTheme,
           coverImage: candidate.coverImage,

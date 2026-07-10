@@ -5,6 +5,7 @@ import { toExploreEvent } from '../lib/serialize.js';
 import { findMutuals } from '../lib/mutuals.js';
 import { findFriendIds } from '../lib/friends.js';
 import { resolveCities } from '../lib/geocode.js';
+import { parseExploreDateRange } from '../lib/exploreDateRange.js';
 import { CATEGORIES, type Category, type ExploreEvent } from '../../../app/shared/types.js';
 
 const exploreInclude = {
@@ -61,7 +62,8 @@ discoverRoutes.get('/home', async (c) => {
   });
 });
 
-// Public events filtered by city and category.
+// Public events filtered by city, category and optional device-local date
+// boundaries (sent as absolute ISO instants).
 discoverRoutes.get('/explore', async (c) => {
   const userId = c.get('userId');
   const me = await db.user.findUniqueOrThrow({
@@ -73,6 +75,27 @@ discoverRoutes.get('/explore', async (c) => {
   const category = CATEGORIES.includes(categoryParam as Category)
     ? (categoryParam as Category)
     : null;
+  const parsedDateRange = parseExploreDateRange(
+    c.req.query('dateFrom'),
+    c.req.query('dateTo')
+  );
+  if (!parsedDateRange.ok) {
+    return c.json({ error: parsedDateRange.error }, 400);
+  }
+  // Free-text search over what a guest can already see on the card: title,
+  // description, city and host name. Deliberately NOT the street address —
+  // hideLocation events must not be probeable by address guesses. SQLite's
+  // LIKE is case-insensitive for ASCII, which is all these fields need.
+  const q = c.req.query('q')?.trim().slice(0, 80) ?? '';
+
+  const now = new Date();
+  const dateRange = parsedDateRange.range;
+  const dateWhere = {
+    // Explore never brings already-started events back, even when today's
+    // local range began before the current instant.
+    gte: new Date(Math.max(now.getTime(), dateRange?.from.getTime() ?? now.getTime())),
+    ...(dateRange ? { lt: dateRange.to } : {}),
+  };
 
   // Category is a controlled enum so it filters in the DB; city is matched in
   // JS below so casing/whitespace differences ("san francisco" vs "San
@@ -81,8 +104,18 @@ discoverRoutes.get('/explore', async (c) => {
     where: {
       ...(me.isAdmin ? {} : { isPublic: true }),
       canceledAt: null,
-      date: { gte: new Date() },
+      date: dateWhere,
       ...(category ? { category } : {}),
+      ...(q
+        ? {
+            OR: [
+              { title: { contains: q } },
+              { description: { contains: q } },
+              { city: { contains: q } },
+              { host: { name: { contains: q } } },
+            ],
+          }
+        : {}),
     },
     include: exploreInclude,
     orderBy: { date: 'asc' },
@@ -101,7 +134,7 @@ discoverRoutes.get('/explore', async (c) => {
     where: {
       ...(me.isAdmin ? {} : { isPublic: true }),
       canceledAt: null,
-      date: { gte: new Date() },
+      date: { gte: now },
       city: { not: '' },
     },
     select: { city: true },

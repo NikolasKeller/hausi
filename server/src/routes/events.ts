@@ -1004,7 +1004,7 @@ eventRoutes.post('/:id/blast', async (c) => {
   const fwdProto = c.req.header('x-forwarded-proto') ?? 'https';
   const base = (configured || (fwdHost ? `${fwdProto}://${fwdHost}` : '')).replace(/\/$/, '');
   const link = base ? `\n${base}/e/${event.slug}` : '';
-  const body = `📣 ${event.title} — from ${sender.name}\n${text}${link}`;
+  const body = `📣 ${event.title}, from ${sender.name}\n${text}${link}`;
 
   let sent = 0;
   if (smsEnabled && recipients.size) {

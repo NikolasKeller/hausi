@@ -27,7 +27,7 @@ if (!host.username) {
 const DAY = 24 * 60 * 60 * 1000;
 const specs = [
   {
-    title: 'BLANC — The All White Night',
+    title: 'BLANC: The All White Night',
     description:
       'One private summer night where the only rule is white. Champagne at sunset, a hidden dance floor after dark, and a guest list capped before it gets ordinary.',
     location: 'Praterinsel 3-4, 80538 München',
@@ -40,7 +40,7 @@ const specs = [
     daysFromNow: 18,
   },
   {
-    title: 'Sip & Stroke — Wine, Paint, No Rules',
+    title: 'Sip & Stroke: Wine, Paint, No Rules',
     description:
       'Natural wine, oversized canvases and a playlist that gets better with every glass. No talent needed. Your painting goes home with you.',
     location: 'KUNSTLABOR 2, Dachauer Straße 90, 80335 München',
@@ -53,7 +53,7 @@ const specs = [
     daysFromNow: 25,
   },
   {
-    title: 'Kitchen Floor — A Maxvorstadt House Party',
+    title: 'Kitchen Floor: A Maxvorstadt House Party',
     description:
       'Phones down, shoes off. Dinner turns into drinks, drinks turn into dancing, and the address only unlocks once your RSVP is confirmed.',
     location: 'Import Export, Schwere-Reiter-Straße 2h, 80636 München',
@@ -66,7 +66,7 @@ const specs = [
     daysFromNow: 11,
   },
   {
-    title: 'Blue Hour — Private Rooftop Pool Club',
+    title: 'Blue Hour: Private Rooftop Pool Club',
     description:
       'Pool from golden hour, DJs after dark. Towels, drinks and midnight snacks are covered. The exact entrance is shared with confirmed guests.',
     location: 'Andaz Munich Schwabinger Tor, Leopoldstraße 170, 80804 München',

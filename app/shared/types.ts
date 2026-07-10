@@ -306,6 +306,68 @@ export interface EventInput {
   rsvpsOpen?: boolean;
 }
 
+// ── AI-assisted event drafting ─────────────────────────────────────────────
+
+export const EVENT_DRAFT_CHAT_LIMITS = {
+  history: 12,
+  message: 1500,
+  totalMessageCharacters: 10000,
+} as const;
+
+export type EventDraftQuestion =
+  | 'title'
+  | 'description'
+  | 'date'
+  | 'location'
+  | 'visibility'
+  | 'capacity'
+  | 'plusOnes'
+  | 'price';
+
+export interface EventDraftChatMessage {
+  role: 'assistant' | 'user';
+  content: string;
+}
+
+export interface EventDraftChatDraft {
+  title: string | null;
+  // An empty string means the host explicitly chose no description; null means
+  // the assistant still needs to ask.
+  description: string | null;
+  date: string | null;
+  // AI may suggest what to search for, but only LocationPicker can commit a
+  // geocoded address into selectedLocation.
+  locationHint: string | null;
+  selectedLocation: { location: string; city: string } | null;
+  category: Category | null;
+  isPublic: boolean | null;
+  hideLocation: boolean | null;
+  capacity:
+    | { kind: 'unknown'; maxGuests: null }
+    | { kind: 'unlimited'; maxGuests: null }
+    | { kind: 'limited'; maxGuests: number };
+  plusOneLimit: number | null;
+  entry:
+    | { kind: 'unknown'; price: null }
+    | { kind: 'free'; price: null }
+    | { kind: 'paid'; price: string | null };
+}
+
+export interface EventDraftChatRequest {
+  messages: EventDraftChatMessage[];
+  draft: EventDraftChatDraft;
+  timeZone?: string;
+  locale?: string;
+}
+
+export interface EventDraftChatResponse {
+  draft: EventDraftChatDraft;
+  assistantMessage: string;
+  status: 'needs_input' | 'ready';
+  nextField: EventDraftQuestion | null;
+  missingFields: EventDraftQuestion[];
+}
+
 // ── Agent Wallet / agentic ticket purchase ──────────────────────────────────
 
 // The "Agent Wallet" — the user's locally-stored purchase profile. Lives ONLY
@@ -470,6 +532,9 @@ export interface MyProfile {
   id: string;
   name: string;
   username: string;
+  // False while the username is still the auto-generated fallback — the
+  // profile uses this to surface a "pick your username" call-to-action.
+  hasCustomUsername: boolean;
   email: string | null;
   phone: string | null;
   avatarEmoji: string;

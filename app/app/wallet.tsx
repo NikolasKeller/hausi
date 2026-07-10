@@ -106,7 +106,7 @@ function PassCard({ pass }: { pass: WalletPass }) {
 
       <View style={styles.passQrSection}>
         <Image source={{ uri: pass.qrDataUrl }} style={styles.qr} />
-        <Text style={styles.qrHint}>Show at the door — staff scan it with any camera</Text>
+        <Text style={styles.qrHint}>Show at the door, staff scan it with any camera</Text>
         <Text style={styles.qrCode} numberOfLines={1}>
           {pass.code.slice(-8).toUpperCase()}
         </Text>
@@ -154,7 +154,7 @@ function WalletScreen() {
       >
         <ChromeText style={styles.heading}>Wallet</ChromeText>
         <Text style={styles.subheading}>
-          Your passes — one for every event you host or are going to.
+          Your passes: one for every event you host or are going to.
         </Text>
 
         {error && !passes ? (

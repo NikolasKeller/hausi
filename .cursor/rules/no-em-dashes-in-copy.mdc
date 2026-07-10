@@ -1,0 +1,20 @@
+---
+description: User-facing app copy must never contain em dashes
+alwaysApply: true
+---
+
+# No em dashes in app copy
+
+Never use em dashes (—) or en dashes (–) in any user-visible text: UI strings, placeholders, chat/assistant messages, notifications, error messages, share texts and seeded/demo content. This also applies to AI-generated copy; prompts for models that produce user-visible text must instruct them to avoid em dashes.
+
+Rewrite with a comma, a period, a colon or the word itself:
+
+```text
+❌ Tell me what you want to host—in your own words.
+✅ Tell me what you want to host, in your own words.
+
+❌ Sounds great — I noted the details.
+✅ Sounds great! I noted the details.
+```
+
+A plain hyphen between words ("invite-only", "plus-ones") is fine. Code comments are not affected by this rule.

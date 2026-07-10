@@ -101,6 +101,7 @@ meRoutes.get('/', async (c) => {
     id: me.id,
     name: me.name,
     username: publicUsername(me),
+    hasCustomUsername: Boolean(me.username),
     email: me.email,
     phone: me.phone,
     avatarEmoji: me.avatarEmoji,

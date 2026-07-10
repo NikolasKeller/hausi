@@ -8,8 +8,12 @@ web-build/
 .cursor/sandbox.json
 .env
 .env.*
+!.env.example
+!**/.env.example
 *.db
 *.db-journal
+# ad-hoc sqlite backups (e.g. dev.db.backup-<id>)
+*.db.backup-*
 .context/
 app/ios/
 app/android/

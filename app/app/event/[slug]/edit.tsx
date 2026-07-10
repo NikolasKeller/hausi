@@ -56,7 +56,7 @@ export default function EditEventScreen() {
       // No SMS provider (local dev): surface the invite link so it can be
       // shared manually — same idea as the login-code dev preview.
       if (!res.sent && res.devLink) {
-        notify('Invite ready', `SMS is off — share this link:\n${res.devLink}`);
+        notify('Invite ready', `SMS is off. Share this link:\n${res.devLink}`);
       } else {
         notify('Invite sent', 'They can accept it once they open the link.');
       }

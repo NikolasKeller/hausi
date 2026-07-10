@@ -276,7 +276,7 @@ export function AgentWalletSheet({
                   disabled={!identityComplete(wallet)}
                 />
                 <Text style={styles.note}>
-                  Prototype: details are held in memory for the purchase only — never stored or
+                  Prototype: details are held in memory for the purchase only, never stored or
                   logged on the server.
                 </Text>
               </ScrollView>
@@ -324,7 +324,7 @@ export function AgentWalletSheet({
                 <Steps active={3} />
                 <View style={styles.availableBanner}>
                   <Ionicons name="checkmark-circle" size={18} color={colors.success} />
-                  <Text style={styles.availableText}>Tickets available — enter payment to buy.</Text>
+                  <Text style={styles.availableText}>Tickets available. Enter payment to buy.</Text>
                 </View>
 
                 <Field
@@ -367,7 +367,7 @@ export function AgentWalletSheet({
                   disabled={!paymentComplete(wallet)}
                 />
                 <Text style={styles.note}>
-                  Prototype: card details are held in memory for this purchase only — never stored
+                  Prototype: card details are held in memory for this purchase only, never stored
                   or logged on the server. No 3-D Secure / SCA.
                 </Text>
               </ScrollView>

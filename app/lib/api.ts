@@ -8,6 +8,8 @@ import type {
   DeliveryChannel,
   DirectEventInvite,
   EventDetail,
+  EventDraftChatRequest,
+  EventDraftChatResponse,
   EventInput,
   EventSummary,
   ExploreEvent,
@@ -29,6 +31,7 @@ import type {
   WalletPass,
   WalletPayment,
 } from '../shared/types';
+import type { EventDateRange } from './eventDateFilter';
 
 // In dev, the machine running Metro is also running the API — derive its
 // address from the dev-server URL so physical devices on the same network
@@ -175,6 +178,13 @@ export const api = {
       body: JSON.stringify(data),
     });
   },
+  chatEventDraft(data: EventDraftChatRequest, signal?: AbortSignal) {
+    return request<EventDraftChatResponse>('/event-drafts/chat', {
+      method: 'POST',
+      body: JSON.stringify(data),
+      signal,
+    });
+  },
   eventBySlug(slug: string) {
     return request<{ event: EventDetail }>(`/events/by-slug/${encodeURIComponent(slug)}`);
   },
@@ -242,10 +252,22 @@ export const api = {
   home() {
     return request<HomeFeed>('/discover/home');
   },
-  explore(city?: string, category?: Category | 'all') {
+  explore(
+    city?: string,
+    category?: Category | 'all',
+    dateRange?: EventDateRange | null,
+    q?: string
+  ) {
     const params = new URLSearchParams();
     if (city) params.set('city', city);
     if (category && category !== 'all') params.set('category', category);
+    if (dateRange) {
+      // The device computes local calendar boundaries; ISO instants preserve
+      // those exact boundaries when the API server is in another time zone.
+      params.set('dateFrom', dateRange.from.toISOString());
+      params.set('dateTo', dateRange.to.toISOString());
+    }
+    if (q?.trim()) params.set('q', q.trim());
     const qs = params.toString();
     return request<{ events: ExploreEvent[]; cities: string[] }>(
       `/discover/explore${qs ? `?${qs}` : ''}`

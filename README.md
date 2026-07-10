@@ -24,6 +24,14 @@ flow and every event is created for real. (`npm run seed` still exists for
 throwaway local demos, but it is not part of the normal flow and refuses to
 run against any non-SQLite database.)
 
+### AI-assisted event creation
+
+Copy `server/.env.example` to `server/.env` and set `OPENAI_API_KEY` there.
+The key stays on the server; the authenticated app calls
+`POST /api/event-drafts/chat` and never receives it. `OPENAI_MODEL` is optional
+and defaults to the cost-efficient `gpt-5-mini`. If OpenAI is unavailable, the
+creation flow continues with its local parser and guided questions.
+
 ### Event ledger (Supabase)
 
 Every event lifecycle action — created / updated / canceled / deleted — is
@@ -131,7 +139,10 @@ screen, installable via "Add to Home Screen") alongside the API under `/api`.
    without a gate anyone with the URL could sign in as any phone number. With
    `INVITE_CODE` set, the app asks friends for the passcode before sending a
    code — share it with them out-of-band. Leave it unset for open signup.
-5. Generate a public domain (service → Settings → Networking) and share
+5. Set **`OPENAI_API_KEY`** as a Railway service variable to enable AI event
+   creation in production. Optionally set **`OPENAI_MODEL`**; never expose
+   either as an `EXPO_PUBLIC_*` variable.
+6. Generate a public domain (service → Settings → Networking) and share
    `https://<your-domain>/` — invite links (`/e/<slug>`) work directly.
 
 > **How login works here:** there's no SMS gateway wired up, so after entering
