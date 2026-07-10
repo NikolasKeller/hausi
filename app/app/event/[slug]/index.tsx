@@ -122,6 +122,9 @@ export default function EventScreen() {
   const insets = useSafeAreaInsets();
   const { user } = useAuth();
   const [event, setEvent] = useState<EventDetail | null>(null);
+  // Ids of my accepted friends — intersected with the guest list client-side
+  // so the "friends going" strip survives RSVP mutations without a refetch.
+  const [friendIds, setFriendIds] = useState<Set<string>>(new Set());
   const [error, setError] = useState<string | null>(null);
   const [menuOpen, setMenuOpen] = useState(false);
   const [inviteBusy, setInviteBusy] = useState(false);
@@ -143,6 +146,13 @@ export default function EventScreen() {
       });
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Could not load event');
+    }
+    // Best-effort — the page renders fine without the friends strip.
+    try {
+      const res = await api.myFriends();
+      setFriendIds(new Set(res.friends.map((f) => f.user.id)));
+    } catch {
+      // keep whatever we had
     }
   }, [slug]);
 
@@ -286,6 +296,10 @@ export default function EventScreen() {
   const ticket = ticketInfo(event.description, event.ticketUrl);
   // Host "text blasts" surface in their own Announcements section (newest first).
   const blasts = event.comments.filter((c) => c.type === 'blast');
+  // My friends on the guest list — GOING first, then MAYBE/WAITLIST.
+  const friendsAttending = event.rsvps
+    .filter((r) => r.status !== 'CANT' && r.user.id !== user?.id && friendIds.has(r.user.id))
+    .sort((a, b) => (a.status === 'GOING' ? 0 : 1) - (b.status === 'GOING' ? 0 : 1));
 
   return (
     <ThemeBackground theme={event.coverTheme}>
@@ -363,7 +377,13 @@ export default function EventScreen() {
             ) : null}
 
             <View style={styles.hostRow}>
-              <Avatar name={event.host.name} image={event.host.avatarImage} size={44} />
+              <Pressable
+                onPress={() => router.push(`/user/${event.host.id}`)}
+                hitSlop={6}
+                style={({ pressed }) => pressed && { opacity: 0.7 }}
+              >
+                <Avatar name={event.host.name} image={event.host.avatarImage} size={44} />
+              </Pressable>
               <View style={{ flex: 1 }}>
                 <Text style={[styles.hostedBy, { color: ink.faint }]}>Hosted by</Text>
                 <Text style={[styles.hostName, { color: ink.text }]}>
@@ -418,6 +438,37 @@ export default function EventScreen() {
                 </Text>
               ) : null}
             </Glass>
+
+            {/* Friends on the guest list — the "will my people be there?" signal. */}
+            {friendsAttending.length ? (
+              <Glass tint={ink.glassTint} radius={radius.md} style={styles.friendsCard}>
+                <Text style={[styles.friendsKicker, { color: ink.subtext }]}>
+                  {friendsAttending.length === 1
+                    ? 'A friend will be there'
+                    : `${friendsAttending.length} friends will be there`}{' '}
+                  🎉
+                </Text>
+                {friendsAttending.map((r) => (
+                  <Pressable
+                    key={r.user.id}
+                    onPress={() => router.push(`/user/${r.user.id}`)}
+                    style={({ pressed }) => [styles.friendRow, pressed && { opacity: 0.7 }]}
+                  >
+                    <Avatar name={r.user.name} image={r.user.avatarImage} size={34} />
+                    <Text style={[styles.friendName, { color: ink.text }]} numberOfLines={1}>
+                      {r.user.name}
+                    </Text>
+                    <Text style={[styles.friendStatus, { color: ink.subtext }]}>
+                      {r.status === 'GOING'
+                        ? 'going'
+                        : r.status === 'MAYBE'
+                          ? 'interested'
+                          : 'waitlist'}
+                    </Text>
+                  </Pressable>
+                ))}
+              </Glass>
+            ) : null}
 
             {ticket.text ? (
               <RichDescription
@@ -728,6 +779,25 @@ const styles = StyleSheet.create({
   metaCard: {
     padding: spacing.md,
     gap: spacing.sm,
+  },
+  friendsCard: {
+    padding: spacing.md,
+    gap: spacing.sm,
+  },
+  friendsKicker: {
+    ...kicker(),
+  },
+  friendRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+  },
+  friendName: {
+    flex: 1,
+    ...uiText(15, '600'),
+  },
+  friendStatus: {
+    ...uiText(13, '500'),
   },
   metaLine: {
     ...uiText(16, '500'),

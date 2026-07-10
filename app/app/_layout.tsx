@@ -185,6 +185,7 @@ function RootNavigator() {
           headerLeft: () => <ModalClose />,
         }}
       />
+      <Stack.Screen name="user/[id]" options={{ headerShown: false }} />
       <Stack.Screen name="event/[slug]/index" options={{ headerShown: false }} />
       <Stack.Screen
         name="event/[slug]/edit"
