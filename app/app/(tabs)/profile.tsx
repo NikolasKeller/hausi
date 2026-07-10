@@ -12,7 +12,7 @@ import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 import { LinearGradient } from 'expo-linear-gradient';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import type { EventSummary, Mutual, MyProfile } from '../../shared/types';
+import type { DirectEventInvite, EventSummary, Mutual, MyProfile } from '../../shared/types';
 import { api, mediaUrl } from '../../lib/api';
 import { useAuth } from '../../lib/auth';
 import { confirmDialog, notify } from '../../lib/dialogs';
@@ -21,7 +21,7 @@ import { colors, radius, shadow, spacing } from '../../lib/theme';
 import { display, uiText } from '../../lib/fonts';
 import { Avatar } from '../../components/Avatar';
 import { Button } from '../../components/ui';
-import { EventCard } from '../../components/EventCard';
+import { EventCard, formatEventDate } from '../../components/EventCard';
 import { ChromeText } from '../../components/ChromeText';
 import { SettingsSheet } from '../../components/SettingsSheet';
 import { withScreenBackground } from '../../components/ScreenBackground';
@@ -38,6 +38,7 @@ function ProfileScreen() {
   // marks them GOING server-side).
   // Favorited events (heart toggle) — reuses the "interested"/MAYBE RSVP.
   const [favorites, setFavorites] = useState<EventSummary[]>([]);
+  const [eventInvites, setEventInvites] = useState<DirectEventInvite[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [settingsOpen, setSettingsOpen] = useState(false);
   // User ids with an in-flight friend action, so a row can't double-fire.
@@ -57,6 +58,11 @@ function ProfileScreen() {
     } catch {
       // keep whatever we had
     }
+    try {
+      setEventInvites((await api.myEventInvites()).invites);
+    } catch {
+      // best-effort
+    }
   }, []);
 
   useFocusEffect(
@@ -75,6 +81,12 @@ function ProfileScreen() {
         try {
           const res = await api.myEvents();
           if (active) setFavorites(res.events.filter((ev) => ev.myRsvp === 'MAYBE'));
+        } catch {
+          // best-effort
+        }
+        try {
+          const res = await api.myEventInvites();
+          if (active) setEventInvites(res.invites);
         } catch {
           // best-effort
         }
@@ -196,6 +208,12 @@ function ProfileScreen() {
 
           <View style={[styles.heroButtons, { top: insets.top + spacing.sm }]}>
             <Pressable
+              onPress={() => router.push('/people')}
+              style={({ pressed }) => [styles.roundButton, pressed && styles.pressed]}
+            >
+              <Ionicons name="person-add-outline" size={18} color={colors.text} />
+            </Pressable>
+            <Pressable
               onPress={shareProfile}
               style={({ pressed }) => [styles.roundButton, pressed && styles.pressed]}
             >
@@ -216,6 +234,7 @@ function ProfileScreen() {
           <ChromeText style={styles.bigName} numberOfLines={2}>
             {profile.name}
           </ChromeText>
+          <Text style={styles.username}>@{profile.username}</Text>
           <View style={styles.pillRow}>
             <View style={styles.joinedPill}>
               <Ionicons name="sparkles" size={13} color={colors.accent} />
@@ -250,6 +269,45 @@ function ProfileScreen() {
 
         {/* Incoming friend requests — the most actionable social item, so it
             sits right under the hero. */}
+        {eventInvites.length ? (
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>Invites for you ✨</Text>
+            <View style={styles.personList}>
+              {eventInvites.map((invite) => (
+                <View key={invite.id} style={styles.personRow}>
+                  <Pressable
+                    onPress={() => router.push(`/event/${invite.event.slug}`)}
+                    style={({ pressed }) => [styles.personMain, pressed && styles.pressed]}
+                  >
+                    <Avatar
+                      name={invite.invitedBy.name}
+                      image={invite.invitedBy.avatarImage}
+                      size={40}
+                    />
+                    <View style={{ flex: 1 }}>
+                      <Text style={styles.personName} numberOfLines={1}>
+                        {invite.event.title}
+                      </Text>
+                      <Text style={styles.personMeta} numberOfLines={1}>
+                        {invite.invitedBy.name} invited you · {formatEventDate(invite.event.date)}
+                      </Text>
+                    </View>
+                  </Pressable>
+                  <Pressable
+                    onPress={async () => {
+                      await api.dismissEventInvite(invite.id).catch(() => {});
+                      setEventInvites((current) => current.filter((item) => item.id !== invite.id));
+                    }}
+                    style={styles.declineButton}
+                  >
+                    <Ionicons name="close" size={16} color={colors.muted} />
+                  </Pressable>
+                </View>
+              ))}
+            </View>
+          </View>
+        ) : null}
+
         {profile.incomingRequests.length ? (
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>Friend requests 💌</Text>
@@ -383,6 +441,21 @@ function ProfileScreen() {
             </View>
             <Ionicons name="chevron-forward" size={18} color={colors.muted} />
           </Pressable>
+          {profile.isAdmin ? (
+            <Pressable
+              onPress={() => router.push('/admin/events')}
+              style={({ pressed }) => [styles.walletRow, pressed && styles.pressed]}
+            >
+              <View style={styles.walletIcon}>
+                <Ionicons name="shield-checkmark-outline" size={22} color={colors.onInk} />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.walletTitle}>Public event review</Text>
+                <Text style={styles.walletMeta}>Approve submissions for Explore</Text>
+              </View>
+              <Ionicons name="chevron-forward" size={18} color={colors.muted} />
+            </Pressable>
+          ) : null}
         </View>
 
         {/* Favorited events — tap the heart on an event to save it here. */}
@@ -494,6 +567,11 @@ const styles = StyleSheet.create({
     ...display(44),
     color: colors.text,
     textAlign: 'center',
+  },
+  username: {
+    ...uiText(14, '600'),
+    color: colors.muted,
+    marginTop: -spacing.sm,
   },
   pillRow: {
     flexDirection: 'row',

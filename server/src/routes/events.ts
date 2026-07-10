@@ -16,6 +16,7 @@ import { normalizePhone, phoneCountry } from '../lib/phone.js';
 import { sendSms, smsEnabled } from '../lib/sms.js';
 import { unlinkImage } from '../lib/uploads.js';
 import { findMutuals, rememberPartyConnections } from '../lib/mutuals.js';
+import { findFriendIds } from '../lib/friends.js';
 import { ledger } from '../lib/ledger.js';
 import {
   CATEGORIES,
@@ -64,7 +65,10 @@ const eventInputSchema = z.object({
   location: z.string().trim().min(1).max(LIMITS.location),
   city: z.string().trim().max(80).optional(),
   category: z.enum(CATEGORIES).optional(),
+  // This is a publication REQUEST, not permission to enter discovery. New
+  // public requests stay hidden until an admin approves them.
   isPublic: z.boolean().optional(),
+  hideLocation: z.boolean().optional(),
   costPerPerson: z.string().trim().max(60).optional(),
   dressCode: z.string().trim().max(120).optional(),
   maxGuests: z.number().int().min(1).max(LIMITS.maxGuests).nullable().optional(),
@@ -74,6 +78,10 @@ const eventInputSchema = z.object({
 
 const rsvpSchema = z.object({
   status: z.enum(RSVP_CHOICES),
+});
+
+const directInviteSchema = z.object({
+  userIds: z.array(z.string().min(1)).min(1).max(30),
 });
 
 // A +1 is either an existing iykyk user (picked from mutuals) or a manual
@@ -231,7 +239,9 @@ eventRoutes.post('/', async (c) => {
       location: data.location ?? '',
       city: data.city ?? me.city,
       category: data.category ?? 'community',
-      isPublic: data.isPublic ?? false,
+      isPublic: false,
+      publicationStatus: data.isPublic ? 'PENDING' : 'PRIVATE',
+      hideLocation: data.hideLocation ?? false,
       costPerPerson: data.costPerPerson ?? '',
       dressCode: data.dressCode ?? '',
       maxGuests: data.maxGuests ?? null,
@@ -300,36 +310,49 @@ eventRoutes.patch('/:id', async (c) => {
   const parsed = eventInputSchema.partial().safeParse(await c.req.json().catch(() => null));
   if (!parsed.success) return c.json({ error: 'Invalid event data' }, 400);
   const data = parsed.data;
+  const { isPublic: requestedPublic, ...eventChanges } = data;
+  const publicationChanges =
+    requestedPublic === undefined
+      ? {}
+      : requestedPublic
+        ? existing.publicationStatus === 'APPROVED'
+          ? { isPublic: true, publicationStatus: 'APPROVED' }
+          : { isPublic: false, publicationStatus: 'PENDING' }
+        : { isPublic: false, publicationStatus: 'PRIVATE' };
 
   const event = await db.$transaction(async (tx) => {
     await tx.event.update({
       where: { id: existing.id },
-      data,
+      data: { ...eventChanges, ...publicationChanges },
       include: eventInclude,
     });
 
     // A lowered plus-one limit clamps existing parties so nobody is stuck
     // above the new cap (and the freed seats can go to the waitlist). Drop the
     // named +1 rows too, keeping the oldest, so the count stays in sync.
-    if (data.plusOneLimit != null) {
+    if (eventChanges.plusOneLimit != null) {
       const over = await tx.rsvp.findMany({
-        where: { eventId: existing.id, plusOnes: { gt: data.plusOneLimit } },
+        where: { eventId: existing.id, plusOnes: { gt: eventChanges.plusOneLimit } },
         include: { plusOneGuests: { orderBy: { createdAt: 'asc' } } },
       });
       for (const r of over) {
-        const excess = r.plusOneGuests.slice(data.plusOneLimit);
+        const excess = r.plusOneGuests.slice(eventChanges.plusOneLimit);
         if (excess.length) {
           await tx.plusOne.deleteMany({ where: { id: { in: excess.map((g) => g.id) } } });
         }
         await tx.rsvp.update({
           where: { id: r.id },
-          data: { plusOnes: data.plusOneLimit },
+          data: { plusOnes: eventChanges.plusOneLimit },
         });
       }
     }
 
     // Capacity may have grown (cap raised/dropped, parties clamped, RSVPs reopened).
-    if ('maxGuests' in data || data.plusOneLimit != null || data.rsvpsOpen === true) {
+    if (
+      'maxGuests' in eventChanges ||
+      eventChanges.plusOneLimit != null ||
+      eventChanges.rsvpsOpen === true
+    ) {
       await promoteWaitlist(tx, existing.id);
     }
 
@@ -337,7 +360,10 @@ eventRoutes.patch('/:id', async (c) => {
   });
 
   // A replaced cover leaves the old file orphaned on the volume — reclaim it.
-  if (data.coverImage !== undefined && data.coverImage !== existing.coverImage) {
+  if (
+    eventChanges.coverImage !== undefined &&
+    eventChanges.coverImage !== existing.coverImage
+  ) {
     await unlinkImage(existing.coverImage);
   }
 
@@ -612,12 +638,15 @@ eventRoutes.post('/:id/plus-one', async (c) => {
         ) {
           throw new HttpError("You're already going - pick someone else", 400);
         }
-        // Linked +1s must be someone you've actually partied with. The client
-        // only offers mutuals; this closes the direct-API bypass (attaching a
-        // stranger's name/avatar to the guest list without any connection).
-        const mutuals = await findMutuals(tx, userId);
-        if (!mutuals.has(guest.id)) {
-          throw new HttpError("You can only bring people you've partied with", 403);
+        // Linked +1s must be an accepted friend or someone you've actually
+        // partied with. This closes the direct-API bypass while making the
+        // social picker useful before two friends attend their first event.
+        const [mutuals, friends] = await Promise.all([
+          findMutuals(tx, userId),
+          findFriendIds(tx, userId),
+        ]);
+        if (!mutuals.has(guest.id) && !friends.has(guest.id)) {
+          throw new HttpError('You can only bring friends or people you know', 403);
         }
         // Don't double-count someone already on the list or already brought by
         // another guest.
@@ -719,6 +748,49 @@ eventRoutes.delete('/:id/plus-one/:plusOneId', async (c) => {
 
   const updated = await db.event.findUniqueOrThrow({ where: { id: eventId }, include: eventInclude });
   return c.json({ event: toEventDetail(updated, userId) });
+});
+
+// Direct in-app invites for people the host already knows (accepted friends or
+// computed mutuals). Recipients still choose Yes/Maybe/No; an invite never
+// reserves capacity by itself.
+eventRoutes.post('/:id/invites', async (c) => {
+  const userId = c.get('userId');
+  const eventId = c.req.param('id');
+  const parsed = directInviteSchema.safeParse(await c.req.json().catch(() => null));
+  if (!parsed.success) return c.json({ error: 'Choose at least one person' }, 400);
+
+  const event = await db.event.findUnique({
+    where: { id: eventId },
+    include: { cohosts: true },
+  });
+  if (!event || event.canceledAt) return c.json({ error: 'Event not found' }, 404);
+  if (!canManageEvent(event, userId)) {
+    return c.json({ error: 'Only hosts can invite people directly' }, 403);
+  }
+
+  const [friends, mutualMap] = await Promise.all([
+    findFriendIds(db, userId),
+    findMutuals(db, userId),
+  ]);
+  const allowed = new Set([...friends, ...mutualMap.keys()]);
+  const targets = [...new Set(parsed.data.userIds)].filter(
+    (id) => id !== userId && allowed.has(id)
+  );
+  if (!targets.length) {
+    return c.json({ error: 'Direct invites are for friends and people you know' }, 403);
+  }
+
+  await db.$transaction(
+    targets.map((targetId) =>
+      db.eventInvite.upsert({
+        where: { eventId_userId: { eventId, userId: targetId } },
+        create: { eventId, userId: targetId, invitedById: userId },
+        update: { invitedById: userId, createdAt: new Date() },
+      })
+    )
+  );
+  const invited = await db.user.findMany({ where: { id: { in: targets } } });
+  return c.json({ invited: invited.map(toPublicUser) });
 });
 
 // Cohost management — creator only. Inviting is by phone: we create a PENDING

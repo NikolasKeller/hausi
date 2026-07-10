@@ -32,7 +32,11 @@ discoverRoutes.get('/home', async (c) => {
   const friendIds = new Set([...mutuals.keys(), ...friends]);
 
   const events = await db.event.findMany({
-    where: { isPublic: true, canceledAt: null, date: { gte: new Date() } },
+    where: {
+      ...(me.isAdmin ? {} : { isPublic: true }),
+      canceledAt: null,
+      date: { gte: new Date() },
+    },
     include: exploreInclude,
     orderBy: { date: 'asc' },
     take: 1000,
@@ -60,6 +64,10 @@ discoverRoutes.get('/home', async (c) => {
 // Public events filtered by city and category.
 discoverRoutes.get('/explore', async (c) => {
   const userId = c.get('userId');
+  const me = await db.user.findUniqueOrThrow({
+    where: { id: userId },
+    select: { isAdmin: true },
+  });
   const wantedCity = c.req.query('city')?.trim().toLowerCase();
   const categoryParam = c.req.query('category')?.trim();
   const category = CATEGORIES.includes(categoryParam as Category)
@@ -71,7 +79,7 @@ discoverRoutes.get('/explore', async (c) => {
   // Francisco") still line up — SQLite equality is case-sensitive.
   const events = await db.event.findMany({
     where: {
-      isPublic: true,
+      ...(me.isAdmin ? {} : { isPublic: true }),
       canceledAt: null,
       date: { gte: new Date() },
       ...(category ? { category } : {}),
@@ -90,7 +98,12 @@ discoverRoutes.get('/explore', async (c) => {
   // list AND the event feed, so a fake city never surfaces on Explore — as a
   // switcher option or on an event card (e.g. reached via a stale/fake filter).
   const cityRows = await db.event.findMany({
-    where: { isPublic: true, canceledAt: null, date: { gte: new Date() }, city: { not: '' } },
+    where: {
+      ...(me.isAdmin ? {} : { isPublic: true }),
+      canceledAt: null,
+      date: { gte: new Date() },
+      city: { not: '' },
+    },
     select: { city: true },
   });
   const distinct = new Map<string, string>();

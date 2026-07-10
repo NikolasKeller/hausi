@@ -9,9 +9,11 @@ import { unlinkImage } from '../lib/uploads.js';
 import { findMutuals } from '../lib/mutuals.js';
 import { computeBadges } from '../lib/badges.js';
 import { pairStates } from '../lib/friends.js';
+import { normalizeUsername, publicUsername, USERNAME_PATTERN } from '../lib/username.js';
 import {
   LIMITS,
   type CoverTheme,
+  type DirectEventInvite,
   type Friend,
   type FriendRequest,
   type MyProfile,
@@ -27,6 +29,13 @@ const UPLOAD_PATH = /^\/uploads\/[a-zA-Z0-9_-]+\.(jpg|jpeg|png|webp)$/;
 
 const updateSchema = z.object({
   name: z.string().trim().min(1).max(LIMITS.name).optional(),
+  username: z
+    .string()
+    .transform(normalizeUsername)
+    .refine((value) => USERNAME_PATTERN.test(value), {
+      message: 'Username must be 3-24 letters, numbers or underscores',
+    })
+    .optional(),
   avatarEmoji: z.string().trim().min(1).max(8).optional(),
   // Path to an uploaded profile photo (from POST /api/uploads); '' clears it.
   avatarImage: z
@@ -91,6 +100,7 @@ meRoutes.get('/', async (c) => {
   const profile: MyProfile = {
     id: me.id,
     name: me.name,
+    username: publicUsername(me),
     email: me.email,
     phone: me.phone,
     avatarEmoji: me.avatarEmoji,
@@ -98,6 +108,7 @@ meRoutes.get('/', async (c) => {
     bio: me.bio,
     city: me.city,
     joinedAt: me.createdAt.toISOString(),
+    isAdmin: me.isAdmin,
     badges,
     mutuals,
     friends,
@@ -122,6 +133,10 @@ meRoutes.patch('/', async (c) => {
   }
 
   const existing = await db.user.findUniqueOrThrow({ where: { id: userId } });
+  if (parsed.data.username) {
+    const taken = await db.user.findUnique({ where: { username: parsed.data.username } });
+    if (taken && taken.id !== userId) return c.json({ error: 'That username is taken' }, 409);
+  }
   const me = await db.user.update({ where: { id: userId }, data: parsed.data });
   // Replacing or clearing the profile photo orphans the old upload — reclaim it.
   if (parsed.data.avatarImage !== undefined && existing.avatarImage !== me.avatarImage) {
@@ -132,6 +147,7 @@ meRoutes.patch('/', async (c) => {
     user: {
       id: me.id,
       name: me.name,
+      username: publicUsername(me),
       email: me.email,
       avatarEmoji: me.avatarEmoji,
       avatarImage: me.avatarImage,
@@ -171,6 +187,41 @@ meRoutes.get('/cohost-invites', async (c) => {
     },
   }));
   return c.json({ invites: result });
+});
+
+meRoutes.get('/event-invites', async (c) => {
+  const userId = c.get('userId');
+  const invites = await db.eventInvite.findMany({
+    where: {
+      userId,
+      event: { canceledAt: null, date: { gte: new Date() } },
+    },
+    include: { invitedBy: true, event: true },
+    orderBy: { createdAt: 'desc' },
+  });
+  const result: DirectEventInvite[] = invites.map((invite) => ({
+    id: invite.id,
+    createdAt: invite.createdAt.toISOString(),
+    invitedBy: toPublicUser(invite.invitedBy),
+    event: {
+      id: invite.event.id,
+      slug: invite.event.slug,
+      title: invite.event.title,
+      coverTheme: invite.event.coverTheme as CoverTheme,
+      coverImage: invite.event.coverImage,
+      date: invite.event.date.toISOString(),
+      city: invite.event.city,
+    },
+  }));
+  return c.json({ invites: result });
+});
+
+meRoutes.delete('/event-invites/:inviteId', async (c) => {
+  const userId = c.get('userId');
+  const invite = await db.eventInvite.findUnique({ where: { id: c.req.param('inviteId') } });
+  if (!invite || invite.userId !== userId) return c.json({ error: 'Invite not found' }, 404);
+  await db.eventInvite.delete({ where: { id: invite.id } });
+  return c.json({ ok: true });
 });
 
 // Accept a co-host invite: this is the moment we actually make the person a

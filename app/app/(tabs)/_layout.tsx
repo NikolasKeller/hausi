@@ -41,6 +41,15 @@ export default function TabsLayout() {
           ),
         }}
       />
+      <Tabs.Screen
+        name="create"
+        options={{
+          title: 'Create',
+          tabBarIcon: ({ color }) => (
+            <Ionicons name="add" size={26} color={color} />
+          ),
+        }}
+      />
       {/* Hidden "/" redirect — never shown in the bar. */}
       <Tabs.Screen name="index" options={{ href: null }} />
       <Tabs.Screen

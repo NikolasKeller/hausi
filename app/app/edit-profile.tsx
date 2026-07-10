@@ -25,6 +25,7 @@ export default function EditProfileScreen() {
   const { user, updateUser } = useAuth();
   const [loaded, setLoaded] = useState(false);
   const [name, setName] = useState('');
+  const [username, setUsername] = useState('');
   const [avatarImage, setAvatarImage] = useState('');
   const [uploading, setUploading] = useState(false);
   const [bio, setBio] = useState('');
@@ -39,6 +40,7 @@ export default function EditProfileScreen() {
         const res = await api.myProfile();
         if (!active) return;
         setName(res.profile.name);
+        setUsername(res.profile.username);
         setAvatarImage(res.profile.avatarImage);
         setBio(res.profile.bio);
         setCity(res.profile.city);
@@ -75,11 +77,17 @@ export default function EditProfileScreen() {
       setError('Name cannot be empty');
       return;
     }
+    const handle = username.trim().replace(/^@+/, '').toLowerCase();
+    if (!/^[a-z0-9_]{3,24}$/.test(handle)) {
+      setError('Username must be 3-24 letters, numbers or underscores');
+      return;
+    }
     setError(null);
     setSaving(true);
     try {
       const res = await api.updateProfile({
         name: name.trim(),
+        username: handle,
         avatarImage,
         bio: bio.trim(),
         city: city.trim(),
@@ -88,6 +96,7 @@ export default function EditProfileScreen() {
         updateUser({
           ...user,
           name: res.user.name,
+          username: res.user.username,
           avatarImage: res.user.avatarImage,
         });
       }
@@ -130,6 +139,24 @@ export default function EditProfileScreen() {
           onChangeText={setName}
           placeholder="Your name"
           maxLength={LIMITS.name}
+        />
+
+        <Field
+          label="Username"
+          value={username}
+          onChangeText={(value) =>
+            setUsername(
+              value
+                .replace(/^@+/, '')
+                .toLowerCase()
+                .replace(/[^a-z0-9_]/g, '')
+                .slice(0, LIMITS.username)
+            )
+          }
+          placeholder="username"
+          autoCapitalize="none"
+          autoCorrect={false}
+          maxLength={LIMITS.username}
         />
 
         <View style={{ gap: spacing.sm }}>

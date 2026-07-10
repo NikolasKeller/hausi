@@ -17,6 +17,7 @@ import { db } from './lib/db.js';
 import { uploadRoutes } from './routes/uploads.js';
 import { ticketRoutes } from './routes/tickets.js';
 import { walletRoutes } from './routes/wallet.js';
+import { adminRoutes } from './routes/admin.js';
 import { checkinRoutes } from './routes/checkin.js';
 import { demoCheckoutRoutes } from './routes/demoCheckout.js';
 import { MIME_BY_EXT, UPLOAD_DIR } from './lib/uploads.js';
@@ -42,6 +43,7 @@ api.route('/users', userRoutes);
 api.route('/uploads', uploadRoutes);
 api.route('/tickets', ticketRoutes);
 api.route('/wallet', walletRoutes);
+api.route('/admin', adminRoutes);
 app.route('/api', api);
 // Public pass verification page (opened by scanning a wallet-pass QR) — lives
 // outside /api because door staff open it in a plain browser, no auth.
@@ -116,6 +118,20 @@ try {
   await dedupeUsersByPhone();
 } catch (e) {
   console.error('User dedupe skipped:', e);
+}
+
+// Production admin bootstrap. Set ADMIN_USER_IDS to a comma-separated list of
+// stable user ids; the role itself remains server-owned and cannot be requested
+// by clients. Dev login is promoted separately in auth.ts.
+const adminUserIds = (process.env.ADMIN_USER_IDS ?? '')
+  .split(',')
+  .map((id) => id.trim())
+  .filter(Boolean);
+if (adminUserIds.length) {
+  await db.user.updateMany({
+    where: { id: { in: adminUserIds } },
+    data: { isAdmin: true },
+  });
 }
 
 // Persistence check: if this count keeps resetting after a redeploy, the

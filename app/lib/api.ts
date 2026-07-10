@@ -2,9 +2,11 @@ import { Platform } from 'react-native';
 import Constants from 'expo-constants';
 import type {
   AuthResponse,
+  AdminEventSubmission,
   Category,
   CommentEntry,
   DeliveryChannel,
+  DirectEventInvite,
   EventDetail,
   EventInput,
   EventSummary,
@@ -18,6 +20,8 @@ import type {
   PhoneRequestResponse,
   PhoneVerifyResponse,
   PublicProfile,
+  PublicUser,
+  UserSearchResult,
   RsvpStatus,
   TicketJobInfo,
   TicketProvider,
@@ -213,6 +217,15 @@ export const api = {
   myCohostInvites() {
     return request<{ invites: PendingCohostInvite[] }>('/me/cohost-invites');
   },
+  myEventInvites() {
+    return request<{ invites: DirectEventInvite[] }>('/me/event-invites');
+  },
+  dismissEventInvite(inviteId: string) {
+    return request<{ ok: boolean }>(
+      `/me/event-invites/${encodeURIComponent(inviteId)}`,
+      { method: 'DELETE' }
+    );
+  },
   // Accept a co-host invite → I become a co-host (returns the refreshed event).
   acceptCohostInvite(inviteId: string) {
     return request<{ event: EventDetail }>(
@@ -243,6 +256,7 @@ export const api = {
   },
   updateProfile(data: {
     name?: string;
+    username?: string;
     avatarEmoji?: string;
     avatarImage?: string;
     bio?: string;
@@ -256,6 +270,11 @@ export const api = {
   // Another user's profile page (public-safe fields + friendship context).
   userProfile(userId: string) {
     return request<{ profile: PublicProfile }>(`/users/${encodeURIComponent(userId)}`);
+  },
+  searchUsers(query: string) {
+    return request<{ users: UserSearchResult[] }>(
+      `/users/search?q=${encodeURIComponent(query)}`
+    );
   },
   // Friends + pending requests in one round trip.
   myFriends() {
@@ -338,6 +357,12 @@ export const api = {
       { method: 'POST', body: JSON.stringify({ text }) }
     );
   },
+  invitePeople(eventId: string, userIds: string[]) {
+    return request<{ invited: PublicUser[] }>(`/events/${eventId}/invites`, {
+      method: 'POST',
+      body: JSON.stringify({ userIds }),
+    });
+  },
   // Step 1+2 of the agentic purchase: submit the buyer identity and kick off
   // the server-side availability check. The returned job starts in 'checking'
   // and moves to 'available' or 'soldout' (poll with ticketJob). No payment
@@ -371,5 +396,22 @@ export const api = {
   // hosts or is going to. QRs come pre-rendered as data URLs.
   myWallet() {
     return request<{ passes: WalletPass[] }>('/wallet');
+  },
+  adminEventSubmissions(status: 'PENDING' | 'REJECTED' = 'PENDING') {
+    return request<{ events: AdminEventSubmission[] }>(
+      `/admin/events?status=${encodeURIComponent(status)}`
+    );
+  },
+  approveEvent(eventId: string) {
+    return request<{ event: AdminEventSubmission }>(
+      `/admin/events/${encodeURIComponent(eventId)}/approve`,
+      { method: 'POST' }
+    );
+  },
+  rejectEvent(eventId: string) {
+    return request<{ event: AdminEventSubmission }>(
+      `/admin/events/${encodeURIComponent(eventId)}/reject`,
+      { method: 'POST' }
+    );
   },
 };

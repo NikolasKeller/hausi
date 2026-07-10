@@ -127,6 +127,7 @@ function UserProfileScreen() {
           <ChromeText style={styles.bigName} numberOfLines={2}>
             {profile.name}
           </ChromeText>
+          <Text style={styles.username}>@{profile.username}</Text>
           <View style={styles.pillRow}>
             {profile.city ? (
               <View style={styles.pill}>
@@ -297,6 +298,11 @@ const styles = StyleSheet.create({
     ...display(38),
     color: colors.text,
     textAlign: 'center',
+  },
+  username: {
+    ...uiText(14, '600'),
+    color: colors.muted,
+    marginTop: -spacing.sm,
   },
   pillRow: {
     flexDirection: 'row',

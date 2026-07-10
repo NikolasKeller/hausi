@@ -16,6 +16,8 @@ datasource db {
 model User {
   id                 String    @id @default(cuid())
   name               String    @default("")
+  // Public, unique handle used for search, invites and mentions.
+  username           String?   @unique
   email              String?   @unique
   passwordHash       String?
   phone              String?   @unique
@@ -30,6 +32,9 @@ model User {
   // Curator / venue / promoter accounts (e.g. "YE Munich"). They host events
   // but are not real people, so they never count as a "mutual" friend.
   isOrganization     Boolean   @default(false)
+  // Product admins can review public-event submissions and, in preview builds,
+  // inspect private events. Never inferred from a client request.
+  isAdmin            Boolean   @default(false)
   createdAt      DateTime       @default(now())
   events         Event[]        @relation("HostEvents")
   rsvps          Rsvp[]
@@ -43,6 +48,8 @@ model User {
   partyMemoriesOf PartyConnection[] @relation("PartyMemoryOf")
   friendshipsSent     Friendship[] @relation("FriendshipsSent")
   friendshipsReceived Friendship[] @relation("FriendshipsReceived")
+  eventInvitesReceived EventInvite[] @relation("EventInvitesReceived")
+  eventInvitesSent     EventInvite[] @relation("EventInvitesSent")
 }
 
 // Records who uploaded each file (path = "/uploads/x.jpg") so a user can only
@@ -131,6 +138,11 @@ model Event {
   city          String        @default("")
   category      String        @default("community")
   isPublic      Boolean       @default(false)
+  // PRIVATE | PENDING | APPROVED | REJECTED. `isPublic` stays the fast
+  // discovery flag and is true only after an admin approves the submission.
+  publicationStatus String    @default("PRIVATE")
+  // Hosts may keep a real venue private until a guest is confirmed GOING.
+  hideLocation  Boolean       @default(false)
   costPerPerson String        @default("")
   dressCode     String        @default("")
   maxGuests     Int?
@@ -144,6 +156,23 @@ model Event {
   comments      Comment[]
   cohosts       EventCohost[]
   cohostInvites CohostInvite[]
+  invites       EventInvite[]
+}
+
+// A direct in-app invite from a host to a friend/mutual. The invite itself
+// does not consume capacity; the recipient still chooses an RSVP on the event.
+model EventInvite {
+  id          String   @id @default(cuid())
+  eventId     String
+  event       Event    @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  userId      String
+  user        User     @relation("EventInvitesReceived", fields: [userId], references: [id], onDelete: Cascade)
+  invitedById String
+  invitedBy   User     @relation("EventInvitesSent", fields: [invitedById], references: [id], onDelete: Cascade)
+  createdAt   DateTime @default(now())
+
+  @@unique([eventId, userId])
+  @@index([userId, createdAt])
 }
 
 // A pending co-host invitation, addressed to a phone number (the invitee may

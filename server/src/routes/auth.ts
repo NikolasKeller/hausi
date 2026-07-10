@@ -11,6 +11,7 @@ import {
   type AuthVariables,
 } from '../lib/auth.js';
 import { normalizePhone } from '../lib/phone.js';
+import { publicUsername } from '../lib/username.js';
 import {
   channelEnabled,
   checkVerification,
@@ -77,6 +78,7 @@ function devLoginAllowed(c: Context): boolean {
 async function authResponse(user: {
   id: string;
   name: string;
+  username: string | null;
   email: string | null;
   phone: string | null;
   avatarEmoji: string;
@@ -87,6 +89,7 @@ async function authResponse(user: {
     user: {
       id: user.id,
       name: user.name,
+      username: publicUsername(user),
       email: user.email,
       phone: user.phone,
       avatarEmoji: user.avatarEmoji,
@@ -103,6 +106,7 @@ async function sessionJson(
   user: {
     id: string;
     name: string;
+    username: string | null;
     email: string | null;
     phone: string | null;
     avatarEmoji: string;
@@ -406,8 +410,10 @@ authRoutes.post('/dev/login', async (c) => {
 
   const user = await db.user.upsert({
     where: { phone },
-    create: { phone, name: name ?? 'Dev', avatarEmoji: '🛠️' },
-    update: name ? { name } : {},
+    // Local developer login doubles as the preview admin account. This route
+    // is already localhost-only and 404s in production.
+    create: { phone, name: name ?? 'Dev', avatarEmoji: '🛠️', isAdmin: true },
+    update: { ...(name ? { name } : {}), isAdmin: true },
   });
   await claimPlusOneSpots(user.id, phone);
   return sessionJson(c, user, { isNew: user.name.trim() === '' });

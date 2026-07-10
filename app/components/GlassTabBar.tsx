@@ -156,9 +156,16 @@ export function GlassTabBar({ state, descriptors, navigation }: TabBarProps) {
               if (!focused && !event.defaultPrevented) navigation.navigate(route.name);
             };
 
+            const create = route.name === 'create';
             return (
               <Pressable key={route.key} onPress={onPress} style={styles.tab}>
-                {options.tabBarIcon?.({ color, focused, size: 22 })}
+                <View style={create ? [styles.createIcon, focused && styles.createIconFocused] : null}>
+                  {options.tabBarIcon?.({
+                    color: create ? (focused ? colors.onInk : colors.text) : color,
+                    focused,
+                    size: create ? 26 : 22,
+                  })}
+                </View>
                 <Text style={[styles.label, { color }]} numberOfLines={1}>
                   {label}
                 </Text>
@@ -217,6 +224,22 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     gap: 1,
     paddingVertical: 5,
+  },
+  createIcon: {
+    width: 34,
+    height: 34,
+    marginTop: -8,
+    marginBottom: -4,
+    borderRadius: 17,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(255,255,255,0.14)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.22)',
+  },
+  createIconFocused: {
+    backgroundColor: colors.ink,
+    borderColor: colors.ink,
   },
   label: {
     ...uiText(10, '600'),

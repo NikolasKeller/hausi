@@ -27,6 +27,8 @@ export default function SetupScreen() {
   const [photo, setPhoto] = useState(user?.avatarImage ?? '');
   const [uploading, setUploading] = useState(false);
   const [name, setName] = useState('');
+  const [username, setUsername] = useState('');
+  const [usernameTouched, setUsernameTouched] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -56,6 +58,11 @@ export default function SetupScreen() {
       setError('Tell us your name first');
       return;
     }
+    const handle = username.trim().replace(/^@+/, '').toLowerCase();
+    if (!/^[a-z0-9_]{3,24}$/.test(handle)) {
+      setError('Choose a username with 3-24 letters, numbers or underscores');
+      return;
+    }
     setBusy(true);
     setError(null);
     // Grab the user's city on onboarding so their home feed is local from the
@@ -67,8 +74,13 @@ export default function SetupScreen() {
       // No location permission / lookup failed — proceed without it.
     }
     try {
-      await api.updateProfile({ name: trimmed, avatarImage: photo, ...(city ? { city } : {}) });
-      updateUser({ ...user!, name: trimmed, avatarImage: photo });
+      await api.updateProfile({
+        name: trimmed,
+        username: handle,
+        avatarImage: photo,
+        ...(city ? { city } : {}),
+      });
+      updateUser({ ...user!, name: trimmed, username: handle, avatarImage: photo });
       router.replace('/');
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Could not save your profile');
@@ -133,6 +145,16 @@ export default function SetupScreen() {
               value={name}
               onChangeText={(t) => {
                 setName(t);
+                if (!usernameTouched) {
+                  setUsername(
+                    t
+                      .trim()
+                      .toLowerCase()
+                      .replace(/[^a-z0-9]+/g, '_')
+                      .replace(/^_+|_+$/g, '')
+                      .slice(0, 24)
+                  );
+                }
                 if (error) setError(null);
               }}
               placeholder="Your name"
@@ -143,6 +165,31 @@ export default function SetupScreen() {
               onSubmitEditing={finish}
               style={styles.nameInput}
             />
+            <View style={styles.usernameWrap}>
+              <Text style={styles.at}>@</Text>
+              <TextInput
+                value={username}
+                onChangeText={(value) => {
+                  setUsernameTouched(true);
+                  setUsername(
+                    value
+                      .replace(/^@+/, '')
+                      .toLowerCase()
+                      .replace(/[^a-z0-9_]/g, '')
+                      .slice(0, 24)
+                  );
+                  if (error) setError(null);
+                }}
+                placeholder="username"
+                placeholderTextColor={colors.muted}
+                autoCapitalize="none"
+                autoCorrect={false}
+                maxLength={24}
+                returnKeyType="done"
+                onSubmitEditing={finish}
+                style={styles.usernameInput}
+              />
+            </View>
             <ErrorText message={error} />
 
             <View style={{ flex: 1 }} />
@@ -150,7 +197,9 @@ export default function SetupScreen() {
               title="Continue"
               onPress={finish}
               loading={busy}
-              disabled={uploading || !name.trim()}
+              disabled={
+                uploading || !name.trim() || !/^[a-z0-9_]{3,24}$/.test(username)
+              }
               variant="primary"
             />
           </ScrollView>
@@ -222,5 +271,25 @@ const styles = StyleSheet.create({
     ...uiText(18, '600'),
     textAlign: 'center',
     ...shadow.card,
+  },
+  usernameWrap: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: colors.inputBg,
+    borderWidth: 1,
+    borderColor: colors.cardBorder,
+    borderRadius: radius.md,
+    paddingHorizontal: spacing.md,
+    ...shadow.card,
+  },
+  at: {
+    ...uiText(18, '700'),
+    color: colors.muted,
+  },
+  usernameInput: {
+    flex: 1,
+    color: colors.text,
+    paddingVertical: 16,
+    ...uiText(18, '600'),
   },
 });

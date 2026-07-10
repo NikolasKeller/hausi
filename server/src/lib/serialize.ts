@@ -15,8 +15,15 @@ import type {
   TitleFont,
 } from '../../../app/shared/types.js';
 import { normalizePhone } from './phone.js';
+import { publicUsername } from './username.js';
 
-type UserRow = { id: string; name: string; avatarEmoji: string; avatarImage: string };
+type UserRow = {
+  id: string;
+  name: string;
+  username: string | null;
+  avatarEmoji: string;
+  avatarImage: string;
+};
 type PlusOneRow = {
   id: string;
   name: string;
@@ -56,6 +63,8 @@ type EventRow = {
   city: string;
   category: string;
   isPublic: boolean;
+  publicationStatus: string;
+  hideLocation: boolean;
   costPerPerson: string;
   ticketUrl: string;
   dressCode: string;
@@ -73,7 +82,13 @@ type EventRow = {
 };
 
 export function toPublicUser(u: UserRow): PublicUser {
-  return { id: u.id, name: u.name, avatarEmoji: u.avatarEmoji, avatarImage: u.avatarImage };
+  return {
+    id: u.id,
+    name: u.name,
+    username: publicUsername(u),
+    avatarEmoji: u.avatarEmoji,
+    avatarImage: u.avatarImage,
+  };
 }
 
 // Narrow the free-form Comment.type string to the client union. Unknown values
@@ -102,6 +117,8 @@ export function canManageEvent(
 
 export function toEventSummary(event: EventRow, viewerId: string): EventSummary {
   const mine = event.rsvps.find((r) => r.userId === viewerId);
+  const isManager = canManageEvent(event, viewerId);
+  const canSeeLocation = !event.hideLocation || isManager || mine?.status === 'GOING';
   return {
     id: event.id,
     slug: event.slug,
@@ -111,10 +128,12 @@ export function toEventSummary(event: EventRow, viewerId: string): EventSummary 
     titleFont: event.titleFont as TitleFont,
     effect: event.effect as Effect,
     date: event.date.toISOString(),
-    location: event.location,
+    location: canSeeLocation ? event.location : 'Location revealed after RSVP',
     city: event.city,
     category: event.category as Category,
     isPublic: event.isPublic,
+    publicationStatus: event.publicationStatus as EventSummary['publicationStatus'],
+    hideLocation: event.hideLocation,
     host: toPublicUser(event.host),
     isHost: event.hostId === viewerId,
     canManage: canManageEvent(event, viewerId),

@@ -9,6 +9,7 @@ export const RSVP_CHOICES = ['GOING', 'MAYBE', 'CANT'] as const;
 // Validation limits shared by the server (zod) and the app (input caps).
 export const LIMITS = {
   name: 80,
+  username: 24,
   // Short "about me" text on the profile.
   bio: 200,
   title: 120,
@@ -109,10 +110,16 @@ export const CATEGORY_META: Record<Category, { label: string; emoji: string }> =
 export interface PublicUser {
   id: string;
   name: string;
+  username: string;
   avatarEmoji: string;
   // Server path to an uploaded profile photo ("/uploads/x.jpg"); '' when the
   // user sticks with their emoji.
   avatarImage: string;
+}
+
+export interface UserSearchResult extends PublicUser {
+  city: string;
+  friendState: FriendshipState;
 }
 
 export interface AuthResponse {
@@ -204,6 +211,21 @@ export interface PendingCohostInvite {
   };
 }
 
+export interface DirectEventInvite {
+  id: string;
+  createdAt: string;
+  invitedBy: PublicUser;
+  event: {
+    id: string;
+    slug: string;
+    title: string;
+    coverTheme: CoverTheme;
+    coverImage: string;
+    date: string;
+    city: string;
+  };
+}
+
 export interface EventSummary {
   id: string;
   slug: string;
@@ -217,6 +239,8 @@ export interface EventSummary {
   city: string;
   category: Category;
   isPublic: boolean;
+  publicationStatus: 'PRIVATE' | 'PENDING' | 'APPROVED' | 'REJECTED';
+  hideLocation: boolean;
   host: PublicUser;
   isHost: boolean;
   canManage: boolean;
@@ -274,6 +298,7 @@ export interface EventInput {
   city?: string;
   category?: Category;
   isPublic?: boolean;
+  hideLocation?: boolean;
   costPerPerson?: string;
   dressCode?: string;
   maxGuests?: number | null;
@@ -415,6 +440,7 @@ export interface Friend {
 export interface PublicProfile {
   id: string;
   name: string;
+  username: string;
   avatarEmoji: string;
   avatarImage: string;
   bio: string;
@@ -443,6 +469,7 @@ export interface Badge {
 export interface MyProfile {
   id: string;
   name: string;
+  username: string;
   email: string | null;
   phone: string | null;
   avatarEmoji: string;
@@ -450,11 +477,28 @@ export interface MyProfile {
   bio: string;
   city: string;
   joinedAt: string;
+  isAdmin: boolean;
   badges: Badge[];
   mutuals: Mutual[];
   friends: Friend[];
   // Pending requests addressed to me (accept/decline) and ones I sent.
   incomingRequests: FriendRequest[];
   outgoingRequests: FriendRequest[];
+}
+
+export interface AdminEventSubmission {
+  id: string;
+  slug: string;
+  title: string;
+  description: string;
+  date: string;
+  location: string;
+  city: string;
+  coverImage: string;
+  category: Category;
+  costPerPerson: string;
+  publicationStatus: 'PENDING' | 'APPROVED' | 'REJECTED';
+  createdAt: string;
+  host: PublicUser;
 }
 

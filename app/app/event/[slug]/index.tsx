@@ -29,6 +29,8 @@ import { Glass } from '../../../components/glass';
 import { Avatar } from '../../../components/Avatar';
 import { Button } from '../../../components/ui';
 import { TicketCheckoutSheet } from '../../../components/TicketCheckoutSheet';
+import { EventRsvpPanel } from '../../../components/EventRsvpPanel';
+import { EventInviteSheet } from '../../../components/EventInviteSheet';
 import { formatEventDate, formatEventTime } from '../../../components/EventCard';
 
 // The buy-ticket link comes from the event's ticketUrl field (the organiser's
@@ -130,6 +132,7 @@ export default function EventScreen() {
   const [error, setError] = useState<string | null>(null);
   const [menuOpen, setMenuOpen] = useState(false);
   const [checkoutOpen, setCheckoutOpen] = useState(false);
+  const [inviteOpen, setInviteOpen] = useState(false);
   const [inviteBusy, setInviteBusy] = useState(false);
   const [favBusy, setFavBusy] = useState(false);
 
@@ -433,12 +436,44 @@ export default function EventScreen() {
                   </Glass>
                 </Pressable>
               ) : null}
-              <Pressable onPress={share}>
+              <Pressable onPress={() => (user ? setInviteOpen(true) : share())}>
                 <Glass tint={ink.glassTint} radius={radius.pill} style={styles.shareButton}>
                   <Text style={[styles.shareText, { color: ink.text }]}>Share link</Text>
                 </Glass>
               </Pressable>
             </View>
+
+            {event.canManage && event.publicationStatus !== 'APPROVED' ? (
+              <View style={styles.publicationBanner}>
+                <Ionicons
+                  name={
+                    event.publicationStatus === 'PENDING'
+                      ? 'time-outline'
+                      : event.publicationStatus === 'REJECTED'
+                        ? 'alert-circle-outline'
+                        : 'lock-closed-outline'
+                  }
+                  size={17}
+                  color={ink.text}
+                />
+                <View style={{ flex: 1 }}>
+                  <Text style={[styles.publicationTitle, { color: ink.text }]}>
+                    {event.publicationStatus === 'PENDING'
+                      ? 'Waiting for public approval'
+                      : event.publicationStatus === 'REJECTED'
+                        ? 'Public submission needs changes'
+                        : 'Private invite'}
+                  </Text>
+                  <Text style={[styles.publicationBody, { color: ink.subtext }]}>
+                    {event.publicationStatus === 'PRIVATE'
+                      ? 'Only people with your link can open this event.'
+                      : event.publicationStatus === 'PENDING'
+                        ? 'The invite link works now; Explore stays hidden until approval.'
+                        : 'Edit the event and submit it for review again.'}
+                  </Text>
+                </View>
+              </View>
+            ) : null}
 
             <Glass tint={ink.glassTint} radius={radius.md} style={styles.metaCard}>
               <Text style={[styles.metaLine, { color: ink.text }]}>
@@ -462,6 +497,10 @@ export default function EventScreen() {
                 </Text>
               ) : null}
             </Glass>
+
+            {user && (event.canManage || !ticket.url) ? (
+              <EventRsvpPanel event={event} userId={user.id} onChange={setEvent} />
+            ) : null}
 
             {/* Friends on the guest list — the "will my people be there?" signal. */}
             {friendsAttending.length ? (
@@ -610,6 +649,16 @@ export default function EventScreen() {
           onClose={() => setCheckoutOpen(false)}
           onPurchased={load}
           onOpenExternal={openTicket}
+        />
+      ) : null}
+
+      {inviteOpen ? (
+        <EventInviteSheet
+          eventId={event.id}
+          slug={event.slug}
+          title={event.title}
+          canDirectInvite={event.canManage}
+          onClose={() => setInviteOpen(false)}
         />
       ) : null}
 
@@ -834,6 +883,23 @@ const styles = StyleSheet.create({
   metaCard: {
     padding: spacing.md,
     gap: spacing.sm,
+  },
+  publicationBanner: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: spacing.sm,
+    padding: spacing.md,
+    borderRadius: radius.md,
+    backgroundColor: 'rgba(255,255,255,0.08)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.12)',
+  },
+  publicationTitle: {
+    ...uiText(14, '700'),
+  },
+  publicationBody: {
+    ...uiText(12),
+    marginTop: 2,
   },
   friendsCard: {
     padding: spacing.md,
