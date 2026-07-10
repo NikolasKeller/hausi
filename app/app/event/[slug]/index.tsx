@@ -175,6 +175,18 @@ export default function EventScreen() {
     } else {
       WebBrowser.openBrowserAsync(url).catch(() => notify('Could not open link', url));
     }
+    // Purchase tracking: heading to the checkout means attending — mark GOING
+    // (best-effort) so the event lands in the calendar and gets a Wallet pass.
+    // Skips hosts and people already going; a full event just waitlists.
+    if (event && user && !event.canManage) {
+      const mine = event.rsvps.find((r) => r.user.id === user.id)?.status;
+      if (mine !== 'GOING') {
+        api
+          .rsvp(event.id, 'GOING')
+          .then((res) => setEvent(res.event))
+          .catch(() => {});
+      }
+    }
   }
 
   // Signed-out invite viewers (a shared link opened in a plain browser) can

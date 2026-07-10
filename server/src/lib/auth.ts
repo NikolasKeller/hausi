@@ -9,7 +9,8 @@ import { db } from './db.js';
 if (process.env.NODE_ENV === 'production' && !process.env.JWT_SECRET) {
   throw new Error('JWT_SECRET must be set in production');
 }
-const JWT_SECRET = process.env.JWT_SECRET ?? 'iykyk-dev-secret-change-me';
+// Also the HMAC key for wallet pass codes (see routes/wallet.ts).
+export const JWT_SECRET = process.env.JWT_SECRET ?? 'iykyk-dev-secret-change-me';
 const TOKEN_TTL_SECONDS = 60 * 60 * 24 * 30; // 30 days
 
 export async function createToken(userId: string): Promise<string> {
