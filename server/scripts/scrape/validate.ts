@@ -5,13 +5,31 @@
 // so it can be copied verbatim next to out-of-repo import scripts (e.g. the
 // production import in /tmp/hausi-crops/) and behave identically there.
 
-// Mirrors app/shared/cities.ts naming for the 24 scraper target cities — the
-// DB convention is the English name ("Munich", not "München").
+// Mirrors app/shared/cities.ts naming for the scraper target cities (must stay
+// in sync with scrape/cities.ts) — the DB convention is the English name
+// ("Munich", not "München"; "São Paulo"/"Bogotá" keep their canonical accents
+// because COMMON_CITIES spells them that way).
 export const TARGET_CITIES = [
+  // Europe
   'London', 'Paris', 'Berlin', 'Munich', 'Hamburg', 'Cologne', 'Frankfurt',
-  'Vienna', 'Zurich', 'Amsterdam', 'Brussels', 'Madrid', 'Barcelona', 'Lisbon',
-  'Rome', 'Milan', 'Copenhagen', 'Stockholm', 'Oslo', 'Prague', 'Warsaw',
-  'Budapest', 'Dublin', 'Athens',
+  'Vienna', 'Zurich', 'Geneva', 'Amsterdam', 'Brussels', 'Madrid', 'Barcelona',
+  'Lisbon', 'Rome', 'Milan', 'Copenhagen', 'Stockholm', 'Oslo', 'Helsinki',
+  'Prague', 'Warsaw', 'Budapest', 'Dublin', 'Athens', 'Istanbul', 'Moscow',
+  // North America
+  'New York', 'Los Angeles', 'San Francisco', 'San Diego', 'Seattle',
+  'Portland', 'Las Vegas', 'Phoenix', 'Denver', 'Chicago', 'Minneapolis',
+  'Austin', 'Dallas', 'Houston', 'Nashville', 'New Orleans', 'Detroit',
+  'Boston', 'Philadelphia', 'Washington DC', 'Atlanta', 'Miami',
+  'Toronto', 'Montreal', 'Vancouver', 'Mexico City',
+  // South America
+  'Bogotá', 'Buenos Aires', 'Santiago', 'São Paulo', 'Rio de Janeiro',
+  // Asia
+  'Tokyo', 'Osaka', 'Kyoto', 'Seoul', 'Hong Kong', 'Taipei', 'Shanghai',
+  'Beijing', 'Singapore', 'Bangkok', 'Jakarta', 'Manila', 'Delhi', 'Mumbai',
+  // Middle East & Africa
+  'Dubai', 'Tel Aviv', 'Cape Town', 'Johannesburg', 'Nairobi', 'Lagos',
+  // Oceania
+  'Sydney', 'Melbourne',
 ] as const;
 
 // Mirrors CATEGORIES in app/shared/types.ts.
@@ -94,7 +112,7 @@ export type CheckId =
   | 'future-date'      // starts after "now", within the horizon
   | 'real-start-time'  // has a real clock time, not a 00:00 placeholder
   | 'title'            // 3–120 chars, not a placeholder
-  | 'city'             // exactly one of the 24 target cities
+  | 'city'             // exactly one of the target cities
   | 'location'         // venue/address present, more than just the city name
   | 'category'         // valid app category
   | 'image-url'        // coverImage (when set) is a sane http(s) URL

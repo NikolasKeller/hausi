@@ -48,6 +48,12 @@ export interface CityConfig {
   raAreaId: number | null;
   // eventbrite.com /d/<slug>/ city slug, null when eventbrite.com 404s for it.
   eventbriteSlug: string | null;
+  // Extra venue-city spellings accepted by the Eventbrite scraper's
+  // venue-city-must-match check (lowercased), for cities whose Eventbrite
+  // venue city differs from the canonical app name — e.g. "washington" for
+  // Washington DC, boroughs like "brooklyn" for New York, "ciudad de méxico"
+  // for Mexico City. The canonical name itself always matches.
+  eventbriteCityAliases?: string[];
   // allevents.in/<slug> city slug.
   alleventsSlug: string | null;
 }
