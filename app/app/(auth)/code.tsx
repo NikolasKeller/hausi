@@ -52,6 +52,30 @@ export default function CodeScreen() {
     return () => clearTimeout(t);
   }, [resendIn]);
 
+  // WebOTP (Android Chrome / installed PWA): the SMS ends with an
+  // "@domain #code" line, so the browser can hand us the code directly and
+  // we submit without any typing. iOS ignores this API but reads the same
+  // SMS line for its above-keyboard AutoFill suggestion.
+  useEffect(() => {
+    if (Platform.OS !== 'web' || viaEmail) return;
+    const creds = (navigator as any)?.credentials;
+    if (!('OTPCredential' in window) || !creds?.get) return;
+    const ac = new AbortController();
+    creds
+      .get({ otp: { transport: ['sms'] }, signal: ac.signal })
+      .then((otp: { code?: string } | null) => {
+        const received = otp?.code?.replace(/[^0-9]/g, '').slice(0, 6);
+        if (received?.length === 6) {
+          setCode(received);
+          submit(received);
+        }
+      })
+      .catch(() => {});
+    return () => ac.abort();
+    // Mount-only: the OTP request should survive re-renders (busy/code changes).
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   // Simulated text-message banner (dev only, until real SMS/Supabase auth).
   useEffect(() => {
     if (!currentDevCode) return;

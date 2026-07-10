@@ -144,6 +144,22 @@ authRoutes.use('/phone/*', async (c, next) => {
   await next();
 });
 
+// iOS only offers the code above the keyboard (Safari and, crucially, the
+// installed PWA) when the SMS ends with Apple's domain-bound line
+// "@host #code"; Android Chrome's WebOTP API expects the exact same format.
+// Hostname only — no scheme, path or port. Derived like the event links:
+// APP_URL if set, else the forwarded host Railway passes through.
+function otpDomain(c: Context): string | null {
+  const raw =
+    process.env.APP_URL?.trim() || c.req.header('x-forwarded-host') || c.req.header('host');
+  if (!raw) return null;
+  try {
+    return new URL(raw.includes('://') ? raw : `https://${raw}`).hostname;
+  } catch {
+    return null;
+  }
+}
+
 // Optional shared passcode. Because there is no SMS provider, the OTP is
 // returned to the caller (see below) — so on a public URL anyone who knows a
 // phone number could otherwise log in as that person. Setting INVITE_CODE
@@ -226,8 +242,12 @@ authRoutes.post('/phone/request', async (c) => {
   });
 
   if (channelEnabled(channel)) {
+    let body = `${code} is your iykyk verification code`;
+    // Domain-bound suffix (SMS only — WhatsApp neither needs nor shows it).
+    const domain = channel === 'sms' ? otpDomain(c) : null;
+    if (domain) body += `\n\n@${domain} #${code}`;
     try {
-      await sendMessage(phone, `${code} is your iykyk verification code`, channel);
+      await sendMessage(phone, body, channel);
     } catch (e) {
       console.error('Code send failed:', e);
       return c.json({ error: 'Could not send the code - check the number and try again' }, 502);
