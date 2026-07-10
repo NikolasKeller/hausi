@@ -170,14 +170,13 @@ export function EventForm({ initial, submitLabel, onSubmit, footer }: Props) {
     };
   }, []);
 
-  // The form now sits on the calm linen canvas (like the calendar), so labels
-  // and controls use fixed dark-on-light ink instead of a mood that flipped
-  // with the theme gradient.
+  // The form sits on the nightlife bokeh canvas (like the event page), so
+  // labels and controls use silver ink on dark glass.
   const ink = {
-    dark: false,
+    dark: true,
     text: colors.text,
     faint: light.text3,
-    glassTint: 'light' as const,
+    glassTint: 'dark' as const,
     hairline: light.hairline,
   };
   const cover = coverFor(coverTheme);

@@ -6,8 +6,8 @@
     "scheme": "iykyk",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
-    "userInterfaceStyle": "light",
-    "backgroundColor": "#F1F1F1",
+    "userInterfaceStyle": "dark",
+    "backgroundColor": "#080B16",
     "runtimeVersion": {
       "policy": "appVersion"
     },
@@ -35,8 +35,8 @@
       "favicon": "./assets/favicon.png",
       "bundler": "metro",
       "output": "single",
-      "themeColor": "#F1F1F1",
-      "backgroundColor": "#F1F1F1"
+      "themeColor": "#080B16",
+      "backgroundColor": "#080B16"
     },
     "plugins": [
       "expo-router",

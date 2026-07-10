@@ -11,23 +11,16 @@ import {
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useVideoPlayer, VideoView } from 'expo-video';
 import { Button } from '../../components/ui';
 import { useAuth } from '../../lib/auth';
-import { storage } from '../../lib/storage';
 import { uiText } from '../../lib/fonts';
 import { colors, spacing } from '../../lib/theme';
 
-// The paper stock behind everything; the "silver liquid" logo animation that
-// plays once on the very first open; and its EXACT last frame as the still —
-// so the freeze after playback and every later visit are pixel-identical to
-// the video's end.
-const PAPER = require('../../assets/paper-texture.png');
-const LOGO_VIDEO = require('../../assets/welcome-logo.mp4');
-const LOGO_STILL = require('../../assets/welcome-logo-still.png');
-
-// Set once the intro animation has played through, so it never plays again.
-const WELCOME_LOGO_PLAYED = 'welcome_logo_played';
+// Nightlife edition: the bokeh backdrop with the transparent chrome wordmark
+// floating on it. (The paper intro video carries a baked-in cream ground, so
+// this branch uses the cutout still instead.)
+const NIGHT = require('../../assets/nightlife-bokeh.jpg');
+const WORDMARK = require('../../assets/wordmark-chrome-cutout.png');
 
 // react-native-web has no native driver; silence its fallback warning.
 const useNativeDriver = Platform.OS !== 'web';
@@ -42,81 +35,12 @@ const showDevLogin =
       ['localhost', '127.0.0.1'].includes(window.location.hostname)
     : __DEV__;
 
-// checking → deciding from the persisted flag; video → play the animation once;
-// static → show the frozen chrome wordmark.
-type LogoPhase = 'checking' | 'video' | 'static';
-
 export default function WelcomeScreen() {
   const router = useRouter();
   const { devLogin } = useAuth();
   const [devBusy, setDevBusy] = useState(false);
   const [devError, setDevError] = useState<string | null>(null);
-  const [phase, setPhase] = useState<LogoPhase>('checking');
   const intro = useRef(new Animated.Value(0)).current;
-  // Fades the video in from the paper so its opening ground never pops.
-  const videoFade = useRef(new Animated.Value(0)).current;
-
-  // Muted so iOS lets it autoplay; never loops — it's a one-shot intro.
-  const player = useVideoPlayer(LOGO_VIDEO, (p) => {
-    p.loop = false;
-    p.muted = true;
-  });
-
-  // Decide once on mount: the animation only ever plays on the first native
-  // open. Web always shows the static logo (autoplay there is unreliable).
-  useEffect(() => {
-    let active = true;
-    (async () => {
-      if (Platform.OS === 'web') {
-        if (active) setPhase('static');
-        return;
-      }
-      let played: string | null = null;
-      try {
-        played = await storage.getItemAsync(WELCOME_LOGO_PLAYED);
-      } catch {
-        played = null;
-      }
-      if (active) setPhase(played ? 'static' : 'video');
-    })();
-    return () => {
-      active = false;
-    };
-  }, []);
-
-  // Play the one-shot animation, then freeze onto the still (the video's exact
-  // last frame) and remember it so later visits skip straight to the still.
-  // The video fades in from the paper over ~0.8s: its opening frames carry a
-  // slightly different ground than the screen's paper texture, and the fade
-  // makes that difference invisible.
-  useEffect(() => {
-    if (phase !== 'video') return;
-    try {
-      player.play();
-    } catch {
-      setPhase('static');
-      return;
-    }
-    Animated.timing(videoFade, {
-      toValue: 1,
-      duration: 800,
-      easing: Easing.out(Easing.quad),
-      useNativeDriver,
-    }).start();
-    const freeze = () => {
-      storage.setItemAsync(WELCOME_LOGO_PLAYED, '1').catch(() => {});
-      setPhase('static');
-    };
-    const end = player.addListener('playToEnd', freeze);
-    const status = player.addListener('statusChange', ({ status }) => {
-      // A decode/load failure should never leave a blank stage.
-      if (status === 'error') setPhase('static');
-    });
-    return () => {
-      end.remove();
-      status.remove();
-    };
-  }, [phase, player, videoFade]);
 
   async function handleDevLogin() {
     if (devBusy) return;
@@ -143,11 +67,10 @@ export default function WelcomeScreen() {
 
   return (
     <View style={styles.screen}>
-      {/* Full-bleed paper texture — the same sheet as the whole app. */}
-      <Image source={PAPER} style={StyleSheet.absoluteFill} resizeMode="cover" />
+      {/* Full-bleed nightlife bokeh — the same scene as the whole app. */}
+      <Image source={NIGHT} style={StyleSheet.absoluteFill} resizeMode="cover" />
 
-      {/* The logo stage — same footprint whether it's the video or the still,
-          centered on the paper and sized like the old chrome wordmark. */}
+      {/* The chrome wordmark floating on the night scene. */}
       <Animated.View
         pointerEvents="none"
         style={[
@@ -166,20 +89,7 @@ export default function WelcomeScreen() {
           },
         ]}
       >
-        {phase === 'video' ? (
-          <Animated.View style={[styles.art, { opacity: videoFade }]}>
-            <VideoView
-              player={player}
-              style={StyleSheet.absoluteFill}
-              contentFit="contain"
-              nativeControls={false}
-            />
-          </Animated.View>
-        ) : phase === 'static' ? (
-          // The video's exact last frame — pixel-identical to where the
-          // animation froze.
-          <Image source={LOGO_STILL} style={styles.art} resizeMode="contain" />
-        ) : null}
+        <Image source={WORDMARK} style={styles.art} resizeMode="contain" />
       </Animated.View>
 
       <SafeAreaView style={styles.safe}>
@@ -215,9 +125,8 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   art: {
-    width: '88%',
-    height: '55%',
-    // Transparent so the paper shows through the video's letterbox area.
+    width: '70%',
+    height: '42%',
     backgroundColor: 'transparent',
     // Nudge the logo up so it sits centered above the button.
     marginBottom: '14%',
@@ -239,7 +148,7 @@ const styles = StyleSheet.create({
     textDecorationLine: 'underline',
   },
   devError: {
-    color: colors.accent,
+    color: colors.danger,
     ...uiText(12, '500'),
     textAlign: 'center',
   },

@@ -13,8 +13,10 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { colors, radius, spacing } from '../lib/theme';
 import { uiText } from '../lib/fonts';
 
-// The same paper stock the screens sit on — the bar area continues the sheet.
-const PAPER = require('../assets/paper-texture.png');
+// The same nightlife backdrop the screens sit on — the bar area continues the
+// scene. Anchored to the bottom so the strip shows the same region of the
+// image as the bottom of the screens above it.
+const NIGHT = require('../assets/nightlife-bokeh.jpg');
 
 // Minimal shape of the props expo-router / react-navigation hands a custom
 // tabBar. Typed loosely to avoid a hard dependency on the navigator's types.
@@ -119,9 +121,9 @@ export function GlassTabBar({ state, descriptors, navigation }: TabBarProps) {
 
   return (
     <View style={[styles.wrap, { paddingBottom: insets.bottom + spacing.sm }]}>
-      {/* The paper texture runs on under the floating pill, so the bar area is
-          the same continuous sheet as the rest of the app. */}
-      <Image source={PAPER} style={StyleSheet.absoluteFill} resizeMode="cover" />
+      {/* The bokeh backdrop runs on under the floating pill, so the bar area is
+          the same continuous night scene as the rest of the app. */}
+      <Image source={NIGHT} style={styles.backdrop} resizeMode="cover" />
       <View style={styles.bar}>
         <View
           ref={rowRef}
@@ -172,16 +174,26 @@ export function GlassTabBar({ state, descriptors, navigation }: TabBarProps) {
 const styles = StyleSheet.create({
   wrap: {
     paddingHorizontal: spacing.lg,
-    backgroundColor: 'transparent',
+    backgroundColor: colors.bg,
+    overflow: 'hidden',
+  },
+  // Bottom-anchored full-height slice of the backdrop, so the bar strip shows
+  // the image's lower region — matching the screens above it.
+  backdrop: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    bottom: 0,
+    height: 900,
   },
   bar: {
-    backgroundColor: 'rgba(247,244,238,0.96)',
+    backgroundColor: 'rgba(16,20,33,0.92)',
     borderRadius: radius.pill,
     borderWidth: 1,
-    borderColor: 'rgba(0,0,0,0.08)',
+    borderColor: 'rgba(255,255,255,0.12)',
     padding: 4,
-    shadowColor: '#4A4438',
-    shadowOpacity: 0.22,
+    shadowColor: '#000000',
+    shadowOpacity: 0.5,
     shadowRadius: 24,
     shadowOffset: { width: 0, height: 12 },
     elevation: 12,
@@ -195,9 +207,9 @@ const styles = StyleSheet.create({
     top: 0,
     bottom: 0,
     borderRadius: radius.pill,
-    backgroundColor: 'rgba(0,0,0,0.07)',
+    backgroundColor: 'rgba(255,255,255,0.10)',
     borderWidth: 1,
-    borderColor: 'rgba(0,0,0,0.06)',
+    borderColor: 'rgba(255,255,255,0.10)',
   },
   tab: {
     flex: 1,

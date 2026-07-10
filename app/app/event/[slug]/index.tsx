@@ -266,14 +266,14 @@ export default function EventScreen() {
     );
   }
 
-  // The page sits on the paper design background (see ThemeBackground), so all
-  // content uses graphite ink on light glass.
+  // The page sits on the nightlife bokeh backdrop (see ThemeBackground), so
+  // all content uses silver ink on dark glass.
   const ink = {
-    dark: false,
+    dark: true,
     text: colors.text,
     subtext: light.text2,
     faint: light.text3,
-    glassTint: 'light' as const,
+    glassTint: 'dark' as const,
     hairline: light.hairline,
   };
 
@@ -481,8 +481,8 @@ export default function EventScreen() {
                   pressed && styles.buyButtonPressed,
                 ]}
               >
-                <Ionicons name="ticket-outline" size={20} color="#FFFFFF" />
-                <Text style={[styles.buyButtonText, { color: '#FFFFFF' }]}>Buy ticket</Text>
+                <Ionicons name="ticket-outline" size={20} color={colors.onInk} />
+                <Text style={[styles.buyButtonText, { color: colors.onInk }]}>Buy ticket</Text>
               </Pressable>
             ) : null}
 
@@ -593,9 +593,10 @@ const styles = StyleSheet.create({
     gap: spacing.sm,
   },
   // Full-width Buy-ticket button in the bottom bar (the page's primary action).
+  // Bright silver pill — the high-contrast action on the midnight canvas.
   buyButtonBar: {
     flex: 1,
-    backgroundColor: '#171717',
+    backgroundColor: colors.ink,
   },
   buyButtonPressed: {
     opacity: 0.9,
@@ -856,7 +857,7 @@ const styles = StyleSheet.create({
     width: 26,
     height: 26,
     borderRadius: 13,
-    backgroundColor: 'rgba(0,0,0,0.12)',
+    backgroundColor: 'rgba(255,255,255,0.12)',
     borderWidth: 1,
     alignItems: 'center',
     justifyContent: 'center',
@@ -897,13 +898,13 @@ const styles = StyleSheet.create({
     fontSize: 15,
   },
   sendButton: {
-    backgroundColor: colors.accentDark,
+    backgroundColor: colors.accent,
     borderRadius: radius.md,
     paddingHorizontal: spacing.lg,
     paddingVertical: 12,
   },
   sendText: {
-    color: '#fff',
+    color: colors.onAccent,
     ...uiText(15, '600'),
   },
 });

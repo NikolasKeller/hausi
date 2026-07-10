@@ -29,9 +29,9 @@ const styles = StyleSheet.create({
   // Applied AFTER the caller's style so the metal colour + crisp bevel win,
   // while size/font/tracking from the caller are preserved.
   metalOverride: {
-    color: '#565C66', // steel graphite — metallic, high-contrast on paper
-    // Hard 1px highlight below each stroke → embossed metal, no blur.
-    textShadowColor: 'rgba(255,255,255,0.6)',
+    color: '#D9DDE4', // polished silver — metallic, high-contrast on midnight
+    // Hard 1px dark cut below each stroke → embossed metal, no blur.
+    textShadowColor: 'rgba(0,0,0,0.55)',
     textShadowOffset: { width: 0, height: 1 },
     textShadowRadius: 0,
   },

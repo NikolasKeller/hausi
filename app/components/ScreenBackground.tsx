@@ -2,13 +2,13 @@ import React from 'react';
 import { Image, StyleSheet, View } from 'react-native';
 import { colors } from '../lib/theme';
 
-// The paper stock the whole app sits on — the same texture the chrome wordmark
-// is rendered on, so every surface feels like one continuous sheet.
-const PAPER = require('../assets/paper-texture.png');
+// The nightlife ambience the whole app sits on — a generated midnight-blue
+// backdrop with soft out-of-focus city/stage lights (amber + cool blue bokeh).
+const NIGHT = require('../assets/nightlife-bokeh.jpg');
 
-// The app-wide backdrop: a full-bleed paper texture over a matching flat
-// fallback. `bloom` is kept for call-site compatibility; the texture already
-// carries its own subtle light, so it no longer paints an extra overlay.
+// The app-wide backdrop: a full-bleed bokeh image over a matching flat
+// fallback. `bloom` is kept for call-site compatibility; the backdrop already
+// carries its own light, so it no longer paints an extra overlay.
 export function ScreenBackground({
   children,
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -19,7 +19,7 @@ export function ScreenBackground({
 }) {
   return (
     <View style={styles.fill}>
-      <Image source={PAPER} style={StyleSheet.absoluteFill} resizeMode="cover" />
+      <Image source={NIGHT} style={StyleSheet.absoluteFill} resizeMode="cover" />
       {children}
     </View>
   );

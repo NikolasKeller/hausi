@@ -224,9 +224,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     alignSelf: 'flex-start',
-    backgroundColor: 'rgba(255,255,255,0.7)',
+    backgroundColor: 'rgba(255,255,255,0.10)',
     borderWidth: 1,
-    borderColor: 'rgba(0,0,0,0.10)',
+    borderColor: 'rgba(255,255,255,0.16)',
     marginBottom: spacing.md,
   },
   title: {

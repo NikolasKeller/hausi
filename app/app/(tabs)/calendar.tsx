@@ -480,7 +480,7 @@ const styles = StyleSheet.create({
     width: 40,
     height: 4,
     borderRadius: 2,
-    backgroundColor: 'rgba(0,0,0,0.22)',
+    backgroundColor: 'rgba(255,255,255,0.28)',
     marginBottom: spacing.xs,
   },
   weekdayRow: {
@@ -528,7 +528,8 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   dayNumberSelected: {
-    color: '#FFFFFF',
+    // Sits on the (now light silver) accent circle — needs dark ink.
+    color: colors.onAccent,
     fontWeight: '800',
   },
   dayEmoji: {
@@ -543,7 +544,7 @@ const styles = StyleSheet.create({
   // top corners and separates from the grid with a soft fill (no hard border).
   panel: {
     flex: 1,
-    backgroundColor: 'rgba(255,255,255,0.45)',
+    backgroundColor: 'rgba(14,18,31,0.72)',
     borderTopLeftRadius: radius.xl,
     borderTopRightRadius: radius.xl,
     marginHorizontal: -spacing.md,
@@ -556,7 +557,7 @@ const styles = StyleSheet.create({
     width: 40,
     height: 4,
     borderRadius: 2,
-    backgroundColor: 'rgba(0,0,0,0.22)',
+    backgroundColor: 'rgba(255,255,255,0.28)',
   },
   panelTitle: {
     fontSize: 15,
