@@ -191,6 +191,8 @@ function RootNavigator() {
         }}
       />
       <Stack.Screen name="e/[slug]" options={{ headerShown: false }} />
+      {/* Static design-language mock (see app/designshot.tsx) — no chrome. */}
+      <Stack.Screen name="designshot" options={{ headerShown: false }} />
     </Stack>
   );
 }

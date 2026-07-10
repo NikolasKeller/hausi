@@ -3,6 +3,9 @@ import { PlayfairDisplay_700Bold } from '@expo-google-fonts/playfair-display';
 import { Pacifico_400Regular } from '@expo-google-fonts/pacifico';
 import { Bungee_400Regular } from '@expo-google-fonts/bungee';
 import {
+  Inter_100Thin_Italic,
+  Inter_200ExtraLight_Italic,
+  Inter_300Light,
   Inter_400Regular,
   Inter_500Medium,
   Inter_600SemiBold,
@@ -24,6 +27,11 @@ const MIN_UI_SIZE = 12;
 
 export const FONTS_TO_LOAD = {
   'Reglo-Bold': require('../assets/fonts/Reglo-Bold.otf'),
+  // Ultra-thin italic cuts for the glass-dashboard display numerals
+  // (the rondesignlab reference's hairline "88"-style figures).
+  Inter_100Thin_Italic,
+  Inter_200ExtraLight_Italic,
+  Inter_300Light,
   Inter_400Regular,
   Inter_500Medium,
   Inter_600SemiBold,

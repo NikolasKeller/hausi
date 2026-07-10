@@ -6,6 +6,7 @@ const BASE = 'http://localhost:8081';
 const OUT = '/workspace/screenshots';
 
 const screens = [
+  { name: 'designshot', url: `${BASE}/designshot`, wait: 8000 },
   { name: 'explore', url: `${BASE}/explore`, wait: 8000 },
   { name: 'calendar', url: `${BASE}/calendar`, wait: 6000 },
   { name: 'profile', url: `${BASE}/profile`, wait: 6000 },
