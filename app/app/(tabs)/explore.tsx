@@ -24,6 +24,7 @@ import { CoverGradient } from '../../components/CoverGradient';
 import { Button } from '../../components/ui';
 import { withScreenBackground } from '../../components/ScreenBackground';
 import { formatEventDate } from '../../components/EventCard';
+import { TonightBanner } from '../../components/TonightBanner';
 
 // The chrome "iykyk" wordmark used as the header logo (same asset family as the
 // welcome screen).
@@ -357,6 +358,10 @@ function ExploreScreen() {
             </Pressable>
           ) : null}
         </View>
+
+        {/* Same-day ticket reminder — sits between the header and the feed so
+            it's visible regardless of the explore feed's loading state. */}
+        <TonightBanner />
 
         {city === null && error ? (
           <View style={styles.center}>
