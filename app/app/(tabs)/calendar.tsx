@@ -3,6 +3,7 @@ import {
   ActivityIndicator,
   Image,
   PanResponder,
+  Platform,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -12,14 +13,17 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFocusEffect } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
 import type { EventSummary } from '../../shared/types';
 import { api, mediaUrl } from '../../lib/api';
-import { display, kicker, uiText } from '../../lib/fonts';
-import { colors, radius, shadow, spacing } from '../../lib/theme';
+import { thinDisplay, XLIGHT_ITALIC, kicker, uiText } from '../../lib/fonts';
+import { radius, spacing } from '../../lib/theme';
 import { COVERS } from '../../lib/covers';
 import { EventCard } from '../../components/EventCard';
 import { Button } from '../../components/ui';
-import { withScreenBackground } from '../../components/ScreenBackground';
+import { GlassSurface } from '../../components/GlassSurface';
+
+const CALENDAR_BG = require('../../assets/brand/designshot-bg.png');
 
 const MONTHS = [
   'January',
@@ -67,7 +71,54 @@ function chunkWeeks(cells: (Date | null)[]): (Date | null)[][] {
   return weeks;
 }
 
-export default withScreenBackground(CalendarScreen);
+function CalendarAtmosphere({ children }: { children?: React.ReactNode }) {
+  const webBlur =
+    Platform.OS === 'web'
+      ? ({
+          filter: 'blur(42px) saturate(130%)',
+          transform: [{ scale: 1.12 }],
+        } as object)
+      : null;
+  return (
+    <View style={styles.atmoFill}>
+      <Image
+        source={CALENDAR_BG}
+        blurRadius={Platform.OS === 'ios' ? 42 : 0}
+        style={[StyleSheet.absoluteFill, webBlur]}
+        resizeMode="cover"
+      />
+      <View style={[StyleSheet.absoluteFill, styles.atmoVeil]} pointerEvents="none" />
+      <LinearGradient
+        colors={['rgba(30,45,60,0.30)', 'rgba(11,12,16,0.15)', 'rgba(11,12,16,0.72)']}
+        locations={[0, 0.45, 1]}
+        style={StyleSheet.absoluteFill}
+        pointerEvents="none"
+      />
+      {children}
+    </View>
+  );
+}
+
+function DottedArc({ count = 12 }: { count?: number }) {
+  return (
+    <View style={styles.dotsRow}>
+      {Array.from({ length: count }).map((_, i) => (
+        <View
+          key={i}
+          style={[
+            styles.dot,
+            {
+              opacity: 0.85 - i * 0.04,
+              transform: [{ translateY: Math.pow(i - 3, 2) * 0.04 }],
+            },
+          ]}
+        />
+      ))}
+    </View>
+  );
+}
+
+export default CalendarScreen;
 
 function CalendarScreen() {
   const [events, setEvents] = useState<EventSummary[] | null>(null);
@@ -179,23 +230,27 @@ function CalendarScreen() {
 
   if (error) {
     return (
-      <SafeAreaView edges={['top']} style={styles.safe}>
-        <View style={styles.center}>
-          <Text style={styles.errorEmoji}>🫠</Text>
-          <Text style={styles.errorText}>{error}</Text>
-          <Button title="Try again" variant="ghost" onPress={retry} />
-        </View>
-      </SafeAreaView>
+      <CalendarAtmosphere>
+        <SafeAreaView edges={['top']} style={styles.safe}>
+          <View style={styles.center}>
+            <Text style={styles.errorEmoji}>🫠</Text>
+            <Text style={styles.errorText}>{error}</Text>
+            <Button title="Try again" variant="ghost" tone="paper" onPress={retry} />
+          </View>
+        </SafeAreaView>
+      </CalendarAtmosphere>
     );
   }
 
   if (!events) {
     return (
-      <SafeAreaView edges={['top']} style={styles.safe}>
-        <View style={styles.center}>
-          <ActivityIndicator color={colors.accent} size="large" />
-        </View>
-      </SafeAreaView>
+      <CalendarAtmosphere>
+        <SafeAreaView edges={['top']} style={styles.safe}>
+          <View style={styles.center}>
+            <ActivityIndicator color="#FFFFFF" size="large" />
+          </View>
+        </SafeAreaView>
+      </CalendarAtmosphere>
     );
   }
 
@@ -211,27 +266,47 @@ function CalendarScreen() {
     <View style={styles.header}>
       <View style={styles.monthRow}>
         <View style={styles.monthTitleWrap}>
-          {/* Month name at one fixed size. When viewing another year, the year
-              is appended so it stays visible without a purple eyebrow label. */}
-          <Text style={styles.monthTitle} numberOfLines={1}>
+          <Text style={styles.heroKicker}>Your calendar</Text>
+          <Text style={[styles.monthTitle, thinDisplay(36)]} numberOfLines={1}>
             {isViewingCurrentYear ? MONTHS[view.month] : `${MONTHS[view.month]} ${view.year}`}
           </Text>
+          <DottedArc />
         </View>
         {mode === 'grid' ? (
           <View style={styles.chevrons}>
-            <Pressable onPress={() => shiftMonth(-1)} style={styles.chevronButton} hitSlop={6}>
-              <Ionicons name="chevron-back" size={18} color={colors.text} />
+            <Pressable onPress={() => shiftMonth(-1)} hitSlop={6}>
+              <GlassSurface
+                radius={999}
+                blur={18}
+                fill="rgba(255,255,255,0.10)"
+                borderColor="rgba(255,255,255,0.30)"
+                shadow={false}
+                style={styles.chevronButton}
+              >
+                <Ionicons name="chevron-back" size={18} color="#FFFFFF" />
+              </GlassSurface>
             </Pressable>
-            <Pressable onPress={() => shiftMonth(1)} style={styles.chevronButton} hitSlop={6}>
-              <Ionicons name="chevron-forward" size={18} color={colors.text} />
+            <Pressable onPress={() => shiftMonth(1)} hitSlop={6}>
+              <GlassSurface
+                radius={999}
+                blur={18}
+                fill="rgba(255,255,255,0.10)"
+                borderColor="rgba(255,255,255,0.30)"
+                shadow={false}
+                style={styles.chevronButton}
+              >
+                <Ionicons name="chevron-forward" size={18} color="#FFFFFF" />
+              </GlassSurface>
             </Pressable>
           </View>
         ) : null}
       </View>
       {mode === 'grid' ? (
         <View style={styles.headerActions}>
-          <Pressable onPress={goToToday} style={styles.todayPill} hitSlop={4}>
-            <Text style={styles.todayPillText}>Today</Text>
+          <Pressable onPress={goToToday} hitSlop={4}>
+            <View style={styles.todayPill}>
+              <Text style={styles.todayPillText}>Today</Text>
+            </View>
           </Pressable>
         </View>
       ) : null}
@@ -245,137 +320,150 @@ function CalendarScreen() {
   // plain ScrollView since it can grow arbitrarily long.
   if (mode === 'grid') {
     return (
-      <SafeAreaView edges={['top']} style={styles.safe}>
-        <View style={styles.gridContent} {...swipeUp.panHandlers}>
-          {header}
+      <CalendarAtmosphere>
+        <SafeAreaView edges={['top']} style={styles.safe}>
+          <View style={styles.gridContent} {...swipeUp.panHandlers}>
+            {header}
 
-          <View style={styles.weekdayRow}>
-            {WEEKDAYS_SHORT.map((d) => (
-              <Text key={d} style={styles.weekdayLabel}>
-                {d}
-              </Text>
-            ))}
-          </View>
+            <View style={styles.weekdayRow}>
+              {WEEKDAYS_SHORT.map((d) => (
+                <Text key={d} style={styles.weekdayLabel}>
+                  {d}
+                </Text>
+              ))}
+            </View>
 
-          <View style={styles.grid}>
-            {weeks.map((week, wi) => (
-              <View key={wi} style={styles.weekRow}>
-                {week.map((date, di) => {
-                  if (!date) return <View key={di} style={styles.dayCell} />;
-                  const key = date.toDateString();
-                  const dayEvents = eventsByDay.get(key);
-                  const isToday = key === todayKey;
-                  const isSelected = key === selectedKey;
-                  return (
-                    <Pressable key={di} style={styles.dayCell} onPress={() => setSelected(date)}>
-                      <View
-                        style={[
-                          styles.dayCircle,
-                          isToday && styles.dayCircleToday,
-                          isSelected && styles.dayCircleSelected,
-                        ]}
-                      >
-                        {dayEvents?.length ? (
-                          dayEvents[0].coverImage ? (
-                            <Image
-                              source={{ uri: mediaUrl(dayEvents[0].coverImage) }}
-                              style={styles.dayThumb}
-                            />
+            <View style={styles.grid}>
+              {weeks.map((week, wi) => (
+                <View key={wi} style={styles.weekRow}>
+                  {week.map((date, di) => {
+                    if (!date) return <View key={di} style={styles.dayCell} />;
+                    const key = date.toDateString();
+                    const dayEvents = eventsByDay.get(key);
+                    const isToday = key === todayKey;
+                    const isSelected = key === selectedKey;
+                    return (
+                      <Pressable key={di} style={styles.dayCell} onPress={() => setSelected(date)}>
+                        <View
+                          style={[
+                            styles.dayCircle,
+                            isToday && !isSelected && styles.dayCircleToday,
+                            isSelected && styles.dayCircleSelected,
+                          ]}
+                        >
+                          {dayEvents?.length ? (
+                            dayEvents[0].coverImage ? (
+                              <Image
+                                source={{ uri: mediaUrl(dayEvents[0].coverImage) }}
+                                style={styles.dayThumb}
+                              />
+                            ) : (
+                              <Text style={styles.dayEmoji}>
+                                {COVERS[dayEvents[0].coverTheme].emoji}
+                              </Text>
+                            )
                           ) : (
-                            <Text style={styles.dayEmoji}>
-                              {COVERS[dayEvents[0].coverTheme].emoji}
+                            <Text style={[styles.dayNumber, isSelected && styles.dayNumberSelected]}>
+                              {date.getDate()}
                             </Text>
-                          )
-                        ) : (
-                          <Text style={[styles.dayNumber, isSelected && styles.dayNumberSelected]}>
-                            {date.getDate()}
-                          </Text>
-                        )}
-                      </View>
-                    </Pressable>
-                  );
-                })}
-              </View>
-            ))}
-          </View>
-
-          <View style={styles.panel}>
-            <View style={styles.panelHandle} />
-            <Text style={styles.panelTitle}>
-              {selectedIsToday ? <Text style={styles.panelStrong}>Today </Text> : null}
-              <Text style={selectedIsToday ? styles.panelMuted : styles.panelStrong}>
-                {selected.toLocaleDateString(undefined, {
-                  weekday: 'long',
-                  month: 'long',
-                  day: 'numeric',
-                })}
-              </Text>
-            </Text>
-
-            {selectedEvents.length === 0 ? (
-              <View style={styles.emptyState}>
-                <View style={styles.emptyBody}>
-                  <Text style={styles.emptyTitle}>{EMPTY_TITLE}</Text>
+                          )}
+                        </View>
+                      </Pressable>
+                    );
+                  })}
                 </View>
-              </View>
-            ) : (
-              <ScrollView
-                style={styles.panelScroll}
-                contentContainerStyle={styles.panelEvents}
-                showsVerticalScrollIndicator={false}
-              >
-                {selectedEvents.map((ev) => (
-                  <EventCard key={ev.id} event={ev} />
-                ))}
-              </ScrollView>
-            )}
+              ))}
+            </View>
+
+            <GlassSurface radius={30} blur={26} style={styles.panel}>
+              <View style={styles.panelHandle} />
+              <Text style={styles.panelTitle}>
+                {selectedIsToday ? <Text style={styles.panelStrong}>Today </Text> : null}
+                <Text style={selectedIsToday ? styles.panelMuted : styles.panelStrong}>
+                  {selected.toLocaleDateString(undefined, {
+                    weekday: 'long',
+                    month: 'long',
+                    day: 'numeric',
+                  })}
+                </Text>
+              </Text>
+
+              {selectedEvents.length === 0 ? (
+                <View style={styles.emptyState}>
+                  <View style={styles.emptyBody}>
+                    <Text style={[styles.emptyTitle, thinDisplay(24)]}>{EMPTY_TITLE}</Text>
+                  </View>
+                </View>
+              ) : (
+                <ScrollView
+                  style={styles.panelScroll}
+                  contentContainerStyle={styles.panelEvents}
+                  showsVerticalScrollIndicator={false}
+                >
+                  {selectedEvents.map((ev) => (
+                    <EventCard key={ev.id} event={ev} />
+                  ))}
+                </ScrollView>
+              )}
+            </GlassSurface>
           </View>
-        </View>
-      </SafeAreaView>
+        </SafeAreaView>
+      </CalendarAtmosphere>
     );
   }
 
   return (
-    <SafeAreaView edges={['top']} style={styles.safe}>
-      <View style={{ flex: 1 }} {...swipeDown.panHandlers}>
-        <ScrollView
-          contentContainerStyle={styles.content}
-          onScroll={(e) => {
-            listAtTop.current = e.nativeEvent.contentOffset.y <= 0;
-          }}
-          scrollEventThrottle={16}
-        >
-          {/* Mirrors the grid panel's handle: swipe down to fall back to the
-              calendar grid. */}
-          <View style={styles.listHandle} />
-          {header}
+    <CalendarAtmosphere>
+      <SafeAreaView edges={['top']} style={styles.safe}>
+        <View style={{ flex: 1 }} {...swipeDown.panHandlers}>
+          <ScrollView
+            contentContainerStyle={styles.content}
+            showsVerticalScrollIndicator={false}
+            onScroll={(e) => {
+              listAtTop.current = e.nativeEvent.contentOffset.y <= 0;
+            }}
+            scrollEventThrottle={16}
+          >
+            <View style={styles.listHandle} />
+            {header}
 
-          <View style={styles.listSections}>
-            <View style={styles.sectionHead}>
-              <Text style={styles.sectionTitle}>Upcoming</Text>
+            <View style={styles.listSections}>
+              <View style={styles.sectionHead}>
+                <Text style={[styles.sectionTitle, thinDisplay(30)]}>Upcoming</Text>
+              </View>
+              {upcoming.length === 0 ? (
+                <Text style={styles.sectionEmpty}>Nothing planned - yet 👀</Text>
+              ) : (
+                upcoming.map((ev) => <EventCard key={ev.id} event={ev} />)
+              )}
+
+              {past.length > 0 ? (
+                <>
+                  <Text style={[styles.sectionTitle, thinDisplay(30), { marginTop: spacing.lg }]}>
+                    Past
+                  </Text>
+                  {past.map((ev) => (
+                    <EventCard key={ev.id} event={ev} />
+                  ))}
+                </>
+              ) : null}
             </View>
-            {upcoming.length === 0 ? (
-              <Text style={styles.sectionEmpty}>Nothing planned - yet 👀</Text>
-            ) : (
-              upcoming.map((ev) => <EventCard key={ev.id} event={ev} />)
-            )}
-
-            {past.length > 0 ? (
-              <>
-                <Text style={[styles.sectionTitle, { marginTop: spacing.lg }]}>Past</Text>
-                {past.map((ev) => (
-                  <EventCard key={ev.id} event={ev} />
-                ))}
-              </>
-            ) : null}
-          </View>
-        </ScrollView>
-      </View>
-    </SafeAreaView>
+          </ScrollView>
+        </View>
+      </SafeAreaView>
+    </CalendarAtmosphere>
   );
 }
 
 const styles = StyleSheet.create({
+  atmoFill: {
+    flex: 1,
+    backgroundColor: '#0B0C10',
+    overflow: 'hidden',
+  },
+  atmoVeil: {
+    backgroundColor: 'rgba(11,12,16,0.50)',
+  },
   safe: {
     flex: 1,
     backgroundColor: 'transparent',
@@ -392,7 +480,7 @@ const styles = StyleSheet.create({
   },
   errorText: {
     ...uiText(17),
-    color: colors.text,
+    color: '#FFFFFF',
     textAlign: 'center',
   },
   content: {
@@ -400,8 +488,6 @@ const styles = StyleSheet.create({
     paddingBottom: spacing.xl * 2,
     gap: spacing.lg,
   },
-  // Grid mode fills the screen so the panel below the calendar is always fully
-  // visible; children take their natural height and the panel flexes to fill.
   gridContent: {
     flex: 1,
     padding: spacing.md,
@@ -409,45 +495,55 @@ const styles = StyleSheet.create({
   },
   header: {
     flexDirection: 'row',
-    alignItems: 'flex-end',
+    alignItems: 'flex-start',
     justifyContent: 'space-between',
     gap: spacing.sm,
   },
   monthRow: {
     flexDirection: 'row',
-    alignItems: 'flex-end',
+    alignItems: 'flex-start',
     gap: spacing.sm,
     flex: 1,
   },
   monthTitleWrap: {
-    // Fill the row so the chevrons always land at the same spot on the right,
-    // regardless of the month name's length (e.g. "May" vs "September").
     flex: 1,
-    gap: spacing.xs,
+    gap: 4,
   },
-  kicker: {
-    color: colors.accent,
+  heroKicker: {
+    color: 'rgba(255,255,255,0.95)',
+    fontFamily: XLIGHT_ITALIC,
+    fontSize: 14,
+    letterSpacing: 0.3,
+    marginLeft: 6,
+    textShadowColor: 'rgba(30,45,60,0.55)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 10,
   },
   monthTitle: {
-    // One fixed size for all 12 months. 32 is the size that fits the longest
-    // name ("September") in the row alongside the chevrons, so every month
-    // matches it and the title never resizes as you page through months.
-    ...display(32),
-    color: colors.helio,
+    color: '#FFFFFF',
+    marginLeft: 4,
     flexShrink: 1,
+  },
+  dotsRow: {
+    flexDirection: 'row',
+    gap: 5,
+    marginTop: 6,
+    marginLeft: 6,
+  },
+  dot: {
+    width: 2.5,
+    height: 2.5,
+    borderRadius: 1.5,
+    backgroundColor: '#FFFFFF',
   },
   chevrons: {
     flexDirection: 'row',
     gap: spacing.xs,
-    marginBottom: spacing.xs,
+    marginTop: 4,
   },
   chevronButton: {
     width: 32,
     height: 32,
-    borderRadius: 16,
-    backgroundColor: colors.card,
-    borderWidth: 1,
-    borderColor: colors.cardBorder,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -455,42 +551,41 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing.sm,
-    marginBottom: spacing.xs,
+    marginTop: 8,
   },
   todayPill: {
-    borderWidth: 1,
-    borderColor: colors.cardBorder,
-    backgroundColor: colors.card,
+    backgroundColor: '#FFFFFF',
     borderRadius: radius.pill,
-    paddingHorizontal: spacing.sm,
-    paddingVertical: 6,
+    paddingHorizontal: spacing.md,
+    paddingVertical: 7,
+    shadowColor: '#000',
+    shadowOpacity: 0.35,
+    shadowRadius: 12,
+    shadowOffset: { width: 0, height: 6 },
+    elevation: 4,
   },
   todayPillText: {
-    ...uiText(12, '600'),
-    color: colors.text,
+    ...uiText(12, '700'),
+    color: '#0B0C10',
   },
-  // Swipe-down affordance at the top of the list view (mirror of panelHandle).
   listHandle: {
     alignSelf: 'center',
     width: 40,
     height: 4,
     borderRadius: 2,
-    backgroundColor: 'rgba(255,255,255,0.22)',
+    backgroundColor: 'rgba(255,255,255,0.35)',
     marginBottom: spacing.xs,
   },
   weekdayRow: {
     flexDirection: 'row',
   },
   weekdayLabel: {
-    ...kicker(),
+    ...kicker('rgba(255,255,255,0.45)'),
     flex: 1,
     textAlign: 'center',
-    color: colors.muted,
+    fontSize: 10,
   },
   grid: {
-    // Constant height for every month (see MAX_WEEK_ROWS). Rows flex to share
-    // it, so 4/5/6-week months all keep the grid the same size and leave the
-    // panel below the same room.
     height: GRID_HEIGHT,
   },
   weekRow: {
@@ -511,21 +606,26 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   dayCircleToday: {
-    borderWidth: 2,
-    borderColor: colors.accent,
+    borderWidth: 1.5,
+    borderColor: 'rgba(255,255,255,0.55)',
   },
   dayCircleSelected: {
-    backgroundColor: colors.accent,
+    backgroundColor: '#FFFFFF',
+    shadowColor: '#000',
+    shadowOpacity: 0.35,
+    shadowRadius: 10,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 3,
   },
   dayNumber: {
-    color: colors.text,
+    color: 'rgba(255,255,255,0.92)',
     fontSize: 16,
-    fontWeight: '600',
+    fontFamily: 'Inter_500Medium',
+    fontWeight: 'normal',
   },
   dayNumberSelected: {
-    // The selected circle fills with bright silver — flip the number to ink.
-    color: colors.onAccent,
-    fontWeight: '800',
+    color: '#0B0C10',
+    fontFamily: 'Inter_700Bold',
   },
   dayEmoji: {
     fontSize: 20,
@@ -535,24 +635,22 @@ const styles = StyleSheet.create({
     height: 36,
     borderRadius: 18,
   },
-  // A bottom-sheet look: the panel bleeds to the screen edges, rounds only its
-  // top corners and separates from the grid with a soft fill (no hard border).
   panel: {
     flex: 1,
-    backgroundColor: 'rgba(255,255,255,0.06)',
-    borderTopLeftRadius: radius.xl,
-    borderTopRightRadius: radius.xl,
     marginHorizontal: -spacing.md,
     marginBottom: -spacing.md,
     padding: spacing.lg,
     gap: spacing.md,
+    borderTopLeftRadius: 30,
+    borderTopRightRadius: 30,
+    overflow: 'hidden',
   },
   panelHandle: {
     alignSelf: 'center',
     width: 40,
     height: 4,
     borderRadius: 2,
-    backgroundColor: 'rgba(255,255,255,0.22)',
+    backgroundColor: 'rgba(255,255,255,0.35)',
   },
   panelTitle: {
     fontSize: 15,
@@ -560,11 +658,11 @@ const styles = StyleSheet.create({
   },
   panelStrong: {
     ...uiText(15, '800'),
-    color: colors.text,
+    color: '#FFFFFF',
   },
   panelMuted: {
     ...uiText(15, '600'),
-    color: colors.muted,
+    color: 'rgba(255,255,255,0.55)',
   },
   panelScroll: {
     flex: 1,
@@ -577,9 +675,6 @@ const styles = StyleSheet.create({
     flex: 1,
     gap: spacing.sm,
   },
-  // The decorative block takes the space left above the pinned CTA and centers
-  // its content. overflow: hidden means that if the panel is ever too short it
-  // clips gracefully instead of spilling over the title above or the button.
   emptyBody: {
     flex: 1,
     alignItems: 'center',
@@ -588,8 +683,7 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
   },
   emptyTitle: {
-    ...display(24),
-    color: colors.text,
+    color: '#FFFFFF',
     textAlign: 'center',
   },
   listSections: {
@@ -601,11 +695,10 @@ const styles = StyleSheet.create({
     gap: spacing.sm,
   },
   sectionTitle: {
-    ...display(30),
-    color: colors.text,
+    color: '#FFFFFF',
   },
   sectionEmpty: {
     ...uiText(15),
-    color: colors.muted,
+    color: 'rgba(255,255,255,0.55)',
   },
 });

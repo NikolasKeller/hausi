@@ -1,0 +1,488 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>iykyk — Explore Cool Designshot</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:ital,wght@0,200;0,400;0,500;0,600;0,700;1,200&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      /* Cool glass recipe — lifted from wellness reference, tuned for explore */
+      --glass-fill: rgba(255, 255, 255, 0.16);
+      --glass-fill-strong: rgba(255, 255, 255, 0.22);
+      --glass-border: rgba(255, 255, 255, 0.42);
+      --glass-blur: 32px;
+      --veil-a: rgba(72, 108, 148, 0.22);
+      --veil-b: rgba(18, 28, 48, 0.12);
+      --veil-c: rgba(10, 16, 32, 0.55);
+      --ink: #ffffff;
+      --ink-muted: rgba(255, 255, 255, 0.62);
+      --ink-faint: rgba(255, 255, 255, 0.48);
+      --phone-w: 390px;
+      --phone-h: 844px;
+      --radius-pill: 999px;
+      --radius-card: 30px;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      min-height: 100vh;
+      background: #06080f;
+      color: #e8edf5;
+      font-family: Inter, system-ui, sans-serif;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 20px;
+      padding: 24px 16px 40px;
+    }
+
+    .meta {
+      max-width: 920px;
+      width: 100%;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .meta h1 {
+      font-size: 14px;
+      font-weight: 600;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      opacity: 0.7;
+    }
+    .meta p {
+      font-size: 13px;
+      line-height: 1.5;
+      opacity: 0.55;
+      max-width: 520px;
+    }
+    .controls {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+    .controls button {
+      background: rgba(255,255,255,0.08);
+      border: 1px solid rgba(255,255,255,0.18);
+      color: #fff;
+      border-radius: 10px;
+      padding: 8px 12px;
+      font-size: 12px;
+      cursor: pointer;
+    }
+    .controls button.active {
+      background: rgba(255,255,255,0.2);
+      border-color: rgba(255,255,255,0.45);
+    }
+
+    .stage {
+      display: flex;
+      gap: 28px;
+      flex-wrap: wrap;
+      justify-content: center;
+      align-items: flex-start;
+    }
+
+    .phone-wrap { display: flex; flex-direction: column; gap: 10px; align-items: center; }
+    .phone-label {
+      font-size: 11px;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      opacity: 0.45;
+    }
+
+    .phone {
+      width: var(--phone-w);
+      height: var(--phone-h);
+      border-radius: 44px;
+      overflow: hidden;
+      position: relative;
+      box-shadow: 0 24px 80px rgba(0,0,0,0.55), 0 0 0 1px rgba(255,255,255,0.08);
+      background: #0b0c10;
+    }
+
+    /* ── Atmosphere ── */
+    .atmo { position: absolute; inset: 0; overflow: hidden; }
+    .atmo img {
+      position: absolute; inset: -8%;
+      width: 116%; height: 116%;
+      object-fit: cover;
+      filter: blur(18px) saturate(125%);
+      transform: scale(1.06);
+    }
+    .atmo .veil {
+      position: absolute; inset: 0;
+      background: linear-gradient(180deg, var(--veil-a) 0%, var(--veil-b) 42%, var(--veil-c) 100%);
+    }
+    .atmo .sheen {
+      position: absolute; inset: 0;
+      background: radial-gradient(ellipse 80% 50% at 20% 0%, rgba(180,210,255,0.18), transparent 60%);
+      pointer-events: none;
+    }
+
+    .screen {
+      position: relative;
+      z-index: 1;
+      height: 100%;
+      display: flex;
+      flex-direction: column;
+      padding: 54px 0 0;
+    }
+
+    /* ── Glass primitive ── */
+    .glass {
+      background: var(--glass-fill);
+      backdrop-filter: blur(var(--glass-blur)) saturate(170%);
+      -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(170%);
+      border: 1px solid var(--glass-border);
+      box-shadow:
+        inset 0 1px 0 rgba(255,255,255,0.38),
+        inset 1px 0 0 rgba(255,255,255,0.12),
+        0 16px 48px rgba(8, 16, 32, 0.28);
+    }
+
+    /* ── Header (exact explore structure) ── */
+    .header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 10px;
+      padding: 16px 16px 8px;
+    }
+    .header-left { flex: 1; display: flex; flex-direction: column; gap: 4px; }
+    .wordmark { width: 118px; height: 55px; object-fit: contain; object-position: left; }
+    .kicker {
+      margin-left: 6px;
+      font-family: Inter, sans-serif;
+      font-weight: 200;
+      font-style: italic;
+      font-size: 14px;
+      letter-spacing: 0.3px;
+      color: rgba(255,255,255,0.95);
+      text-shadow: 0 1px 10px rgba(40,70,110,0.45);
+    }
+    .city-title {
+      margin-left: 4px;
+      font-weight: 100;
+      font-style: italic;
+      font-size: 40px;
+      line-height: 1.04;
+      letter-spacing: -2px;
+      color: var(--ink);
+      text-shadow: 0 1px 14px rgba(40,70,110,0.35);
+    }
+    .dots { display: flex; gap: 5px; margin: 6px 0 0 6px; }
+    .dot { width: 2.5px; height: 2.5px; border-radius: 50%; background: #fff; }
+
+    .city-pill {
+      margin-top: 4px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 16px;
+      border-radius: var(--radius-pill);
+      max-width: 160px;
+      font-size: 14px;
+      font-weight: 600;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .city-pill svg { flex-shrink: 0; opacity: 0.9; }
+
+    /* ── Chips row ── */
+    .chips {
+      display: flex;
+      gap: 8px;
+      padding: 8px 16px 24px;
+      overflow-x: auto;
+      scrollbar-width: none;
+    }
+    .chips::-webkit-scrollbar { display: none; }
+    .chip {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 16px;
+      border-radius: var(--radius-pill);
+      font-size: 14px;
+      font-weight: 600;
+      white-space: nowrap;
+      color: rgba(255,255,255,0.88);
+    }
+    .chip.active {
+      background: #fff;
+      color: #0b0c10;
+      border: none;
+      box-shadow: 0 6px 20px rgba(0,0,0,0.28);
+    }
+    .chip svg { opacity: 0.75; }
+    .chip.active svg { opacity: 1; }
+
+    /* ── Event grid ── */
+    .scroll { flex: 1; overflow-y: auto; padding-bottom: 110px; scrollbar-width: none; }
+    .scroll::-webkit-scrollbar { display: none; }
+    .grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+      padding: 0 16px;
+    }
+    .card { display: flex; flex-direction: column; }
+    .card .glass {
+      border-radius: var(--radius-card);
+      overflow: hidden;
+    }
+    .poster {
+      height: 200px;
+      background-size: cover;
+      background-position: center;
+      position: relative;
+    }
+    .card-body { padding: 16px; display: flex; flex-direction: column; gap: 6px; }
+    .icon-circle {
+      width: 34px; height: 34px; border-radius: 50%;
+      background: #fff;
+      display: grid; place-items: center;
+      margin-bottom: 2px;
+    }
+    .card-title {
+      font-weight: 100;
+      font-style: italic;
+      font-size: 22px;
+      line-height: 1.1;
+      letter-spacing: -1px;
+      color: var(--ink);
+    }
+    .card-meta { font-size: 12px; font-weight: 500; color: var(--ink-muted); }
+    .faces { display: flex; align-items: center; gap: 8px; margin-top: 4px; }
+    .face {
+      width: 20px; height: 20px; border-radius: 50%;
+      border: 1.5px solid rgba(255,255,255,0.25);
+      background: linear-gradient(135deg, #1e3a5f, #5f3f1e);
+      margin-left: -8px;
+    }
+    .face:first-child { margin-left: 0; }
+    .faces span { font-size: 11px; font-weight: 600; color: var(--ink-faint); }
+
+    /* ── Floating tab bar (exact glass downbar) ── */
+    .tabbar-wrap {
+      position: absolute;
+      left: 24px; right: 24px; bottom: 28px;
+      z-index: 5;
+    }
+    .tabbar {
+      display: flex;
+      border-radius: var(--radius-pill);
+      padding: 8px 8px;
+      position: relative;
+    }
+    .tab-bubble {
+      position: absolute;
+      top: 10px; bottom: 10px; left: 8px;
+      width: calc(33.333% - 5px);
+      border-radius: var(--radius-pill);
+      background: rgba(255,255,255,0.2);
+      border: 1px solid rgba(255,255,255,0.28);
+      pointer-events: none;
+    }
+    .tab {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 2px;
+      padding: 6px 0;
+      font-size: 10px;
+      font-weight: 600;
+      color: var(--ink-muted);
+      position: relative;
+      z-index: 1;
+    }
+    .tab.active { color: var(--ink); }
+    .tab svg { width: 22px; height: 22px; }
+
+    /* Current explore (comparison) — darker veil, weaker glass */
+    .phone.current .atmo .veil {
+      background: linear-gradient(180deg, rgba(30,45,60,0.30) 0%, rgba(11,12,16,0.15) 45%, rgba(11,12,16,0.72) 100%);
+    }
+    .phone.current .glass {
+      --glass-fill: rgba(255,255,255,0.10);
+      --glass-border: rgba(255,255,255,0.28);
+      --glass-blur: 26px;
+      box-shadow: inset 0 1px 0 rgba(255,255,255,0.32), 0 12px 40px rgba(0,0,0,0.35);
+    }
+    .phone.current .atmo img { filter: blur(42px) saturate(130%); }
+  </style>
+</head>
+<body>
+  <div class="meta">
+    <div>
+      <h1>Explore — Cool Designshot</h1>
+      <p>Exact copy of the explore screen layout with a cooler glass recipe: icy veil, stronger frost, luminous borders. Backgrounds generated for glassmorphism. Toggle to compare current vs cool.</p>
+    </div>
+    <div class="controls">
+      <button class="active" data-bg="a">Background A — city fog</button>
+      <button data-bg="b">Background B — moonlit haze</button>
+      <button data-bg="current">Current designshot-bg</button>
+    </div>
+  </div>
+
+  <div class="stage">
+    <!-- COOL VARIANT -->
+    <div class="phone-wrap">
+      <span class="phone-label">Cool (proposed)</span>
+      <div class="phone cool" id="phone-cool">
+        <div class="atmo">
+          <img id="bg-cool" src="../assets/brand/explore-cool-bg-a.png" alt="" />
+          <div class="veil"></div>
+          <div class="sheen"></div>
+        </div>
+        <div class="screen" id="explore-ui"></div>
+      </div>
+    </div>
+
+    <!-- CURRENT VARIANT (same layout, old glass recipe + old bg) -->
+    <div class="phone-wrap">
+      <span class="phone-label">Current</span>
+      <div class="phone current" id="phone-current">
+        <div class="atmo">
+          <img id="bg-current" src="../assets/brand/designshot-bg.png" alt="" />
+          <div class="veil"></div>
+        </div>
+        <div class="screen" id="explore-ui-current"></div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const EVENTS = [
+      {
+        title: 'Magic Garden',
+        date: 'Sat, Jul 12',
+        interested: 24,
+        poster: 'linear-gradient(160deg, #1a3d2a 0%, #4a8f5c 40%, #8fd4a0 100%)',
+      },
+      {
+        title: 'Fürstenfeldbruck',
+        date: 'Fri, Jul 18',
+        interested: 12,
+        poster: 'linear-gradient(160deg, #6b5b95 0%, #c9b8e8 50%, #f0e8ff 100%)',
+      },
+      {
+        title: 'Chrome Nights',
+        date: 'Thu, Jul 24',
+        interested: 41,
+        poster: 'linear-gradient(160deg, #1a1a2e 0%, #4a4a6a 50%, #c0c0d8 100%)',
+      },
+      {
+        title: 'Rooftop Pulse',
+        date: 'Sat, Aug 2',
+        interested: 8,
+        poster: 'linear-gradient(160deg, #2d1f3d 0%, #8b5a7a 55%, #ffc9a8 100%)',
+      },
+    ];
+
+    const CHIPS = [
+      { key: 'all', label: 'All', icon: 'search', active: true },
+      { key: 'music', label: 'Music', icon: 'music' },
+      { key: 'community', label: 'Community', icon: 'people' },
+      { key: 'arts', label: 'Arts', icon: 'palette' },
+      { key: 'food', label: 'Food', icon: 'food' },
+    ];
+
+    const ICON = {
+      search: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3-3"/></svg>',
+      earth: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M2 12h20M12 2a15 15 0 0 1 0 20M12 2a15 15 0 0 0 0 20"/></svg>',
+      music: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg>',
+      people: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>',
+      palette: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="13.5" cy="6.5" r="2.5"/><circle cx="17.5" cy="10.5" r="2.5"/><circle cx="8.5" cy="7.5" r="2.5"/><circle cx="6.5" cy="12.5" r="2.5"/><path d="M12 22a10 10 0 0 0 10-10 4 4 0 0 0-4-4H14a4 4 0 0 0-4 4 4 4 0 0 0 4 4z"/></svg>',
+      food: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 11v10M3 4v4M7 4v17M11 4v8a4 4 0 0 0 8 0V4"/></svg>',
+      pin: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 21s7-4.5 7-11a7 7 0 1 0-14 0c0 6.5 7 11 7 11z"/><circle cx="12" cy="10" r="2.5"/></svg>',
+      cal: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#0b0c10" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>',
+      chev: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg>',
+    };
+
+    function dots(n = 14) {
+      return Array.from({ length: n }, (_, i) =>
+        `<span class="dot" style="opacity:${0.85 - i * 0.04}"></span>`
+      ).join('');
+    }
+
+    function exploreHTML() {
+      const chips = CHIPS.map((c) =>
+        c.active
+          ? `<div class="chip active">${ICON[c.icon]}<span>${c.label}</span></div>`
+          : `<div class="chip glass">${ICON[c.icon]}<span>${c.label}</span></div>`
+      ).join('');
+
+      const cards = EVENTS.map((e) => `
+        <article class="card">
+          <div class="glass">
+            <div class="poster" style="background-image:${e.poster}"></div>
+            <div class="card-body">
+              <div class="icon-circle">${ICON.cal}</div>
+              <h3 class="card-title">${e.title}</h3>
+              <p class="card-meta">${e.date}</p>
+              <div class="faces">
+                <span class="face"></span><span class="face"></span><span class="face"></span>
+                <span>+${e.interested} going</span>
+              </div>
+            </div>
+          </div>
+        </article>
+      `).join('');
+
+      return `
+        <header class="header">
+          <div class="header-left">
+            <img class="wordmark" src="../assets/wordmark-chrome-dark.png" alt="iykyk" />
+            <p class="kicker">Events in</p>
+            <h2 class="city-title">Munich</h2>
+            <div class="dots">${dots()}</div>
+          </div>
+          <div class="city-pill glass">
+            ${ICON.pin}<span>Munich</span>${ICON.chev}
+          </div>
+        </header>
+        <div class="chips">${chips}</div>
+        <div class="scroll"><div class="grid">${cards}</div></div>
+        <div class="tabbar-wrap">
+          <nav class="tabbar glass">
+            <div class="tab-bubble"></div>
+            <div class="tab active">${ICON.earth}<span>Explore</span></div>
+            <div class="tab">${ICON.cal}<span>Calendar</span></div>
+            <div class="tab">${ICON.people}<span>Profile</span></div>
+          </nav>
+        </div>
+      `;
+    }
+
+    document.getElementById('explore-ui').innerHTML = exploreHTML();
+    document.getElementById('explore-ui-current').innerHTML = exploreHTML();
+
+    const BG = {
+      a: '../assets/brand/explore-cool-bg-a.png',
+      b: '../assets/brand/explore-cool-bg-b.png',
+      current: '../assets/brand/designshot-bg.png',
+    };
+
+    document.querySelectorAll('.controls button').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('.controls button').forEach((b) => b.classList.remove('active'));
+        btn.classList.add('active');
+        const src = BG[btn.dataset.bg];
+        document.getElementById('bg-cool').src = src;
+        if (btn.dataset.bg === 'current') {
+          document.getElementById('bg-current').src = src;
+        }
+      });
+    });
+  </script>
+</body>
+</html>

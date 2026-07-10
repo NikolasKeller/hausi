@@ -1,6 +1,7 @@
 import React, { useCallback, useState } from 'react';
 import {
   ActivityIndicator,
+  Image,
   Platform,
   Pressable,
   ScrollView,
@@ -14,17 +15,16 @@ import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as Linking from 'expo-linking';
 import { type EventDetail } from '../../../shared/types';
-import { api } from '../../../lib/api';
+import { api, mediaUrl } from '../../../lib/api';
 import { useAuth } from '../../../lib/auth';
 import { confirmDialog, notify } from '../../../lib/dialogs';
 import { recordRecentEvent, removeRecentEvent } from '../../../lib/recents';
 import { shareText } from '../../../lib/share';
-import { brand, colors, radius, spacing } from '../../../lib/theme';
-import { titleFontStyle, display, kicker, uiText } from '../../../lib/fonts';
-import { CoverGradient } from '../../../components/CoverGradient';
+import { coverFor } from '../../../lib/covers';
+import { colors, radius, spacing } from '../../../lib/theme';
+import { thinDisplay, XLIGHT_ITALIC, kicker, uiText } from '../../../lib/fonts';
 import { RichDescription } from '../../../components/RichDescription';
-import { ThemeBackground, themeInk } from '../../../components/themes';
-import { Glass } from '../../../components/glass';
+import { GlassSurface } from '../../../components/GlassSurface';
 import { Avatar } from '../../../components/Avatar';
 import { Button } from '../../../components/ui';
 import { formatEventDate, formatEventTime } from '../../../components/EventCard';
@@ -42,6 +42,102 @@ function ticketInfo(description: string): { url: string | null; text: string } {
     text = description.slice(0, idx).replace(/[\s:·\-–—]+$/, '');
   }
   return { url, text };
+}
+
+// ── Designshot primitives ─────────────────────────────────────────────────────
+// Decorative dotted arc under the hero title (from designshot.tsx).
+function DottedArc({ count = 18 }: { count?: number }) {
+  return (
+    <View style={styles.dotsRow}>
+      {Array.from({ length: count }).map((_, i) => (
+        <View
+          key={i}
+          style={[
+            styles.dot,
+            {
+              opacity: 0.85 - i * 0.035,
+              transform: [{ translateY: Math.pow(i - 3, 2) * 0.05 }],
+            },
+          ]}
+        />
+      ))}
+    </View>
+  );
+}
+
+// Thin tick progress ring for the going-count card.
+function MiniRing({ size, progress = 0.65 }: { size: number; progress?: number }) {
+  const ticks = 40;
+  const r = size / 2;
+  const items = [];
+  for (let i = 0; i < ticks; i++) {
+    const angle = (i * 360) / ticks;
+    const on = i / ticks <= progress;
+    items.push(
+      <View
+        key={i}
+        style={{
+          position: 'absolute',
+          left: r - 0.8,
+          top: r - 1.75,
+          width: 1.6,
+          height: 3.5,
+          borderRadius: 1,
+          backgroundColor: on ? 'rgba(255,255,255,0.9)' : 'rgba(255,255,255,0.25)',
+          transform: [{ rotate: `${angle}deg` }, { translateY: -r + 2 }],
+        }}
+      />
+    );
+  }
+  return <View style={{ width: size, height: size }}>{items}</View>;
+}
+
+// Full-bleed blurred cover — the foggy atmospheric canvas from designshot.
+function AtmosphericBackground({
+  theme,
+  image,
+  children,
+}: {
+  theme: string;
+  image?: string | null;
+  children?: React.ReactNode;
+}) {
+  const cover = coverFor(theme);
+  const uri = mediaUrl(image);
+  const webBlur =
+    Platform.OS === 'web'
+      ? ({
+          filter: 'blur(42px) saturate(130%)',
+          transform: [{ scale: 1.12 }],
+        } as object)
+      : null;
+  return (
+    <View style={styles.atmoFill}>
+      {uri ? (
+        <Image
+          source={{ uri }}
+          blurRadius={Platform.OS === 'ios' ? 42 : 0}
+          style={[StyleSheet.absoluteFill, webBlur]}
+          resizeMode="cover"
+        />
+      ) : (
+        <LinearGradient
+          colors={cover.colors}
+          start={{ x: 0.15, y: 0 }}
+          end={{ x: 0.85, y: 1 }}
+          style={StyleSheet.absoluteFill}
+        />
+      )}
+      <View style={[StyleSheet.absoluteFill, styles.atmoVeil]} pointerEvents="none" />
+      <LinearGradient
+        colors={['rgba(30,45,60,0.30)', 'rgba(11,12,16,0.15)', 'rgba(11,12,16,0.72)']}
+        locations={[0, 0.45, 1]}
+        style={StyleSheet.absoluteFill}
+        pointerEvents="none"
+      />
+      {children}
+    </View>
+  );
 }
 
 // One item in the floating bottom action bar (icon over a small label).
@@ -216,10 +312,14 @@ export default function EventScreen() {
     );
   }
 
-  // The page now sits on the corporate dark canvas (see ThemeBackground), so
-  // content always uses the dark-surface ink (white type, dark glass) instead
-  // of a palette that flipped with the per-event theme.
-  const ink = themeInk('noir');
+  // Designshot palette — fixed white-on-fog, independent of per-event theme.
+  const ink = {
+    text: '#FFFFFF',
+    subtext: 'rgba(255,255,255,0.75)',
+    faint: 'rgba(255,255,255,0.55)',
+    hairline: 'rgba(255,255,255,0.18)',
+    dark: true,
+  };
 
   const spotsLeft =
     event.maxGuests != null ? Math.max(0, event.maxGuests - event.counts.going) : null;
@@ -234,43 +334,48 @@ export default function EventScreen() {
   // Host "text blasts" surface in their own Announcements section (newest first).
   const blasts = event.comments.filter((c) => c.type === 'blast');
 
+  const goingProgress = event.maxGuests
+    ? Math.min(1, event.counts.going / event.maxGuests)
+    : Math.min(1, event.counts.going / 50);
+
   return (
-    <ThemeBackground theme={event.coverTheme} effect={event.effect}>
+    <AtmosphericBackground theme={event.coverTheme} image={event.coverImage}>
         <ScrollView
-          contentContainerStyle={[styles.content, { paddingBottom: insets.bottom + 108 }]}
+          contentContainerStyle={[styles.content, { paddingBottom: insets.bottom + 120 }]}
           keyboardShouldPersistTaps="handled"
+          showsVerticalScrollIndicator={false}
         >
-          {event.coverImage ? (
-            <View style={styles.posterWrap}>
-              <CoverGradient
-                theme={event.coverTheme}
-                image={event.coverImage}
-                style={styles.poster}
-              />
-              <Text
-                style={[styles.heroTitleBelow, titleFontStyle(event.titleFont), { color: ink.text }]}
-              >
-                {event.title}
+          <View style={[styles.hero, { paddingTop: insets.top + 56 }]}>
+            <GlassSurface
+              radius={999}
+              blur={18}
+              fill="rgba(255,255,255,0.10)"
+              borderColor="rgba(255,255,255,0.30)"
+              shadow={false}
+              style={styles.datePill}
+            >
+              <Text style={styles.datePillText}>
+                {formatEventDate(event.date)} · {formatEventTime(event.date)}
               </Text>
-            </View>
-          ) : (
-            <View style={styles.heroBlock}>
-              <Text
-                style={[
-                  styles.heroTitlePlain,
-                  titleFontStyle(event.titleFont),
-                  { color: ink.text },
-                ]}
-              >
-                {event.title}
+            </GlassSurface>
+
+            <Text style={styles.heroKicker}>Hosted by {event.host.name}</Text>
+            <Text style={[styles.heroTitle, thinDisplay(56)]} numberOfLines={3}>
+              {event.title}
+            </Text>
+            {event.location ? (
+              <Text style={styles.heroCaption}>
+                {event.location}
+                {event.city ? `, ${event.city}` : ''}
               </Text>
-            </View>
-          )}
+            ) : null}
+            <DottedArc />
+          </View>
 
           <View style={styles.section}>
             {event.myCohostInvite ? (
-              <Glass tint={ink.glassTint} radius={radius.md} style={styles.inviteBanner}>
-                <Text style={[styles.inviteKicker, { color: ink.subtext }]}>Co-host invite 🤝</Text>
+              <GlassSurface radius={30} blur={26} style={styles.inviteBanner}>
+                <Text style={[styles.inviteKicker, { color: ink.faint }]}>Co-host invite</Text>
                 <Text style={[styles.inviteTitle, { color: ink.text }]}>
                   {event.myCohostInvite.invitedBy.name} invited you to co-host
                 </Text>
@@ -281,7 +386,7 @@ export default function EventScreen() {
                   <View style={{ flex: 1 }}>
                     <Button
                       title="Accept"
-                      variant="primary"
+                      variant="chrome"
                       onPress={acceptCohostInvite}
                       loading={inviteBusy}
                     />
@@ -290,13 +395,13 @@ export default function EventScreen() {
                     <Button
                       title="Decline"
                       variant="ghost"
-                      tone={ink.dark ? 'paper' : 'ink'}
+                      tone="paper"
                       onPress={declineCohostInvite}
                       disabled={inviteBusy}
                     />
                   </View>
                 </View>
-              </Glass>
+              </GlassSurface>
             ) : null}
 
             <View style={styles.hostRow}>
@@ -311,50 +416,64 @@ export default function EventScreen() {
                 </Text>
               </View>
               <Pressable onPress={share}>
-                <Glass tint={ink.glassTint} radius={radius.pill} style={styles.shareButton}>
+                <GlassSurface
+                  radius={999}
+                  blur={18}
+                  fill="rgba(255,255,255,0.10)"
+                  borderColor="rgba(255,255,255,0.30)"
+                  style={styles.shareButton}
+                >
                   <Ionicons name="share-outline" size={14} color={ink.text} />
-                  <Text style={[styles.shareText, { color: ink.text }]}>Share link</Text>
-                </Glass>
+                  <Text style={[styles.shareText, { color: ink.text }]}>Share</Text>
+                </GlassSurface>
               </Pressable>
             </View>
 
-            <Glass tint={ink.glassTint} radius={radius.md} style={styles.metaCard}>
-              <View style={styles.metaRow}>
-                <Ionicons name="calendar-outline" size={16} color={ink.subtext} style={styles.metaIcon} />
-                <Text style={[styles.metaLine, { color: ink.text }]}>
-                  {formatEventDate(event.date)} · {formatEventTime(event.date)}
-                </Text>
-              </View>
-              {event.location ? (
-                <View style={styles.metaRow}>
-                  <Ionicons name="location-outline" size={16} color={ink.subtext} style={styles.metaIcon} />
-                  <Text style={[styles.metaLine, { color: ink.text }]}>
-                    {event.location}
-                    {event.city ? `, ${event.city}` : ''}
-                  </Text>
+            <View style={styles.cardRow}>
+              <GlassSurface radius={30} blur={26} style={styles.metaCard}>
+                <View style={styles.cardIconCircle}>
+                  <Ionicons name="calendar-outline" size={18} color="#0B0C10" />
                 </View>
-              ) : null}
-              {event.costPerPerson ? (
-                <View style={styles.metaRow}>
-                  <Ionicons name="cash-outline" size={16} color={ink.subtext} style={styles.metaIcon} />
-                  <Text style={[styles.metaLine, { color: ink.text }]}>{event.costPerPerson}</Text>
+                <Text style={styles.cardTitle}>Event details</Text>
+                {event.location ? (
+                  <View style={styles.metaRow}>
+                    <Ionicons name="location-outline" size={14} color={ink.subtext} style={styles.metaIcon} />
+                    <Text style={[styles.metaLine, { color: ink.text }]}>
+                      {event.location}
+                      {event.city ? `, ${event.city}` : ''}
+                    </Text>
+                  </View>
+                ) : null}
+                {event.costPerPerson ? (
+                  <View style={styles.metaRow}>
+                    <Ionicons name="cash-outline" size={14} color={ink.subtext} style={styles.metaIcon} />
+                    <Text style={[styles.metaLine, { color: ink.text }]}>{event.costPerPerson}</Text>
+                  </View>
+                ) : null}
+                {event.dressCode ? (
+                  <View style={styles.metaRow}>
+                    <Ionicons name="shirt-outline" size={14} color={ink.subtext} style={styles.metaIcon} />
+                    <Text style={[styles.metaLine, { color: ink.text }]}>{event.dressCode}</Text>
+                  </View>
+                ) : null}
+                {spotsLeft != null ? (
+                  <View style={styles.metaRow}>
+                    <Ionicons name="ticket-outline" size={14} color={ink.subtext} style={styles.metaIcon} />
+                    <Text style={[styles.metaLine, { color: ink.text }]}>
+                      {spotsLeft > 0 ? `${spotsLeft} spots left` : 'Event is full'}
+                    </Text>
+                  </View>
+                ) : null}
+              </GlassSurface>
+
+              <GlassSurface radius={30} blur={26} style={styles.goingCard}>
+                <Text style={styles.cardTitle}>Going</Text>
+                <View style={styles.scoreRow}>
+                  <Text style={[styles.scoreValue, thinDisplay(56)]}>{event.counts.going}</Text>
+                  <MiniRing size={38} progress={goingProgress} />
                 </View>
-              ) : null}
-              {event.dressCode ? (
-                <View style={styles.metaRow}>
-                  <Ionicons name="shirt-outline" size={16} color={ink.subtext} style={styles.metaIcon} />
-                  <Text style={[styles.metaLine, { color: ink.text }]}>{event.dressCode}</Text>
-                </View>
-              ) : null}
-              {spotsLeft != null ? (
-                <View style={styles.metaRow}>
-                  <Ionicons name="ticket-outline" size={16} color={ink.subtext} style={styles.metaIcon} />
-                  <Text style={[styles.metaLine, { color: ink.text }]}>
-                    {spotsLeft > 0 ? `${spotsLeft} spots left` : 'Event is full'}
-                  </Text>
-                </View>
-              ) : null}
-            </Glass>
+              </GlassSurface>
+            </View>
 
             {ticket.text ? (
               <RichDescription
@@ -364,34 +483,25 @@ export default function EventScreen() {
               />
             ) : null}
 
-            {/* Host announcements (text blasts) — prominent, above the guest list. */}
             {blasts.length ? (
               <View style={styles.announceSection}>
-                <View style={styles.sectionHead}>
-                  <Text style={[styles.kickerLabel, { color: ink.subtext }]}>From your host</Text>
-                  <Text style={[styles.sectionTitle, { color: ink.text }]}>Announcements 📣</Text>
-                </View>
+                <Text style={[styles.kickerLabel, { color: ink.faint }]}>From your host</Text>
+                <Text style={[styles.sectionTitle, thinDisplay(34)]}>Announcements</Text>
                 {[...blasts].reverse().map((b) => (
-                  <Glass key={b.id} tint={ink.glassTint} radius={radius.md} style={styles.announceCard}>
+                  <GlassSurface key={b.id} radius={30} blur={26} style={styles.announceCard}>
                     <View style={styles.announceHead}>
                       <Ionicons name="megaphone" size={15} color={ink.subtext} />
                       <Text style={[styles.announceAuthor, { color: ink.subtext }]}>{b.user.name}</Text>
                     </View>
                     <Text style={[styles.announceText, { color: ink.text }]}>{b.text}</Text>
-                  </Glass>
+                  </GlassSurface>
                 ))}
               </View>
             ) : null}
 
-            {/* Tickets are bought at the event's source — one prominent button
-                instead of the old RSVP row. Hidden entirely when the event has
-                no ticket link (never a dead button). */}
             {ticket.url ? (
               <Pressable
                 onPress={() => {
-                  // Remember the purchase as a GOING RSVP (fills Profile →
-                  // "My events" and the calendar). Strictly fire-and-forget —
-                  // opening the ticket link must never block on it.
                   if (!hasTicket && !event.isHost) {
                     api
                       .rsvp(event.id, 'GOING')
@@ -408,55 +518,44 @@ export default function EventScreen() {
                 }}
                 style={({ pressed }) => [pressed && { opacity: 0.85, transform: [{ scale: 0.98 }] }]}
               >
-                {/* The same molten-chrome CTA used across the app — sits on top
-                    of any per-event theme color and always reads as premium. */}
-                <LinearGradient
-                  colors={[...brand.glow]}
-                  start={{ x: 0, y: 0 }}
-                  end={{ x: 1, y: 1 }}
-                  style={styles.buyButton}
-                >
-                  <LinearGradient
-                    pointerEvents="none"
-                    colors={['rgba(255,255,255,0.55)', 'rgba(255,255,255,0)']}
-                    start={{ x: 0, y: 0 }}
-                    end={{ x: 0, y: 1 }}
-                    style={styles.buyButtonSheen}
-                  />
+                <View style={styles.buyButtonWhite}>
                   <Ionicons
                     name={hasTicket ? 'checkmark-circle' : 'ticket-outline'}
-                    size={20}
-                    color={colors.onAccent}
+                    size={22}
+                    color="#0B0C10"
                   />
-                  <Text style={styles.buyButtonText}>
+                  <Text style={styles.buyButtonWhiteText}>
                     {hasTicket ? 'Ticket purchased' : 'Buy ticket'}
                   </Text>
-                </LinearGradient>
+                </View>
               </Pressable>
             ) : null}
 
           </View>
         </ScrollView>
 
-      {/* Floating back button — the screen has no nav header (so no opaque bar
-          over the full-bleed theme); this glass chip sits over the cover. */}
       <Pressable
         onPress={() => (router.canGoBack() ? router.back() : router.replace('/'))}
         hitSlop={10}
         style={[styles.backFab, { top: insets.top + spacing.sm }]}
       >
-        <Glass tint={ink.glassTint} radius={999} style={styles.fabInner}>
+        <GlassSurface
+          radius={999}
+          blur={18}
+          fill="rgba(255,255,255,0.10)"
+          borderColor="rgba(255,255,255,0.30)"
+          shadow={false}
+          style={styles.fabInner}
+        >
           <Ionicons name="chevron-back" size={24} color={ink.text} />
-        </Glass>
+        </GlassSurface>
       </Pressable>
 
-      {/* Floating bottom action bar — Edit · Text Blast · Going · Invite · More.
-          Host-only items are hidden for guests; the body stays uncluttered. */}
       <View
         pointerEvents="box-none"
         style={[styles.actionBarWrap, { paddingBottom: insets.bottom + spacing.sm }]}
       >
-        <Glass tint={ink.dark ? 'dark' : 'light'} radius={radius.pill} style={styles.actionBar}>
+        <GlassSurface radius={999} blur={26} fill="rgba(255,255,255,0.12)" style={styles.actionBar}>
           {event.canManage ? (
             <BarItem
               icon="pencil"
@@ -474,10 +573,8 @@ export default function EventScreen() {
             />
           ) : null}
 
-          {/* Pure guest-count display — RSVPs are gone, tickets are bought at
-              the source. */}
           <View style={styles.barGoing}>
-            <Text style={[styles.barGoingCount, { color: ink.text }]}>{event.counts.going}</Text>
+            <Text style={[styles.barGoingCount, thinDisplay(18)]}>{event.counts.going}</Text>
             <Text style={[styles.barLabel, { color: ink.text }]}>Going</Text>
           </View>
 
@@ -490,7 +587,7 @@ export default function EventScreen() {
               onPress={() => setMenuOpen(true)}
             />
           ) : null}
-        </Glass>
+        </GlassSurface>
       </View>
 
       {menuOpen ? (
@@ -500,7 +597,7 @@ export default function EventScreen() {
             onPress={() => setMenuOpen(false)}
           />
           <View style={[styles.menuSheetWrap, { paddingBottom: insets.bottom + spacing.lg }]}>
-            <Glass tint={ink.dark ? 'dark' : 'light'} radius={radius.lg} style={styles.menuSheet}>
+            <GlassSurface radius={30} blur={26} style={styles.menuSheet}>
               <Text style={[styles.menuTitle, { color: ink.subtext }]}>Manage event</Text>
               <ActionRow
                 icon="create-outline"
@@ -533,18 +630,26 @@ export default function EventScreen() {
                   }}
                 />
               ) : null}
-            </Glass>
+            </GlassSurface>
           </View>
         </View>
       ) : null}
-    </ThemeBackground>
+    </AtmosphericBackground>
   );
 }
 
 const styles = StyleSheet.create({
+  atmoFill: {
+    flex: 1,
+    backgroundColor: '#0B0C10',
+    overflow: 'hidden',
+  },
+  atmoVeil: {
+    backgroundColor: 'rgba(11,12,16,0.50)',
+  },
   center: {
     flex: 1,
-    backgroundColor: colors.bg,
+    backgroundColor: '#0B0C10',
     alignItems: 'center',
     justifyContent: 'center',
     gap: spacing.md,
@@ -585,9 +690,6 @@ const styles = StyleSheet.create({
   barLabel: {
     ...uiText(11, '600'),
   },
-  // Same footprint as a BarItem (icon + label) but the "icon" is the going
-  // count itself — no white circle card, just the number sitting plainly in
-  // the bar like everything else around it.
   barGoing: {
     alignItems: 'center',
     justifyContent: 'center',
@@ -596,7 +698,7 @@ const styles = StyleSheet.create({
     paddingVertical: 6,
   },
   barGoingCount: {
-    ...uiText(18, '700'),
+    color: '#FFFFFF',
   },
   menuOverlay: {
     ...StyleSheet.absoluteFillObject,
@@ -604,7 +706,7 @@ const styles = StyleSheet.create({
     justifyContent: 'flex-end',
   },
   menuBackdrop: {
-    backgroundColor: 'rgba(0,0,0,0.35)',
+    backgroundColor: 'rgba(0,0,0,0.45)',
   },
   menuSheetWrap: {
     paddingHorizontal: spacing.lg,
@@ -634,43 +736,69 @@ const styles = StyleSheet.create({
   content: {
     paddingBottom: spacing.section,
   },
-  posterWrap: {
-    padding: spacing.lg,
-    paddingTop: 80,
-  },
-  poster: {
-    aspectRatio: 1,
-    justifyContent: 'flex-end',
-    padding: spacing.lg,
-    borderRadius: radius.lg,
-    overflow: 'hidden',
-  },
-  heroTitleBelow: {
-    fontSize: 56,
-    letterSpacing: -1,
-    lineHeight: 56,
-    marginTop: spacing.lg,
-  },
-  heroBlock: {
+  hero: {
     paddingHorizontal: spacing.lg,
-    paddingTop: 100,
-    paddingBottom: spacing.md,
-    gap: spacing.sm,
+    gap: spacing.xs,
   },
-  heroTitlePlain: {
-    fontSize: 56,
-    letterSpacing: -1,
-    lineHeight: 56,
+  datePill: {
+    alignSelf: 'flex-start',
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    marginBottom: spacing.sm,
+  },
+  datePillText: {
+    color: 'rgba(255,255,255,0.95)',
+    fontFamily: 'Inter_400Regular',
+    fontSize: 12,
+    letterSpacing: 0.2,
+    textShadowColor: 'rgba(30,45,60,0.55)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 6,
+  },
+  heroKicker: {
+    color: 'rgba(255,255,255,0.95)',
+    fontFamily: XLIGHT_ITALIC,
+    fontSize: 14,
+    letterSpacing: 0.3,
+    marginLeft: 6,
+    textShadowColor: 'rgba(30,45,60,0.55)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 10,
+  },
+  heroTitle: {
+    color: '#FFFFFF',
+    marginLeft: 4,
+  },
+  heroCaption: {
+    color: 'rgba(255,255,255,0.75)',
+    fontFamily: 'Inter_400Regular',
+    fontSize: 11,
+    lineHeight: 16,
+    marginTop: 8,
+    marginLeft: 6,
+    textShadowColor: 'rgba(30,45,60,0.55)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 8,
+  },
+  dotsRow: {
+    flexDirection: 'row',
+    gap: 5,
+    marginTop: 10,
+    marginLeft: 6,
+  },
+  dot: {
+    width: 2.5,
+    height: 2.5,
+    borderRadius: 1.5,
+    backgroundColor: '#FFFFFF',
   },
   section: {
     padding: spacing.lg,
     gap: spacing.lg,
   },
   inviteBanner: {
-    padding: spacing.md,
+    padding: spacing.lg,
     gap: spacing.xs,
-    borderWidth: 1,
-    borderColor: colors.accent,
   },
   inviteKicker: {
     ...kicker(),
@@ -707,29 +835,63 @@ const styles = StyleSheet.create({
   shareText: {
     ...uiText(14, '600'),
   },
+  cardRow: {
+    flexDirection: 'row',
+    gap: spacing.md,
+    alignItems: 'stretch',
+  },
   metaCard: {
-    padding: spacing.md,
-    gap: spacing.sm + 2,
+    flex: 1.15,
+    padding: 18,
+    minHeight: 180,
+  },
+  goingCard: {
+    flex: 0.85,
+    padding: 18,
+    minHeight: 180,
+    justifyContent: 'space-between',
+  },
+  cardIconCircle: {
+    width: 42,
+    height: 42,
+    borderRadius: 21,
+    backgroundColor: '#FFFFFF',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 4,
+  },
+  cardTitle: {
+    color: 'rgba(255,255,255,0.92)',
+    fontFamily: 'Inter_400Regular',
+    fontSize: 13,
+    marginTop: 8,
+    marginBottom: 8,
+  },
+  scoreRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-end',
+    justifyContent: 'space-between',
+  },
+  scoreValue: {
+    color: '#FFFFFF',
   },
   metaRow: {
     flexDirection: 'row',
     alignItems: 'center',
+    marginTop: 4,
   },
   metaIcon: {
-    width: 24,
+    width: 20,
   },
   metaLine: {
     flex: 1,
-    ...uiText(16, '500'),
-  },
-  sectionHead: {
-    gap: spacing.xs,
+    ...uiText(13, '500'),
   },
   announceSection: {
     gap: spacing.sm,
   },
   announceCard: {
-    padding: spacing.md,
+    padding: spacing.lg,
     gap: spacing.xs,
   },
   announceHead: {
@@ -746,164 +908,26 @@ const styles = StyleSheet.create({
   kickerLabel: {
     ...kicker(),
   },
-  countPills: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: spacing.sm,
-    marginTop: spacing.xs,
+  sectionTitle: {
+    color: '#FFFFFF',
   },
-  buyButton: {
+  buyButtonWhite: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     gap: spacing.sm,
+    backgroundColor: '#FFFFFF',
     borderRadius: radius.pill,
     paddingVertical: 16,
     paddingHorizontal: spacing.xl,
-    overflow: 'hidden',
     shadowColor: '#000',
-    shadowOpacity: 0.25,
-    shadowRadius: 12,
-    shadowOffset: { width: 0, height: 6 },
-    elevation: 5,
+    shadowOpacity: 0.35,
+    shadowRadius: 18,
+    shadowOffset: { width: 0, height: 8 },
+    elevation: 6,
   },
-  buyButtonSheen: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    height: '55%',
-  },
-  buyButtonText: {
+  buyButtonWhiteText: {
     ...uiText(17, '700'),
-    color: colors.onAccent,
-  },
-  guestSummary: {
-    padding: spacing.md,
-    gap: spacing.sm,
-  },
-  guestSummaryHead: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    justifyContent: 'space-between',
-  },
-  viewAllPill: {
-    paddingHorizontal: spacing.md,
-    paddingVertical: 8,
-  },
-  viewAllText: {
-    ...uiText(13, '600'),
-  },
-  guestCountsLine: {
-    ...uiText(14, '600'),
-  },
-  avatarStack: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginTop: 2,
-  },
-  avatarMore: {
-    width: 40,
-    height: 40,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  avatarMoreText: {
-    ...uiText(13, '800'),
-  },
-  guestEmpty: {
-    ...uiText(14, '500'),
-  },
-  plusOneGuestRow: {
-    marginLeft: spacing.lg,
-  },
-  plusOneGuestName: {
-    ...uiText(15, '400'),
-  },
-  plusOneTag: {
-    fontSize: 12,
-    fontStyle: 'italic',
-  },
-  divider: {
-    height: 2,
-    marginVertical: spacing.sm,
-  },
-  sectionTitle: {
-    ...display(34),
-  },
-  guestGroupTitle: {
-    ...kicker(),
-  },
-  guestRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.sm,
-    padding: spacing.sm,
-    paddingHorizontal: spacing.md,
-  },
-  guestName: {
-    ...uiText(16, '500'),
-  },
-  noComments: {
-    ...uiText(15, '400'),
-  },
-  systemEntry: {
-    fontSize: 13,
-    textAlign: 'center',
-    fontStyle: 'italic',
-  },
-  removeGuest: {
-    width: 26,
-    height: 26,
-    borderRadius: 13,
-    backgroundColor: 'rgba(255,255,255,0.12)',
-    borderWidth: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  removeGuestText: {
-    fontSize: 12,
-    fontWeight: '600',
-  },
-  commentRow: {
-    flexDirection: 'row',
-    gap: spacing.sm,
-    alignItems: 'flex-start',
-  },
-  commentBubble: {
-    flex: 1,
-    padding: spacing.sm,
-    paddingHorizontal: spacing.md,
-    gap: 2,
-  },
-  commentAuthor: {
-    ...uiText(13, '700'),
-  },
-  commentText: {
-    ...uiText(15, '400', { lineHeight: 1.4 }),
-  },
-  commentInputRow: {
-    flexDirection: 'row',
-    gap: spacing.sm,
-    alignItems: 'flex-end',
-  },
-  commentInputWrap: {
-    flex: 1,
-    maxHeight: 120,
-  },
-  commentInput: {
-    paddingHorizontal: spacing.md,
-    paddingVertical: 10,
-    fontSize: 15,
-  },
-  sendButton: {
-    backgroundColor: colors.accentDark,
-    borderRadius: radius.md,
-    paddingHorizontal: spacing.lg,
-    paddingVertical: 12,
-  },
-  sendText: {
-    color: '#fff',
-    ...uiText(15, '600'),
+    color: '#0B0C10',
   },
 });

@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Image,
+  Platform,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -12,19 +13,21 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
 import { CATEGORIES, CATEGORY_META, type Category, type ExploreEvent } from '../../shared/types';
 import { api } from '../../lib/api';
 import { searchCities } from '../../lib/geocoding';
 import { hasLocationPermission, locateCity, type LocatedCity } from '../../lib/location';
 import { getRecentCities, recordRecentCity } from '../../lib/recentCities';
-import { colors, radius, spacing, shadow } from '../../lib/theme';
-import { display, uiText, kicker } from '../../lib/fonts';
+import { radius, spacing } from '../../lib/theme';
+import { thinDisplay, XLIGHT_ITALIC, kicker, uiText } from '../../lib/fonts';
 import { CoverGradient } from '../../components/CoverGradient';
 import { Button } from '../../components/ui';
-import { withScreenBackground } from '../../components/ScreenBackground';
 import { formatEventDate } from '../../components/EventCard';
 import { Avatar } from '../../components/Avatar';
-import { ChromeCard } from '../../components/glass';
+import { GlassSurface } from '../../components/GlassSurface';
+
+const EXPLORE_BG = require('../../assets/brand/designshot-bg.png');
 
 // Monochrome line icons instead of the colorful category emojis — everything
 // in the chrome UI stays black/silver; color is reserved for event artwork.
@@ -46,6 +49,54 @@ const CATEGORY_CHIPS: { key: Category | 'all'; label: string }[] = [
   })),
 ];
 
+// Foggy atmospheric canvas — same designshot backdrop as the event screen.
+function ExploreAtmosphere({ children }: { children?: React.ReactNode }) {
+  const webBlur =
+    Platform.OS === 'web'
+      ? ({
+          filter: 'blur(42px) saturate(130%)',
+          transform: [{ scale: 1.12 }],
+        } as object)
+      : null;
+  return (
+    <View style={styles.atmoFill}>
+      <Image
+        source={EXPLORE_BG}
+        blurRadius={Platform.OS === 'ios' ? 42 : 0}
+        style={[StyleSheet.absoluteFill, webBlur]}
+        resizeMode="cover"
+      />
+      <View style={[StyleSheet.absoluteFill, styles.atmoVeil]} pointerEvents="none" />
+      <LinearGradient
+        colors={['rgba(30,45,60,0.30)', 'rgba(11,12,16,0.15)', 'rgba(11,12,16,0.72)']}
+        locations={[0, 0.45, 1]}
+        style={StyleSheet.absoluteFill}
+        pointerEvents="none"
+      />
+      {children}
+    </View>
+  );
+}
+
+function DottedArc({ count = 14 }: { count?: number }) {
+  return (
+    <View style={styles.dotsRow}>
+      {Array.from({ length: count }).map((_, i) => (
+        <View
+          key={i}
+          style={[
+            styles.dot,
+            {
+              opacity: 0.85 - i * 0.04,
+              transform: [{ translateY: Math.pow(i - 3, 2) * 0.04 }],
+            },
+          ]}
+        />
+      ))}
+    </View>
+  );
+}
+
 function ExploreCard({ event }: { event: ExploreEvent }) {
   const router = useRouter();
   const faces = event.interestedAvatars.slice(0, 3);
@@ -54,7 +105,7 @@ function ExploreCard({ event }: { event: ExploreEvent }) {
       onPress={() => router.push(`/event/${event.slug}`)}
       style={({ pressed }) => [styles.card, pressed && { opacity: 0.85 }]}
     >
-      <ChromeCard radius={radius.lg} style={shadow.card}>
+      <GlassSurface radius={30} blur={26} style={styles.eventCard}>
         <CoverGradient
           theme={event.coverTheme}
           image={event.coverImage}
@@ -68,7 +119,7 @@ function ExploreCard({ event }: { event: ExploreEvent }) {
               <Text style={styles.friendName}>{event.friendGoing.name}</Text> is interested
             </Text>
           ) : null}
-          <Text style={styles.cardTitle} numberOfLines={2}>
+          <Text style={[styles.cardTitle, thinDisplay(22)]} numberOfLines={2}>
             {event.title}
           </Text>
           <Text style={styles.cardMeta} numberOfLines={1}>
@@ -85,12 +136,12 @@ function ExploreCard({ event }: { event: ExploreEvent }) {
             </View>
           ) : null}
         </View>
-      </ChromeCard>
+      </GlassSurface>
     </Pressable>
   );
 }
 
-export default withScreenBackground(ExploreScreen);
+export default ExploreScreen;
 
 function ExploreScreen() {
   // city: null = not resolved yet, '' = all cities, otherwise a city name.
@@ -323,243 +374,277 @@ function ExploreScreen() {
       : locateError ?? 'Use your current location';
 
   return (
-    <SafeAreaView edges={['top']} style={styles.safe}>
-      <View style={{ flex: 1 }}>
-        <View style={styles.headerRow}>
-          <View style={styles.headerTitleWrap}>
-            {/* The liquid-chrome wordmark artwork — the brand IS the header. */}
-            <Image
-              source={require('../../assets/wordmark-chrome-dark.png')}
-              style={styles.headerWordmark}
-              resizeMode="contain"
-              accessibilityLabel="iykyk"
-            />
-          </View>
-          <Pressable
-            onPress={toggleCityMenu}
-            style={({ pressed }) => [styles.cityPill, pressed && { opacity: 0.8 }]}
-          >
-            <Ionicons name="location-outline" size={14} color={colors.text} />
-            <Text style={styles.cityPillText} numberOfLines={1}>
-              {cityLabel}
-            </Text>
-            <Ionicons
-              name={cityMenuOpen ? 'chevron-up' : 'chevron-down'}
-              size={14}
-              color={colors.text}
-            />
-          </Pressable>
-        </View>
-
-        {city === null && error ? (
-          <View style={styles.center}>
-            <Text style={styles.errorEmoji}>🫠</Text>
-            <Text style={styles.errorText}>{error}</Text>
-            <Button title="Try again" variant="ghost" onPress={() => load(() => true)} />
-          </View>
-        ) : city === null ? (
-          <View style={styles.center}>
-            <ActivityIndicator color={colors.accent} size="large" />
-          </View>
-        ) : (
-          <ScrollView contentContainerStyle={styles.content}>
-            <ScrollView
-              horizontal
-              showsHorizontalScrollIndicator={false}
-              contentContainerStyle={styles.chipsRow}
-            >
-              {CATEGORY_CHIPS.map((chip) => {
-                const active = category === chip.key;
-                return (
-                  <Pressable
-                    key={chip.key}
-                    onPress={() => selectCategory(chip.key)}
-                    style={({ pressed }) => [
-                      styles.chip,
-                      active && styles.chipActive,
-                      pressed && { opacity: 0.8 },
-                    ]}
-                  >
-                    <Ionicons
-                      name={CATEGORY_ICONS[chip.key]}
-                      size={14}
-                      color={active ? colors.onInk : colors.muted}
-                    />
-                    <Text style={[styles.chipLabel, active && styles.chipLabelActive]}>
-                      {chip.label}
-                    </Text>
-                  </Pressable>
-                );
-              })}
-            </ScrollView>
-
-            {error ? (
-              <View style={styles.inlineState}>
-                <Text style={styles.errorEmoji}>🫠</Text>
-                <Text style={styles.errorText}>{error}</Text>
-                <Button title="Try again" variant="ghost" onPress={() => load(() => true)} />
-              </View>
-            ) : events === null ? (
-              <View style={styles.inlineState}>
-                <ActivityIndicator color={colors.accent} size="large" />
-              </View>
-            ) : events.length === 0 ? (
-              <View style={styles.inlineState}>
-                <Text style={styles.errorEmoji}>🫥</Text>
-                <Text style={styles.emptyText}>
-                  Nothing here yet - be the first to throw something public in{' '}
-                  {city || 'your city'}
-                </Text>
-              </View>
-            ) : (
-              <View style={styles.grid}>
-                {events.map((event) => (
-                  <ExploreCard key={event.id} event={event} />
-                ))}
-              </View>
-            )}
-          </ScrollView>
-        )}
-
-        {cityMenuOpen ? (
-          <>
-            <Pressable style={styles.menuBackdrop} onPress={closeCityMenu} />
-            <View style={styles.cityMenu}>
-              <View style={styles.citySearchRow}>
-                <Ionicons name="search" size={16} color={colors.muted} />
-                <TextInput
-                  value={citySearch}
-                  onChangeText={setCitySearch}
-                  placeholder="Search any city…"
-                  placeholderTextColor={colors.muted}
-                  style={styles.citySearchInput}
-                  autoFocus
-                  autoCorrect={false}
-                  returnKeyType="search"
-                  onSubmitEditing={() => {
-                    // Only commit a real city — the top live result — and only
-                    // once results match the current query (not a stale prefix).
-                    if (!citySearching && suggestions[0]) selectCity(suggestions[0]);
-                  }}
-                />
-              </View>
-              <ScrollView keyboardShouldPersistTaps="handled">
-                {query ? (
-                  <>
-                    {suggestions.map((option, index) => {
-                      const active = option === city;
-                      return (
-                        <Pressable
-                          key={option}
-                          onPress={() => selectCity(option)}
-                          style={[
-                            styles.menuItem,
-                            index < suggestions.length - 1 && styles.menuItemBorder,
-                          ]}
-                        >
-                          <View style={styles.menuItemLeft}>
-                            <Ionicons name="location-outline" size={15} color={colors.muted} />
-                            <Text
-                              style={[styles.menuItemText, active && styles.menuItemTextActive]}
-                            >
-                              {option}
-                            </Text>
-                          </View>
-                          {active ? (
-                            <Ionicons name="checkmark" size={16} color={colors.accent} />
-                          ) : null}
-                        </Pressable>
-                      );
-                    })}
-                    {citySearching ? (
-                      <View style={styles.citySearchState}>
-                        <ActivityIndicator size="small" color={colors.accent} />
-                      </View>
-                    ) : suggestions.length === 0 && query.length >= 2 ? (
-                      <Text style={styles.citySearchEmpty}>
-                        No city by that name - check the spelling
-                      </Text>
-                    ) : null}
-                  </>
-                ) : (
-                  <>
-                    <Pressable
-                      onPress={onMyLocationPress}
-                      style={[styles.locationRow, styles.menuItemBorder]}
-                    >
-                      <View style={styles.locationIcon}>
-                        {locating ? (
-                          <ActivityIndicator size="small" color={colors.accent} />
-                        ) : (
-                          <Ionicons name="navigate" size={18} color={colors.text} />
-                        )}
-                      </View>
-                      <View style={styles.locationTextWrap}>
-                        <Text style={styles.menuItemText}>My Location</Text>
-                        <Text style={styles.locationSubtitle} numberOfLines={1}>
-                          {myLocationSubtitle}
-                        </Text>
-                      </View>
-                    </Pressable>
-                    <Pressable
-                      onPress={() => selectCity('')}
-                      style={[styles.menuItem, recentCities.length > 0 && styles.menuItemBorder]}
-                    >
-                      <View style={styles.menuItemLeft}>
-                        <Ionicons name="earth-outline" size={15} color={colors.muted} />
-                        <Text style={[styles.menuItemText, city === '' && styles.menuItemTextActive]}>
-                          All cities
-                        </Text>
-                      </View>
-                      {city === '' ? (
-                        <Ionicons name="checkmark" size={16} color={colors.accent} />
-                      ) : null}
-                    </Pressable>
-                    {recentCities.length > 0 ? (
-                      <>
-                        <Text style={styles.recentHeader}>Recent locations</Text>
-                        {recentCities.map((option, index) => {
-                          const active = option === city;
-                          return (
-                            <Pressable
-                              key={option}
-                              onPress={() => selectCity(option)}
-                              style={[
-                                styles.menuItem,
-                                index < recentCities.length - 1 && styles.menuItemBorder,
-                              ]}
-                            >
-                              <View style={styles.menuItemLeft}>
-                                <Ionicons name="time-outline" size={15} color={colors.muted} />
-                                <Text
-                                  style={[
-                                    styles.menuItemText,
-                                    active && styles.menuItemTextActive,
-                                  ]}
-                                >
-                                  {option}
-                                </Text>
-                              </View>
-                              {active ? (
-                                <Ionicons name="checkmark" size={16} color={colors.accent} />
-                              ) : null}
-                            </Pressable>
-                          );
-                        })}
-                      </>
-                    ) : null}
-                  </>
-                )}
-              </ScrollView>
+    <ExploreAtmosphere>
+      <SafeAreaView edges={['top']} style={styles.safe}>
+        <View style={{ flex: 1 }}>
+          <View style={styles.headerRow}>
+            <View style={styles.headerTitleWrap}>
+              <Image
+                source={require('../../assets/wordmark-chrome-dark.png')}
+                style={styles.headerWordmark}
+                resizeMode="contain"
+                accessibilityLabel="iykyk"
+              />
+              <Text style={styles.heroKicker}>Events in</Text>
+              <Text style={[styles.heroCity, thinDisplay(40)]} numberOfLines={1}>
+                {cityLabel}
+              </Text>
+              <DottedArc />
             </View>
-          </>
-        ) : null}
-      </View>
-    </SafeAreaView>
+            <Pressable
+              onPress={toggleCityMenu}
+              style={({ pressed }) => [pressed && { opacity: 0.8 }]}
+            >
+              <GlassSurface
+                radius={999}
+                blur={18}
+                fill="rgba(255,255,255,0.10)"
+                borderColor="rgba(255,255,255,0.30)"
+                style={styles.cityPill}
+              >
+                <Ionicons name="location-outline" size={14} color="#FFFFFF" />
+                <Text style={styles.cityPillText} numberOfLines={1}>
+                  {cityLabel}
+                </Text>
+                <Ionicons
+                  name={cityMenuOpen ? 'chevron-up' : 'chevron-down'}
+                  size={14}
+                  color="#FFFFFF"
+                />
+              </GlassSurface>
+            </Pressable>
+          </View>
+
+          {city === null && error ? (
+            <View style={styles.center}>
+              <Text style={styles.errorEmoji}>🫠</Text>
+              <Text style={styles.errorText}>{error}</Text>
+              <Button title="Try again" variant="ghost" tone="paper" onPress={() => load(() => true)} />
+            </View>
+          ) : city === null ? (
+            <View style={styles.center}>
+              <ActivityIndicator color="#FFFFFF" size="large" />
+            </View>
+          ) : (
+            <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+              <ScrollView
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                contentContainerStyle={styles.chipsRow}
+              >
+                {CATEGORY_CHIPS.map((chip) => {
+                  const active = category === chip.key;
+                  return (
+                    <Pressable
+                      key={chip.key}
+                      onPress={() => selectCategory(chip.key)}
+                      style={({ pressed }) => [pressed && { opacity: 0.8 }]}
+                    >
+                      {active ? (
+                        <View style={styles.chipActiveWrap}>
+                          <Ionicons
+                            name={CATEGORY_ICONS[chip.key]}
+                            size={14}
+                            color="#0B0C10"
+                          />
+                          <Text style={styles.chipLabelActive}>{chip.label}</Text>
+                        </View>
+                      ) : (
+                        <GlassSurface
+                          radius={999}
+                          blur={18}
+                          fill="rgba(255,255,255,0.10)"
+                          borderColor="rgba(255,255,255,0.30)"
+                          shadow={false}
+                          style={styles.chip}
+                        >
+                          <Ionicons
+                            name={CATEGORY_ICONS[chip.key]}
+                            size={14}
+                            color="rgba(255,255,255,0.75)"
+                          />
+                          <Text style={styles.chipLabel}>{chip.label}</Text>
+                        </GlassSurface>
+                      )}
+                    </Pressable>
+                  );
+                })}
+              </ScrollView>
+
+              {error ? (
+                <View style={styles.inlineState}>
+                  <Text style={styles.errorEmoji}>🫠</Text>
+                  <Text style={styles.errorText}>{error}</Text>
+                  <Button title="Try again" variant="ghost" tone="paper" onPress={() => load(() => true)} />
+                </View>
+              ) : events === null ? (
+                <View style={styles.inlineState}>
+                  <ActivityIndicator color="#FFFFFF" size="large" />
+                </View>
+              ) : events.length === 0 ? (
+                <View style={styles.inlineState}>
+                  <Text style={styles.errorEmoji}>🫥</Text>
+                  <Text style={styles.emptyText}>
+                    Nothing here yet - be the first to throw something public in{' '}
+                    {city || 'your city'}
+                  </Text>
+                </View>
+              ) : (
+                <View style={styles.grid}>
+                  {events.map((event) => (
+                    <ExploreCard key={event.id} event={event} />
+                  ))}
+                </View>
+              )}
+            </ScrollView>
+          )}
+
+          {cityMenuOpen ? (
+            <>
+              <Pressable style={styles.menuBackdrop} onPress={closeCityMenu} />
+              <GlassSurface radius={30} blur={26} style={styles.cityMenu}>
+                <View style={styles.citySearchRow}>
+                  <Ionicons name="search" size={16} color="rgba(255,255,255,0.55)" />
+                  <TextInput
+                    value={citySearch}
+                    onChangeText={setCitySearch}
+                    placeholder="Search any city…"
+                    placeholderTextColor="rgba(255,255,255,0.45)"
+                    style={styles.citySearchInput}
+                    autoFocus
+                    autoCorrect={false}
+                    returnKeyType="search"
+                    onSubmitEditing={() => {
+                      if (!citySearching && suggestions[0]) selectCity(suggestions[0]);
+                    }}
+                  />
+                </View>
+                <ScrollView keyboardShouldPersistTaps="handled">
+                  {query ? (
+                    <>
+                      {suggestions.map((option, index) => {
+                        const active = option === city;
+                        return (
+                          <Pressable
+                            key={option}
+                            onPress={() => selectCity(option)}
+                            style={[
+                              styles.menuItem,
+                              index < suggestions.length - 1 && styles.menuItemBorder,
+                            ]}
+                          >
+                            <View style={styles.menuItemLeft}>
+                              <Ionicons name="location-outline" size={15} color="rgba(255,255,255,0.55)" />
+                              <Text
+                                style={[styles.menuItemText, active && styles.menuItemTextActive]}
+                              >
+                                {option}
+                              </Text>
+                            </View>
+                            {active ? (
+                              <Ionicons name="checkmark" size={16} color="#FFFFFF" />
+                            ) : null}
+                          </Pressable>
+                        );
+                      })}
+                      {citySearching ? (
+                        <View style={styles.citySearchState}>
+                          <ActivityIndicator size="small" color="#FFFFFF" />
+                        </View>
+                      ) : suggestions.length === 0 && query.length >= 2 ? (
+                        <Text style={styles.citySearchEmpty}>
+                          No city by that name - check the spelling
+                        </Text>
+                      ) : null}
+                    </>
+                  ) : (
+                    <>
+                      <Pressable
+                        onPress={onMyLocationPress}
+                        style={[styles.locationRow, styles.menuItemBorder]}
+                      >
+                        <View style={styles.locationIcon}>
+                          {locating ? (
+                            <ActivityIndicator size="small" color="#FFFFFF" />
+                          ) : (
+                            <Ionicons name="navigate" size={18} color="#FFFFFF" />
+                          )}
+                        </View>
+                        <View style={styles.locationTextWrap}>
+                          <Text style={styles.menuItemText}>My Location</Text>
+                          <Text style={styles.locationSubtitle} numberOfLines={1}>
+                            {myLocationSubtitle}
+                          </Text>
+                        </View>
+                      </Pressable>
+                      <Pressable
+                        onPress={() => selectCity('')}
+                        style={[styles.menuItem, recentCities.length > 0 && styles.menuItemBorder]}
+                      >
+                        <View style={styles.menuItemLeft}>
+                          <Ionicons name="earth-outline" size={15} color="rgba(255,255,255,0.55)" />
+                          <Text style={[styles.menuItemText, city === '' && styles.menuItemTextActive]}>
+                            All cities
+                          </Text>
+                        </View>
+                        {city === '' ? (
+                          <Ionicons name="checkmark" size={16} color="#FFFFFF" />
+                        ) : null}
+                      </Pressable>
+                      {recentCities.length > 0 ? (
+                        <>
+                          <Text style={styles.recentHeader}>Recent locations</Text>
+                          {recentCities.map((option, index) => {
+                            const active = option === city;
+                            return (
+                              <Pressable
+                                key={option}
+                                onPress={() => selectCity(option)}
+                                style={[
+                                  styles.menuItem,
+                                  index < recentCities.length - 1 && styles.menuItemBorder,
+                                ]}
+                              >
+                                <View style={styles.menuItemLeft}>
+                                  <Ionicons name="time-outline" size={15} color="rgba(255,255,255,0.55)" />
+                                  <Text
+                                    style={[
+                                      styles.menuItemText,
+                                      active && styles.menuItemTextActive,
+                                    ]}
+                                  >
+                                    {option}
+                                  </Text>
+                                </View>
+                                {active ? (
+                                  <Ionicons name="checkmark" size={16} color="#FFFFFF" />
+                                ) : null}
+                              </Pressable>
+                            );
+                          })}
+                        </>
+                      ) : null}
+                    </>
+                  )}
+                </ScrollView>
+              </GlassSurface>
+            </>
+          ) : null}
+        </View>
+      </SafeAreaView>
+    </ExploreAtmosphere>
   );
 }
 
 const styles = StyleSheet.create({
+  atmoFill: {
+    flex: 1,
+    backgroundColor: '#0B0C10',
+    overflow: 'hidden',
+  },
+  atmoVeil: {
+    backgroundColor: 'rgba(11,12,16,0.50)',
+  },
   safe: {
     flex: 1,
     backgroundColor: 'transparent',
@@ -576,43 +661,64 @@ const styles = StyleSheet.create({
   },
   errorText: {
     ...uiText(16),
-    color: colors.text,
+    color: '#FFFFFF',
     textAlign: 'center',
   },
   headerRow: {
     flexDirection: 'row',
-    alignItems: 'flex-end',
+    alignItems: 'flex-start',
     justifyContent: 'space-between',
     paddingHorizontal: spacing.md,
-    // Generous, Partiful-style breathing room around the wordmark.
-    paddingTop: spacing.lg,
-    paddingBottom: spacing.md,
+    paddingTop: spacing.md,
+    paddingBottom: spacing.sm,
     gap: spacing.sm,
   },
   headerTitleWrap: {
-    gap: spacing.xs,
+    flex: 1,
+    gap: 4,
   },
   headerWordmark: {
-    // The cropped artwork is 940x440 — keep its ratio at header scale.
     width: 118,
     height: 55,
+  },
+  heroKicker: {
+    color: 'rgba(255,255,255,0.95)',
+    fontFamily: XLIGHT_ITALIC,
+    fontSize: 14,
+    letterSpacing: 0.3,
+    marginLeft: 6,
+    textShadowColor: 'rgba(30,45,60,0.55)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 10,
+  },
+  heroCity: {
+    color: '#FFFFFF',
+    marginLeft: 4,
+  },
+  dotsRow: {
+    flexDirection: 'row',
+    gap: 5,
+    marginTop: 6,
+    marginLeft: 6,
+  },
+  dot: {
+    width: 2.5,
+    height: 2.5,
+    borderRadius: 1.5,
+    backgroundColor: '#FFFFFF',
   },
   cityPill: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing.xs,
-    backgroundColor: colors.card,
-    borderWidth: 1,
-    borderColor: colors.cardBorder,
-    borderRadius: radius.pill,
     paddingHorizontal: spacing.md,
     paddingVertical: 8,
-    maxWidth: 200,
-    ...shadow.card,
+    maxWidth: 160,
+    marginTop: 4,
   },
   cityPillText: {
     ...uiText(14, '600'),
-    color: colors.text,
+    color: '#FFFFFF',
     flexShrink: 1,
   },
   menuBackdrop: {
@@ -622,20 +728,16 @@ const styles = StyleSheet.create({
     right: 0,
     bottom: 0,
     zIndex: 15,
+    backgroundColor: 'rgba(0,0,0,0.35)',
   },
   cityMenu: {
     position: 'absolute',
-    top: 78,
+    top: 120,
     right: spacing.md,
     left: spacing.md,
     maxHeight: 340,
-    backgroundColor: colors.card,
-    borderWidth: 1,
-    borderColor: colors.cardBorder,
-    borderRadius: radius.md,
     overflow: 'hidden',
     zIndex: 20,
-    ...shadow.float,
   },
   citySearchRow: {
     flexDirection: 'row',
@@ -643,18 +745,13 @@ const styles = StyleSheet.create({
     gap: spacing.sm,
     paddingHorizontal: spacing.md,
     paddingVertical: 10,
-    borderBottomWidth: 1,
-    borderColor: colors.cardBorder,
-    backgroundColor: colors.inputBg,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderColor: 'rgba(255,255,255,0.18)',
   },
   citySearchInput: {
     flex: 1,
-    color: colors.text,
-    // 16px avoids mobile Safari's auto-zoom when this autoFocus input opens.
+    color: '#FFFFFF',
     fontSize: 16,
-    // Give the line box its full height (+ a hair of headroom) so the
-    // placeholder isn't clipped top/bottom — RN-Web collapses a single-line
-    // input with paddingVertical:0 and no lineHeight down onto its text.
     lineHeight: 22,
     minHeight: 24,
     paddingVertical: 0,
@@ -668,8 +765,8 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
   },
   menuItemBorder: {
-    borderBottomWidth: 1,
-    borderBottomColor: colors.cardBorder,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: 'rgba(255,255,255,0.12)',
   },
   menuItemLeft: {
     flexDirection: 'row',
@@ -679,11 +776,11 @@ const styles = StyleSheet.create({
   },
   menuItemText: {
     ...uiText(15),
-    color: colors.text,
+    color: 'rgba(255,255,255,0.92)',
   },
   menuItemTextActive: {
     ...uiText(15, '700'),
-    color: colors.accent,
+    color: '#FFFFFF',
   },
   locationRow: {
     flexDirection: 'row',
@@ -704,10 +801,10 @@ const styles = StyleSheet.create({
   },
   locationSubtitle: {
     ...uiText(13),
-    color: colors.muted,
+    color: 'rgba(255,255,255,0.55)',
   },
   recentHeader: {
-    ...kicker(colors.muted),
+    ...kicker('rgba(255,255,255,0.45)'),
     paddingHorizontal: spacing.md,
     paddingTop: spacing.md,
     paddingBottom: spacing.xs,
@@ -718,7 +815,7 @@ const styles = StyleSheet.create({
   },
   citySearchEmpty: {
     ...uiText(14),
-    color: colors.muted,
+    color: 'rgba(255,255,255,0.55)',
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.md,
   },
@@ -730,31 +827,36 @@ const styles = StyleSheet.create({
     gap: spacing.sm,
     paddingHorizontal: spacing.md,
     paddingTop: spacing.sm,
-    // Clear separation between the chip row and the event grid below.
     paddingBottom: spacing.lg,
   },
   chip: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing.xs,
-    backgroundColor: colors.card,
-    borderWidth: 1,
-    borderColor: colors.cardBorder,
-    borderRadius: radius.pill,
     paddingHorizontal: spacing.md,
     paddingVertical: 8,
   },
-  chipActive: {
-    backgroundColor: colors.ink,
-    borderColor: colors.ink,
+  chipActiveWrap: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.xs,
+    backgroundColor: '#FFFFFF',
+    borderRadius: radius.pill,
+    paddingHorizontal: spacing.md,
+    paddingVertical: 8,
+    shadowColor: '#000',
+    shadowOpacity: 0.35,
+    shadowRadius: 12,
+    shadowOffset: { width: 0, height: 6 },
+    elevation: 4,
   },
   chipLabel: {
     ...uiText(14, '600'),
-    color: colors.text,
+    color: 'rgba(255,255,255,0.85)',
   },
   chipLabelActive: {
-    // Sits on the white active pill (colors.ink) — needs dark ink to stay legible.
-    color: colors.onInk,
+    ...uiText(14, '700'),
+    color: '#0B0C10',
   },
   inlineState: {
     alignItems: 'center',
@@ -763,7 +865,7 @@ const styles = StyleSheet.create({
   },
   emptyText: {
     ...uiText(15),
-    color: colors.muted,
+    color: 'rgba(255,255,255,0.55)',
     textAlign: 'center',
   },
   grid: {
@@ -776,44 +878,48 @@ const styles = StyleSheet.create({
   card: {
     width: '48%',
   },
+  eventCard: {
+    overflow: 'hidden',
+  },
   poster: {
-    height: 240,
+    height: 200,
+    borderTopLeftRadius: 29,
+    borderTopRightRadius: 29,
+    overflow: 'hidden',
   },
   cardBody: {
-    padding: spacing.sm,
-    paddingHorizontal: spacing.md,
+    padding: spacing.md,
     gap: spacing.xs,
   },
   friendStrip: {
     ...uiText(12),
-    color: colors.muted,
+    color: 'rgba(255,255,255,0.55)',
   },
   friendName: {
-    color: colors.text,
+    color: '#FFFFFF',
     fontWeight: '700',
   },
   cardTitle: {
-    ...uiText(15, '700'),
-    color: colors.text,
+    color: '#FFFFFF',
   },
   cardMeta: {
-    ...uiText(13, '600'),
-    color: colors.muted,
+    ...uiText(12, '500'),
+    color: 'rgba(255,255,255,0.65)',
   },
   facesRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing.xs,
-    marginTop: 2,
+    marginTop: 4,
   },
   faceWrap: {
     borderRadius: 999,
     borderWidth: 1.5,
-    borderColor: '#121212',
+    borderColor: 'rgba(255,255,255,0.25)',
   },
   facesLabel: {
-    ...uiText(12, '600'),
-    color: colors.muted,
+    ...uiText(11, '600'),
+    color: 'rgba(255,255,255,0.55)',
     marginLeft: 2,
   },
 });

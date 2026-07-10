@@ -9,8 +9,9 @@ import {
   View,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { colors, radius, spacing } from '../lib/theme';
+import { radius, shadow, spacing } from '../lib/theme';
 import { uiText } from '../lib/fonts';
+import { GlassSurface } from './GlassSurface';
 
 // Minimal shape of the props expo-router / react-navigation hands a custom
 // tabBar. Typed loosely to avoid a hard dependency on the navigator's types.
@@ -114,8 +115,23 @@ export function GlassTabBar({ state, descriptors, navigation }: TabBarProps) {
   }
 
   return (
-    <View style={[styles.wrap, { paddingBottom: insets.bottom + spacing.sm }]}>
-      <View style={styles.bar}>
+    <View
+      pointerEvents="box-none"
+      style={[
+        styles.wrap,
+        {
+          bottom: 0,
+          paddingBottom: insets.bottom + spacing.sm,
+        },
+      ]}
+    >
+      <GlassSurface
+        radius={radius.pill}
+        blur={26}
+        fill="rgba(255,255,255,0.12)"
+        borderColor="rgba(255,255,255,0.28)"
+        style={[styles.bar, shadow.float]}
+      >
         <View
           ref={rowRef}
           style={styles.row}
@@ -135,7 +151,7 @@ export function GlassTabBar({ state, descriptors, navigation }: TabBarProps) {
           {barRoutes.map((route) => {
             const { options } = descriptors[route.key];
             const focused = route.key === activeKey;
-            const color = focused ? colors.ink : colors.muted;
+            const color = focused ? '#FFFFFF' : 'rgba(255,255,255,0.55)';
             const label = options.title ?? route.name;
 
             const onPress = () => {
@@ -157,24 +173,27 @@ export function GlassTabBar({ state, descriptors, navigation }: TabBarProps) {
             );
           })}
         </View>
-      </View>
+      </GlassSurface>
     </View>
   );
 }
 
-// Flat, edge-to-edge dark bar (the approved "obsidian" direction): near-black
-// fill, a single silver hairline on top, no floating pill. The bubble survives
-// as a faint silver wash gliding under the active tab.
+// Floating oval glass downbar — same designshot recipe as the event action bar:
+// frosted pill lifted above the safe-area edge, with a silver bubble gliding
+// under the active tab.
 const styles = StyleSheet.create({
   wrap: {
-    paddingHorizontal: 0,
-    backgroundColor: 'rgba(8,8,8,0.98)',
-    borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: 'rgba(255,255,255,0.14)',
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    zIndex: 10,
+    paddingHorizontal: spacing.lg,
+    backgroundColor: 'transparent',
+    elevation: 10,
   },
   bar: {
-    paddingTop: 6,
-    paddingHorizontal: spacing.md,
+    paddingVertical: 8,
+    paddingHorizontal: spacing.sm,
   },
   row: {
     flexDirection: 'row',
@@ -182,17 +201,19 @@ const styles = StyleSheet.create({
   },
   bubble: {
     position: 'absolute',
-    top: 0,
-    bottom: 0,
-    borderRadius: radius.md,
-    backgroundColor: 'rgba(255,255,255,0.06)',
+    top: 2,
+    bottom: 2,
+    borderRadius: radius.pill,
+    backgroundColor: 'rgba(255,255,255,0.16)',
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: 'rgba(255,255,255,0.22)',
   },
   tab: {
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 1,
-    paddingVertical: 5,
+    gap: 2,
+    paddingVertical: 6,
   },
   label: {
     ...uiText(10, '600'),

@@ -3,6 +3,8 @@ import { PlayfairDisplay_700Bold } from '@expo-google-fonts/playfair-display';
 import { Pacifico_400Regular } from '@expo-google-fonts/pacifico';
 import { Bungee_400Regular } from '@expo-google-fonts/bungee';
 import {
+  Inter_100Thin_Italic,
+  Inter_200ExtraLight_Italic,
   Inter_400Regular,
   Inter_500Medium,
   Inter_600SemiBold,
@@ -24,6 +26,8 @@ const MIN_UI_SIZE = 12;
 
 export const FONTS_TO_LOAD = {
   'Reglo-Bold': require('../assets/fonts/Reglo-Bold.otf'),
+  Inter_100Thin_Italic,
+  Inter_200ExtraLight_Italic,
   Inter_400Regular,
   Inter_500Medium,
   Inter_600SemiBold,
@@ -100,6 +104,25 @@ export function kicker(color?: string): TextStyle {
     letterSpacing: 1.2,
     textTransform: 'uppercase',
     ...(color ? { color } : null),
+  };
+}
+
+// Hairline italic display voice — the designshot / glass-dashboard numerals.
+export const THIN_ITALIC = 'Inter_100Thin_Italic';
+export const XLIGHT_ITALIC = 'Inter_200ExtraLight_Italic';
+
+export function thinDisplay(rawSize: number, opts?: { lineHeight?: number }): TextStyle {
+  const size = Math.round(rawSize * DISPLAY_SCALE);
+  return {
+    fontFamily: THIN_ITALIC,
+    fontWeight: 'normal',
+    fontSize: size,
+    letterSpacing: -2,
+    lineHeight: opts?.lineHeight ?? Math.round(size * 1.04),
+    includeFontPadding: false,
+    textShadowColor: 'rgba(30,45,60,0.45)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 14,
   };
 }
 

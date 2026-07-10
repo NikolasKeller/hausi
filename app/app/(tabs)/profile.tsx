@@ -2,6 +2,7 @@ import React, { useCallback, useState } from 'react';
 import {
   ActivityIndicator,
   Image,
+  Platform,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -17,24 +18,134 @@ import { api, mediaUrl } from '../../lib/api';
 import { useAuth } from '../../lib/auth';
 import { confirmDialog } from '../../lib/dialogs';
 import { shareText } from '../../lib/share';
-import { colors, radius, shadow, spacing } from '../../lib/theme';
-import { display, uiText } from '../../lib/fonts';
+import { radius, spacing } from '../../lib/theme';
+import { thinDisplay, XLIGHT_ITALIC, kicker, uiText } from '../../lib/fonts';
 import { Avatar } from '../../components/Avatar';
 import { Button } from '../../components/ui';
-import { EventCard } from '../../components/EventCard';
+import { CoverGradient } from '../../components/CoverGradient';
+import { GlassSurface } from '../../components/GlassSurface';
+import { formatEventDate } from '../../components/EventCard';
 import { SettingsSheet } from '../../components/SettingsSheet';
-import { withScreenBackground } from '../../components/ScreenBackground';
 
-// No bloom here — the profile sits on the plain canvas.
-export default withScreenBackground(ProfileScreen, { bloom: false });
+const PROFILE_BG = require('../../assets/brand/designshot-bg.png');
 
-function ProfileScreen() {
+// Foggy atmospheric canvas — same designshot backdrop as Explore / event screens.
+function ProfileAtmosphere({ children }: { children?: React.ReactNode }) {
+  const webBlur =
+    Platform.OS === 'web'
+      ? ({
+          filter: 'blur(42px) saturate(130%)',
+          transform: [{ scale: 1.12 }],
+        } as object)
+      : null;
+  return (
+    <View style={styles.atmoFill}>
+      <Image
+        source={PROFILE_BG}
+        blurRadius={Platform.OS === 'ios' ? 42 : 0}
+        style={[StyleSheet.absoluteFill, webBlur]}
+        resizeMode="cover"
+      />
+      <View style={[StyleSheet.absoluteFill, styles.atmoVeil]} pointerEvents="none" />
+      <LinearGradient
+        colors={['rgba(30,45,60,0.30)', 'rgba(11,12,16,0.15)', 'rgba(11,12,16,0.72)']}
+        locations={[0, 0.45, 1]}
+        style={StyleSheet.absoluteFill}
+        pointerEvents="none"
+      />
+      {children}
+    </View>
+  );
+}
+
+function DottedArc({ count = 14 }: { count?: number }) {
+  return (
+    <View style={styles.dotsRow}>
+      {Array.from({ length: count }).map((_, i) => (
+        <View
+          key={i}
+          style={[
+            styles.dot,
+            {
+              opacity: 0.85 - i * 0.04,
+              transform: [{ translateY: Math.pow(i - 3, 2) * 0.04 }],
+            },
+          ]}
+        />
+      ))}
+    </View>
+  );
+}
+
+function GlassFab({
+  icon,
+  onPress,
+}: {
+  icon: React.ComponentProps<typeof Ionicons>['name'];
+  onPress: () => void;
+}) {
+  return (
+    <Pressable onPress={onPress} hitSlop={6} style={({ pressed }) => [pressed && { opacity: 0.7 }]}>
+      <GlassSurface
+        radius={999}
+        blur={18}
+        fill="rgba(255,255,255,0.10)"
+        borderColor="rgba(255,255,255,0.30)"
+        shadow={false}
+        style={styles.fab}
+      >
+        <Ionicons name={icon} size={18} color="#FFFFFF" />
+      </GlassSurface>
+    </Pressable>
+  );
+}
+
+const STATUS_LABEL: Record<string, string> = {
+  GOING: 'Going',
+  MAYBE: 'Maybe',
+  CANT: "Can't go",
+  WAITLIST: 'Waitlist',
+};
+
+function TicketCard({ event }: { event: EventSummary }) {
+  const router = useRouter();
+  return (
+    <Pressable
+      onPress={() => router.push(`/event/${event.slug}`)}
+      style={({ pressed }) => [styles.card, pressed && { opacity: 0.85 }]}
+    >
+      <GlassSurface radius={30} blur={26} style={styles.eventCard}>
+        <CoverGradient
+          theme={event.coverTheme}
+          image={event.coverImage}
+          style={styles.poster}
+          emojiOpacity={0.25}
+          dim={false}
+        />
+        <View style={styles.cardBody}>
+          <View style={styles.cardIconCircle}>
+            <Ionicons name="ticket-outline" size={16} color="#0B0C10" />
+          </View>
+          <Text style={[styles.cardTitle, thinDisplay(20)]} numberOfLines={2}>
+            {event.title}
+          </Text>
+          <Text style={styles.cardMeta} numberOfLines={1}>
+            {formatEventDate(event.date)}
+          </Text>
+          {event.myRsvp ? (
+            <Text style={styles.rsvpBadge}>{STATUS_LABEL[event.myRsvp] ?? event.myRsvp}</Text>
+          ) : null}
+        </View>
+      </GlassSurface>
+    </Pressable>
+  );
+}
+
+export default function ProfileScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { logout } = useAuth();
   const [profile, setProfile] = useState<MyProfile | null>(null);
-  // Events with a bought ticket (any non-hosted event on "my events" — buying
-  // marks them GOING server-side).
   const [tickets, setTickets] = useState<EventSummary[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [settingsOpen, setSettingsOpen] = useState(false);
@@ -47,7 +158,6 @@ function ProfileScreen() {
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Could not load profile');
     }
-    // Best-effort — the profile renders fine without the ticket list.
     try {
       const res = await api.myEvents();
       setTickets(res.events.filter((ev) => !ev.isHost));
@@ -94,116 +204,122 @@ function ProfileScreen() {
 
   if (error && !profile) {
     return (
-      <SafeAreaView style={styles.safe} edges={['top']}>
-        <View style={styles.center}>
-          <Text style={styles.errorText}>{error}</Text>
-          <Button title="Retry" variant="ghost" onPress={load} />
-        </View>
-      </SafeAreaView>
+      <ProfileAtmosphere>
+        <SafeAreaView style={styles.safe} edges={['top']}>
+          <View style={styles.center}>
+            <Text style={styles.errorEmoji}>🫠</Text>
+            <Text style={styles.errorText}>{error}</Text>
+            <Button title="Retry" variant="ghost" tone="paper" onPress={load} />
+          </View>
+        </SafeAreaView>
+      </ProfileAtmosphere>
     );
   }
 
   if (!profile) {
     return (
-      <SafeAreaView style={styles.safe} edges={['top']}>
-        <View style={styles.center}>
-          <ActivityIndicator color={colors.accent} size="large" />
-        </View>
-      </SafeAreaView>
+      <ProfileAtmosphere>
+        <SafeAreaView style={styles.safe} edges={['top']}>
+          <View style={styles.center}>
+            <ActivityIndicator color="#FFFFFF" size="large" />
+          </View>
+        </SafeAreaView>
+      </ProfileAtmosphere>
     );
   }
 
   const joinedYear = new Date(profile.joinedAt).getFullYear();
   const photo = mediaUrl(profile.avatarImage);
+  const kickerLine = profile.city?.trim()
+    ? `Based in ${profile.city.trim()}`
+    : 'Your profile';
 
   return (
-    <View style={styles.safe}>
-      <ScrollView contentContainerStyle={styles.container}>
-        <View style={styles.hero}>
-          {photo ? (
-            <Image source={{ uri: photo }} style={StyleSheet.absoluteFill} resizeMode="cover" />
-          ) : (
-            <View style={styles.heroFallback}>
-              <Avatar name={profile.name} image={null} size={160} />
+    <ProfileAtmosphere>
+      <SafeAreaView style={styles.safe} edges={['top']}>
+        <ScrollView
+          contentContainerStyle={[styles.content, { paddingBottom: insets.bottom + spacing.xl * 2 }]}
+          showsVerticalScrollIndicator={false}
+        >
+          <View style={styles.headerRow}>
+            <View style={styles.headerTitleWrap}>
+              <Text style={styles.heroKicker}>{kickerLine}</Text>
+              <Text style={[styles.heroName, thinDisplay(44)]} numberOfLines={2}>
+                {profile.name}
+              </Text>
+              <DottedArc />
             </View>
-          )}
-          {/* Top scrim keeps the buttons legible over a busy photo — only
-              needed when there actually is one (it would read as a stray grey
-              band on the plain fallback). */}
-          {photo ? (
-            <LinearGradient
-              colors={['rgba(0,0,0,0.45)', 'transparent']}
-              style={styles.topScrim}
-              pointerEvents="none"
-            />
-          ) : null}
-          {/* Photo fades fully into the page background high up, so it ends
-              well above the name — nothing bleeds down behind the stats. */}
-          <LinearGradient
-            colors={['transparent', 'transparent', colors.bg]}
-            locations={[0, 0.4, 0.72]}
-            style={StyleSheet.absoluteFill}
-            pointerEvents="none"
+            <View style={styles.headerActions}>
+              <GlassFab icon="share-outline" onPress={shareProfile} />
+              <GlassFab icon="settings-sharp" onPress={() => setSettingsOpen(true)} />
+            </View>
+          </View>
+
+          <View style={styles.profileCardWrap}>
+            <GlassSurface radius={30} blur={26} style={styles.profileCard}>
+              <View style={styles.avatarRing}>
+                {photo ? (
+                  <Image source={{ uri: photo }} style={styles.avatarPhoto} resizeMode="cover" />
+                ) : (
+                  <Avatar name={profile.name} image={null} size={88} />
+                )}
+              </View>
+              <GlassSurface
+                radius={999}
+                blur={18}
+                fill="rgba(255,255,255,0.10)"
+                borderColor="rgba(255,255,255,0.30)"
+                shadow={false}
+                style={styles.joinedPill}
+              >
+                <Ionicons name="sparkles" size={13} color="#FFFFFF" />
+                <Text style={styles.joinedText}>joined {joinedYear}</Text>
+              </GlassSurface>
+            </GlassSurface>
+          </View>
+
+          <View style={styles.section}>
+            <Text style={styles.sectionKicker}>My events</Text>
+            <Text style={[styles.sectionTitle, thinDisplay(28)]}>Tickets</Text>
+            {tickets.length === 0 ? (
+              <GlassSurface radius={30} blur={26} style={styles.emptyCard}>
+                <Text style={styles.emptyEmoji}>🎟️</Text>
+                <Text style={styles.emptyText}>
+                  No tickets yet — grab one on an event page
+                </Text>
+              </GlassSurface>
+            ) : (
+              <View style={styles.grid}>
+                {tickets.map((ev) => (
+                  <TicketCard key={ev.id} event={ev} />
+                ))}
+              </View>
+            )}
+          </View>
+        </ScrollView>
+
+        {settingsOpen ? (
+          <SettingsSheet
+            onClose={() => setSettingsOpen(false)}
+            onEditProfile={() => router.push('/edit-profile')}
+            onShareProfile={shareProfile}
+            onLogout={confirmLogout}
           />
-
-          <View style={[styles.heroButtons, { top: insets.top + spacing.sm }]}>
-            <Pressable
-              onPress={shareProfile}
-              style={({ pressed }) => [styles.roundButton, pressed && styles.pressed]}
-            >
-              <Ionicons name="share-outline" size={18} color={colors.text} />
-            </Pressable>
-            <Pressable
-              onPress={() => setSettingsOpen(true)}
-              style={({ pressed }) => [styles.roundButton, pressed && styles.pressed]}
-            >
-              <Ionicons name="settings-sharp" size={18} color={colors.text} />
-            </Pressable>
-          </View>
-        </View>
-
-        {/* Name + stats sit on the solid dark canvas, below where the photo has
-            already faded out. Pulled up a touch to stay close to the photo. */}
-        <View style={styles.heroContent}>
-          <Text style={styles.bigName} numberOfLines={2}>
-            {profile.name}
-          </Text>
-          <View style={styles.joinedPill}>
-            <Ionicons name="sparkles" size={13} color={colors.accent} />
-            <Text style={styles.joinedText}>joined {joinedYear}</Text>
-          </View>
-        </View>
-
-        {/* Events with a bought ticket — tapping "Buy ticket" on an event
-            files it here (and on the calendar). */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>My events</Text>
-          {tickets.length === 0 ? (
-            <Text style={styles.ticketsEmpty}>
-              No tickets yet - grab one on an event page 🎟️
-            </Text>
-          ) : (
-            <View style={styles.ticketList}>
-              {tickets.map((ev) => (
-                <EventCard key={ev.id} event={ev} />
-              ))}
-            </View>
-          )}
-        </View>
-      </ScrollView>
-      {settingsOpen ? (
-        <SettingsSheet
-          onClose={() => setSettingsOpen(false)}
-          onEditProfile={() => router.push('/edit-profile')}
-          onShareProfile={shareProfile}
-          onLogout={confirmLogout}
-        />
-      ) : null}
-    </View>
+        ) : null}
+      </SafeAreaView>
+    </ProfileAtmosphere>
   );
 }
 
 const styles = StyleSheet.create({
+  atmoFill: {
+    flex: 1,
+    backgroundColor: '#0B0C10',
+    overflow: 'hidden',
+  },
+  atmoVeil: {
+    backgroundColor: 'rgba(11,12,16,0.50)',
+  },
   safe: {
     flex: 1,
     backgroundColor: 'transparent',
@@ -215,101 +331,168 @@ const styles = StyleSheet.create({
     gap: spacing.md,
     padding: spacing.lg,
   },
+  errorEmoji: {
+    fontSize: 44,
+  },
   errorText: {
-    ...uiText(15),
-    color: colors.danger,
+    ...uiText(16),
+    color: '#FFFFFF',
     textAlign: 'center',
   },
-  container: {
-    paddingBottom: spacing.xxl,
+  content: {
+    gap: spacing.lg,
   },
-  pressed: {
-    opacity: 0.7,
-  },
-  // Full-bleed photo hero; content sits at the bottom where the photo fades
-  // into the page background.
-  hero: {
-    height: 360,
-    width: '100%',
-    justifyContent: 'flex-end',
-    backgroundColor: colors.bg,
-    overflow: 'hidden',
-    // Nudge the photo down from the very top so it isn't glued to the edge.
-    marginTop: spacing.xl,
-  },
-  heroFallback: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: colors.card,
-    alignItems: 'center',
-    justifyContent: 'center',
-    // Sit the avatar low in the hero, close to the name below it.
-    paddingBottom: 16,
-  },
-  topScrim: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    height: 120,
-  },
-  heroButtons: {
-    position: 'absolute',
-    right: spacing.md,
+  headerRow: {
     flexDirection: 'row',
+    alignItems: 'flex-start',
+    justifyContent: 'space-between',
+    paddingHorizontal: spacing.md,
+    paddingTop: spacing.md,
     gap: spacing.sm,
-    zIndex: 2,
   },
-  roundButton: {
+  headerTitleWrap: {
+    flex: 1,
+    gap: 4,
+  },
+  headerActions: {
+    gap: spacing.sm,
+    marginTop: 4,
+  },
+  heroKicker: {
+    color: 'rgba(255,255,255,0.95)',
+    fontFamily: XLIGHT_ITALIC,
+    fontSize: 14,
+    letterSpacing: 0.3,
+    marginLeft: 6,
+    textShadowColor: 'rgba(30,45,60,0.55)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 10,
+  },
+  heroName: {
+    color: '#FFFFFF',
+    marginLeft: 4,
+  },
+  dotsRow: {
+    flexDirection: 'row',
+    gap: 5,
+    marginTop: 6,
+    marginLeft: 6,
+  },
+  dot: {
+    width: 2.5,
+    height: 2.5,
+    borderRadius: 1.5,
+    backgroundColor: '#FFFFFF',
+  },
+  fab: {
     width: 40,
     height: 40,
-    borderRadius: 20,
-    backgroundColor: 'rgba(0,0,0,0.35)',
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.18)',
     alignItems: 'center',
     justifyContent: 'center',
   },
-  heroContent: {
+  profileCardWrap: {
+    paddingHorizontal: spacing.md,
+  },
+  profileCard: {
     alignItems: 'center',
     gap: spacing.md,
+    paddingVertical: spacing.xl,
     paddingHorizontal: spacing.lg,
-    paddingBottom: spacing.md,
-    marginTop: -spacing.huge,
   },
-  bigName: {
-    ...display(44),
-    color: colors.text,
-    textAlign: 'center',
+  avatarRing: {
+    width: 104,
+    height: 104,
+    borderRadius: 52,
+    overflow: 'hidden',
+    borderWidth: 2,
+    borderColor: 'rgba(255,255,255,0.28)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(255,255,255,0.08)',
+  },
+  avatarPhoto: {
+    width: '100%',
+    height: '100%',
   },
   joinedPill: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
-    backgroundColor: 'rgba(255,255,255,0.08)',
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.14)',
-    borderRadius: radius.pill,
     paddingHorizontal: spacing.md,
-    paddingVertical: 6,
+    paddingVertical: 8,
   },
   joinedText: {
     ...uiText(13, '600'),
-    color: colors.text,
+    color: '#FFFFFF',
   },
   section: {
-    marginTop: spacing.xl,
-    gap: spacing.md,
+    gap: spacing.sm,
     paddingHorizontal: spacing.md,
   },
+  sectionKicker: {
+    ...kicker('rgba(255,255,255,0.45)'),
+    marginLeft: 4,
+  },
   sectionTitle: {
-    ...display(24),
-    color: colors.text,
+    color: '#FFFFFF',
+    marginLeft: 4,
+    marginBottom: spacing.xs,
   },
-  ticketsEmpty: {
-    ...uiText(14),
-    color: colors.muted,
+  emptyCard: {
+    alignItems: 'center',
+    gap: spacing.sm,
+    paddingVertical: spacing.xl,
+    paddingHorizontal: spacing.lg,
   },
-  ticketList: {
-    gap: spacing.md,
+  emptyEmoji: {
+    fontSize: 36,
+  },
+  emptyText: {
+    ...uiText(15),
+    color: 'rgba(255,255,255,0.55)',
+    textAlign: 'center',
+  },
+  grid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'space-between',
+    rowGap: spacing.md,
+  },
+  card: {
+    width: '48%',
+  },
+  eventCard: {
+    overflow: 'hidden',
+  },
+  poster: {
+    height: 180,
+    borderTopLeftRadius: 29,
+    borderTopRightRadius: 29,
+    overflow: 'hidden',
+  },
+  cardBody: {
+    padding: spacing.md,
+    gap: spacing.xs,
+  },
+  cardIconCircle: {
+    width: 34,
+    height: 34,
+    borderRadius: 17,
+    backgroundColor: '#FFFFFF',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 2,
+  },
+  cardTitle: {
+    color: '#FFFFFF',
+  },
+  cardMeta: {
+    ...uiText(12, '500'),
+    color: 'rgba(255,255,255,0.65)',
+  },
+  rsvpBadge: {
+    ...uiText(11, '700'),
+    color: 'rgba(255,255,255,0.85)',
+    marginTop: 2,
   },
 });
