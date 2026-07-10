@@ -27,6 +27,7 @@ export default function EditProfileScreen() {
   const [name, setName] = useState('');
   const [avatarImage, setAvatarImage] = useState('');
   const [uploading, setUploading] = useState(false);
+  const [bio, setBio] = useState('');
   const [city, setCity] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
@@ -39,6 +40,7 @@ export default function EditProfileScreen() {
         if (!active) return;
         setName(res.profile.name);
         setAvatarImage(res.profile.avatarImage);
+        setBio(res.profile.bio);
         setCity(res.profile.city);
         setLoaded(true);
       } catch (e) {
@@ -79,6 +81,7 @@ export default function EditProfileScreen() {
       const res = await api.updateProfile({
         name: name.trim(),
         avatarImage,
+        bio: bio.trim(),
         city: city.trim(),
       });
       if (user) {
@@ -172,6 +175,17 @@ export default function EditProfileScreen() {
           </View>
         </View>
 
+        <Field
+          label="Bio"
+          value={bio}
+          onChangeText={setBio}
+          placeholder="Tell people what you're about 🪩"
+          maxLength={LIMITS.bio}
+          multiline
+          numberOfLines={3}
+          style={styles.bioInput}
+        />
+
         <CityPicker label="City" value={city} onChange={setCity} />
 
         <ErrorText message={error} />
@@ -252,5 +266,9 @@ const styles = StyleSheet.create({
   photoPillText: {
     ...uiText(14, '600'),
     color: colors.text,
+  },
+  bioInput: {
+    minHeight: 88,
+    textAlignVertical: 'top',
   },
 });

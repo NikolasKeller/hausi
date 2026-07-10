@@ -3,6 +3,7 @@ import { db } from '../lib/db.js';
 import { requireAuth, type AuthVariables } from '../lib/auth.js';
 import { toExploreEvent } from '../lib/serialize.js';
 import { findMutuals } from '../lib/mutuals.js';
+import { findFriendIds } from '../lib/friends.js';
 import { resolveCities } from '../lib/geocode.js';
 import { CATEGORIES, type Category, type ExploreEvent } from '../../../app/shared/types.js';
 
@@ -23,8 +24,12 @@ discoverRoutes.use('*', requireAuth);
 discoverRoutes.get('/home', async (c) => {
   const userId = c.get('userId');
   const me = await db.user.findUniqueOrThrow({ where: { id: userId } });
-  const mutuals = await findMutuals(db, userId);
-  const friendIds = new Set(mutuals.keys());
+  // "Pals" = explicit friends plus computed mutuals (people you've partied with).
+  const [mutuals, friends] = await Promise.all([
+    findMutuals(db, userId),
+    findFriendIds(db, userId),
+  ]);
+  const friendIds = new Set([...mutuals.keys(), ...friends]);
 
   const events = await db.event.findMany({
     where: { isPublic: true, canceledAt: null, date: { gte: new Date() } },
@@ -107,8 +112,11 @@ discoverRoutes.get('/explore', async (c) => {
   });
   const cities = [...cityByKey.values()].sort((a, b) => a.localeCompare(b));
 
-  const mutuals = await findMutuals(db, userId);
-  const friendIds = new Set(mutuals.keys());
+  const [mutuals, friends] = await Promise.all([
+    findMutuals(db, userId),
+    findFriendIds(db, userId),
+  ]);
+  const friendIds = new Set([...mutuals.keys(), ...friends]);
   const results = events
     .map((e) => toExploreEvent(e, userId, friendIds))
     .filter((e) => {

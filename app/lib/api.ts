@@ -9,15 +9,20 @@ import type {
   EventInput,
   EventSummary,
   ExploreEvent,
+  Friend,
+  FriendRequest,
+  FriendshipState,
   HomeFeed,
   MyProfile,
   PendingCohostInvite,
   PhoneRequestResponse,
   PhoneVerifyResponse,
+  PublicProfile,
   RsvpStatus,
   TicketJobInfo,
   TicketProvider,
   WalletIdentity,
+  WalletPass,
   WalletPayment,
 } from '../shared/types';
 
@@ -240,11 +245,53 @@ export const api = {
     name?: string;
     avatarEmoji?: string;
     avatarImage?: string;
+    bio?: string;
     city?: string;
   }) {
-    return request<{ user: AuthResponse['user'] & { city: string } }>('/me', {
+    return request<{ user: AuthResponse['user'] & { bio: string; city: string } }>('/me', {
       method: 'PATCH',
       body: JSON.stringify(data),
+    });
+  },
+  // Another user's profile page (public-safe fields + friendship context).
+  userProfile(userId: string) {
+    return request<{ profile: PublicProfile }>(`/users/${encodeURIComponent(userId)}`);
+  },
+  // Friends + pending requests in one round trip.
+  myFriends() {
+    return request<{ friends: Friend[]; incoming: FriendRequest[]; outgoing: FriendRequest[] }>(
+      '/friends'
+    );
+  },
+  // Send a friend request. If they already asked me, the server auto-accepts
+  // and returns state 'friends'.
+  sendFriendRequest(userId: string) {
+    return request<{ state: FriendshipState }>(
+      `/friends/requests/${encodeURIComponent(userId)}`,
+      { method: 'POST' }
+    );
+  },
+  acceptFriendRequest(requestId: string) {
+    return request<{ state: FriendshipState }>(
+      `/friends/requests/${encodeURIComponent(requestId)}/accept`,
+      { method: 'POST' }
+    );
+  },
+  declineFriendRequest(requestId: string) {
+    return request<{ state: FriendshipState }>(
+      `/friends/requests/${encodeURIComponent(requestId)}/decline`,
+      { method: 'POST' }
+    );
+  },
+  cancelFriendRequest(requestId: string) {
+    return request<{ state: FriendshipState }>(
+      `/friends/requests/${encodeURIComponent(requestId)}`,
+      { method: 'DELETE' }
+    );
+  },
+  unfriend(userId: string) {
+    return request<{ state: FriendshipState }>(`/friends/${encodeURIComponent(userId)}`, {
+      method: 'DELETE',
     });
   },
   toggleCrush(userId: string) {
@@ -319,5 +366,10 @@ export const api = {
   },
   myTickets() {
     return request<{ jobs: TicketJobInfo[] }>('/tickets');
+  },
+  // The in-app Wallet: one pass (with entry QR) per upcoming event the user
+  // hosts or is going to. QRs come pre-rendered as data URLs.
+  myWallet() {
+    return request<{ passes: WalletPass[] }>('/wallet');
   },
 };

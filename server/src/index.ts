@@ -10,10 +10,14 @@ import { authRoutes, INVITE_CODE } from './routes/auth.js';
 import { eventRoutes } from './routes/events.js';
 import { discoverRoutes } from './routes/discover.js';
 import { meRoutes } from './routes/me.js';
+import { friendRoutes } from './routes/friends.js';
+import { userRoutes } from './routes/users.js';
 import { dedupeUsersByPhone } from './lib/dedupeUsers.js';
 import { db } from './lib/db.js';
 import { uploadRoutes } from './routes/uploads.js';
 import { ticketRoutes } from './routes/tickets.js';
+import { walletRoutes } from './routes/wallet.js';
+import { checkinRoutes } from './routes/checkin.js';
 import { demoCheckoutRoutes } from './routes/demoCheckout.js';
 import { MIME_BY_EXT, UPLOAD_DIR } from './lib/uploads.js';
 import { TICKET_DIR } from './lib/ticketAgent.js';
@@ -33,9 +37,15 @@ api.route('/auth', authRoutes);
 api.route('/events', eventRoutes);
 api.route('/discover', discoverRoutes);
 api.route('/me', meRoutes);
+api.route('/friends', friendRoutes);
+api.route('/users', userRoutes);
 api.route('/uploads', uploadRoutes);
 api.route('/tickets', ticketRoutes);
+api.route('/wallet', walletRoutes);
 app.route('/api', api);
+// Public pass verification page (opened by scanning a wallet-pass QR) — lives
+// outside /api because door staff open it in a plain browser, no auth.
+app.route('/checkin', checkinRoutes);
 // The demo ticket shop the purchase agent drives end to end (see the module
 // docs — real providers block bots, this demonstrates the full flow).
 app.route('/demo-checkout', demoCheckoutRoutes);

@@ -9,6 +9,8 @@ export const RSVP_CHOICES = ['GOING', 'MAYBE', 'CANT'] as const;
 // Validation limits shared by the server (zod) and the app (input caps).
 export const LIMITS = {
   name: 80,
+  // Short "about me" text on the profile.
+  bio: 200,
   title: 120,
   location: 200,
   description: 4000,
@@ -338,6 +340,37 @@ export interface TicketJobInfo {
   event: { slug: string; title: string; date: string; location: string } | null;
 }
 
+// ── Wallet (in-app ticket passes) ────────────────────────────────────────────
+
+// One pass in the user's Wallet — issued for every upcoming event they host or
+// are GOING to (Apple-Wallet-style, but in-app: we can't import tickets bought
+// on Eventbrite/RA, so the pass is the event's own entry credential). The QR
+// encodes a public /checkin/<code> URL; the code is HMAC-signed server-side so
+// door staff scanning it get a server-verified valid/invalid answer without
+// any ticket rows in the database.
+export interface WalletPass {
+  eventId: string;
+  slug: string;
+  title: string;
+  date: string;
+  location: string;
+  city: string;
+  coverTheme: CoverTheme;
+  coverImage: string;
+  titleFont: TitleFont;
+  hostName: string;
+  costPerPerson: string;
+  // host — hosting/co-hosting this event; guest — on the list (GOING/WAITLIST).
+  role: 'host' | 'guest';
+  // Signed pass code; also encoded in the QR as the /checkin URL.
+  code: string;
+  // Data-URL PNG of the entry QR, rendered server-side (no QR dep in the app).
+  qrDataUrl: string;
+  // The event's external ticket page ('' when none) — for re-opening the
+  // organiser's page from the pass.
+  ticketUrl: string;
+}
+
 export interface HomeFeed {
   city: string;
   trendingNearby: ExploreEvent[];
@@ -350,6 +383,54 @@ export interface Mutual {
   sharedEventTitle: string;
   sharedEventSlug: string;
   crushed: boolean;
+  // Explicit friendship state with this mutual, so the profile's "people
+  // you've partied with" list can offer the right action (add / requested /
+  // accept / friends).
+  friendState: FriendshipState;
+}
+
+// The viewer's friendship state with another user:
+//   none     — no connection; can send a request
+//   outgoing — the viewer sent a request that's still pending
+//   incoming — the other person sent the viewer a pending request
+//   friends  — accepted, mutual friendship
+export type FriendshipState = 'none' | 'outgoing' | 'incoming' | 'friends';
+
+// A pending friend request as shown in the profile's requests list. `user` is
+// the other person (sender for incoming, recipient for outgoing).
+export interface FriendRequest {
+  id: string;
+  user: PublicUser;
+  createdAt: string;
+}
+
+export interface Friend {
+  user: PublicUser;
+  // When the friendship was accepted.
+  since: string;
+}
+
+// Another user's profile page: public-safe fields plus the viewer-specific
+// social context (friendship state, friends in common, shared party).
+export interface PublicProfile {
+  id: string;
+  name: string;
+  avatarEmoji: string;
+  avatarImage: string;
+  bio: string;
+  city: string;
+  joinedAt: string;
+  isOrganization: boolean;
+  badges: Badge[];
+  friendsCount: number;
+  // Friends the viewer and this user have in common.
+  mutualFriends: PublicUser[];
+  // The most recent event both attended ('' when none) — the "you met at" line.
+  sharedEventTitle: string;
+  friendState: FriendshipState;
+  // The pending Friendship row id when friendState is 'incoming' (accept /
+  // decline target) or 'outgoing' (cancel target); null otherwise.
+  requestId: string | null;
 }
 
 export interface Badge {
@@ -366,9 +447,14 @@ export interface MyProfile {
   phone: string | null;
   avatarEmoji: string;
   avatarImage: string;
+  bio: string;
   city: string;
   joinedAt: string;
   badges: Badge[];
   mutuals: Mutual[];
+  friends: Friend[];
+  // Pending requests addressed to me (accept/decline) and ones I sent.
+  incomingRequests: FriendRequest[];
+  outgoingRequests: FriendRequest[];
 }
 

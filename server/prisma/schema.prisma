@@ -24,6 +24,8 @@ model User {
   avatarEmoji        String    @default("🙂")
   // Path to an uploaded profile photo (from POST /api/uploads), '' = emoji only.
   avatarImage        String    @default("")
+  // Short free-text self-description shown on the profile ("about me").
+  bio                String    @default("")
   city               String    @default("San Francisco")
   // Curator / venue / promoter accounts (e.g. "YE Munich"). They host events
   // but are not real people, so they never count as a "mutual" friend.
@@ -39,6 +41,8 @@ model User {
   plusOneAppearances PlusOne[]  @relation("PlusOneGuest")
   partyMemories   PartyConnection[] @relation("MyPartyMemories")
   partyMemoriesOf PartyConnection[] @relation("PartyMemoryOf")
+  friendshipsSent     Friendship[] @relation("FriendshipsSent")
+  friendshipsReceived Friendship[] @relation("FriendshipsReceived")
 }
 
 // Records who uploaded each file (path = "/uploads/x.jpg") so a user can only
@@ -70,6 +74,26 @@ model PartyConnection {
 
   @@unique([userId, otherUserId])
   @@index([userId])
+}
+
+// A friend request and — once accepted — the friendship itself. One row per
+// pair, directed from the requester: status PENDING | ACCEPTED | DECLINED
+// (SQLite has no enums, mirroring CohostInvite). A declined request can be
+// re-sent, which flips the same row back to PENDING; unfriending deletes the
+// row. Distinct from computed "mutuals" (co-attendance): friends are an
+// explicit, chosen graph.
+model Friendship {
+  id        String   @id @default(cuid())
+  fromId    String
+  from      User     @relation("FriendshipsSent", fields: [fromId], references: [id], onDelete: Cascade)
+  toId      String
+  to        User     @relation("FriendshipsReceived", fields: [toId], references: [id], onDelete: Cascade)
+  status    String   @default("PENDING")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([fromId, toId])
+  @@index([toId])
 }
 
 // One-way crush; when reciprocal, both get notified.

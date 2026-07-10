@@ -7,10 +7,13 @@ import { normalizePhone } from '../lib/phone.js';
 import { eventInclude } from './events.js';
 import { unlinkImage } from '../lib/uploads.js';
 import { findMutuals } from '../lib/mutuals.js';
+import { computeBadges } from '../lib/badges.js';
+import { pairStates } from '../lib/friends.js';
 import {
   LIMITS,
-  type Badge,
   type CoverTheme,
+  type Friend,
+  type FriendRequest,
   type MyProfile,
   type Mutual,
   type PendingCohostInvite,
@@ -32,24 +35,10 @@ const updateSchema = z.object({
     .max(500)
     .refine((v) => v === '' || UPLOAD_PATH.test(v), 'Invalid image path')
     .optional(),
+  // '' clears the bio.
+  bio: z.string().trim().max(LIMITS.bio).optional(),
   city: z.string().trim().min(1).max(80).optional(),
 });
-
-async function computeBadges(userId: string): Promise<Badge[]> {
-  const [hosted, attended, comments] = await Promise.all([
-    db.event.count({ where: { hostId: userId, canceledAt: null } }),
-    db.rsvp.count({ where: { userId, status: 'GOING', event: { hostId: { not: userId } } } }),
-    db.comment.count({ where: { userId, type: 'comment' } }),
-  ]);
-
-  const badges: Badge[] = [];
-  if (attended > 0)
-    badges.push({ key: 'attended', label: 'parties attended', emoji: '🌐', value: attended });
-  if (hosted > 0) badges.push({ key: 'hosted', label: 'hosted', emoji: '🎉', value: hosted });
-  if (comments >= 3)
-    badges.push({ key: 'hype', label: 'wall messages', emoji: '💬', value: comments });
-  return badges;
-}
 
 export const meRoutes = new Hono<{ Variables: AuthVariables }>();
 meRoutes.use('*', requireAuth);
@@ -58,21 +47,45 @@ meRoutes.get('/', async (c) => {
   const userId = c.get('userId');
   const me = await db.user.findUniqueOrThrow({ where: { id: userId } });
 
-  const [mutualMap, badges, myCrushes] = await Promise.all([
+  const [mutualMap, badges, myCrushes, friendships] = await Promise.all([
     findMutuals(db, userId),
     computeBadges(userId),
     db.crush.findMany({ where: { fromId: userId }, select: { toId: true } }),
+    db.friendship.findMany({
+      where: { OR: [{ fromId: userId }, { toId: userId }] },
+      include: { from: true, to: true },
+      orderBy: { updatedAt: 'desc' },
+    }),
   ]);
+
+  const friends: Friend[] = [];
+  const incomingRequests: FriendRequest[] = [];
+  const outgoingRequests: FriendRequest[] = [];
+  for (const row of friendships) {
+    const other = row.fromId === userId ? row.to : row.from;
+    if (row.status === 'ACCEPTED') {
+      friends.push({ user: toPublicUser(other), since: row.updatedAt.toISOString() });
+    } else if (row.status === 'PENDING') {
+      const entry: FriendRequest = {
+        id: row.id,
+        user: toPublicUser(other),
+        createdAt: row.createdAt.toISOString(),
+      };
+      (row.toId === userId ? incomingRequests : outgoingRequests).push(entry);
+    }
+  }
 
   const crushedIds = new Set(myCrushes.map((cr) => cr.toId));
   const mutualUsers = await db.user.findMany({
     where: { id: { in: [...mutualMap.keys()] } },
   });
+  const states = await pairStates(db, userId, mutualUsers.map((u) => u.id));
   const mutuals: Mutual[] = mutualUsers.map((u) => ({
     user: toPublicUser(u),
     sharedEventTitle: mutualMap.get(u.id)?.title ?? '',
     sharedEventSlug: mutualMap.get(u.id)?.slug ?? '',
     crushed: crushedIds.has(u.id),
+    friendState: states.get(u.id)?.state ?? 'none',
   }));
 
   const profile: MyProfile = {
@@ -82,10 +95,14 @@ meRoutes.get('/', async (c) => {
     phone: me.phone,
     avatarEmoji: me.avatarEmoji,
     avatarImage: me.avatarImage,
+    bio: me.bio,
     city: me.city,
     joinedAt: me.createdAt.toISOString(),
     badges,
     mutuals,
+    friends,
+    incomingRequests,
+    outgoingRequests,
   };
   return c.json({ profile });
 });
@@ -118,6 +135,7 @@ meRoutes.patch('/', async (c) => {
       email: me.email,
       avatarEmoji: me.avatarEmoji,
       avatarImage: me.avatarImage,
+      bio: me.bio,
       city: me.city,
     },
   });
