@@ -52,11 +52,16 @@ const MAX_WEEK_ROWS = 6;
 const GRID_ROW_HEIGHT = 46;
 const GRID_HEIGHT = MAX_WEEK_ROWS * GRID_ROW_HEIGHT;
 
-// The events list is a sheet that slides up OVER the calendar (instead of the
-// old hard view swap, which read as "woah, where did the calendar go"). When
-// open it stops this far short of the top, so the dimmed month header still
+// There is ONE events panel. Docked, its top edge sits right under the month
+// grid and it shows the selected day. Dragging up stretches the same panel
+// until it stops this far short of the top, so the dimmed month header still
 // peeks out behind it and the way back is obvious.
 const SHEET_TOP_GAP = 68;
+
+// Height of the drag-handle block at the top of the panel (paddingVertical
+// spacing.sm on both sides + the 4px bar). Used to size the docked
+// selected-day content to exactly the visible strip of the panel.
+const HANDLE_BLOCK_HEIGHT = 2 * 8 + 4;
 
 const SHEET_SPRING = { useNativeDriver: true, friction: 10, tension: 90 };
 

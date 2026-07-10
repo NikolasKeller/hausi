@@ -94,6 +94,7 @@ test('requests strict non-stored output and returns a normalized draft', async (
       clearSelectedLocation: false,
       assistantMessage: 'Everything is ready to review.',
       nextField: null,
+      titleSuggestions: null,
     });
   }) as typeof fetch;
 
@@ -131,6 +132,7 @@ test('rejects structurally invalid provider output', async () => {
       clearSelectedLocation: false,
       assistantMessage: 'Ready.',
       nextField: null,
+      titleSuggestions: null,
     })) as typeof fetch;
 
   await assert.rejects(
@@ -155,6 +157,7 @@ test('never accepts an AI-written address as a selected location', async () => {
       clearSelectedLocation: true,
       assistantMessage: 'Search for the new place and select the exact result.',
       nextField: 'location',
+      titleSuggestions: null,
     })) as typeof fetch;
 
   const result = await generateEventDraftTurn(baseRequest, {
@@ -166,4 +169,34 @@ test('never accepts an AI-written address as a selected location', async () => {
   assert.equal(result.draft.selectedLocation, null);
   assert.equal(result.nextField, 'location');
   assert.equal(result.status, 'needs_input');
+  assert.deepEqual(result.titleSuggestions, []);
+});
+
+test('scrubs em dashes and surfaces deduped title suggestions', async () => {
+  const fetchImpl = (async () =>
+    openAiResponse({
+      draft: {
+        ...baseDraft,
+        title: null,
+        selectedLocation: undefined,
+      },
+      clearSelectedLocation: false,
+      assistantMessage: 'Nice — pick a title, or type your own.',
+      nextField: 'title',
+      titleSuggestions: ['Rooftop Birthday — Dinner', 'Rooftop Birthday, Dinner', 'Golden Hour Dinner'],
+    })) as typeof fetch;
+
+  const result = await generateEventDraftTurn(baseRequest, {
+    apiKey: 'test-key',
+    fetchImpl,
+    now,
+  });
+
+  assert.equal(result.nextField, 'title');
+  assert.ok(!result.assistantMessage.includes('—'));
+  assert.equal(result.assistantMessage, 'Nice, pick a title, or type your own.');
+  assert.deepEqual(result.titleSuggestions, [
+    'Rooftop Birthday, Dinner',
+    'Golden Hour Dinner',
+  ]);
 });

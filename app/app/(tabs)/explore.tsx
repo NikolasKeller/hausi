@@ -847,7 +847,9 @@ const styles = StyleSheet.create({
     right: spacing.md,
     left: spacing.md,
     maxHeight: 340,
-    backgroundColor: colors.card,
+    // Solid fill (not the translucent card token) — the filter chips behind
+    // the open dropdown otherwise bleed through it.
+    backgroundColor: '#141928',
     borderWidth: 1,
     borderColor: colors.cardBorder,
     borderRadius: radius.md,

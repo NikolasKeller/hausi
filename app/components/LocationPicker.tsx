@@ -31,6 +31,9 @@ interface Props {
 export function LocationPicker({ value, city, onChange, label, labelColor }: Props) {
   const [editing, setEditing] = useState(false);
   const [query, setQuery] = useState('');
+  // Mirrors `query` for the deferred blur handler, which must read the value
+  // at fire time rather than the render it was created in.
+  const queryRef = useRef('');
   const [results, setResults] = useState<AddressResult[]>([]);
   const [loading, setLoading] = useState(false);
   // True once a query has resolved — gates the "no matches" message so it
@@ -89,6 +92,7 @@ export function LocationPicker({ value, city, onChange, label, labelColor }: Pro
   function beginEdit() {
     setEditing(true);
     setQuery('');
+    queryRef.current = '';
     setResults([]);
     setSearched(false);
     setErrored(false);
@@ -99,6 +103,7 @@ export function LocationPicker({ value, city, onChange, label, labelColor }: Pro
     onChange(r.location, r.city ?? '');
     setEditing(false);
     setQuery('');
+    queryRef.current = '';
     setResults([]);
     setSearched(false);
     Keyboard.dismiss();
@@ -126,6 +131,7 @@ export function LocationPicker({ value, city, onChange, label, labelColor }: Pro
               value={query}
               onChangeText={(t) => {
                 setQuery(t);
+                queryRef.current = t;
                 runSearch(t);
               }}
               placeholder="Search an address or place…"
@@ -138,9 +144,15 @@ export function LocationPicker({ value, city, onChange, label, labelColor }: Pro
               onSubmitEditing={() => {
                 if (!loading && results[0]) select(results[0]);
               }}
-              // Defer collapsing so a tap on a result row registers first.
+              // Keep the search open while a query is typed: keyboard shuffles
+              // (insets, viewport pans) fire spurious blurs on phones and used
+              // to throw people out mid-word. With text in the field the edit
+              // mode only ends by picking a result or clearing; an empty field
+              // still collapses after a moment, so a stray tap backs out.
               onBlur={() => {
-                blurRef.current = setTimeout(() => setEditing(false), 150);
+                blurRef.current = setTimeout(() => {
+                  if (!queryRef.current.trim()) setEditing(false);
+                }, 150);
               }}
             />
           ) : (
@@ -152,6 +164,22 @@ export function LocationPicker({ value, city, onChange, label, labelColor }: Pro
           )}
           {loading ? (
             <ActivityIndicator size="small" color={colors.accent} />
+          ) : editing && query ? (
+            <Pressable
+              onPress={() => {
+                if (blurRef.current) clearTimeout(blurRef.current);
+                setQuery('');
+                queryRef.current = '';
+                setResults([]);
+                setSearched(false);
+                setEditing(false);
+              }}
+              hitSlop={8}
+              accessibilityRole="button"
+              accessibilityLabel="Cancel search"
+            >
+              <Ionicons name="close-circle" size={18} color={colors.muted} />
+            </Pressable>
           ) : value && !editing ? (
             <Pressable onPress={clear} hitSlop={8}>
               <Ionicons name="close-circle" size={18} color={colors.muted} />

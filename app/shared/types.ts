@@ -366,6 +366,8 @@ export interface EventDraftChatResponse {
   status: 'needs_input' | 'ready';
   nextField: EventDraftQuestion | null;
   missingFields: EventDraftQuestion[];
+  // Tap-to-pick title ideas; non-empty only when nextField is 'title'.
+  titleSuggestions: string[];
 }
 
 // ── Agent Wallet / agentic ticket purchase ──────────────────────────────────

@@ -305,7 +305,21 @@ function CreateEventScreen() {
   const [aiPaused, setAiPaused] = useState(false);
 
   const [title, setTitle] = useState('');
+  // AI-proposed titles for the title question; tapping one commits it.
+  const [titleSuggestions, setTitleSuggestions] = useState<string[]>([]);
   const [description, setDescription] = useState('');
+
+  // Follow the conversation: scroll when messages arrive or the step changes.
+  // Deliberately NOT on every content growth — the old onContentSizeChange
+  // handler yanked the list around (and pulled focus away) while people were
+  // typing into the location search and its results appeared.
+  useEffect(() => {
+    const timer = setTimeout(
+      () => scrollRef.current?.scrollToEnd({ animated: true }),
+      60
+    );
+    return () => clearTimeout(timer);
+  }, [messages.length, aiBusy, stage]);
   const [date, setDate] = useState<Date | null>(null);
   const [dateSeed, setDateSeed] = useState(nextEvening);
   const [dateOpen, setDateOpen] = useState(false);
@@ -354,17 +368,6 @@ function CreateEventScreen() {
     return issues;
   }, [date, location, maxGuests, paid, plusOnes, price, title]);
   const canPublish = validationIssues.length === 0;
-
-  const statusLabel =
-    aiBusy
-      ? 'Thinking with AI…'
-      : stage === 'brief'
-        ? 'Start with an idea'
-        : stage === 'preview'
-          ? 'Ready to review'
-          : editingFromPreview
-            ? 'Editing your draft'
-            : `${queue.length} ${queue.length === 1 ? 'detail' : 'details'} left`;
 
   function appendMessages(
     ...items: Omit<ChatMessage, 'id'>[]
@@ -488,6 +491,7 @@ function CreateEventScreen() {
       const result = await api.chatEventDraft(request, controller.signal);
       if (!mountedRef.current || aiAbortRef.current !== controller) return;
       applyChatDraft(result.draft);
+      setTitleSuggestions(result.titleSuggestions ?? []);
       const pending = pendingQuestions(result);
       setQueue(pending);
       setStage(pending[0] ?? 'preview');
@@ -820,6 +824,9 @@ function CreateEventScreen() {
 
   function renderQuestionCard() {
     if (stage === 'brief') {
+      // The example prompts only help before the conversation starts; once the
+      // first brief is sent they would just clutter the thread.
+      if (messages.some((message) => message.role === 'user')) return null;
       return (
         <View style={styles.starterArea}>
           <Text style={styles.starterLabel}>NEED A START?</Text>
@@ -827,6 +834,30 @@ function CreateEventScreen() {
             <Pressable key={prompt} onPress={() => setComposer(prompt)} style={styles.starterPrompt}>
               <Text style={styles.starterPromptText}>{prompt}</Text>
               <Ionicons name="arrow-up-outline" size={16} color={colors.muted} />
+            </Pressable>
+          ))}
+        </View>
+      );
+    }
+
+    if (stage === 'title' && titleSuggestions.length > 0 && !title.trim()) {
+      // Tap-to-pick title ideas from the AI; typing in the composer instead
+      // always stays possible.
+      return (
+        <View style={styles.titleIdeas}>
+          {titleSuggestions.map((suggestion) => (
+            <Pressable
+              key={suggestion}
+              onPress={() => {
+                setTitle(suggestion);
+                setTitleSuggestions([]);
+                setQuestionError('');
+                completeQuestion(suggestion, { ...chatDraft, title: suggestion });
+              }}
+              disabled={aiBusy}
+              style={({ pressed }) => [styles.titleIdea, pressed && { opacity: 0.75 }]}
+            >
+              <Text style={styles.titleIdeaText}>{suggestion}</Text>
             </Pressable>
           ))}
         </View>
@@ -1318,9 +1349,12 @@ function CreateEventScreen() {
       onPress = completeDate;
       disabled = !date || date.getTime() <= Date.now();
     } else if (stage === 'location') {
-      label = 'Use this location';
+      // No button while nothing is selected: a dangling "Use this location"
+      // read like a use-my-current-location action. It only appears once a
+      // real place has been picked, as a clear confirmation step.
+      if (!location.trim()) return null;
+      label = `Confirm: ${location.length > 28 ? `${location.slice(0, 28)}…` : location}`;
       onPress = completeLocation;
-      disabled = !location.trim();
     } else if (stage === 'visibility') {
       label = 'Save access settings';
       onPress = () =>
@@ -1450,11 +1484,8 @@ function CreateEventScreen() {
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
         style={[styles.flex, webKeyboardInset > 0 && { paddingBottom: webKeyboardInset }]}
       >
+        {/* Just an exit control, no banner text: the chat speaks for itself. */}
         <View style={styles.header}>
-          <View>
-            <Text style={styles.eyebrow}>GUIDED EVENT CREATION</Text>
-            <Text style={styles.headerStatus}>{statusLabel}</Text>
-          </View>
           <Pressable
             onPress={() => (router.canGoBack() ? router.back() : router.replace('/explore'))}
             style={styles.closeButton}
@@ -1468,7 +1499,6 @@ function CreateEventScreen() {
           contentContainerStyle={styles.content}
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
-          onContentSizeChange={() => scrollRef.current?.scrollToEnd({ animated: true })}
         >
           {messages.map((message) => (
             <View
@@ -1585,14 +1615,10 @@ const styles = StyleSheet.create({
   header: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
+    justifyContent: 'flex-end',
     paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: colors.cardBorder,
+    paddingTop: spacing.xs,
   },
-  eyebrow: { ...uiText(10, '700', { tracking: 0.1 }), color: colors.muted },
-  headerStatus: { ...uiText(13, '600'), color: colors.text, marginTop: 1 },
   closeButton: {
     width: 38,
     height: 38,
@@ -1667,6 +1693,20 @@ const styles = StyleSheet.create({
   },
   retryButtonText: { ...uiText(11, '700'), color: colors.text },
   starterArea: { gap: spacing.sm, marginTop: spacing.xs },
+  titleIdeas: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: spacing.sm,
+  },
+  titleIdea: {
+    backgroundColor: colors.card,
+    borderWidth: 1,
+    borderColor: colors.cardBorder,
+    borderRadius: radius.pill,
+    paddingHorizontal: spacing.md,
+    paddingVertical: 9,
+  },
+  titleIdeaText: { ...uiText(14, '600'), color: colors.text },
   starterLabel: { ...uiText(10, '700', { tracking: 0.1 }), color: colors.muted },
   starterPrompt: {
     flexDirection: 'row',
@@ -1935,13 +1975,11 @@ const styles = StyleSheet.create({
   },
   validationTitle: { ...uiText(13, '700'), color: colors.danger },
   validationText: { ...uiText(12), color: colors.text },
+  // No band behind the composer: it floats on the same backdrop as the chat.
   composerFooter: {
     paddingHorizontal: spacing.md,
     paddingTop: spacing.sm,
     paddingBottom: spacing.sm,
-    borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: colors.cardBorder,
-    backgroundColor: 'rgba(8,11,22,0.97)',
   },
   composerBox: {
     flexDirection: 'row',
@@ -1949,9 +1987,11 @@ const styles = StyleSheet.create({
     gap: spacing.sm,
     minHeight: 54,
     maxHeight: 150,
-    backgroundColor: colors.card,
+    // Translucent fill so the pill sits IN the backdrop instead of on a
+    // black band of its own.
+    backgroundColor: 'rgba(255,255,255,0.07)',
     borderWidth: 1,
-    borderColor: colors.cardBorder,
+    borderColor: 'rgba(255,255,255,0.14)',
     borderRadius: 20,
     paddingLeft: spacing.md,
     paddingRight: 6,
@@ -1980,9 +2020,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.md,
     paddingTop: spacing.sm,
     paddingBottom: spacing.sm,
-    borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: colors.cardBorder,
-    backgroundColor: 'rgba(8,11,22,0.97)',
     gap: 6,
   },
   footerError: { ...uiText(11, '600'), color: colors.danger, paddingHorizontal: 4 },
