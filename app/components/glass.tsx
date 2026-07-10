@@ -11,6 +11,7 @@ import {
 import { BlurView } from 'expo-blur';
 import { LinearGradient } from 'expo-linear-gradient';
 import { colors, radius as R } from '../lib/theme';
+import { GlassSurface } from './GlassSurface';
 
 // ── Glass ─────────────────────────────────────────────────────────────────────
 // A real frosted-glass surface: a live backdrop blur of whatever sits behind it
@@ -99,36 +100,37 @@ export function GlassPill({
 }) {
   const dark = tint === 'dark';
   const clear = variant === 'clear';
-  // The web blur polyfill bakes its tint wash in proportion to `intensity`
-  // (see the ChromeCard note below), so the clear variant needs a lower
-  // baseline to stay see-through — it still reads as blur, just lighter.
-  const resolvedIntensity = intensity ?? (clear ? 34 : 60);
+  if (clear) {
+    // Real glassmorphism pill (see GlassSurface) — heavy backdrop blur, thin
+    // light ring, and a slightly brighter wash when active/selected.
+    return (
+      <GlassSurface
+        radius={R.pill}
+        blur={22}
+        fill={fill ?? (active ? colors.glassClearStrong : colors.glassClear)}
+        borderColor={colors.glassClearBorder}
+        style={[styles.pill, style]}
+      >
+        {children}
+      </GlassSurface>
+    );
+  }
+  const resolvedIntensity = intensity ?? 60;
   const resolvedFill =
     fill ??
     (dark
       ? active
         ? 'rgba(255,255,255,0.18)'
         : undefined
-      : clear
-        ? active
-          ? colors.glassClearStrong
-          : colors.glassClear
-        : active
-          ? colors.glassStrong
-          : colors.glass);
-  // expo-blur's web polyfill bakes a tint-specific wash straight into the
-  // blur (see getBackgroundColor): 'light' is ~66% opaque white at high
-  // intensity, which drowns out a low-alpha custom fill. 'default' bakes in
-  // far less (~30%), so the clear variant actually stays see-through.
-  const blurTint = dark ? 'dark' : clear ? 'default' : 'light';
+      : active
+        ? colors.glassStrong
+        : colors.glass);
   return (
     <Glass
       radius={R.pill}
       intensity={active ? resolvedIntensity + 14 : resolvedIntensity}
-      tint={blurTint}
+      tint={tint}
       fill={resolvedFill}
-      sheen={!clear}
-      borderColor={clear ? colors.glassClearBorder : undefined}
       style={[styles.pill, style]}
     >
       {children}
@@ -161,45 +163,33 @@ export function ChromeCard({
   children?: React.ReactNode;
 }) {
   const clear = variant === 'clear';
-  const fillColor = clear
-    ? strong
-      ? colors.glassClearStrong
-      : colors.glassClear
-    : strong
-      ? colors.glassStrong
-      : colors.glass;
-  return (
-    <View
-      style={[
-        { borderRadius: r },
-        styles.chromeOuter,
-        clear && { borderColor: colors.glassClearBorder, shadowOpacity: 0 },
-        style,
-      ]}
-    >
-      {/* expo-blur's web polyfill bakes a tint-specific wash straight into
-          the blur, scaled by intensity (see getBackgroundColor) — 'light' at
-          85 is ~66% opaque white, which drowns out a low-alpha custom fill.
-          The clear variant drops to 'default' tint + a lower intensity so
-          the card stays genuinely see-through while still reading as blur. */}
-      <BlurView
-        intensity={clear ? 34 : 85}
-        tint={clear ? 'default' : 'light'}
-        style={[styles.chromeBlur, { borderRadius: r }]}
+  if (clear) {
+    // Real glassmorphism recipe (see GlassSurface): heavy backdrop blur +
+    // ~10% white fill + 1px light border + inset catch-light + soft lift.
+    return (
+      <GlassSurface
+        radius={r}
+        blur={28}
+        fill={strong ? colors.glassClearStrong : colors.glassClear}
+        borderColor={colors.glassClearBorder}
+        style={style}
       >
+        {children}
+      </GlassSurface>
+    );
+  }
+  const fillColor = strong ? colors.glassStrong : colors.glass;
+  return (
+    <View style={[{ borderRadius: r }, styles.chromeOuter, style]}>
+      <BlurView intensity={85} tint="light" style={[styles.chromeBlur, { borderRadius: r }]}>
         <View
           pointerEvents="none"
           style={[StyleSheet.absoluteFill, { backgroundColor: fillColor, borderRadius: r }]}
         />
-        {/* Top-edge sheen so the surface reads as glass, not flat paint —
-            kept very faint on the clear variant so it stays see-through. */}
+        {/* Top-edge sheen so the surface reads as glass, not flat paint. */}
         <LinearGradient
           pointerEvents="none"
-          colors={
-            clear
-              ? ['rgba(255,255,255,0.16)', 'rgba(255,255,255,0.03)', 'rgba(255,255,255,0)']
-              : ['rgba(255,255,255,0.55)', 'rgba(255,255,255,0.08)', 'rgba(255,255,255,0)']
-          }
+          colors={['rgba(255,255,255,0.55)', 'rgba(255,255,255,0.08)', 'rgba(255,255,255,0)']}
           locations={[0, 0.4, 1]}
           start={{ x: 0, y: 0 }}
           end={{ x: 0, y: 1 }}

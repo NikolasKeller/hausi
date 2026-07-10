@@ -44,9 +44,9 @@ export const colors = {
   // Barely any wash at all — almost pure blur + a thin light ring — so the
   // ambient backdrop reads straight through the surface. Text stays light,
   // since the surface never turns white enough for dark ink to read.
-  glassClear: 'rgba(255,255,255,0.07)',
-  glassClearStrong: 'rgba(255,255,255,0.14)',
-  glassClearBorder: 'rgba(255,255,255,0.46)',
+  glassClear: 'rgba(255,255,255,0.10)',
+  glassClearStrong: 'rgba(255,255,255,0.18)',
+  glassClearBorder: 'rgba(255,255,255,0.28)',
 };
 
 // ── Elevated surfaces (kept under the `light` name for back-compat) ───────────

@@ -89,7 +89,13 @@ function ExploreCard({ event }: { event: ExploreEvent }) {
   );
 }
 
-export default withScreenBackground(ExploreScreen, { image: EXPLORE_BG, bloom: false });
+export default withScreenBackground(ExploreScreen, {
+  image: EXPLORE_BG,
+  bloom: false,
+  // The dark misty backdrop already carries its own mood — keep the scrim
+  // feather-light so the haze stays luminous under the glass.
+  scrim: 0.15,
+});
 
 function ExploreScreen() {
   // city: null = not resolved yet, '' = all cities, otherwise a city name.

@@ -15,17 +15,26 @@ export function ScreenBackground({
   children,
   bloom = true,
   image = EVENT_BG,
+  // 0..1 — how hard the dark scrim presses on the photo. The default suits
+  // the busy nightlife shot; bright/misty backdrops want a much lighter
+  // touch so the glass cards keep something luminous to refract.
+  scrim = 1,
 }: {
   children?: React.ReactNode;
   bloom?: boolean;
   image?: ImageSourcePropType;
+  scrim?: number;
 }) {
   return (
     <View style={styles.fill}>
       <Image source={image} style={StyleSheet.absoluteFill} resizeMode="cover" />
       <LinearGradient
         pointerEvents="none"
-        colors={['rgba(0,0,0,0.55)', 'rgba(0,0,0,0.30)', 'rgba(0,0,0,0.55)']}
+        colors={[
+          `rgba(0,0,0,${0.55 * scrim})`,
+          `rgba(0,0,0,${0.3 * scrim})`,
+          `rgba(0,0,0,${0.55 * scrim})`,
+        ]}
         locations={[0, 0.45, 1]}
         style={StyleSheet.absoluteFill}
       />
@@ -50,11 +59,11 @@ export function ScreenBackground({
 // occlude them, independent of the react-native-screens web shim.
 export function withScreenBackground<P extends object>(
   Screen: React.ComponentType<P>,
-  opts?: { bloom?: boolean; image?: ImageSourcePropType }
+  opts?: { bloom?: boolean; image?: ImageSourcePropType; scrim?: number }
 ): React.ComponentType<P> {
   function ScreenWithBackground(props: P) {
     return (
-      <ScreenBackground bloom={opts?.bloom} image={opts?.image}>
+      <ScreenBackground bloom={opts?.bloom} image={opts?.image} scrim={opts?.scrim}>
         <Screen {...props} />
       </ScreenBackground>
     );
