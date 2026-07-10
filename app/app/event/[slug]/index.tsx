@@ -28,6 +28,7 @@ import { ThemeBackground } from '../../../components/themes';
 import { Glass } from '../../../components/glass';
 import { Avatar } from '../../../components/Avatar';
 import { Button } from '../../../components/ui';
+import { TicketCheckoutSheet } from '../../../components/TicketCheckoutSheet';
 import { formatEventDate, formatEventTime } from '../../../components/EventCard';
 
 // The buy-ticket link comes from the event's ticketUrl field (the organiser's
@@ -128,6 +129,7 @@ export default function EventScreen() {
   const [friendIds, setFriendIds] = useState<Set<string>>(new Set());
   const [error, setError] = useState<string | null>(null);
   const [menuOpen, setMenuOpen] = useState(false);
+  const [checkoutOpen, setCheckoutOpen] = useState(false);
   const [inviteBusy, setInviteBusy] = useState(false);
   const [favBusy, setFavBusy] = useState(false);
 
@@ -163,12 +165,12 @@ export default function EventScreen() {
     }, [load])
   );
 
-  // Buying a ticket is a simple redirect to the event's own ticket/checkout
-  // page — no in-app purchase. Opened in the in-app browser (SFSafariView):
-  // plain Linking.openURL lets iOS intercept ra.co/eventbrite links as
-  // universal links and bounce users into the App Store when the partner app
-  // isn't installed. (The agentic purchase flow still lives in the repo, just
-  // decoupled from this screen.)
+  // The organiser's real ticket/checkout page, opened in the in-app browser
+  // (SFSafariView): plain Linking.openURL lets iOS intercept ra.co/eventbrite
+  // links as universal links and bounce users into the App Store when the
+  // partner app isn't installed. Reached via the "buy on the organiser's site"
+  // link in the checkout sheet — the Buy-ticket button itself now runs the
+  // MOCK in-app checkout (TicketCheckoutSheet).
   function openTicket(url: string) {
     if (Platform.OS === 'web') {
       (globalThis as any).window?.open(url, '_blank');
@@ -562,7 +564,9 @@ export default function EventScreen() {
             ) : null}
             {ticket.url ? (
               <Pressable
-                onPress={() => openTicket(ticket.url!)}
+                // Signed-in: the mock in-app checkout (name/address → animation
+                // → Wallet). Signed-out viewers go straight to the organiser.
+                onPress={() => (user ? setCheckoutOpen(true) : openTicket(ticket.url!))}
                 style={({ pressed }) => [
                   styles.buyButton,
                   styles.buyButtonBar,
@@ -598,6 +602,15 @@ export default function EventScreen() {
             ) : null}
           </View>
         </View>
+      ) : null}
+
+      {checkoutOpen ? (
+        <TicketCheckoutSheet
+          event={event}
+          onClose={() => setCheckoutOpen(false)}
+          onPurchased={load}
+          onOpenExternal={openTicket}
+        />
       ) : null}
 
       {menuOpen ? (
