@@ -21,12 +21,11 @@ const NIGHT = require('../assets/nightlife-bokeh.jpg');
 
 // ── ThemeBackground ───────────────────────────────────────────────────────────
 // The event page / editor surface. Every event sits on the app's nightlife
-// bokeh backdrop — no coloured gradients, no emoji watermark and no animated
-// effect overlays, so the whole product reads as one continuous night scene.
-// `theme` / `effect` are accepted for call-site compatibility but no longer
-// paint anything.
+// bokeh backdrop, plus a soft wash of the event theme's signature colour from
+// the top, so a birthday glows gold and a dinner warm without breaking the
+// continuous night scene. `effect` is accepted for call-site compatibility but
+// no longer paints anything.
 export function ThemeBackground({
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   theme,
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   effect,
@@ -38,9 +37,19 @@ export function ThemeBackground({
   children?: React.ReactNode;
   style?: StyleProp<ViewStyle>;
 }) {
+  // colors[2] is each palette's most saturated mid stop.
+  const tint = theme ? coverFor(theme).colors[2] : null;
   return (
     <View style={[styles.fill, { backgroundColor: colors.bg }, style]}>
       <Image source={NIGHT} style={StyleSheet.absoluteFill} resizeMode="cover" />
+      {tint ? (
+        <LinearGradient
+          colors={[`${tint}59`, `${tint}1F`, 'transparent']}
+          locations={[0, 0.28, 0.55]}
+          style={StyleSheet.absoluteFill}
+          pointerEvents="none"
+        />
+      ) : null}
       {children}
     </View>
   );

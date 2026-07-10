@@ -19,6 +19,7 @@ import { useAuth } from '../../../lib/auth';
 import { setPendingPath } from '../../../lib/pendingPath';
 import { confirmDialog, notify } from '../../../lib/dialogs';
 import { recordRecentEvent, removeRecentEvent } from '../../../lib/recents';
+import { eventVisual } from '../../../lib/eventVisual';
 import { shareText } from '../../../lib/share';
 import { colors, light, radius, spacing } from '../../../lib/theme';
 import { titleFontStyle, display, kicker, uiText } from '../../../lib/fonts';
@@ -327,6 +328,9 @@ export default function EventScreen() {
   const friendsAttending = event.rsvps
     .filter((r) => r.status !== 'CANT' && r.user.id !== user?.id && friendIds.has(r.user.id))
     .sort((a, b) => (a.status === 'GOING' ? 0 : 1) - (b.status === 'GOING' ? 0 : 1));
+  // Occasion-matched emoji banner for pages without a cover photo, so a
+  // birthday reads as a birthday instead of a bare title on a gradient.
+  const visual = eventVisual(event.title, event.description, event.category);
 
   return (
     <ThemeBackground theme={event.coverTheme}>
@@ -358,6 +362,11 @@ export default function EventScreen() {
             </View>
           ) : (
             <View style={[styles.heroBlock, { paddingTop: insets.top + 64 }]}>
+              <View style={styles.heroEmojiRow}>
+                <Text style={styles.heroEmojiSide}>{visual.emojis[0]}</Text>
+                <Text style={styles.heroEmojiCenter}>{visual.emojis[1]}</Text>
+                <Text style={styles.heroEmojiSide}>{visual.emojis[2]}</Text>
+              </View>
               <Text
                 style={[
                   styles.heroTitlePlain,
@@ -496,6 +505,17 @@ export default function EventScreen() {
                   🎟️ {spotsLeft > 0 ? `${spotsLeft} spots left` : 'Event is full'}
                 </Text>
               ) : null}
+              {/* The description belongs with the facts, not as an orphaned
+                  paragraph at the end of the page. */}
+              {ticket.text ? (
+                <View style={[styles.metaDescription, { borderTopColor: ink.hairline }]}>
+                  <RichDescription
+                    text={ticket.text}
+                    scale={event.descriptionScale}
+                    color={ink.text}
+                  />
+                </View>
+              ) : null}
             </Glass>
 
             {user && (event.canManage || !ticket.url) ? (
@@ -531,14 +551,6 @@ export default function EventScreen() {
                   </Pressable>
                 ))}
               </Glass>
-            ) : null}
-
-            {ticket.text ? (
-              <RichDescription
-                text={ticket.text}
-                scale={event.descriptionScale}
-                color={ink.text}
-              />
             ) : null}
 
             {/* Host announcements (text blasts) — prominent, above the guest list. */}
@@ -618,7 +630,13 @@ export default function EventScreen() {
             ) : null}
 
             {event.canManage ? (
-              <Glass tint={ink.dark ? 'dark' : 'light'} radius={radius.pill} style={styles.manageBar}>
+              <Glass
+                tint={ink.dark ? 'dark' : 'light'}
+                radius={radius.pill}
+                // Alone in the bar (free event, no Buy button) it stretches to
+                // the full width instead of huddling small in the corner.
+                style={[styles.manageBar, !ticket.url && user ? styles.manageBarWide : null]}
+              >
                 <BarItem
                   icon="pencil"
                   label="Edit"
@@ -765,6 +783,10 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.sm,
     paddingVertical: spacing.xs,
   },
+  manageBarWide: {
+    flex: 1,
+    justifyContent: 'space-around',
+  },
   barItem: {
     alignItems: 'center',
     justifyContent: 'center',
@@ -831,7 +853,22 @@ const styles = StyleSheet.create({
     paddingBottom: spacing.md,
     gap: spacing.sm,
   },
-  heroTitlePlain: {},
+  heroEmojiRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-end',
+    justifyContent: 'center',
+    gap: spacing.lg,
+    marginBottom: spacing.sm,
+  },
+  heroEmojiSide: {
+    fontSize: 34,
+    opacity: 0.9,
+  },
+  heroEmojiCenter: {
+    fontSize: 56,
+    marginBottom: 2,
+  },
+  heroTitlePlain: { textAlign: 'center' },
   section: {
     padding: spacing.lg,
     gap: spacing.lg,
@@ -883,6 +920,11 @@ const styles = StyleSheet.create({
   metaCard: {
     padding: spacing.md,
     gap: spacing.sm,
+  },
+  metaDescription: {
+    borderTopWidth: StyleSheet.hairlineWidth,
+    paddingTop: spacing.sm,
+    marginTop: spacing.xs,
   },
   publicationBanner: {
     flexDirection: 'row',

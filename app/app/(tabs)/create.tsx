@@ -29,6 +29,7 @@ import {
 import { api } from '../../lib/api';
 import { notify } from '../../lib/dialogs';
 import { extractEventBrief, normalizeTicketPrice } from '../../lib/eventDraft';
+import { eventVisual } from '../../lib/eventVisual';
 import { pickRawImage, uploadCroppedImage, type PickedImage } from '../../lib/imageUpload';
 import { copyLink, shareText, textInvite } from '../../lib/share';
 import { colors, radius, shadow, spacing } from '../../lib/theme';
@@ -798,6 +799,9 @@ function CreateEventScreen() {
         isPublic,
         hideLocation,
         coverImage,
+        // Themed page backdrop matched to what the event IS (birthday, dinner,
+        // karaoke…) so pages feel designed even without a cover photo.
+        coverTheme: eventVisual(title, description, category).theme,
         maxGuests,
         plusOneLimit: plusOnes,
         costPerPerson: paid ? (normalizeTicketPrice(price) ?? '') : '',

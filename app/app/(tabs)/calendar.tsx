@@ -58,12 +58,9 @@ const GRID_HEIGHT = MAX_WEEK_ROWS * GRID_ROW_HEIGHT;
 // peeks out behind it and the way back is obvious.
 const SHEET_TOP_GAP = 68;
 
-// Height of the drag-handle block at the top of the panel (paddingVertical
-// spacing.sm on both sides + the 4px bar). Used to size the docked
-// selected-day content to exactly the visible strip of the panel.
-const HANDLE_BLOCK_HEIGHT = 2 * 8 + 4;
-
-const SHEET_SPRING = { useNativeDriver: true, friction: 10, tension: 90 };
+// The panel's top edge is a layout prop (it resizes the one panel), so the
+// spring must run on the JS driver.
+const SHEET_SPRING = { useNativeDriver: false, friction: 10, tension: 90 };
 
 // Cells for a month grid: leading/trailing nulls pad to full weeks.
 function buildMonthCells(year: number, month: number): (Date | null)[] {
@@ -96,12 +93,17 @@ function CalendarScreen() {
     return { year: now.getFullYear(), month: now.getMonth() };
   });
 
-  // 0 = sheet parked below the screen (grid mode), 1 = sheet open. Driven by
-  // the finger while dragging and by a spring on release, so the list glides
-  // over the calendar instead of hard-swapping views.
+  // 0 = panel docked under the month grid (grid mode), 1 = panel stretched to
+  // near the top (list mode). Driven by the finger while dragging and by a
+  // spring on release. It's ONE panel that grows and shrinks — not a second
+  // sheet sliding over the first.
   const sheetProgress = useRef(new Animated.Value(0)).current;
   const [containerH, setContainerH] = useState(0);
   const containerHRef = useRef(0);
+  // Y (in stack coordinates) where the panel's top edge rests when docked —
+  // measured off the calendar block so it always sits right under the grid.
+  const [dockedTop, setDockedTop] = useState(0);
+  const dockedTopRef = useRef(0);
 
   const openSheet = useCallback(() => {
     setMode('list');
@@ -164,14 +166,14 @@ function CalendarScreen() {
     return { upcoming: up, past: pa };
   }, [events]);
 
-  // Swipe up anywhere on the calendar to pull the events sheet over the grid.
-  // The sheet tracks the finger while dragging (no hard swap) and springs to
-  // its resting spot on release. Only claim decisive upward drags so day taps
-  // and the panel's internal scroll still work.
-  const travel = useCallback(
-    () => Math.max(1, (containerHRef.current || 1200) - SHEET_TOP_GAP),
-    []
-  );
+  // Swipe up anywhere (grid or docked panel) to stretch the panel toward the
+  // top. It tracks the finger while dragging and springs to its resting spot
+  // on release. Only claim decisive upward drags so day taps and the panel's
+  // internal scroll still work.
+  const travel = useCallback(() => {
+    const docked = dockedTopRef.current || (containerHRef.current || 1200) * 0.55;
+    return Math.max(1, docked - SHEET_TOP_GAP);
+  }, []);
   const swipeUp = useMemo(
     () =>
       PanResponder.create({
@@ -290,12 +292,17 @@ function CalendarScreen() {
     </View>
   );
 
-  // Sheet choreography: the events list rides sheetProgress from parked below
-  // the screen (0) to just under the top edge (1) while the calendar recedes —
-  // dimming and shrinking slightly — so it visibly stays "behind" the list.
-  const sheetTranslateY = sheetProgress.interpolate({
+  // Panel choreography: ONE panel. Its top edge rides sheetProgress from just
+  // under the month grid (docked) up to SHEET_TOP_GAP (expanded) — the same
+  // window simply gets taller while the calendar recedes behind it, dimming
+  // and shrinking slightly.
+  const panelTop = sheetProgress.interpolate({
     inputRange: [0, 1],
-    outputRange: [containerH || 1200, SHEET_TOP_GAP],
+    outputRange: [dockedTop || Math.max(SHEET_TOP_GAP + 1, (containerH || 1200) * 0.55), SHEET_TOP_GAP],
+  });
+  const panelBg = sheetProgress.interpolate({
+    inputRange: [0, 1],
+    outputRange: ['rgba(13,17,29,0.80)', 'rgba(13,17,29,0.98)'],
   });
   const gridOpacity = sheetProgress.interpolate({
     inputRange: [0, 1],
@@ -306,9 +313,10 @@ function CalendarScreen() {
     outputRange: [1, 0.96],
   });
 
-  // One stacked layout: the grid fills the screen (header + month grid on top,
-  // the "Today" panel flexing below) and the events sheet lives above it,
-  // parked off-screen until a swipe pulls it up over the calendar.
+  // One stacked layout: the calendar block (header + month grid) sits on top
+  // and the single events panel is anchored to the bottom, docked right under
+  // the grid. Swiping up stretches that same panel toward the top — no second
+  // sheet slides over it.
   return (
     <SafeAreaView edges={['top']} style={styles.safe}>
       <View
@@ -317,14 +325,20 @@ function CalendarScreen() {
           setContainerH(e.nativeEvent.layout.height);
           containerHRef.current = e.nativeEvent.layout.height;
         }}
+        {...(mode === 'grid' ? swipeUp.panHandlers : {})}
       >
         <Animated.View
           style={[
-            styles.gridContent,
+            styles.calBlock,
             { opacity: gridOpacity, transform: [{ scale: gridScale }] },
           ]}
           pointerEvents={mode === 'grid' ? 'auto' : 'none'}
-          {...(mode === 'grid' ? swipeUp.panHandlers : {})}
+          onLayout={(e) => {
+            // The panel docks flush under the calendar block.
+            const bottom = e.nativeEvent.layout.y + e.nativeEvent.layout.height + spacing.sm;
+            setDockedTop(bottom);
+            dockedTopRef.current = bottom;
+          }}
         >
           {header}
 
@@ -377,107 +391,83 @@ function CalendarScreen() {
               </View>
             ))}
           </View>
-
-          <View style={styles.panel}>
-            {/* Tap or swipe up: both pull the events sheet over the grid. */}
-            <Pressable
-              onPress={openSheet}
-              hitSlop={8}
-              accessibilityRole="button"
-              accessibilityLabel="Show all my events"
-              style={styles.panelHandleWrap}
-            >
-              <View style={styles.panelHandle} />
-            </Pressable>
-            <Text style={styles.panelTitle}>
-              {selectedIsToday ? <Text style={styles.panelStrong}>Today </Text> : null}
-              <Text style={selectedIsToday ? styles.panelMuted : styles.panelStrong}>
-                {selected.toLocaleDateString(undefined, {
-                  weekday: 'long',
-                  month: 'long',
-                  day: 'numeric',
-                })}
-              </Text>
-            </Text>
-
-            {selectedEvents.length === 0 ? (
-              <View style={styles.emptyState}>
-                <View style={styles.emptyBody}>
-                  <Text style={styles.emptyTitle}>{EMPTY_TITLE}</Text>
-                  {/* An empty day shouldn't dead-end — send people to the
-                      events feed to find something for it. */}
-                  <Button
-                    title="Explore events"
-                    variant="primary"
-                    onPress={() => router.push('/explore')}
-                  />
-                </View>
-              </View>
-            ) : (
-              <ScrollView
-                style={styles.panelScroll}
-                contentContainerStyle={styles.panelEvents}
-                showsVerticalScrollIndicator={false}
-              >
-                {selectedEvents.map((ev) => (
-                  <EventCard key={ev.id} event={ev} />
-                ))}
-              </ScrollView>
-            )}
-          </View>
         </Animated.View>
 
-        {/* The events sheet — rides over the dimmed calendar instead of
-            replacing it, so pulling it up never reads as the calendar
-            vanishing. A strip of the grid stays visible above the sheet and
-            tapping the handle (or dragging down) brings it back. */}
+        {/* THE panel — docked it shows the selected day; dragging the handle
+            up stretches the very same panel and reveals the Upcoming/Past
+            sections further down its content. */}
         <Animated.View
-          style={[styles.sheet, { transform: [{ translateY: sheetTranslateY }] }]}
-          pointerEvents={mode === 'list' ? 'auto' : 'none'}
-          {...swipeDown.panHandlers}
+          style={[styles.panel, { top: panelTop, backgroundColor: panelBg }]}
+          {...(mode === 'list' ? swipeDown.panHandlers : {})}
         >
           <Pressable
-            onPress={closeSheet}
+            onPress={mode === 'grid' ? openSheet : closeSheet}
             hitSlop={8}
             accessibilityRole="button"
-            accessibilityLabel="Back to calendar"
-            style={styles.listHandleWrap}
+            accessibilityLabel={mode === 'grid' ? 'Show all my events' : 'Back to calendar'}
+            style={styles.panelHandleWrap}
           >
-            <View style={styles.listHandle} />
+            <View style={styles.panelHandle} />
           </Pressable>
+          <Text style={styles.panelTitle}>
+            {selectedIsToday ? <Text style={styles.panelStrong}>Today </Text> : null}
+            <Text style={selectedIsToday ? styles.panelMuted : styles.panelStrong}>
+              {selected.toLocaleDateString(undefined, {
+                weekday: 'long',
+                month: 'long',
+                day: 'numeric',
+              })}
+            </Text>
+          </Text>
+
           <ScrollView
-            contentContainerStyle={styles.content}
+            style={styles.panelScroll}
+            contentContainerStyle={styles.panelContent}
+            showsVerticalScrollIndicator={false}
+            // Docked, the list must not claim upward drags — those stretch the
+            // panel. Scrolling unlocks once it's expanded.
+            scrollEnabled={mode === 'list'}
             onScroll={(e) => {
               listAtTop.current = e.nativeEvent.contentOffset.y <= 0;
             }}
             scrollEventThrottle={16}
           >
-            <View style={styles.listSections}>
-              <View style={styles.sectionHead}>
-                <Text style={styles.sectionTitle}>Upcoming</Text>
+            {selectedEvents.length === 0 ? (
+              <View style={styles.emptyDay}>
+                <Text style={styles.emptyTitle}>{EMPTY_TITLE}</Text>
+                {/* An empty day shouldn't dead-end — send people to the
+                    events feed to find something for it. */}
+                <Button
+                  title="Explore events"
+                  variant="primary"
+                  onPress={() => router.push('/explore')}
+                />
               </View>
-              {upcoming.length === 0 ? (
-                <View style={styles.sectionEmptyWrap}>
-                  <Text style={styles.sectionEmpty}>Nothing planned - yet 👀</Text>
-                  <Button
-                    title="Explore events"
-                    variant="primary"
-                    onPress={() => router.push('/explore')}
-                  />
-                </View>
-              ) : (
-                upcoming.map((ev) => <EventCard key={ev.id} event={ev} />)
-              )}
+            ) : (
+              selectedEvents.map((ev) => <EventCard key={ev.id} event={ev} />)
+            )}
 
-              {past.length > 0 ? (
-                <>
-                  <Text style={[styles.sectionTitle, { marginTop: spacing.lg }]}>Past</Text>
-                  {past.map((ev) => (
-                    <EventCard key={ev.id} event={ev} />
-                  ))}
-                </>
-              ) : null}
-            </View>
+            {/* The rest of the agenda lives below in the SAME panel — sliding
+                up just uncovers it. Sections only render when they have
+                content, so the day empty state above is never echoed by a
+                second "nothing planned" line. */}
+            {upcoming.length > 0 ? (
+              <>
+                <Text style={[styles.sectionTitle, { marginTop: spacing.lg }]}>Upcoming</Text>
+                {upcoming.map((ev) => (
+                  <EventCard key={ev.id} event={ev} />
+                ))}
+              </>
+            ) : null}
+
+            {past.length > 0 ? (
+              <>
+                <Text style={[styles.sectionTitle, { marginTop: spacing.lg }]}>Past</Text>
+                {past.map((ev) => (
+                  <EventCard key={ev.id} event={ev} />
+                ))}
+              </>
+            ) : null}
           </ScrollView>
         </Animated.View>
       </View>
@@ -505,38 +495,17 @@ const styles = StyleSheet.create({
     color: colors.text,
     textAlign: 'center',
   },
-  content: {
-    padding: spacing.md,
-    paddingTop: spacing.xs,
-    paddingBottom: spacing.xl * 2,
-    gap: spacing.lg,
-  },
-  // Hosts both layers: the calendar grid below and the events sheet above.
+  // Hosts both layers: the calendar block on top and the single events panel
+  // anchored below it.
   stack: {
     flex: 1,
   },
-  // Grid mode fills the screen so the panel below the calendar is always fully
-  // visible; children take their natural height and the panel flexes to fill.
-  gridContent: {
-    flex: 1,
+  // The calendar block (header + weekday row + month grid) takes its natural
+  // height; the panel docks right under it.
+  calBlock: {
     padding: spacing.md,
+    paddingBottom: 0,
     gap: spacing.md,
-  },
-  // The events list as an overlay sheet: parked below the screen and slid up
-  // by sheetProgress, over the receding calendar.
-  sheet: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(13,17,29,0.98)',
-    borderTopLeftRadius: radius.xl,
-    borderTopRightRadius: radius.xl,
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.12)',
-    ...shadow.float,
-  },
-  listHandleWrap: {
-    alignSelf: 'stretch',
-    alignItems: 'center',
-    paddingVertical: spacing.sm,
   },
   header: {
     flexDirection: 'row',
@@ -600,14 +569,6 @@ const styles = StyleSheet.create({
     ...uiText(12, '600'),
     color: colors.text,
   },
-  // Swipe-down affordance at the top of the events sheet (mirror of
-  // panelHandle); its wrapper is tappable as an explicit way back.
-  listHandle: {
-    width: 40,
-    height: 4,
-    borderRadius: 2,
-    backgroundColor: 'rgba(255,255,255,0.35)',
-  },
   weekdayRow: {
     flexDirection: 'row',
   },
@@ -665,23 +626,28 @@ const styles = StyleSheet.create({
     height: 36,
     borderRadius: 18,
   },
-  // A bottom-sheet look: the panel bleeds to the screen edges, rounds only its
-  // top corners and separates from the grid with a soft fill (no hard border).
+  // THE one events panel: absolutely anchored to the bottom edge, its top is
+  // animated between the docked spot (under the grid) and near the screen top.
+  // Bottom-sheet look — full-bleed, only the top corners rounded.
   panel: {
-    flex: 1,
-    backgroundColor: 'rgba(14,18,31,0.72)',
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    bottom: 0,
     borderTopLeftRadius: radius.xl,
     borderTopRightRadius: radius.xl,
-    marginHorizontal: -spacing.md,
-    marginBottom: -spacing.md,
+    borderWidth: 1,
+    borderBottomWidth: 0,
+    borderColor: 'rgba(255,255,255,0.12)',
     padding: spacing.lg,
+    paddingTop: 0,
     gap: spacing.md,
+    ...shadow.float,
   },
   panelHandleWrap: {
     alignSelf: 'stretch',
     alignItems: 'center',
-    marginVertical: -spacing.xs,
-    paddingVertical: spacing.xs,
+    paddingVertical: spacing.sm,
   },
   panelHandle: {
     width: 40,
@@ -704,47 +670,24 @@ const styles = StyleSheet.create({
   panelScroll: {
     flex: 1,
   },
-  panelEvents: {
+  panelContent: {
     gap: spacing.md,
-    paddingBottom: spacing.xs,
+    paddingBottom: spacing.xl * 2,
   },
-  emptyState: {
-    flex: 1,
-    gap: spacing.sm,
-  },
-  // The decorative block takes the space left above the pinned CTA and centers
-  // its content. overflow: hidden means that if the panel is ever too short it
-  // clips gracefully instead of spilling over the title above or the button.
-  emptyBody: {
-    flex: 1,
+  // The selected day's empty state — sized to read nicely in the docked strip
+  // (no flex centering: the panel content is one top-anchored scroll).
+  emptyDay: {
     alignItems: 'center',
-    justifyContent: 'center',
-    gap: spacing.sm,
-    overflow: 'hidden',
+    gap: spacing.md,
+    paddingVertical: spacing.lg,
   },
   emptyTitle: {
     ...display(24),
     color: colors.text,
     textAlign: 'center',
   },
-  listSections: {
-    gap: spacing.md,
-  },
-  sectionHead: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.sm,
-  },
   sectionTitle: {
     ...display(30),
     color: colors.text,
-  },
-  sectionEmpty: {
-    ...uiText(15),
-    color: colors.muted,
-  },
-  sectionEmptyWrap: {
-    gap: spacing.md,
-    alignItems: 'flex-start',
   },
 });
