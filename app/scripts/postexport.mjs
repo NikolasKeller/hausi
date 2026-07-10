@@ -33,7 +33,23 @@ const headTags = `
     <meta name="apple-mobile-web-app-title" content="iykyk" />
     <style>
       html, body { background-color: #111111; }
-      body { overscroll-behavior-y: none; }
+      /* App shell: only inner ScrollViews scroll. Pinning the body stops iOS
+         Safari from panning the whole page sideways (keyboard focus scroll,
+         horizontal-scroller rubber-banding) and leaving it stuck out of
+         bounds on the right. */
+      html {
+        overflow: hidden;
+        height: 100%;
+        overscroll-behavior: none;
+      }
+      body {
+        position: fixed;
+        inset: 0;
+        width: 100%;
+        height: 100%;
+        overflow: hidden;
+        overscroll-behavior: none;
+      }
       #root {
         padding-top: env(safe-area-inset-top);
         padding-bottom: env(safe-area-inset-bottom);

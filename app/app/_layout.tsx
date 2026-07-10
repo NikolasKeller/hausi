@@ -81,6 +81,7 @@ function RootNavigator() {
   useEffect(() => {
     if (Platform.OS !== 'web') return;
     const doc = (globalThis as any).document;
+    const win = (globalThis as any).window;
     if (!doc?.head) return;
     let meta = doc.querySelector('meta[name="viewport"]');
     if (!meta) {
@@ -92,6 +93,43 @@ function RootNavigator() {
       'content',
       'width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover'
     );
+
+    // Pin the document itself: this is an app shell, only inner ScrollViews
+    // scroll. Expo's default `body { overflow: hidden }` isn't enough on iOS
+    // Safari — the page can still be panned (keyboard opening over a focused
+    // input, rubber-banding off a horizontal scroller) and then sticks with
+    // the content hanging out of the right edge.
+    const html = doc.documentElement;
+    const body = doc.body;
+    if (html) {
+      html.style.overflow = 'hidden';
+      html.style.height = '100%';
+      html.style.overscrollBehavior = 'none';
+    }
+    if (body) {
+      body.style.position = 'fixed';
+      body.style.top = '0';
+      body.style.left = '0';
+      body.style.right = '0';
+      body.style.bottom = '0';
+      body.style.width = '100%';
+      body.style.height = '100%';
+      body.style.overflow = 'hidden';
+      body.style.overscrollBehavior = 'none';
+    }
+
+    // Safari can still pan the *visual* viewport past the layout viewport
+    // (most often when the keyboard scrolls a focused input "into view").
+    // Snap straight back so the app never rests half off-screen.
+    const snapBack = () => {
+      if (win?.scrollX || win?.scrollY) win.scrollTo(0, 0);
+    };
+    win?.addEventListener?.('scroll', snapBack);
+    win?.visualViewport?.addEventListener?.('scroll', snapBack);
+    return () => {
+      win?.removeEventListener?.('scroll', snapBack);
+      win?.visualViewport?.removeEventListener?.('scroll', snapBack);
+    };
   }, []);
 
   useEffect(() => {
