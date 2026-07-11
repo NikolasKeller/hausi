@@ -1622,17 +1622,6 @@ function CreateEventScreen() {
             {description.trim() ? (
               <Text style={styles.previewDescription}>{description.trim()}</Text>
             ) : null}
-            <View style={styles.rsvpPreview}>
-              <View style={[styles.rsvpButton, { backgroundColor: visual.tint }]}>
-                <Text style={styles.rsvpButtonText}>I’m in</Text>
-              </View>
-              <View style={styles.rsvpButtonGhost}>
-                <Text style={styles.rsvpButtonGhostText}>Maybe</Text>
-              </View>
-              <View style={styles.rsvpButtonGhost}>
-                <Text style={styles.rsvpButtonGhostText}>Can’t</Text>
-              </View>
-            </View>
           </View>
         </View>
 
@@ -2537,23 +2526,6 @@ const styles = StyleSheet.create({
     color: 'rgba(23,23,23,0.76)',
     marginTop: spacing.md,
   },
-  rsvpPreview: { flexDirection: 'row', gap: 6, marginTop: spacing.md },
-  rsvpButton: {
-    flex: 1,
-    borderRadius: radius.pill,
-    paddingVertical: 10,
-    alignItems: 'center',
-  },
-  rsvpButtonText: { ...uiText(12, '700'), color: '#fff' },
-  rsvpButtonGhost: {
-    flex: 1,
-    borderRadius: radius.pill,
-    paddingVertical: 10,
-    alignItems: 'center',
-    borderWidth: 1,
-    borderColor: 'rgba(23,23,23,0.15)',
-  },
-  rsvpButtonGhostText: { ...uiText(12, '700'), color: '#171717' },
   editCard: {
     backgroundColor: colors.card,
     borderWidth: 1,
