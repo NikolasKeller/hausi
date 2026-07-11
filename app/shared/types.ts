@@ -648,13 +648,19 @@ export interface Badge {
   value: number;
 }
 
+// Renaming is deliberately rare: the handle is picked at onboarding and can
+// then only be changed in Edit profile, at most once per this many days.
+export const USERNAME_COOLDOWN_DAYS = 7;
+
 export interface MyProfile {
   id: string;
   name: string;
   username: string;
-  // False while the username is still the auto-generated fallback — the
-  // profile uses this to surface a "pick your username" call-to-action.
+  // False while the username is still the auto-generated fallback (legacy
+  // accounts from before onboarding asked for one).
   hasCustomUsername: boolean;
+  // When the handle was last changed; null means renaming is available now.
+  usernameChangedAt: string | null;
   email: string | null;
   phone: string | null;
   avatarEmoji: string;

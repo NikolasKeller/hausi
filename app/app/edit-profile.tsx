@@ -10,7 +10,7 @@ import {
   View,
 } from 'react-native';
 import { useRouter } from 'expo-router';
-import { LIMITS } from '../shared/types';
+import { LIMITS, USERNAME_COOLDOWN_DAYS } from '../shared/types';
 import { api } from '../lib/api';
 import { useAuth } from '../lib/auth';
 import { pickAvatarImage } from '../lib/imageUpload';
@@ -26,6 +26,8 @@ export default function EditProfileScreen() {
   const [loaded, setLoaded] = useState(false);
   const [name, setName] = useState('');
   const [username, setUsername] = useState('');
+  const [savedUsername, setSavedUsername] = useState('');
+  const [usernameChangedAt, setUsernameChangedAt] = useState<string | null>(null);
   const [avatarImage, setAvatarImage] = useState('');
   const [uploading, setUploading] = useState(false);
   const [bio, setBio] = useState('');
@@ -41,6 +43,8 @@ export default function EditProfileScreen() {
         if (!active) return;
         setName(res.profile.name);
         setUsername(res.profile.username);
+        setSavedUsername(res.profile.username);
+        setUsernameChangedAt(res.profile.usernameChangedAt);
         setAvatarImage(res.profile.avatarImage);
         setBio(res.profile.bio);
         setCity(res.profile.city);
@@ -55,6 +59,17 @@ export default function EditProfileScreen() {
       active = false;
     };
   }, []);
+
+  // Renaming is limited to once every USERNAME_COOLDOWN_DAYS; while the last
+  // change is younger than that, the field is locked and says when it reopens.
+  const renameAvailableAt = usernameChangedAt
+    ? Date.parse(usernameChangedAt) + USERNAME_COOLDOWN_DAYS * 24 * 60 * 60 * 1000
+    : 0;
+  const usernameLocked = renameAvailableAt > Date.now();
+  const renameDaysLeft = Math.max(
+    1,
+    Math.ceil((renameAvailableAt - Date.now()) / (24 * 60 * 60 * 1000))
+  );
 
   function pickPhoto(source: 'library' | 'camera') {
     return async () => {
@@ -78,7 +93,8 @@ export default function EditProfileScreen() {
       return;
     }
     const handle = username.trim().replace(/^@+/, '').toLowerCase();
-    if (!/^[a-z0-9_]{3,24}$/.test(handle)) {
+    const usernameChanged = handle !== savedUsername;
+    if (usernameChanged && !/^[a-z0-9_]{3,24}$/.test(handle)) {
       setError('Username must be 3-24 letters, numbers or underscores');
       return;
     }
@@ -87,7 +103,9 @@ export default function EditProfileScreen() {
     try {
       const res = await api.updateProfile({
         name: name.trim(),
-        username: handle,
+        // Only send the handle when it actually changed, so saving other
+        // fields never trips the rename cooldown.
+        ...(usernameChanged ? { username: handle } : {}),
         avatarImage,
         bio: bio.trim(),
         city: city.trim(),
@@ -141,23 +159,34 @@ export default function EditProfileScreen() {
           maxLength={LIMITS.name}
         />
 
-        <Field
-          label="Username"
-          value={username}
-          onChangeText={(value) =>
-            setUsername(
-              value
-                .replace(/^@+/, '')
-                .toLowerCase()
-                .replace(/[^a-z0-9_]/g, '')
-                .slice(0, LIMITS.username)
-            )
-          }
-          placeholder="username"
-          autoCapitalize="none"
-          autoCorrect={false}
-          maxLength={LIMITS.username}
-        />
+        <View style={{ gap: spacing.xs }}>
+          <Field
+            label="Username"
+            value={username}
+            onChangeText={(value) =>
+              setUsername(
+                value
+                  .replace(/^@+/, '')
+                  .toLowerCase()
+                  .replace(/[^a-z0-9_]/g, '')
+                  .slice(0, LIMITS.username)
+              )
+            }
+            placeholder="username"
+            autoCapitalize="none"
+            autoCorrect={false}
+            maxLength={LIMITS.username}
+            editable={!usernameLocked}
+            style={usernameLocked ? styles.lockedInput : undefined}
+          />
+          <Text style={styles.usernameHint}>
+            {usernameLocked
+              ? `You can change your username again in ${renameDaysLeft} ${
+                  renameDaysLeft === 1 ? 'day' : 'days'
+                }.`
+              : `Changing it locks the username for ${USERNAME_COOLDOWN_DAYS} days.`}
+          </Text>
+        </View>
 
         <View style={{ gap: spacing.sm }}>
           <Text style={styles.label}>Profile pic</Text>
@@ -297,5 +326,12 @@ const styles = StyleSheet.create({
   bioInput: {
     minHeight: 88,
     textAlignVertical: 'top',
+  },
+  lockedInput: {
+    opacity: 0.55,
+  },
+  usernameHint: {
+    ...uiText(12),
+    color: colors.muted,
   },
 });

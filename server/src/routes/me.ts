@@ -12,6 +12,7 @@ import { pairStates } from '../lib/friends.js';
 import { normalizeUsername, publicUsername, USERNAME_PATTERN } from '../lib/username.js';
 import {
   LIMITS,
+  USERNAME_COOLDOWN_DAYS,
   type CoverTheme,
   type DirectEventInvite,
   type Friend,
@@ -102,6 +103,7 @@ meRoutes.get('/', async (c) => {
     name: me.name,
     username: publicUsername(me),
     hasCustomUsername: Boolean(me.username),
+    usernameChangedAt: me.usernameChangedAt ? me.usernameChangedAt.toISOString() : null,
     email: me.email,
     phone: me.phone,
     avatarEmoji: me.avatarEmoji,
@@ -134,11 +136,34 @@ meRoutes.patch('/', async (c) => {
   }
 
   const existing = await db.user.findUniqueOrThrow({ where: { id: userId } });
+  // Renames are rate-limited: the first pick (onboarding, or legacy accounts
+  // without a handle yet) is always free; changing an existing handle is
+  // allowed once per USERNAME_COOLDOWN_DAYS and stamps the cooldown.
+  const isRename =
+    parsed.data.username !== undefined &&
+    parsed.data.username !== existing.username &&
+    existing.username !== null;
   if (parsed.data.username) {
+    if (isRename && existing.usernameChangedAt) {
+      const nextAllowed =
+        existing.usernameChangedAt.getTime() + USERNAME_COOLDOWN_DAYS * 24 * 60 * 60 * 1000;
+      if (Date.now() < nextAllowed) {
+        const days = Math.max(1, Math.ceil((nextAllowed - Date.now()) / (24 * 60 * 60 * 1000)));
+        return c.json(
+          {
+            error: `You can change your username again in ${days} ${days === 1 ? 'day' : 'days'}`,
+          },
+          429
+        );
+      }
+    }
     const taken = await db.user.findUnique({ where: { username: parsed.data.username } });
     if (taken && taken.id !== userId) return c.json({ error: 'That username is taken' }, 409);
   }
-  const me = await db.user.update({ where: { id: userId }, data: parsed.data });
+  const me = await db.user.update({
+    where: { id: userId },
+    data: { ...parsed.data, ...(isRename ? { usernameChangedAt: new Date() } : {}) },
+  });
   // Replacing or clearing the profile photo orphans the old upload — reclaim it.
   if (parsed.data.avatarImage !== undefined && existing.avatarImage !== me.avatarImage) {
     await unlinkImage(existing.avatarImage);

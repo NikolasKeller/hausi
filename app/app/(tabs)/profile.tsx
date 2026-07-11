@@ -230,28 +230,9 @@ function ProfileScreen() {
           <ChromeText style={styles.bigName} numberOfLines={2}>
             {profile.name}
           </ChromeText>
-          {/* The handle is editable — tap to open the profile editor. Accounts
-              still on the auto-generated fallback get an explicit
-              "pick your username" prompt instead of the ugly random handle. */}
-          {profile.hasCustomUsername ? (
-            <Pressable
-              onPress={() => router.push('/edit-profile')}
-              hitSlop={8}
-              style={({ pressed }) => [styles.usernameRow, pressed && styles.pressed]}
-            >
-              <Text style={styles.username}>@{profile.username}</Text>
-              <Ionicons name="pencil-outline" size={12} color={colors.muted} />
-            </Pressable>
-          ) : (
-            <Pressable
-              onPress={() => router.push('/edit-profile')}
-              hitSlop={8}
-              style={({ pressed }) => [styles.usernamePickPill, pressed && styles.pressed]}
-            >
-              <Ionicons name="at" size={13} color={colors.text} />
-              <Text style={styles.usernamePickText}>pick your username</Text>
-            </Pressable>
-          )}
+          {/* Plain handle, no inline editing: the username is picked during
+              onboarding and can only be changed in Edit profile (every 7 days). */}
+          <Text style={styles.username}>@{profile.username}</Text>
           <View style={styles.pillRow}>
             <View style={styles.joinedPill}>
               <Ionicons name="sparkles" size={13} color={colors.accent} />
@@ -584,31 +565,10 @@ const styles = StyleSheet.create({
     color: colors.text,
     textAlign: 'center',
   },
-  usernameRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 5,
-    marginTop: -spacing.sm,
-  },
   username: {
     ...uiText(14, '600'),
     color: colors.muted,
-  },
-  usernamePickPill: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
     marginTop: -spacing.sm,
-    backgroundColor: 'rgba(255,255,255,0.10)',
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.16)',
-    borderRadius: radius.pill,
-    paddingHorizontal: spacing.md,
-    paddingVertical: 5,
-  },
-  usernamePickText: {
-    ...uiText(13, '700'),
-    color: colors.text,
   },
   pillRow: {
     flexDirection: 'row',

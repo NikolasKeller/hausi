@@ -18,6 +18,9 @@ model User {
   name               String    @default("")
   // Public, unique handle used for search, invites and mentions.
   username           String?   @unique
+  // When the handle was last CHANGED (first pick at onboarding doesn't count).
+  // Gates the once-every-7-days rename rule.
+  usernameChangedAt  DateTime?
   email              String?   @unique
   passwordHash       String?
   phone              String?   @unique
