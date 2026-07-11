@@ -32,7 +32,14 @@ import {
   type Punctuality,
 } from '../../shared/types';
 import { api } from '../../lib/api';
-import { notify } from '../../lib/dialogs';
+import {
+  chatSessionLabel,
+  deleteChatSession,
+  listChatSessions,
+  saveChatSession,
+  type StoredChatSession,
+} from '../../lib/chatHistory';
+import { confirmDialog, notify } from '../../lib/dialogs';
 import { extractEventBrief, normalizeTicketPrice } from '../../lib/eventDraft';
 import { eventVisual } from '../../lib/eventVisual';
 import { pickRawImage, uploadCroppedImage, type PickedImage } from '../../lib/imageUpload';
@@ -61,6 +68,31 @@ type Stage =
   | 'preview';
 
 type QuestionStage = Exclude<Stage, 'brief' | 'preview'>;
+
+// Runtime guards for restoring persisted chat sessions, whose stage/queue are
+// stored as plain strings so old snapshots survive renamed steps.
+const ALL_STAGES: Stage[] = [
+  'brief',
+  'title',
+  'description',
+  'when',
+  'location',
+  'visibility',
+  'application',
+  'capacity',
+  'plusOnes',
+  'price',
+  'style',
+  'image',
+  'preview',
+];
+const isStage = (value: string): value is Stage => (ALL_STAGES as string[]).includes(value);
+const isQuestionStage = (value: string): value is QuestionStage =>
+  isStage(value) && value !== 'brief' && value !== 'preview';
+
+function makeSessionId(): string {
+  return `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
+}
 
 const QUESTION_STAGE_BY_DRAFT_FIELD: Record<EventDraftQuestion, QuestionStage> = {
   title: 'title',
@@ -351,6 +383,14 @@ function CreateEventFlow({ onRestart }: { onRestart: () => void }) {
   const [aiError, setAiError] = useState('');
   const [aiPaused, setAiPaused] = useState(false);
 
+  // Local chat history: this session's identity plus the picker sheet state.
+  const [sessionId, setSessionId] = useState(makeSessionId);
+  const sessionCreatedAtRef = useRef(new Date().toISOString());
+  const [historyOpen, setHistoryOpen] = useState(false);
+  const [historySessions, setHistorySessions] = useState<StoredChatSession[] | null>(null);
+  const latestSnapshotRef = useRef<StoredChatSession | null>(null);
+  const persistTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
   const [title, setTitle] = useState('');
   // AI-proposed titles for the title question; tapping one commits it.
   const [titleSuggestions, setTitleSuggestions] = useState<string[]>([]);
@@ -412,6 +452,39 @@ function CreateEventFlow({ onRestart }: { onRestart: () => void }) {
       mountedRef.current = false;
       aiAbortRef.current?.abort();
       aiCoverAbortRef.current?.abort();
+    },
+    []
+  );
+
+  // Persist the session (debounced) once the host has actually said something.
+  // Pristine greeting-only sessions never clutter the history.
+  useEffect(() => {
+    if (!messages.some((message) => message.role === 'user')) return;
+    const snapshot: StoredChatSession = {
+      id: sessionId,
+      createdAt: sessionCreatedAtRef.current,
+      updatedAt: new Date().toISOString(),
+      messages,
+      draft: chatDraft,
+      queue,
+      stage,
+      imageResolved,
+      createdSlug: created?.slug ?? null,
+      createdTitle: created?.title ?? null,
+    };
+    latestSnapshotRef.current = snapshot;
+    if (persistTimerRef.current) clearTimeout(persistTimerRef.current);
+    persistTimerRef.current = setTimeout(() => void saveChatSession(snapshot), 600);
+    return () => {
+      if (persistTimerRef.current) clearTimeout(persistTimerRef.current);
+    };
+  }, [messages, chatDraft, queue, stage, imageResolved, created, sessionId]);
+
+  // Flush the newest snapshot when the screen unmounts, so a quick tab switch
+  // right after a message can't lose the last exchange to the debounce.
+  useEffect(
+    () => () => {
+      if (latestSnapshotRef.current) void saveChatSession(latestSnapshotRef.current);
     },
     []
   );
@@ -1041,6 +1114,68 @@ function CreateEventFlow({ onRestart }: { onRestart: () => void }) {
     } finally {
       setSubmitting(false);
     }
+  }
+
+  async function resetChat() {
+    if (messages.some((message) => message.role === 'user') && !created) {
+      const ok = await confirmDialog(
+        'Start a new chat?',
+        'This draft stays in your history, so you can pick it up again anytime.',
+        'New chat',
+        'Keep chatting'
+      );
+      if (!ok) return;
+    }
+    // Remounting the flow resets every state at once; the unmount flush
+    // parks the current conversation in history first.
+    onRestart();
+  }
+
+  async function openHistory() {
+    setHistoryOpen(true);
+    setHistorySessions(null);
+    const sessions = await listChatSessions();
+    if (!mountedRef.current) return;
+    setHistorySessions(sessions.filter((session) => session.id !== sessionId));
+  }
+
+  async function removeSession(id: string) {
+    await deleteChatSession(id);
+    setHistorySessions((current) => current?.filter((session) => session.id !== id) ?? null);
+  }
+
+  // Swap the whole conversation for a stored one. Field states rebuild from
+  // the stored draft; covers regenerate on their own when the flow reaches
+  // the cover step again.
+  function restoreSession(session: StoredChatSession) {
+    if (latestSnapshotRef.current) void saveChatSession(latestSnapshotRef.current);
+    aiAbortRef.current?.abort();
+    aiCoverAbortRef.current?.abort();
+    setSessionId(session.id);
+    sessionCreatedAtRef.current = session.createdAt;
+    latestSnapshotRef.current = null;
+    nextMessageId.current =
+      Math.max(0, ...session.messages.map((message) => message.id)) + 1;
+    setMessages(session.messages);
+    setChatDraft(session.draft);
+    applyChatDraft(session.draft);
+    setQueue(session.queue.filter(isQuestionStage));
+    setStage(isStage(session.stage) ? session.stage : 'preview');
+    setImageResolved(session.imageResolved);
+    setTitleSuggestions([]);
+    setImage(null);
+    setAiCover(null);
+    setAiCoverBusy(false);
+    setAiCoverError('');
+    setCoverDeclined(false);
+    setAiBusy(false);
+    setAiError('');
+    setAiPaused(false);
+    setQuestionError('');
+    setPublishError('');
+    setEditingFromPreview(false);
+    setCreated(null);
+    setHistoryOpen(false);
   }
 
   async function shareCreated() {
@@ -2033,8 +2168,26 @@ function CreateEventFlow({ onRestart }: { onRestart: () => void }) {
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
         style={[styles.flex, webKeyboardInset > 0 && { paddingBottom: webKeyboardInset }]}
       >
-        {/* Just an exit control, no banner text: the chat speaks for itself. */}
+        {/* Slim chat chrome: history and a fresh start on the left, exit on
+            the right. The chat itself speaks for the rest. */}
         <View style={styles.header}>
+          <Pressable
+            onPress={openHistory}
+            style={styles.closeButton}
+            accessibilityRole="button"
+            accessibilityLabel="Previous chats"
+          >
+            <Ionicons name="time-outline" size={20} color={colors.text} />
+          </Pressable>
+          <Pressable
+            onPress={resetChat}
+            style={styles.closeButton}
+            accessibilityRole="button"
+            accessibilityLabel="Start a new chat"
+          >
+            <Ionicons name="refresh" size={19} color={colors.text} />
+          </Pressable>
+          <View style={styles.flex} />
           <Pressable
             onPress={() => (router.canGoBack() ? router.back() : router.replace('/explore'))}
             style={styles.closeButton}
@@ -2133,6 +2286,82 @@ function CreateEventFlow({ onRestart }: { onRestart: () => void }) {
             onClose={() => setEndOpen(false)}
           />
         ) : null}
+
+        {historyOpen ? (
+          <View style={styles.historyOverlay}>
+            <Pressable style={StyleSheet.absoluteFill} onPress={() => setHistoryOpen(false)} />
+            <View style={styles.historySheet}>
+              <View style={styles.historyHeader}>
+                <Text style={styles.historyTitle}>Previous chats</Text>
+                <Pressable
+                  onPress={() => setHistoryOpen(false)}
+                  hitSlop={8}
+                  style={styles.historyCloseButton}
+                >
+                  <Ionicons name="close" size={18} color={colors.text} />
+                </Pressable>
+              </View>
+              {historySessions == null ? (
+                <ActivityIndicator color={colors.accent} style={styles.historyLoading} />
+              ) : historySessions.length === 0 ? (
+                <Text style={styles.historyEmpty}>
+                  No previous chats yet. Every draft you start lands here automatically.
+                </Text>
+              ) : (
+                <ScrollView
+                  style={styles.historyList}
+                  contentContainerStyle={styles.historyListContent}
+                  showsVerticalScrollIndicator={false}
+                >
+                  {historySessions.map((session) => (
+                    <View key={session.id} style={styles.historyRow}>
+                      <Pressable
+                        style={({ pressed }) => [styles.historyMain, pressed && { opacity: 0.7 }]}
+                        onPress={() => {
+                          if (session.createdSlug) {
+                            setHistoryOpen(false);
+                            router.push(`/event/${session.createdSlug}`);
+                          } else {
+                            restoreSession(session);
+                          }
+                        }}
+                      >
+                        <Text style={styles.historyLabel} numberOfLines={1}>
+                          {chatSessionLabel(session)}
+                        </Text>
+                        <Text style={styles.historyMeta}>
+                          {session.createdSlug ? 'Published' : 'Draft'}
+                          {' · '}
+                          {new Date(session.updatedAt).toLocaleDateString(undefined, {
+                            month: 'short',
+                            day: 'numeric',
+                          })}
+                          {', '}
+                          {new Date(session.updatedAt).toLocaleTimeString(undefined, {
+                            hour: '2-digit',
+                            minute: '2-digit',
+                          })}
+                        </Text>
+                      </Pressable>
+                      <Ionicons
+                        name={session.createdSlug ? 'open-outline' : 'chevron-forward'}
+                        size={16}
+                        color={colors.muted}
+                      />
+                      <Pressable
+                        onPress={() => removeSession(session.id)}
+                        hitSlop={8}
+                        style={styles.historyDelete}
+                      >
+                        <Ionicons name="trash-outline" size={17} color={colors.muted} />
+                      </Pressable>
+                    </View>
+                  ))}
+                </ScrollView>
+              )}
+            </View>
+          </View>
+        ) : null}
       </KeyboardAvoidingView>
     </SafeAreaView>
   );
@@ -2175,7 +2404,7 @@ const styles = StyleSheet.create({
   header: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'flex-end',
+    gap: spacing.sm,
     paddingHorizontal: spacing.md,
     paddingTop: spacing.xs,
   },
@@ -2668,6 +2897,63 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     padding: spacing.xl,
+  },
+  historyOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(0,0,0,0.55)',
+    justifyContent: 'flex-end',
+    zIndex: 70,
+  },
+  historySheet: {
+    backgroundColor: '#10141F',
+    borderTopLeftRadius: radius.xl,
+    borderTopRightRadius: radius.xl,
+    borderWidth: 1,
+    borderBottomWidth: 0,
+    borderColor: colors.cardBorder,
+    padding: spacing.lg,
+    maxHeight: '72%',
+    gap: spacing.md,
+  },
+  historyHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  historyTitle: { ...display(24), color: colors.text },
+  historyCloseButton: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: colors.inputBg,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  historyLoading: { paddingVertical: spacing.lg },
+  historyEmpty: { ...uiText(13), color: colors.muted, paddingBottom: spacing.md },
+  historyList: { flexGrow: 0 },
+  historyListContent: { gap: spacing.sm, paddingBottom: spacing.sm },
+  historyRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    backgroundColor: colors.card,
+    borderWidth: 1,
+    borderColor: colors.cardBorder,
+    borderRadius: radius.md,
+    paddingHorizontal: spacing.md,
+    paddingVertical: 10,
+  },
+  historyMain: { flex: 1, gap: 2 },
+  historyLabel: { ...uiText(14, '700'), color: colors.text },
+  historyMeta: { ...uiText(11, '500'), color: colors.muted },
+  historyDelete: {
+    width: 30,
+    height: 30,
+    borderRadius: 15,
+    backgroundColor: colors.inputBg,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   successSeal: {
     width: 94,
