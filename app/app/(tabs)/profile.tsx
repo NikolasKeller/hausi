@@ -174,7 +174,6 @@ function ProfileScreen() {
     );
   }
 
-  const joinedYear = new Date(profile.joinedAt).getFullYear();
   const photo = mediaUrl(profile.avatarImage);
 
   return (
@@ -234,10 +233,6 @@ function ProfileScreen() {
               onboarding and can only be changed in Edit profile (every 7 days). */}
           <Text style={styles.username}>@{profile.username}</Text>
           <View style={styles.pillRow}>
-            <View style={styles.joinedPill}>
-              <Ionicons name="sparkles" size={13} color={colors.accent} />
-              <Text style={styles.joinedText}>joined {joinedYear}</Text>
-            </View>
             <View style={styles.joinedPill}>
               <Ionicons name="people-outline" size={13} color={colors.accent} />
               <Text style={styles.joinedText}>

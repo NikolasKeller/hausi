@@ -116,7 +116,6 @@ function UserProfileScreen() {
   }
 
   const isSelf = viewer?.id === profile.id;
-  const joinedYear = new Date(profile.joinedAt).getFullYear();
   const action = FRIEND_ACTION[profile.friendState];
 
   return (
@@ -135,10 +134,6 @@ function UserProfileScreen() {
                 <Text style={styles.pillText}>{profile.city}</Text>
               </View>
             ) : null}
-            <View style={styles.pill}>
-              <Ionicons name="sparkles" size={13} color={colors.accent} />
-              <Text style={styles.pillText}>joined {joinedYear}</Text>
-            </View>
             <View style={styles.pill}>
               <Ionicons name="people-outline" size={13} color={colors.accent} />
               <Text style={styles.pillText}>
