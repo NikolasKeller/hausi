@@ -123,7 +123,7 @@ const QUESTION_COPY: Record<QuestionStage, string> = {
   when: 'So, when are we doing this?',
   location: 'And where is it all happening? Pick the real place below.',
   visibility: 'Who gets to see this one? Everyone, or just your people?',
-  application: 'Can anyone grab a spot, or should guests apply first so you pick who comes?',
+  application: 'How do guests get on the list? They can join directly, or apply first so you approve everyone.',
   capacity: 'How many people can you fit?',
   plusOnes: 'Should everyone get to bring someone along?',
   price: 'Is it free, or are we doing tickets?',
@@ -844,7 +844,7 @@ function CreateEventScreen() {
         ? questions.length
           ? `Guests apply first. They answer: ${questions.join(' / ')}`
           : 'Guests apply first'
-        : 'Anyone can grab a spot',
+        : 'Guests can join directly',
       {
         ...chatDraft,
         application: applyRequired

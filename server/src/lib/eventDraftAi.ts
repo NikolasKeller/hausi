@@ -340,7 +340,7 @@ const FALLBACK_QUESTIONS: Record<EventDraftQuestion, string> = {
   date: 'So, when are we doing this?',
   location: 'And where is it all happening? Pick the real place below.',
   visibility: 'Who gets to see this one? Everyone, or just your people? And should the address be visible?',
-  application: 'Can anyone grab a spot, or should guests apply first so you pick who comes?',
+  application: 'How do guests get on the list? They can join directly, or apply first so you approve everyone.',
   capacity: 'How many people can you fit?',
   plusOnes: 'Should everyone get to bring someone along?',
   price: 'Is it free, or are we doing tickets?',
@@ -390,7 +390,8 @@ Extraction rules:
 - Compose the description as soon as the host's messages describe the event, and refine it when later answers sharpen the occasion or audience. When the host writes their own description text in chat, keep their wording. description "" means the host explicitly wants no description; use null only while the messages are still too thin to write one.
 - capacity.kind is unknown, unlimited, or limited. limited requires maxGuests; the other kinds require null.
 - entry.kind is unknown, free, or paid. A known paid price is a positive plain decimal without a currency symbol; use paid with price null when tickets are required but the price is still missing. Other kinds require null.
-- application.kind is unknown, open, or apply. open means anyone can take a spot directly; apply means guests must request a spot and the host approves each one. Never assume this: set apply only when the host clearly wants to screen, approve or pick guests. For apply, questions holds up to 3 short applicant questions in the host's own words ([] when they want applications but named no questions); other kinds require questions null.
+- application.kind is unknown, open, or apply. open means anyone can take a spot directly; apply means guests must request a spot and the host approves each one. Never assume this: set apply only when the host clearly wants to screen, approve or pick guests. For apply, questions holds up to 3 short applicant questions in the host's own words ([] when they want applications but named no questions); other kinds require questions null. This is about GUESTS joining, never about co-hosts.
+- Mentions of a co-host or friend helping to organize change nothing in the draft (there is no co-host field). Acknowledge it briefly and note they can invite co-hosts from the event page once it's published.
 - category may be music, community, arts, food, sports, or other. Use other when the event is clear but no category fits.
 - LANGUAGE, applies to assistantMessage, draft.description and titleSuggestions alike: write ONLY in the language of the user's chat messages, never a mix of two languages in one reply. CLIENT_LOCALE never picks the language: an English conversation gets a fully English reply, description and titles even on a German device.
 - Public/private and address visibility are separate choices.
