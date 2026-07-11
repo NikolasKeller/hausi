@@ -6,11 +6,14 @@ import {
   EventDraftAiError,
   eventDraftChatRequestSchema,
   generateEventDraftTurn,
+  missingFields,
 } from '../lib/eventDraftAi.js';
 import {
   eventCoverRequestSchema,
   generateEventCoverImage,
 } from '../lib/coverImageAi.js';
+import { GUIDELINE_REFUSAL, isEventContentAllowed } from '../lib/moderation.js';
+import type { EventDraftChatResponse } from '../../../app/shared/types.js';
 
 export const eventDraftRoutes = new Hono<{ Variables: AuthVariables }>();
 
@@ -73,6 +76,26 @@ eventDraftRoutes.post('/chat', async (c) => {
   const parsed = eventDraftChatRequestSchema.safeParse(await c.req.json().catch(() => null));
   if (!parsed.success) {
     return c.json({ error: 'Invalid or overly long AI draft request' }, 400);
+  }
+
+  // Hard content gate BEFORE the model sees anything: a brief asking for a
+  // disallowed event (sexual/adult, hate, violence, illegal goods) gets a
+  // firm, friendly refusal and never touches the draft. The prompt policy
+  // inside the model is the second net for grey-zone phrasing.
+  const lastUserMessage = [...parsed.data.messages]
+    .reverse()
+    .find((message) => message.role === 'user');
+  if (lastUserMessage && !(await isEventContentAllowed(lastUserMessage.content))) {
+    const missing = missingFields(parsed.data.draft, new Date());
+    const refusal: EventDraftChatResponse = {
+      draft: parsed.data.draft,
+      assistantMessage: GUIDELINE_REFUSAL,
+      status: missing.length === 0 ? 'ready' : 'needs_input',
+      nextField: missing[0] ?? null,
+      missingFields: missing,
+      titleSuggestions: [],
+    };
+    return c.json(refusal);
   }
 
   try {

@@ -12,7 +12,7 @@
     "scrape": "tsx scripts/scrape-events.ts",
     "db:push": "DATABASE_URL=${DATABASE_URL:-file:./dev.db} prisma db push",
     "typecheck": "tsc --noEmit",
-    "test:event-draft": "tsx --test src/lib/eventDraftAi.test.ts src/lib/coverImageAi.test.ts"
+    "test:event-draft": "tsx --test src/lib/eventDraftAi.test.ts src/lib/coverImageAi.test.ts src/lib/moderation.test.ts"
   },
   "dependencies": {
     "@hono/node-server": "^1.14.0",

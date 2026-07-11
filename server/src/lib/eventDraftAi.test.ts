@@ -101,6 +101,7 @@ test('requests strict non-stored output and returns a normalized draft', async (
       assistantMessage: 'Everything is ready to review.',
       nextField: null,
       titleSuggestions: null,
+      refused: false,
     });
   }) as typeof fetch;
 
@@ -139,6 +140,7 @@ test('rejects structurally invalid provider output', async () => {
       assistantMessage: 'Ready.',
       nextField: null,
       titleSuggestions: null,
+      refused: false,
     })) as typeof fetch;
 
   await assert.rejects(
@@ -164,6 +166,7 @@ test('never accepts an AI-written address as a selected location', async () => {
       assistantMessage: 'Search for the new place and select the exact result.',
       nextField: 'location',
       titleSuggestions: null,
+      refused: false,
     })) as typeof fetch;
 
   const result = await generateEventDraftTurn(baseRequest, {
@@ -178,6 +181,34 @@ test('never accepts an AI-written address as a selected location', async () => {
   assert.deepEqual(result.titleSuggestions, []);
 });
 
+test('a policy refusal returns the original draft untouched', async () => {
+  const fetchImpl = (async () =>
+    openAiResponse({
+      draft: {
+        ...baseDraft,
+        selectedLocation: undefined,
+        // The model tried to extract anyway — none of it may come through.
+        title: 'Something Inappropriate',
+        description: 'Should never surface',
+      },
+      clearSelectedLocation: false,
+      assistantMessage: "That's not something iykyk can host. What else do you have in mind?",
+      nextField: null,
+      titleSuggestions: ['Bad Idea One'],
+      refused: true,
+    })) as typeof fetch;
+
+  const result = await generateEventDraftTurn(baseRequest, {
+    apiKey: 'test-key',
+    fetchImpl,
+    now,
+  });
+
+  assert.deepEqual(result.draft, baseRequest.draft);
+  assert.deepEqual(result.titleSuggestions, []);
+  assert.ok(result.assistantMessage.includes("can't host") || result.assistantMessage.includes('not something'));
+});
+
 test('scrubs em dashes and surfaces deduped title suggestions', async () => {
   const fetchImpl = (async () =>
     openAiResponse({
@@ -190,6 +221,7 @@ test('scrubs em dashes and surfaces deduped title suggestions', async () => {
       assistantMessage: 'Nice — pick a title, or type your own.',
       nextField: 'title',
       titleSuggestions: ['Rooftop Birthday — Dinner', 'Rooftop Birthday, Dinner', 'Golden Hour Dinner'],
+      refused: false,
     })) as typeof fetch;
 
   const result = await generateEventDraftTurn(baseRequest, {

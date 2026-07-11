@@ -18,6 +18,7 @@ import { normalizePhone, phoneCountry } from '../lib/phone.js';
 import { sendSms, smsEnabled } from '../lib/sms.js';
 import { unlinkImage } from '../lib/uploads.js';
 import { findMutuals, rememberPartyConnections } from '../lib/mutuals.js';
+import { GUIDELINE_PUBLISH_ERROR, isEventContentAllowed } from '../lib/moderation.js';
 import { findFriendIds } from '../lib/friends.js';
 import { ledger } from '../lib/ledger.js';
 import {
@@ -263,6 +264,13 @@ eventRoutes.post('/', async (c) => {
     return c.json({ error: 'The end must be after the start' }, 400);
   }
 
+  // Same guidelines as the AI chat, enforced on the direct path too (classic
+  // form / raw API): no sexual, hateful, violent or illegal-goods events.
+  const contentAllowed = await isEventContentAllowed(
+    [data.title, data.description, data.vibe, data.dressCode].filter(Boolean).join('\n')
+  );
+  if (!contentAllowed) return c.json({ error: GUIDELINE_PUBLISH_ERROR }, 400);
+
   const me = await db.user.findUniqueOrThrow({ where: { id: userId } });
   const event = await db.event.create({
     data: {
@@ -377,6 +385,27 @@ eventRoutes.patch('/:id', async (c) => {
     return c.json({ error: 'The end must be after the start' }, 400);
   }
   if (effectiveOpenEnd) eventChanges.endDate = null;
+
+  // Edits must pass the same content guidelines as creation; check the merged
+  // result so a clean patch can't smuggle bad copy next to existing fields.
+  if (
+    data.title !== undefined ||
+    data.description !== undefined ||
+    data.vibe !== undefined ||
+    data.dressCode !== undefined
+  ) {
+    const merged = [
+      data.title ?? existing.title,
+      data.description ?? existing.description,
+      data.vibe ?? existing.vibe,
+      data.dressCode ?? existing.dressCode,
+    ]
+      .filter(Boolean)
+      .join('\n');
+    if (!(await isEventContentAllowed(merged))) {
+      return c.json({ error: GUIDELINE_PUBLISH_ERROR }, 400);
+    }
+  }
   const publicationChanges =
     requestedPublic === undefined
       ? {}
