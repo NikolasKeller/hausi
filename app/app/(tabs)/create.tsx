@@ -1270,7 +1270,7 @@ function CreateEventFlow({ onRestart }: { onRestart: () => void }) {
             {CATEGORIES.map((option) => (
               <ChoicePill
                 key={option}
-                label={`${CATEGORY_VISUALS[option].emoji} ${CATEGORY_VISUALS[option].label}`}
+                label={CATEGORY_VISUALS[option].label}
                 selected={category === option}
                 onPress={() => setCategory(option)}
               />
@@ -1881,7 +1881,7 @@ function CreateEventFlow({ onRestart }: { onRestart: () => void }) {
           <PreviewEditRow
             icon="grid-outline"
             label="Type"
-            value={`${CATEGORY_VISUALS[category].emoji} ${CATEGORY_VISUALS[category].label}`}
+            value={CATEGORY_VISUALS[category].label}
             onPress={() => editFromPreview('category')}
           />
           <View style={styles.divider} />
