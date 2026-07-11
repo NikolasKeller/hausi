@@ -303,6 +303,19 @@ function ChoicePill({
 }
 
 function CreateEventScreen() {
+  // "Create another event" simply remounts the flow with a fresh key — one
+  // stroke resets the chat, draft, cover and question state instead of a
+  // brittle pile of individual setState calls.
+  const [sessionKey, setSessionKey] = useState(0);
+  return (
+    <CreateEventFlow
+      key={sessionKey}
+      onRestart={() => setSessionKey((current) => current + 1)}
+    />
+  );
+}
+
+function CreateEventFlow({ onRestart }: { onRestart: () => void }) {
   const router = useRouter();
   const scrollRef = useRef<ScrollView>(null);
   const screenRef = useRef<View>(null);
@@ -2002,6 +2015,10 @@ function CreateEventScreen() {
             >
               <Text style={styles.secondaryButtonText}>Open event</Text>
             </Pressable>
+            <Pressable onPress={onRestart} style={styles.secondaryButton}>
+              <Ionicons name="add" size={18} color={colors.text} />
+              <Text style={styles.secondaryButtonText}>Create another event</Text>
+            </Pressable>
           </View>
         </View>
       </SafeAreaView>
@@ -2640,8 +2657,10 @@ const styles = StyleSheet.create({
     borderRadius: radius.pill,
     borderWidth: 1,
     borderColor: colors.cardBorder,
+    flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
+    gap: 6,
   },
   secondaryButtonText: { ...uiText(14, '700'), color: colors.text },
   success: {
