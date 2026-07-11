@@ -17,6 +17,7 @@ import { Ionicons } from '@expo/vector-icons';
 import * as Linking from 'expo-linking';
 import {
   APPLICATION_LIMITS,
+  CATEGORIES,
   EVENT_COVER_LIMITS,
   EVENT_DRAFT_CHAT_LIMITS,
   LIMITS,
@@ -55,6 +56,7 @@ type Stage =
   | 'brief'
   | 'title'
   | 'description'
+  | 'category'
   | 'when'
   | 'location'
   | 'visibility'
@@ -75,6 +77,7 @@ const ALL_STAGES: Stage[] = [
   'brief',
   'title',
   'description',
+  'category',
   'when',
   'location',
   'visibility',
@@ -97,6 +100,7 @@ function makeSessionId(): string {
 const QUESTION_STAGE_BY_DRAFT_FIELD: Record<EventDraftQuestion, QuestionStage> = {
   title: 'title',
   description: 'description',
+  category: 'category',
   date: 'when',
   location: 'location',
   visibility: 'visibility',
@@ -142,6 +146,15 @@ const VIBE_IDEAS = [
   'Chill hangout',
 ];
 
+// Formality spectrum offered with the event-type question, so home-screen
+// matching gets a category AND guests learn how to show up.
+const FORMALITY_IDEAS = [
+  'Fancy & formal',
+  'Smart casual',
+  'Chill & casual',
+  'Wild & loud',
+];
+
 interface ChatMessage {
   id: number;
   role: 'assistant' | 'user';
@@ -152,6 +165,7 @@ interface ChatMessage {
 const QUESTION_COPY: Record<QuestionStage, string> = {
   title: 'Now the fun part: the name. What should we call it?',
   description: 'Give your guests a little taste of what to expect. What makes this one special?',
+  category: 'What kind of event is this? And how casual or fancy should it feel?',
   when: 'So, when are we doing this?',
   location: 'And where is it all happening? Pick the real place below.',
   visibility: 'Who gets to see this one? Everyone, or just your people?',
@@ -733,7 +747,9 @@ function CreateEventFlow({ onRestart }: { onRestart: () => void }) {
       // A typed place is never silently trusted as an address. Only the
       // LocationPicker can commit this field after geocoding.
       selectedLocation: null,
-      category: extracted.category,
+      // The keyword parser answers 'other' when NOTHING matched — that's
+      // "don't know", not a decision, so it stays open and gets asked.
+      category: extracted.category === 'other' ? null : extracted.category,
       isPublic: hasOwn(extracted, 'isPublic') ? Boolean(extracted.isPublic) : null,
       hideLocation: hasOwn(extracted, 'hideLocation')
         ? Boolean(extracted.hideLocation)
@@ -756,6 +772,7 @@ function CreateEventFlow({ onRestart }: { onRestart: () => void }) {
     const questions: QuestionStage[] = [];
     if (!localDraft.title || localDraft.title.length < 2) questions.push('title');
     if (localDraft.description === null) questions.push('description');
+    if (localDraft.category === null) questions.push('category');
     if (!localDraft.date) questions.push('when');
     questions.push('location');
     if (localDraft.isPublic === null || localDraft.hideLocation === null) {
@@ -842,6 +859,18 @@ function CreateEventFlow({ onRestart }: { onRestart: () => void }) {
         description: value,
       });
     }
+  }
+
+  function completeCategory() {
+    const trimmedVibe = vibe.trim();
+    completeQuestion(
+      `${CATEGORY_VISUALS[category].label}${trimmedVibe ? `. Vibe: ${trimmedVibe}` : ''}`,
+      {
+        ...chatDraft,
+        category,
+        vibe: trimmedVibe || chatDraft.vibe,
+      }
+    );
   }
 
   function completeDate() {
@@ -1232,6 +1261,48 @@ function CreateEventFlow({ onRestart }: { onRestart: () => void }) {
     }
 
     if (stage === 'title' || stage === 'description' || stage === 'preview') return null;
+
+    if (stage === 'category') {
+      return (
+        <View style={styles.questionCard}>
+          <Text style={styles.fieldLabel}>WHAT KIND OF EVENT?</Text>
+          <View style={styles.choiceRow}>
+            {CATEGORIES.map((option) => (
+              <ChoicePill
+                key={option}
+                label={`${CATEGORY_VISUALS[option].emoji} ${CATEGORY_VISUALS[option].label}`}
+                selected={category === option}
+                onPress={() => setCategory(option)}
+              />
+            ))}
+          </View>
+          <View style={styles.divider} />
+          <Text style={styles.fieldLabel}>HOW SHOULD IT FEEL? (OPTIONAL)</Text>
+          <View style={styles.choiceRow}>
+            {FORMALITY_IDEAS.map((idea) => (
+              <ChoicePill
+                key={idea}
+                label={idea}
+                selected={vibe === idea}
+                onPress={() => setVibe((current) => (current === idea ? '' : idea))}
+              />
+            ))}
+          </View>
+          <TextInput
+            value={vibe}
+            onChangeText={setVibe}
+            placeholder="Or describe the vibe in your own words…"
+            placeholderTextColor={colors.muted}
+            maxLength={LIMITS.vibe}
+            style={styles.styleInput}
+          />
+          <Text style={styles.questionHint}>
+            The type sorts your event into the right discovery sections; the vibe tells
+            guests how to show up.
+          </Text>
+        </View>
+      );
+    }
 
     if (stage === 'when') {
       return (
@@ -1808,6 +1879,13 @@ function CreateEventFlow({ onRestart }: { onRestart: () => void }) {
           />
           <View style={styles.divider} />
           <PreviewEditRow
+            icon="grid-outline"
+            label="Type"
+            value={`${CATEGORY_VISUALS[category].emoji} ${CATEGORY_VISUALS[category].label}`}
+            onPress={() => editFromPreview('category')}
+          />
+          <View style={styles.divider} />
+          <PreviewEditRow
             icon="sparkles-outline"
             label="Vibe & dress code"
             value={
@@ -1999,7 +2077,10 @@ function CreateEventFlow({ onRestart }: { onRestart: () => void }) {
     let onPress = () => completeQuestion('');
     let disabled = false;
 
-    if (stage === 'when') {
+    if (stage === 'category') {
+      label = 'Save event type';
+      onPress = completeCategory;
+    } else if (stage === 'when') {
       label = 'Use this date & time';
       onPress = completeDate;
       disabled = !date || date.getTime() <= Date.now();

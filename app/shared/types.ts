@@ -402,6 +402,7 @@ export const EVENT_DRAFT_CHAT_LIMITS = {
 export type EventDraftQuestion =
   | 'title'
   | 'description'
+  | 'category'
   | 'date'
   | 'location'
   | 'visibility'

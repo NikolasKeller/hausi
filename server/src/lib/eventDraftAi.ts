@@ -21,6 +21,7 @@ const OPENAI_TIMEOUT_MS = 20_000;
 const questionSchema = z.enum([
   'title',
   'description',
+  'category',
   'date',
   'location',
   'visibility',
@@ -324,6 +325,7 @@ const OPENAI_OUTPUT_JSON_SCHEMA = {
           enum: [
             'title',
             'description',
+            'category',
             'date',
             'location',
             'visibility',
@@ -342,6 +344,7 @@ const OPENAI_OUTPUT_JSON_SCHEMA = {
 const FALLBACK_QUESTIONS: Record<EventDraftQuestion, string> = {
   title: 'Now the fun part: the name. What should we call it?',
   description: 'Give your guests a little taste of what to expect. What makes this one special?',
+  category: 'What kind of event is this, music, food, sports, arts or a community hang? And how casual or fancy should it feel?',
   date: 'So, when are we doing this?',
   location: 'And where is it all happening? Pick the real place below.',
   visibility: 'Who gets to see this one? Everyone, or just your people? And should the address be visible?',
@@ -399,7 +402,7 @@ Extraction rules:
 - entry.kind is unknown, free, or paid. A known paid price is a positive plain decimal without a currency symbol; use paid with price null when tickets are required but the price is still missing. Other kinds require null.
 - application.kind is unknown, open, or apply. open means anyone can take a spot directly; apply means guests must request a spot and the host approves each one. Never assume this: set apply only when the host clearly wants to screen, approve or pick guests. For apply, questions holds up to 3 short applicant questions in the host's own words ([] when they want applications but named no questions); other kinds require questions null. This is about GUESTS joining, never about co-hosts.
 - Mentions of a co-host or friend helping to organize change nothing in the draft (there is no co-host field). Acknowledge it briefly and note they can invite co-hosts from the event page once it's published.
-- category may be music, community, arts, food, sports, or other. Use other when the event is clear but no category fits.
+- category may be music, community, arts, food, sports, or other; it places the event in the right home-screen discovery sections. Set it confidently from the brief (club/bar/dancing nights are music, dinners and drinks are food, runs and games are sports). Use other only when the event clearly fits nothing, and leave it null when the brief is too vague to tell, so it becomes its own question.
 - LANGUAGE, applies to assistantMessage, draft.description and titleSuggestions alike: write ONLY in the language of the user's chat messages, never a mix of two languages in one reply. CLIENT_LOCALE never picks the language: an English conversation gets a fully English reply, description and titles even on a German device.
 - Public/private and address visibility are separate choices.
 - Return the complete merged draft, not only changed fields.
@@ -409,7 +412,7 @@ Extraction rules:
 - Never use em dashes or en dashes in assistantMessage; use commas, periods or exclamation marks instead.
 - When nextField is title, fill titleSuggestions with 3 short, distinct title ideas that accurately fit the user's described event (same language, no generic filler), and phrase assistantMessage as an invitation to pick one or type their own. Otherwise set titleSuggestions to null.
 
-Details are complete only when there is a title of at least 2 characters, an optional-description decision, a future date and time, a selectedLocation, both visibility choices, an application decision, a capacity decision, a plus-one limit, and an entry decision.
+Details are complete only when there is a title of at least 2 characters, an optional-description decision, a category, a future date and time, a selectedLocation, both visibility choices, an application decision, a capacity decision, a plus-one limit, and an entry decision.
 
 CURRENT_TIME: ${now.toISOString()}
 CLIENT_TIME_ZONE: ${timeZone}
@@ -448,6 +451,7 @@ export function missingFields(draft: EventDraftChatDraft, now: Date): EventDraft
   const missing: EventDraftQuestion[] = [];
   if (!draft.title || draft.title.trim().length < 2) missing.push('title');
   if (draft.description === null) missing.push('description');
+  if (draft.category === null) missing.push('category');
   if (!draft.date || Date.parse(draft.date) <= now.getTime()) missing.push('date');
   if (!draft.selectedLocation) missing.push('location');
   if (draft.isPublic === null || draft.hideLocation === null) missing.push('visibility');
@@ -596,6 +600,14 @@ export async function generateEventDraftTurn(
   const draft: EventDraftChatDraft = {
     ...modelDraft,
     description: cleanDescription(modelDraft.description),
+    // Models default to 'other' instead of leaving an unclear category null.
+    // While the category was never decided (incoming null), 'other' means
+    // "don't know" and keeps the question open; once a draft carries a real
+    // decision (host picked one, possibly 'other'), the value stands.
+    category:
+      modelDraft.category === 'other' && request.draft.category === null
+        ? null
+        : modelDraft.category,
     date,
     endDate,
     dressCode: modelDraft.dressCode
