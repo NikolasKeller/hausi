@@ -140,7 +140,11 @@ export function DateTimeSheet({
                   fontFamily: 'Reglo-Bold',
                   borderRadius: radius.md,
                   border: `1px solid ${colors.cardBorder}`,
-                  colorScheme: 'light',
+                  // Dark sheet → dark control: the light scheme drew black
+                  // digits (and a light popup calendar) on the dark card.
+                  colorScheme: 'dark',
+                  backgroundColor: 'rgba(255,255,255,0.08)',
+                  color: colors.text,
                 },
               })}
             </View>
@@ -150,7 +154,10 @@ export function DateTimeSheet({
                 value={date}
                 mode="datetime"
                 display="inline"
-                themeVariant="light"
+                // The sheet is dark; the light variant rendered the native
+                // calendar's digits in black on the dark grey card.
+                themeVariant="dark"
+                accentColor={colors.accent}
                 onChange={(_e, d) => set(d)}
                 style={styles.iosPicker}
               />
