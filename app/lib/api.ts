@@ -3,7 +3,6 @@ import Constants from 'expo-constants';
 import type {
   AuthResponse,
   AdminEventSubmission,
-  Category,
   CommentEntry,
   DeliveryChannel,
   DirectEventInvite,
@@ -263,15 +262,9 @@ export const api = {
   home() {
     return request<HomeFeed>('/discover/home');
   },
-  explore(
-    city?: string,
-    category?: Category | 'all',
-    dateRange?: EventDateRange | null,
-    q?: string
-  ) {
+  explore(city?: string, dateRange?: EventDateRange | null, q?: string) {
     const params = new URLSearchParams();
     if (city) params.set('city', city);
-    if (category && category !== 'all') params.set('category', category);
     if (dateRange) {
       // The device computes local calendar boundaries; ISO instants preserve
       // those exact boundaries when the API server is in another time zone.
