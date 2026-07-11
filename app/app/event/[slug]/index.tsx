@@ -13,12 +13,13 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import * as Linking from 'expo-linking';
 import * as WebBrowser from 'expo-web-browser';
-import { type EventDetail } from '../../../shared/types';
+import { PUNCTUALITY_META, type EventDetail } from '../../../shared/types';
 import { api } from '../../../lib/api';
 import { useAuth } from '../../../lib/auth';
 import { setPendingPath } from '../../../lib/pendingPath';
 import { confirmDialog, notify } from '../../../lib/dialogs';
 import { recordRecentEvent, removeRecentEvent } from '../../../lib/recents';
+import { addToDeviceCalendar } from '../../../lib/deviceCalendar';
 import { eventVisual } from '../../../lib/eventVisual';
 import { shareText } from '../../../lib/share';
 import { colors, light, radius, spacing } from '../../../lib/theme';
@@ -136,6 +137,7 @@ export default function EventScreen() {
   const [inviteOpen, setInviteOpen] = useState(false);
   const [inviteBusy, setInviteBusy] = useState(false);
   const [favBusy, setFavBusy] = useState(false);
+  const [calendarBusy, setCalendarBusy] = useState(false);
 
   const load = useCallback(async () => {
     if (!slug) return;
@@ -209,6 +211,37 @@ export default function EventScreen() {
     const url = Linking.createURL(`e/${event.slug}`);
     const message = `You're invited: ${event.title} - ${formatEventDate(event.date)} at ${formatEventTime(event.date)}.\nOpen in iykyk: ${url}`;
     await shareText(message, url);
+  }
+
+  // Hand the event to the phone's calendar via the system sheet (or as an
+  // .ics download on web). The system UI itself confirms the save.
+  async function addToCalendar() {
+    if (!event || calendarBusy) return;
+    setCalendarBusy(true);
+    try {
+      // Non-entitled viewers of a hidden-address event only have the server's
+      // placeholder text; the calendar entry then simply carries the city.
+      const realAddress =
+        event.location && event.location !== 'Location revealed after RSVP'
+          ? event.location
+          : '';
+      await addToDeviceCalendar({
+        id: event.id,
+        title: event.title,
+        date: event.date,
+        endDate: event.endDate,
+        openEnd: event.openEnd,
+        location: realAddress,
+        city: event.city,
+        description: [event.description, Linking.createURL(`e/${event.slug}`)]
+          .filter(Boolean)
+          .join('\n\n'),
+      });
+    } catch (e) {
+      notify('Could not open your calendar', e instanceof Error ? e.message : 'Try again');
+    } finally {
+      setCalendarBusy(false);
+    }
   }
 
   // Favoriting is decoupled from tickets: it reuses the "interested" (MAYBE)
@@ -487,7 +520,17 @@ export default function EventScreen() {
             <Glass tint={ink.glassTint} radius={radius.md} style={styles.metaCard}>
               <Text style={[styles.metaLine, { color: ink.text }]}>
                 🗓️ {formatEventDate(event.date)} · {formatEventTime(event.date)}
+                {event.openEnd
+                  ? ' · open end'
+                  : event.endDate
+                    ? ` until ${formatEventTime(event.endDate)}`
+                    : ''}
               </Text>
+              {event.punctuality ? (
+                <Text style={[styles.metaHint, { color: ink.subtext }]}>
+                  ⏰ {PUNCTUALITY_META[event.punctuality].hint}
+                </Text>
+              ) : null}
               {event.location ? (
                 <Text style={[styles.metaLine, { color: ink.text }]}>
                   📍 {event.location}
@@ -501,6 +544,9 @@ export default function EventScreen() {
               ) : null}
               {event.costPerPerson ? (
                 <Text style={[styles.metaLine, { color: ink.text }]}>💸 {event.costPerPerson}</Text>
+              ) : null}
+              {event.vibe ? (
+                <Text style={[styles.metaLine, { color: ink.text }]}>✨ {event.vibe}</Text>
               ) : null}
               {event.dressCode ? (
                 <Text style={[styles.metaLine, { color: ink.text }]}>👗 {event.dressCode}</Text>
@@ -521,6 +567,20 @@ export default function EventScreen() {
                   />
                 </View>
               ) : null}
+              <Pressable
+                onPress={addToCalendar}
+                disabled={calendarBusy}
+                style={({ pressed }) => [
+                  styles.calendarButton,
+                  { borderColor: ink.hairline },
+                  (pressed || calendarBusy) && { opacity: 0.6 },
+                ]}
+              >
+                <Ionicons name="calendar-outline" size={16} color={ink.text} />
+                <Text style={[styles.calendarButtonText, { color: ink.text }]}>
+                  Add to my calendar
+                </Text>
+              </Pressable>
             </Glass>
 
             {user && (event.canManage || !ticket.url) ? (
@@ -969,6 +1029,25 @@ const styles = StyleSheet.create({
   },
   metaLine: {
     ...uiText(16, '500'),
+  },
+  // Secondary fact (e.g. the punctuality expectation under the date line).
+  metaHint: {
+    ...uiText(13, '500'),
+    marginTop: -6,
+  },
+  calendarButton: {
+    alignSelf: 'flex-start',
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    borderWidth: 1,
+    borderRadius: radius.pill,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    marginTop: 2,
+  },
+  calendarButtonText: {
+    ...uiText(13, '600'),
   },
   sectionHead: {
     gap: spacing.xs,

@@ -1,9 +1,12 @@
 import type {
+  ApplicationAnswer,
   Category,
   CohostInvite,
   CommentEntry,
   CoverTheme,
   Effect,
+  EventApplicationEntry,
+  EventApplicationStatus,
   EventDetail,
   EventSummary,
   ExploreEvent,
@@ -48,6 +51,14 @@ type CohostInviteRow = {
   createdAt: Date;
   invitedBy: UserRow;
 };
+type ApplicationRow = {
+  id: string;
+  userId: string;
+  answers: string;
+  status: string;
+  createdAt: Date;
+  user: UserRow;
+};
 type EventRow = {
   id: string;
   slug: string;
@@ -68,9 +79,15 @@ type EventRow = {
   costPerPerson: string;
   ticketUrl: string;
   dressCode: string;
+  vibe: string;
+  endDate: Date | null;
+  openEnd: boolean;
+  punctuality: string;
   maxGuests: number | null;
   plusOneLimit: number;
   rsvpsOpen: boolean;
+  applicationRequired: boolean;
+  applicationQuestions: string;
   canceledAt: Date | null;
   hostId: string;
   host: UserRow;
@@ -79,7 +96,38 @@ type EventRow = {
   // Present only on detail queries that include the relation; summary/explore
   // reads skip it.
   cohostInvites?: CohostInviteRow[];
+  applications?: ApplicationRow[];
 };
+
+// Stored as JSON strings on the row (SQLite): parse defensively — a bad value
+// must never take the event page down.
+export function parseApplicationQuestions(raw: string): string[] {
+  try {
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed)
+      ? parsed.filter((q): q is string => typeof q === 'string')
+      : [];
+  } catch {
+    return [];
+  }
+}
+
+function parseApplicationAnswers(raw: string): ApplicationAnswer[] {
+  try {
+    const parsed = JSON.parse(raw);
+    if (!Array.isArray(parsed)) return [];
+    return parsed.filter(
+      (a): a is ApplicationAnswer =>
+        !!a && typeof a === 'object' && typeof a.question === 'string' && typeof a.answer === 'string'
+    );
+  } catch {
+    return [];
+  }
+}
+
+function applicationStatus(status: string): EventApplicationStatus {
+  return status === 'APPROVED' || status === 'DECLINED' ? status : 'PENDING';
+}
 
 export function toPublicUser(u: UserRow): PublicUser {
   return {
@@ -134,6 +182,8 @@ export function toEventSummary(event: EventRow, viewerId: string): EventSummary 
     isPublic: event.isPublic,
     publicationStatus: event.publicationStatus as EventSummary['publicationStatus'],
     hideLocation: event.hideLocation,
+    applicationRequired: event.applicationRequired,
+    applicationQuestions: parseApplicationQuestions(event.applicationQuestions),
     host: toPublicUser(event.host),
     isHost: event.hostId === viewerId,
     canManage: canManageEvent(event, viewerId),
@@ -220,6 +270,27 @@ export function toEventDetail(
     ? { id: mine.id, invitedBy: toPublicUser(mine.invitedBy) }
     : null;
 
+  // Application answers are private to the hosts; other guests never see the
+  // list. The viewer always sees their own application (any status).
+  const applicationRows = event.applications ?? [];
+  const applications: EventApplicationEntry[] = isManager
+    ? applicationRows.map((a) => ({
+        id: a.id,
+        user: toPublicUser(a.user),
+        answers: parseApplicationAnswers(a.answers),
+        status: applicationStatus(a.status),
+        createdAt: a.createdAt.toISOString(),
+      }))
+    : [];
+  const myApplicationRow = applicationRows.find((a) => a.userId === viewerId);
+  const myApplication = myApplicationRow
+    ? {
+        status: applicationStatus(myApplicationRow.status),
+        answers: parseApplicationAnswers(myApplicationRow.answers),
+        createdAt: myApplicationRow.createdAt.toISOString(),
+      }
+    : null;
+
   return {
     ...toEventSummary(event, viewerId),
     description: event.description,
@@ -227,6 +298,10 @@ export function toEventDetail(
     costPerPerson: event.costPerPerson,
     ticketUrl: event.ticketUrl,
     dressCode: event.dressCode,
+    vibe: event.vibe,
+    endDate: event.endDate ? event.endDate.toISOString() : null,
+    openEnd: event.openEnd,
+    punctuality: event.punctuality as EventDetail['punctuality'],
     maxGuests: event.maxGuests,
     plusOneLimit: event.plusOneLimit,
     rsvpsOpen: event.rsvpsOpen,
@@ -267,5 +342,7 @@ export function toEventDetail(
         createdAt: co.createdAt.toISOString(),
       })
     ),
+    applications,
+    myApplication,
   };
 }

@@ -16,15 +16,20 @@ import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import * as Linking from 'expo-linking';
 import {
+  APPLICATION_LIMITS,
+  EVENT_COVER_LIMITS,
   EVENT_DRAFT_CHAT_LIMITS,
   LIMITS,
   MAX_PLUS_ONES,
+  PUNCTUALITY_META,
+  PUNCTUALITY_OPTIONS,
   type Category,
   type EventDetail,
   type EventDraftChatDraft,
   type EventDraftChatRequest,
   type EventDraftChatResponse,
   type EventDraftQuestion,
+  type Punctuality,
 } from '../../shared/types';
 import { api } from '../../lib/api';
 import { notify } from '../../lib/dialogs';
@@ -46,9 +51,12 @@ type Stage =
   | 'when'
   | 'location'
   | 'visibility'
+  | 'application'
   | 'capacity'
   | 'plusOnes'
   | 'price'
+  // Optional vibe + dress code; only reached from the preview's edit list.
+  | 'style'
   | 'image'
   | 'preview';
 
@@ -60,6 +68,7 @@ const QUESTION_STAGE_BY_DRAFT_FIELD: Record<EventDraftQuestion, QuestionStage> =
   date: 'when',
   location: 'location',
   visibility: 'visibility',
+  application: 'application',
   capacity: 'capacity',
   plusOnes: 'plusOnes',
   price: 'price',
@@ -69,6 +78,11 @@ const EMPTY_CHAT_DRAFT: EventDraftChatDraft = {
   title: null,
   description: null,
   date: null,
+  endDate: null,
+  openEnd: null,
+  punctuality: null,
+  dressCode: null,
+  vibe: null,
   locationHint: null,
   selectedLocation: null,
   category: null,
@@ -77,7 +91,24 @@ const EMPTY_CHAT_DRAFT: EventDraftChatDraft = {
   capacity: { kind: 'unknown', maxGuests: null },
   plusOneLimit: null,
   entry: { kind: 'unknown', price: null },
+  application: { kind: 'unknown', questions: null },
 };
+
+// Tap-to-add ideas for what applicants should answer; hosts can also type
+// their own question.
+const APPLICATION_QUESTION_IDEAS = [
+  'Why would you love to join?',
+  'Who do you know here?',
+  'What would you bring to the vibe?',
+];
+
+// Tap-to-pick vibe ideas; free text always wins.
+const VIBE_IDEAS = [
+  'Cozy & intimate',
+  'High energy',
+  'Fancy but playful',
+  'Chill hangout',
+];
 
 interface ChatMessage {
   id: number;
@@ -87,15 +118,17 @@ interface ChatMessage {
 }
 
 const QUESTION_COPY: Record<QuestionStage, string> = {
-  title: 'What should it be called?',
-  description: 'What should guests know?',
-  when: 'When is it happening?',
-  location: 'Where is it happening?',
-  visibility: 'Public or invite-only?',
-  capacity: 'How many people can come?',
-  plusOnes: 'Can guests bring a +1?',
-  price: 'Free or ticketed?',
-  image: 'Want a cover image? You can skip this.',
+  title: 'Now the fun part: the name. What should we call it?',
+  description: 'Give your guests a little taste of what to expect. What makes this one special?',
+  when: 'So, when are we doing this?',
+  location: 'And where is it all happening? Pick the real place below.',
+  visibility: 'Who gets to see this one? Everyone, or just your people?',
+  application: 'Can anyone grab a spot, or should guests apply first so you pick who comes?',
+  capacity: 'How many people can you fit?',
+  plusOnes: 'Should everyone get to bring someone along?',
+  price: 'Is it free, or are we doing tickets?',
+  style: 'What is the vibe, and is there a dress code? Both are optional, both help people show up right.',
+  image: 'Almost there! I am already designing a cover for you. You can swap in your own photo anytime.',
 };
 
 const CATEGORY_VISUALS: Record<
@@ -295,7 +328,7 @@ function CreateEventScreen() {
     {
       id: 0,
       role: 'assistant',
-      text: 'What do you want to host? Tell me in your own words.',
+      text: 'Hey! 🎉 You are hosting something, and honestly, I am already excited. Tell me what you are dreaming up, in your own words. Big or small, I will help you make it real.',
     },
   ]);
   const [composer, setComposer] = useState('');
@@ -324,6 +357,14 @@ function CreateEventScreen() {
   const [date, setDate] = useState<Date | null>(null);
   const [dateSeed, setDateSeed] = useState(nextEvening);
   const [dateOpen, setDateOpen] = useState(false);
+  // Timing nuance: optional end (or explicit open end) and how strict the
+  // start time is. All optional; unset simply isn't shown to guests.
+  const [endDate, setEndDate] = useState<Date | null>(null);
+  const [endOpen, setEndOpen] = useState(false);
+  const [openEnd, setOpenEnd] = useState(false);
+  const [punctuality, setPunctuality] = useState<Punctuality | ''>('');
+  const [vibe, setVibe] = useState('');
+  const [dressCode, setDressCode] = useState('');
   const [location, setLocation] = useState('');
   const [city, setCity] = useState('');
   const [category, setCategory] = useState<Category>('other');
@@ -332,12 +373,24 @@ function CreateEventScreen() {
   const [capacityMode, setCapacityMode] = useState<'limited' | 'unlimited'>('limited');
   const [capacityInput, setCapacityInput] = useState('30');
   const [maxGuests, setMaxGuests] = useState<number | null>(30);
+  const [applyRequired, setApplyRequired] = useState(false);
+  const [applicationQuestions, setApplicationQuestions] = useState<string[]>([]);
+  const [applicationQuestionDraft, setApplicationQuestionDraft] = useState('');
   const [plusOnes, setPlusOnes] = useState(1);
   const [paid, setPaid] = useState(false);
   const [price, setPrice] = useState('');
   const [image, setImage] = useState<PickedImage | null>(null);
   const [imageResolved, setImageResolved] = useState(false);
   const [imageBusy, setImageBusy] = useState(false);
+  // AI cover artwork (base64 JPEG). It lives only in memory until publish, so
+  // abandoned drafts and rerolled designs never leave files on the server.
+  const [aiCover, setAiCover] = useState<string | null>(null);
+  const [aiCoverBusy, setAiCoverBusy] = useState(false);
+  const [aiCoverError, setAiCoverError] = useState('');
+  // Set when the host explicitly chooses "no cover", so the auto-designer
+  // doesn't keep regenerating what they just removed.
+  const [coverDeclined, setCoverDeclined] = useState(false);
+  const aiCoverAbortRef = useRef<AbortController | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [created, setCreated] = useState<EventDetail | null>(null);
 
@@ -345,6 +398,7 @@ function CreateEventScreen() {
     () => () => {
       mountedRef.current = false;
       aiAbortRef.current?.abort();
+      aiCoverAbortRef.current?.abort();
     },
     []
   );
@@ -355,6 +409,9 @@ function CreateEventScreen() {
     if (title.trim().length < 2) issues.push('Add an event title.');
     if (!date || Number.isNaN(date.getTime())) issues.push('Choose a date and time.');
     else if (date.getTime() <= Date.now()) issues.push('Choose a date and time in the future.');
+    if (!openEnd && endDate && date && endDate.getTime() <= date.getTime()) {
+      issues.push('The end must be after the start.');
+    }
     if (!location.trim()) issues.push('Choose a location from address search.');
     if (
       maxGuests != null &&
@@ -367,7 +424,7 @@ function CreateEventScreen() {
     }
     if (paid && !normalizeTicketPrice(price)) issues.push('Enter a valid ticket price.');
     return issues;
-  }, [date, location, maxGuests, paid, plusOnes, price, title]);
+  }, [date, endDate, location, maxGuests, openEnd, paid, plusOnes, price, title]);
   const canPublish = validationIssues.length === 0;
 
   function appendMessages(
@@ -421,6 +478,23 @@ function CreateEventScreen() {
       setDate(null);
     }
 
+    const parsedEnd = draft.endDate ? new Date(draft.endDate) : null;
+    if (
+      parsedEnd &&
+      !Number.isNaN(parsedEnd.getTime()) &&
+      parsedDate &&
+      parsedEnd.getTime() > parsedDate.getTime() &&
+      !draft.openEnd
+    ) {
+      setEndDate(parsedEnd);
+    } else if (draft.endDate === null) {
+      setEndDate(null);
+    }
+    if (draft.openEnd !== null) setOpenEnd(draft.openEnd);
+    if (draft.punctuality !== null) setPunctuality(draft.punctuality);
+    if (draft.dressCode !== null) setDressCode(draft.dressCode);
+    if (draft.vibe !== null) setVibe(draft.vibe);
+
     setLocation(draft.selectedLocation?.location ?? '');
     setCity(draft.selectedLocation?.city ?? '');
     setCategory(draft.category ?? 'other');
@@ -448,6 +522,11 @@ function CreateEventScreen() {
       setPaid(false);
       setPrice('');
     }
+
+    setApplyRequired(draft.application.kind === 'apply');
+    setApplicationQuestions(
+      draft.application.kind === 'apply' ? draft.application.questions : []
+    );
   }
 
   function tagsForDraft(draft: EventDraftChatDraft): string[] {
@@ -457,6 +536,7 @@ function CreateEventScreen() {
       tags.push(`${formatEventDate(draft.date)}, ${formatEventTime(draft.date)}`);
     }
     if (draft.isPublic !== null) tags.push(draft.isPublic ? 'Public' : 'Invite only');
+    if (draft.application.kind === 'apply') tags.push('Apply to join');
     if (draft.capacity.kind === 'unlimited') tags.push('No guest limit');
     if (draft.capacity.kind === 'limited') tags.push(`${draft.capacity.maxGuests} guests`);
     if (draft.entry.kind === 'free') tags.push('Free');
@@ -538,7 +618,7 @@ function CreateEventScreen() {
     setStage('preview');
     appendMessages({
       role: 'assistant',
-      text: 'That’s everything I need. I made a preview. Check it carefully, change anything you want, then publish when it feels right.',
+      text: 'Yes! It is all coming together. Here is your event page. Tweak anything you like, then publish when it feels right.',
     });
   }
 
@@ -551,12 +631,18 @@ function CreateEventScreen() {
     }
 
     const extracted = extractEventBrief(brief);
-    const useBriefAsDescription =
-      brief.length >= 48 || brief.split(/\s+/).filter(Boolean).length >= 6;
+    // The raw brief is written FOR the assistant, not for guests, so it never
+    // becomes the description. The AI writes real invitation copy from it; if
+    // the AI is unreachable, the description question asks the host directly.
     const localDraft: EventDraftChatDraft = {
       title: extracted.title ?? null,
-      description: useBriefAsDescription ? brief : null,
+      description: null,
       date: extracted.date?.toISOString() ?? null,
+      endDate: null,
+      openEnd: null,
+      punctuality: null,
+      dressCode: null,
+      vibe: null,
       locationHint: null,
       // A typed place is never silently trusted as an address. Only the
       // LocationPicker can commit this field after geocoding.
@@ -579,6 +665,7 @@ function CreateEventScreen() {
           ? { kind: 'paid', price: extracted.price ?? null }
           : { kind: 'free', price: null }
         : { kind: 'unknown', price: null },
+      application: { kind: 'unknown', questions: null },
     };
     const questions: QuestionStage[] = [];
     if (!localDraft.title || localDraft.title.length < 2) questions.push('title');
@@ -588,6 +675,7 @@ function CreateEventScreen() {
     if (localDraft.isPublic === null || localDraft.hideLocation === null) {
       questions.push('visibility');
     }
+    if (localDraft.application.kind === 'unknown') questions.push('application');
     if (localDraft.capacity.kind === 'unknown') questions.push('capacity');
     if (localDraft.plusOneLimit === null) questions.push('plusOnes');
     if (
@@ -610,9 +698,7 @@ function CreateEventScreen() {
       fallback: () => {
         appendMessages({
           role: 'assistant',
-          text: useBriefAsDescription
-            ? 'Great, I’ll use that as the event description. I pulled these details from your message; you can edit all of them before publishing.'
-            : 'Great, I started the draft and pulled out what I could. I’ll ask for a little more detail, and you can edit everything before publishing.',
+          text: 'Love it! I started your draft and picked out what I could. A few quick questions and it is ready.',
           tags: tagsForDraft(localDraft),
         });
         showNextQuestion(questions);
@@ -632,7 +718,7 @@ function CreateEventScreen() {
       setStage('preview');
       appendMessages({
         role: 'assistant',
-        text: 'Updated. The preview below now reflects your change.',
+        text: 'Done! The preview below already shows your change.',
       });
       return;
     }
@@ -677,9 +763,30 @@ function CreateEventScreen() {
       setQuestionError('Choose a date and time in the future.');
       return;
     }
+    if (!openEnd && endDate && endDate.getTime() <= date.getTime()) {
+      setQuestionError('The end must be after the start.');
+      return;
+    }
+    const windowText = openEnd
+      ? ', open end'
+      : endDate
+        ? ` until ${formatEventTime(endDate.toISOString())}`
+        : '';
+    const punctualityText = punctuality
+      ? `. ${PUNCTUALITY_META[punctuality].label}`
+      : '';
     completeQuestion(
-      `${formatEventDate(date.toISOString())} at ${formatEventTime(date.toISOString())}`,
-      { ...chatDraft, date: date.toISOString() }
+      `${formatEventDate(date.toISOString())} at ${formatEventTime(
+        date.toISOString()
+      )}${windowText}${punctualityText}`,
+      {
+        ...chatDraft,
+        date: date.toISOString(),
+        endDate: openEnd ? null : (endDate?.toISOString() ?? null),
+        // Only claim a decision the host actually made; untouched stays null.
+        openEnd: openEnd ? true : endDate ? false : chatDraft.openEnd,
+        punctuality: punctuality || chatDraft.punctuality,
+      }
     );
   }
 
@@ -715,6 +822,38 @@ function CreateEventScreen() {
     });
   }
 
+  function addApplicationQuestion(raw: string) {
+    const value = raw.trim().slice(0, APPLICATION_LIMITS.question);
+    if (!value) return;
+    setApplicationQuestions((current) =>
+      current.includes(value) || current.length >= APPLICATION_LIMITS.questions
+        ? current
+        : [...current, value]
+    );
+    setApplicationQuestionDraft('');
+  }
+
+  function completeApplication() {
+    const questions = applyRequired
+      ? [
+          ...new Set(applicationQuestions.map((q) => q.trim()).filter(Boolean)),
+        ].slice(0, APPLICATION_LIMITS.questions)
+      : [];
+    completeQuestion(
+      applyRequired
+        ? questions.length
+          ? `Guests apply first. They answer: ${questions.join(' / ')}`
+          : 'Guests apply first'
+        : 'Anyone can grab a spot',
+      {
+        ...chatDraft,
+        application: applyRequired
+          ? { kind: 'apply', questions }
+          : { kind: 'open', questions: null },
+      }
+    );
+  }
+
   function completePrice() {
     if (!paid) {
       setPrice('');
@@ -743,7 +882,7 @@ function CreateEventScreen() {
     setStage(next);
     appendMessages({
       role: 'assistant',
-      text: `Let’s change it. ${QUESTION_COPY[next]}`,
+      text: `Sure, let’s tweak that. ${QUESTION_COPY[next]}`,
     });
   }
 
@@ -757,6 +896,71 @@ function CreateEventScreen() {
       setImageBusy(false);
     }
   }
+
+  async function generateCover() {
+    if (aiCoverBusy) return;
+    const trimmedTitle = title.trim();
+    if (trimmedTitle.length < 2) return;
+    aiCoverAbortRef.current?.abort();
+    const controller = new AbortController();
+    aiCoverAbortRef.current = controller;
+    setAiCoverBusy(true);
+    setAiCoverError('');
+    setCoverDeclined(false);
+    // Image generation is slow by nature; give it real headroom before bailing.
+    const timeout = setTimeout(() => controller.abort(), 75_000);
+    try {
+      const trimmedDescription = description.trim();
+      const result = await api.generateEventCover(
+        {
+          title: trimmedTitle,
+          ...(trimmedDescription
+            ? { description: trimmedDescription.slice(0, EVENT_COVER_LIMITS.description) }
+            : {}),
+          category,
+        },
+        controller.signal
+      );
+      if (!mountedRef.current || aiCoverAbortRef.current !== controller) return;
+      setAiCover(result.image);
+    } catch (error) {
+      if (!mountedRef.current || aiCoverAbortRef.current !== controller) return;
+      setAiCoverError(
+        controller.signal.aborted
+          ? 'The design took too long. Tap "New design" to try again.'
+          : error instanceof Error
+            ? error.message
+            : 'Could not design a cover right now.'
+      );
+    } finally {
+      clearTimeout(timeout);
+      if (mountedRef.current && aiCoverAbortRef.current === controller) {
+        aiCoverAbortRef.current = null;
+        setAiCoverBusy(false);
+      }
+    }
+  }
+
+  function removeCover() {
+    aiCoverAbortRef.current?.abort();
+    aiCoverAbortRef.current = null;
+    setAiCoverBusy(false);
+    setImage(null);
+    setAiCover(null);
+    setAiCoverError('');
+    setCoverDeclined(true);
+  }
+
+  // Covers are never "just an emoji": the moment the flow reaches the cover
+  // step (or the preview) without artwork, the AI starts designing one. One
+  // failed attempt doesn't retrigger itself; the card offers a manual retry.
+  useEffect(() => {
+    if (stage !== 'image' && stage !== 'preview') return;
+    if (image || aiCover || aiCoverBusy || coverDeclined || aiCoverError) return;
+    if (title.trim().length < 2) return;
+    void generateCover();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [stage, image, aiCover, aiCoverBusy, coverDeclined, aiCoverError, title]);
 
   async function publish() {
     if (submitting) return;
@@ -787,6 +991,10 @@ function CreateEventScreen() {
         });
         if (!uploaded) throw new Error('The cover image could not be uploaded. Please try again.');
         coverImage = uploaded;
+      } else if (aiCover) {
+        // The AI design is already a web-ready JPEG; store it as-is.
+        const { url } = await api.uploadImage(aiCover, 'image/jpeg');
+        coverImage = url;
       }
 
       const result = await api.createEvent({
@@ -806,6 +1014,13 @@ function CreateEventScreen() {
         plusOneLimit: plusOnes,
         costPerPerson: paid ? (normalizeTicketPrice(price) ?? '') : '',
         rsvpsOpen: true,
+        applicationRequired: applyRequired,
+        applicationQuestions: applyRequired ? applicationQuestions : [],
+        dressCode: dressCode.trim(),
+        vibe: vibe.trim(),
+        endDate: openEnd ? null : (endDate?.toISOString() ?? null),
+        openEnd,
+        punctuality,
       });
       setCreated(result.event);
     } catch (error) {
@@ -833,7 +1048,7 @@ function CreateEventScreen() {
       if (messages.some((message) => message.role === 'user')) return null;
       return (
         <View style={styles.starterArea}>
-          <Text style={styles.starterLabel}>NEED A START?</Text>
+          <Text style={styles.starterLabel}>NEED A SPARK?</Text>
           {STARTER_PROMPTS.map((prompt) => (
             <Pressable key={prompt} onPress={() => setComposer(prompt)} style={styles.starterPrompt}>
               <Text style={styles.starterPromptText}>{prompt}</Text>
@@ -884,7 +1099,7 @@ function CreateEventScreen() {
               <Ionicons name="calendar-outline" size={22} color={colors.text} />
             </View>
             <View style={styles.flex}>
-              <Text style={styles.fieldLabel}>DATE &amp; TIME</Text>
+              <Text style={styles.fieldLabel}>STARTS</Text>
               <Text style={[styles.dateChoiceValue, !date && styles.placeholderText]}>
                 {date
                   ? `${formatEventDate(date.toISOString())} · ${formatEventTime(
@@ -895,6 +1110,67 @@ function CreateEventScreen() {
             </View>
             <Ionicons name="chevron-forward" size={18} color={colors.muted} />
           </Pressable>
+
+          <View style={styles.divider} />
+          <Text style={styles.fieldLabel}>UNTIL (OPTIONAL)</Text>
+          <View style={styles.choiceRow}>
+            <ChoicePill
+              label="Open end"
+              selected={openEnd}
+              onPress={() => {
+                setQuestionError('');
+                setOpenEnd((current) => {
+                  if (!current) setEndDate(null);
+                  return !current;
+                });
+              }}
+            />
+            <ChoicePill
+              label={
+                endDate && !openEnd
+                  ? `Until ${formatEventTime(endDate.toISOString())}`
+                  : 'Pick an end time'
+              }
+              selected={Boolean(endDate) && !openEnd}
+              onPress={() => {
+                setQuestionError('');
+                setOpenEnd(false);
+                if (!endDate) {
+                  const seed = new Date((date ?? dateSeed).getTime());
+                  seed.setHours(seed.getHours() + 3);
+                  setEndDate(seed);
+                }
+                setEndOpen(true);
+              }}
+            />
+            {endDate || openEnd ? (
+              <ChoicePill
+                label="Clear"
+                selected={false}
+                onPress={() => {
+                  setOpenEnd(false);
+                  setEndDate(null);
+                }}
+              />
+            ) : null}
+          </View>
+
+          <Text style={styles.fieldLabel}>HOW STRICT IS THE START? (OPTIONAL)</Text>
+          <View style={styles.choiceRow}>
+            {PUNCTUALITY_OPTIONS.map((option) => (
+              <ChoicePill
+                key={option}
+                label={PUNCTUALITY_META[option].label}
+                selected={punctuality === option}
+                onPress={() =>
+                  setPunctuality((current) => (current === option ? '' : option))
+                }
+              />
+            ))}
+          </View>
+          {punctuality ? (
+            <Text style={styles.questionHint}>{PUNCTUALITY_META[punctuality].hint}</Text>
+          ) : null}
         </View>
       );
     }
@@ -951,6 +1227,90 @@ function CreateEventScreen() {
             value={hideLocation}
             onChange={setHideLocation}
           />
+        </View>
+      );
+    }
+
+    if (stage === 'application') {
+      return (
+        <View style={styles.questionCard}>
+          <ToggleRow
+            icon={applyRequired ? 'clipboard-outline' : 'flash-outline'}
+            label={applyRequired ? 'Guests apply first' : 'Anyone can join'}
+            hint={
+              applyRequired
+                ? 'You approve every request before someone is in.'
+                : 'Whoever sees the event can take a spot right away.'
+            }
+            value={applyRequired}
+            onChange={setApplyRequired}
+          />
+          {applyRequired ? (
+            <>
+              <View style={styles.divider} />
+              <Text style={styles.fieldLabel}>WHAT SHOULD APPLICANTS ANSWER?</Text>
+              {applicationQuestions.map((question) => (
+                <View key={question} style={styles.applicationQuestionRow}>
+                  <Text style={styles.applicationQuestionText}>{question}</Text>
+                  <Pressable
+                    onPress={() =>
+                      setApplicationQuestions((current) =>
+                        current.filter((q) => q !== question)
+                      )
+                    }
+                    hitSlop={8}
+                  >
+                    <Ionicons name="close-circle" size={19} color={colors.muted} />
+                  </Pressable>
+                </View>
+              ))}
+              {applicationQuestions.length < APPLICATION_LIMITS.questions ? (
+                <>
+                  <View style={styles.choiceRow}>
+                    {APPLICATION_QUESTION_IDEAS.filter(
+                      (idea) => !applicationQuestions.includes(idea)
+                    ).map((idea) => (
+                      <Pressable
+                        key={idea}
+                        onPress={() => addApplicationQuestion(idea)}
+                        style={styles.choicePill}
+                      >
+                        <Ionicons name="add" size={14} color={colors.text} />
+                        <Text style={styles.choicePillText}>{idea}</Text>
+                      </Pressable>
+                    ))}
+                  </View>
+                  <View style={styles.applicationInputRow}>
+                    <TextInput
+                      value={applicationQuestionDraft}
+                      onChangeText={setApplicationQuestionDraft}
+                      placeholder="Or write your own question…"
+                      placeholderTextColor={colors.muted}
+                      maxLength={APPLICATION_LIMITS.question}
+                      style={styles.applicationInput}
+                      returnKeyType="done"
+                      onSubmitEditing={() => addApplicationQuestion(applicationQuestionDraft)}
+                    />
+                    <Pressable
+                      onPress={() => addApplicationQuestion(applicationQuestionDraft)}
+                      disabled={!applicationQuestionDraft.trim()}
+                      style={[
+                        styles.applicationAddButton,
+                        !applicationQuestionDraft.trim() && styles.disabled,
+                      ]}
+                    >
+                      <Ionicons name="add" size={18} color={colors.onInk} />
+                    </Pressable>
+                  </View>
+                </>
+              ) : null}
+              <Text style={styles.questionHint}>
+                {applicationQuestions.length
+                  ? 'Applicants answer these when they request a spot.'
+                  : 'No questions yet: applicants simply tell you why they would love to join.'}
+              </Text>
+            </>
+          ) : null}
         </View>
       );
     }
@@ -1050,17 +1410,78 @@ function CreateEventScreen() {
       );
     }
 
+    if (stage === 'style') {
+      return (
+        <View style={styles.questionCard}>
+          <Text style={styles.fieldLabel}>VIBE (OPTIONAL)</Text>
+          <View style={styles.choiceRow}>
+            {VIBE_IDEAS.map((idea) => (
+              <ChoicePill
+                key={idea}
+                label={idea}
+                selected={vibe === idea}
+                onPress={() => setVibe((current) => (current === idea ? '' : idea))}
+              />
+            ))}
+          </View>
+          <TextInput
+            value={vibe}
+            onChangeText={setVibe}
+            placeholder="Or describe the energy in your own words…"
+            placeholderTextColor={colors.muted}
+            maxLength={LIMITS.vibe}
+            style={styles.styleInput}
+          />
+          <View style={styles.divider} />
+          <Text style={styles.fieldLabel}>DRESS CODE (OPTIONAL)</Text>
+          <TextInput
+            value={dressCode}
+            onChangeText={setDressCode}
+            placeholder="Come as you are"
+            placeholderTextColor={colors.muted}
+            maxLength={LIMITS.dressCode}
+            style={styles.styleInput}
+          />
+          <Text style={styles.questionHint}>
+            Both show up with the event facts, so guests know how to arrive.
+          </Text>
+        </View>
+      );
+    }
+
+    const coverUri = image?.uri ?? (aiCover ? `data:image/jpeg;base64,${aiCover}` : null);
     return (
       <View style={styles.questionCard}>
         <Pressable onPress={chooseImage} disabled={imageBusy} style={styles.imagePicker}>
-          {image ? (
+          {coverUri ? (
             <>
-              <Image source={{ uri: image.uri }} style={StyleSheet.absoluteFill} resizeMode="cover" />
+              <Image source={{ uri: coverUri }} style={StyleSheet.absoluteFill} resizeMode="cover" />
               <View style={styles.imageScrim} />
-              <View style={styles.changeImagePill}>
-                <Ionicons name="camera" size={14} color={colors.onInk} />
-                <Text style={styles.changeImageText}>Change image</Text>
+              {!image ? (
+                <View style={styles.aiBadge}>
+                  <Ionicons name="sparkles" size={12} color={colors.onInk} />
+                  <Text style={styles.aiBadgeText}>AI design</Text>
+                </View>
+              ) : null}
+              {aiCoverBusy ? (
+                <View style={styles.coverBusyOverlay}>
+                  <ActivityIndicator color="#fff" />
+                  <Text style={styles.coverBusyText}>Designing a new cover…</Text>
+                </View>
+              ) : (
+                <View style={styles.changeImagePill}>
+                  <Ionicons name="camera" size={14} color={colors.onInk} />
+                  <Text style={styles.changeImageText}>Use a photo</Text>
+                </View>
+              )}
+            </>
+          ) : aiCoverBusy ? (
+            <>
+              <View style={[styles.imageIcon, { backgroundColor: `${visual.tint}35` }]}>
+                <ActivityIndicator color={colors.text} />
               </View>
+              <Text style={styles.imageTitle}>Designing your cover…</Text>
+              <Text style={styles.imageHint}>The AI is creating artwork just for this event</Text>
             </>
           ) : (
             <>
@@ -1072,22 +1493,39 @@ function CreateEventScreen() {
                 )}
               </View>
               <Text style={styles.imageTitle}>Add a cover image</Text>
-              <Text style={styles.imageHint}>Optional · cropped to fit the event page</Text>
+              <Text style={styles.imageHint}>Pick a photo, or let the AI design one</Text>
             </>
           )}
         </Pressable>
-        {image ? (
-          <Pressable onPress={() => setImage(null)} style={styles.removeImageButton}>
-            <Ionicons name="trash-outline" size={16} color={colors.muted} />
-            <Text style={styles.removeImageText}>Remove cover</Text>
+        {aiCoverError ? <Text style={styles.footerError}>{aiCoverError}</Text> : null}
+        <View style={styles.coverActions}>
+          <Pressable
+            onPress={() => {
+              setImage(null);
+              void generateCover();
+            }}
+            disabled={aiCoverBusy}
+            style={[styles.coverActionButton, aiCoverBusy && styles.disabled]}
+          >
+            <Ionicons name="sparkles-outline" size={15} color={colors.text} />
+            <Text style={styles.coverActionText}>
+              {aiCover || image ? 'New design' : 'Design with AI'}
+            </Text>
           </Pressable>
-        ) : null}
+          {coverUri ? (
+            <Pressable onPress={removeCover} style={styles.coverActionButton}>
+              <Ionicons name="trash-outline" size={15} color={colors.muted} />
+              <Text style={[styles.coverActionText, { color: colors.muted }]}>No cover</Text>
+            </Pressable>
+          ) : null}
+        </View>
       </View>
     );
   }
 
   function renderPreview() {
     if (stage !== 'preview') return null;
+    const coverUri = image?.uri ?? (aiCover ? `data:image/jpeg;base64,${aiCover}` : null);
     return (
       <>
         <View style={styles.previewHeading}>
@@ -1099,10 +1537,16 @@ function CreateEventScreen() {
 
         <View style={styles.previewCard}>
           <View style={[styles.previewHero, { backgroundColor: visual.tint }]}>
-            {image ? (
+            {coverUri ? (
               <>
-                <Image source={{ uri: image.uri }} style={StyleSheet.absoluteFill} resizeMode="cover" />
+                <Image source={{ uri: coverUri }} style={StyleSheet.absoluteFill} resizeMode="cover" />
                 <View style={styles.previewScrim} />
+              </>
+            ) : aiCoverBusy ? (
+              <>
+                <View style={styles.previewGlow} />
+                <ActivityIndicator color="#fff" />
+                <Text style={styles.previewDesigningText}>Designing your cover…</Text>
               </>
             ) : (
               <>
@@ -1126,6 +1570,11 @@ function CreateEventScreen() {
             {date ? (
               <Text style={styles.previewMeta}>
                 {formatEventDate(date.toISOString())} · {formatEventTime(date.toISOString())}
+                {openEnd
+                  ? ' · open end'
+                  : endDate
+                    ? ` until ${formatEventTime(endDate.toISOString())}`
+                    : ''}
               </Text>
             ) : null}
             <Text style={styles.previewMeta} numberOfLines={2}>
@@ -1147,6 +1596,28 @@ function CreateEventScreen() {
                   {plusOnes ? `+${plusOnes} allowed` : 'No +1s'}
                 </Text>
               </View>
+              {applyRequired ? (
+                <View style={styles.previewPill}>
+                  <Text style={styles.previewPillText}>📝 Apply to join</Text>
+                </View>
+              ) : null}
+              {punctuality ? (
+                <View style={styles.previewPill}>
+                  <Text style={styles.previewPillText}>
+                    ⏰ {PUNCTUALITY_META[punctuality].label}
+                  </Text>
+                </View>
+              ) : null}
+              {vibe.trim() ? (
+                <View style={styles.previewPill}>
+                  <Text style={styles.previewPillText}>✨ {vibe.trim()}</Text>
+                </View>
+              ) : null}
+              {dressCode.trim() ? (
+                <View style={styles.previewPill}>
+                  <Text style={styles.previewPillText}>👗 {dressCode.trim()}</Text>
+                </View>
+              ) : null}
             </View>
             {description.trim() ? (
               <Text style={styles.previewDescription}>{description.trim()}</Text>
@@ -1185,10 +1656,28 @@ function CreateEventScreen() {
             label="Date & time"
             value={
               date
-                ? `${formatEventDate(date.toISOString())} · ${formatEventTime(date.toISOString())}`
+                ? `${formatEventDate(date.toISOString())} · ${formatEventTime(
+                    date.toISOString()
+                  )}${
+                    openEnd
+                      ? ' · open end'
+                      : endDate
+                        ? ` until ${formatEventTime(endDate.toISOString())}`
+                        : ''
+                  }${punctuality ? ` · ${PUNCTUALITY_META[punctuality].label}` : ''}`
                 : 'Missing'
             }
             onPress={() => editFromPreview('when')}
+          />
+          <View style={styles.divider} />
+          <PreviewEditRow
+            icon="sparkles-outline"
+            label="Vibe & dress code"
+            value={
+              [vibe.trim(), dressCode.trim()].filter(Boolean).join(' · ') ||
+              'Add a vibe or dress code'
+            }
+            onPress={() => editFromPreview('style')}
           />
           <View style={styles.divider} />
           <PreviewEditRow
@@ -1217,6 +1706,23 @@ function CreateEventScreen() {
           />
           <View style={styles.divider} />
           <PreviewEditRow
+            icon="clipboard-outline"
+            label="Joining"
+            value={
+              applyRequired
+                ? `Apply first${
+                    applicationQuestions.length
+                      ? ` · ${applicationQuestions.length} question${
+                          applicationQuestions.length > 1 ? 's' : ''
+                        }`
+                      : ''
+                  }`
+                : 'Anyone can join'
+            }
+            onPress={() => editFromPreview('application')}
+          />
+          <View style={styles.divider} />
+          <PreviewEditRow
             icon="person-add-outline"
             label="Plus-ones"
             value={plusOnes ? `Up to ${plusOnes} per guest` : 'Not allowed'}
@@ -1233,7 +1739,15 @@ function CreateEventScreen() {
           <PreviewEditRow
             icon="image-outline"
             label="Cover"
-            value={image ? 'Cover image added' : 'No cover image'}
+            value={
+              image
+                ? 'Your photo'
+                : aiCover
+                  ? 'AI design'
+                  : aiCoverBusy
+                    ? 'Designing…'
+                    : 'No cover image'
+            }
             onPress={() => editFromPreview('image')}
           />
         </View>
@@ -1281,7 +1795,7 @@ function CreateEventScreen() {
               }}
               placeholder={
                 stage === 'brief'
-                  ? 'Describe the event you want to host…'
+                  ? 'Tell me what you’re dreaming up…'
                   : stage === 'title'
                     ? 'Event title'
                     : 'Event description'
@@ -1368,6 +1882,28 @@ function CreateEventScreen() {
           }`,
           { ...chatDraft, isPublic, hideLocation }
         );
+    } else if (stage === 'application') {
+      label = 'Save joining rules';
+      onPress = completeApplication;
+    } else if (stage === 'style') {
+      label = 'Save vibe & dress code';
+      onPress = () => {
+        const trimmedVibe = vibe.trim();
+        const trimmedDress = dressCode.trim();
+        completeQuestion(
+          [
+            trimmedVibe ? `Vibe: ${trimmedVibe}` : '',
+            trimmedDress ? `Dress code: ${trimmedDress}` : '',
+          ]
+            .filter(Boolean)
+            .join('. ') || 'No vibe or dress code notes',
+          {
+            ...chatDraft,
+            vibe: trimmedVibe || null,
+            dressCode: trimmedDress || null,
+          }
+        );
+      };
     } else if (stage === 'capacity') {
       label = 'Save guest limit';
       onPress = completeCapacity;
@@ -1384,7 +1920,10 @@ function CreateEventScreen() {
       disabled = paid && !normalizeTicketPrice(price);
     } else if (stage === 'image') {
       label = editingFromPreview ? 'Save cover' : 'Build event preview';
-      onPress = () => completeQuestion(image ? 'Cover image added' : 'Skip cover image');
+      onPress = () =>
+        completeQuestion(
+          image ? 'Cover photo added' : aiCover ? 'AI cover design added' : 'Skip cover image'
+        );
     } else if (stage === 'preview') {
       label = isPublic ? 'Submit & create event' : 'Publish event';
       onPress = publish;
@@ -1515,7 +2054,7 @@ function CreateEventScreen() {
               <View
                 style={[
                   styles.messageContent,
-                  message.role === 'user' && styles.userBubble,
+                  message.role === 'user' ? styles.userBubble : styles.assistantMessage,
                 ]}
               >
                 <Text
@@ -1543,7 +2082,7 @@ function CreateEventScreen() {
             <View style={styles.messageRow}>
               <View style={[styles.messageContent, styles.thinkingBubble]}>
                 <ActivityIndicator size="small" color={colors.accent} />
-                <Text style={styles.thinkingText}>Thinking about your event…</Text>
+                <Text style={styles.thinkingText}>Give me a sec…</Text>
               </View>
             </View>
           ) : null}
@@ -1575,6 +2114,17 @@ function CreateEventScreen() {
               setQuestionError('');
             }}
             onClose={() => setDateOpen(false)}
+          />
+        ) : null}
+        {endOpen && endDate ? (
+          <DateTimeSheet
+            date={endDate}
+            onChange={(next) => {
+              setEndDate(next);
+              setOpenEnd(false);
+              setQuestionError('');
+            }}
+            onClose={() => setEndOpen(false)}
           />
         ) : null}
       </KeyboardAvoidingView>
@@ -1646,7 +2196,10 @@ const styles = StyleSheet.create({
     paddingRight: spacing.lg,
   },
   messageRowUser: { justifyContent: 'flex-end', paddingRight: 0, paddingLeft: spacing.xl },
-  messageContent: { flexShrink: 1, maxWidth: '92%', paddingTop: 3 },
+  messageContent: { flexShrink: 1, maxWidth: '92%' },
+  // Only bubble-less assistant text gets the optical nudge; on the user bubble
+  // a paddingTop would override paddingVertical and push the text off-center.
+  assistantMessage: { paddingTop: 3 },
   userBubble: {
     backgroundColor: colors.inputBg,
     borderWidth: 1,
@@ -1792,6 +2345,47 @@ const styles = StyleSheet.create({
   choicePillSelected: { backgroundColor: colors.ink, borderColor: colors.ink },
   choicePillText: { ...uiText(13, '600'), color: colors.text },
   choicePillTextSelected: { color: colors.onInk },
+  applicationQuestionRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    backgroundColor: colors.inputBg,
+    borderRadius: radius.md,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+  },
+  applicationQuestionText: { ...uiText(13, '600'), color: colors.text, flex: 1 },
+  applicationInputRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    backgroundColor: colors.inputBg,
+    borderRadius: radius.md,
+    borderWidth: 1,
+    borderColor: colors.cardBorder,
+    paddingLeft: 12,
+    paddingRight: 6,
+    paddingVertical: 4,
+  },
+  applicationInput: { ...uiText(13), color: colors.text, flex: 1, paddingVertical: 8 },
+  styleInput: {
+    ...uiText(14),
+    color: colors.text,
+    backgroundColor: colors.inputBg,
+    borderWidth: 1,
+    borderColor: colors.cardBorder,
+    borderRadius: radius.md,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+  },
+  applicationAddButton: {
+    width: 32,
+    height: 32,
+    borderRadius: 12,
+    backgroundColor: colors.ink,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   numberInputRow: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -1860,14 +2454,41 @@ const styles = StyleSheet.create({
     paddingVertical: 6,
   },
   changeImageText: { ...uiText(11, '700'), color: colors.onInk },
-  removeImageButton: {
-    alignSelf: 'center',
+  aiBadge: {
+    position: 'absolute',
+    left: 10,
+    top: 10,
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 5,
-    paddingVertical: 3,
+    gap: 4,
+    backgroundColor: 'rgba(0,0,0,0.55)',
+    borderRadius: radius.pill,
+    paddingHorizontal: 9,
+    paddingVertical: 5,
   },
-  removeImageText: { ...uiText(12, '600'), color: colors.muted },
+  aiBadgeText: { ...uiText(10, '700'), color: colors.onInk },
+  coverBusyOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(0,0,0,0.45)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+  },
+  coverBusyText: { ...uiText(12, '600'), color: '#fff' },
+  coverActions: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
+  coverActionButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: colors.inputBg,
+    borderWidth: 1,
+    borderColor: colors.cardBorder,
+    borderRadius: radius.pill,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+  },
+  coverActionText: { ...uiText(12, '700'), color: colors.text },
+  previewDesigningText: { ...uiText(12, '600'), color: '#fff', marginTop: 8 },
   previewHeading: { marginTop: spacing.sm },
   stepTitle: { ...display(28), color: colors.text },
   stepSubtitle: { ...uiText(13), color: colors.muted, marginTop: 4 },
@@ -1987,7 +2608,9 @@ const styles = StyleSheet.create({
   },
   composerBox: {
     flexDirection: 'row',
-    alignItems: 'flex-end',
+    // Keep the send button vertically centered in the pill, even when the
+    // multiline input grows or the device font scale changes its height.
+    alignItems: 'center',
     gap: spacing.sm,
     minHeight: 54,
     maxHeight: 150,

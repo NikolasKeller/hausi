@@ -50,6 +50,7 @@ model User {
   friendshipsReceived Friendship[] @relation("FriendshipsReceived")
   eventInvitesReceived EventInvite[] @relation("EventInvitesReceived")
   eventInvitesSent     EventInvite[] @relation("EventInvitesSent")
+  eventApplications    EventApplication[]
 }
 
 // Records who uploaded each file (path = "/uploads/x.jpg") so a user can only
@@ -145,9 +146,21 @@ model Event {
   hideLocation  Boolean       @default(false)
   costPerPerson String        @default("")
   dressCode     String        @default("")
+  // Short free-text mood ("Cozy living-room energy, bring your softest sweater").
+  vibe          String        @default("")
+  // Optional end of the event. openEnd marks an explicit "goes until it's
+  // over"; both unset means the host simply didn't say.
+  endDate       DateTime?
+  openEnd       Boolean       @default(false)
+  // How strictly guests should arrive on time: '' | sharp | grace | loose.
+  punctuality   String        @default("")
   maxGuests     Int?
   plusOneLimit  Int           @default(1)
   rsvpsOpen     Boolean       @default(true)
+  // Guests must apply (and be approved by a host) before they can be GOING.
+  applicationRequired Boolean @default(false)
+  // JSON array of up to 3 host-defined questions applicants must answer.
+  applicationQuestions String @default("[]")
   canceledAt    DateTime?
   hostId        String
   host          User          @relation("HostEvents", fields: [hostId], references: [id], onDelete: Cascade)
@@ -157,6 +170,28 @@ model Event {
   cohosts       EventCohost[]
   cohostInvites CohostInvite[]
   invites       EventInvite[]
+  applications  EventApplication[]
+}
+
+// A guest's request to join an application-gated event. One row per
+// (event, user); a re-apply after a decline flips the same row back to
+// PENDING (mirroring CohostInvite). Approval creates the GOING rsvp.
+// status: PENDING | APPROVED | DECLINED (SQLite has no enums).
+model EventApplication {
+  id        String   @id @default(cuid())
+  eventId   String
+  event     Event    @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  // JSON array of { question, answer } pairs, questions snapshotted at
+  // apply time so later edits don't orphan existing answers.
+  answers   String
+  status    String   @default("PENDING")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([eventId, userId])
+  @@index([eventId, status])
 }
 
 // A direct in-app invite from a host to a friend/mutual. The invite itself

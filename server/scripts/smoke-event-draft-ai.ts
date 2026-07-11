@@ -9,6 +9,11 @@ const emptyDraft: EventDraftChatDraft = {
   title: null,
   description: null,
   date: null,
+  endDate: null,
+  openEnd: null,
+  punctuality: null,
+  dressCode: null,
+  vibe: null,
   locationHint: null,
   selectedLocation: null,
   category: null,
@@ -17,6 +22,7 @@ const emptyDraft: EventDraftChatDraft = {
   capacity: { kind: 'unknown', maxGuests: null },
   plusOneLimit: null,
   entry: { kind: 'unknown', price: null },
+  application: { kind: 'unknown', questions: null },
 };
 
 async function main() {
@@ -51,6 +57,13 @@ async function main() {
           missingFields: result.missingFields,
           extracted: {
             hasTitle: !!result.draft.title,
+            // The AI must author guest-facing copy itself, never echo the brief.
+            hasDescription: !!result.draft.description,
+            descriptionEchoesBrief:
+              !!result.draft.description &&
+              result.draft.description
+                .toLowerCase()
+                .includes('rooftop sunset party for 20 friends'),
             hasDate: !!result.draft.date,
             capacity: result.draft.capacity.kind,
             entry: result.draft.entry.kind,

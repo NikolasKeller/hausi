@@ -8,7 +8,14 @@ import {
   View,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import type { EventDetail, MyProfile, PublicUser, RsvpStatus } from '../shared/types';
+import {
+  APPLICATION_DEFAULT_QUESTION,
+  APPLICATION_LIMITS,
+  type EventDetail,
+  type MyProfile,
+  type PublicUser,
+  type RsvpStatus,
+} from '../shared/types';
 import { api } from '../lib/api';
 import { confirmDialog, notify } from '../lib/dialogs';
 import { colors, radius, rsvp, spacing } from '../lib/theme';
@@ -56,6 +63,11 @@ export function EventRsvpPanel({
   const [removeBusy, setRemoveBusy] = useState<string | null>(null);
   const [profile, setProfile] = useState<MyProfile | null>(null);
   const [linkedBusy, setLinkedBusy] = useState<string | null>(null);
+  // "Apply to join" flow: answers line up with the event's questions.
+  const [applyOpen, setApplyOpen] = useState(false);
+  const [applyAnswers, setApplyAnswers] = useState<string[]>([]);
+  const [applyBusy, setApplyBusy] = useState(false);
+  const [decideBusy, setDecideBusy] = useState<string | null>(null);
 
   const mine = event.rsvps.find((entry) => entry.user.id === userId);
   const spotsLeft =
@@ -138,6 +150,50 @@ export function EventRsvpPanel({
     }
   }
 
+  const applicationQuestions = event.applicationQuestions.length
+    ? event.applicationQuestions
+    : [APPLICATION_DEFAULT_QUESTION];
+
+  function openApplyForm() {
+    setApplyAnswers(applicationQuestions.map(() => ''));
+    setApplyOpen(true);
+  }
+
+  async function submitApplication() {
+    if (applyBusy) return;
+    const answers = applyAnswers.map((answer) => answer.trim());
+    if (answers.some((answer) => !answer)) {
+      notify('Almost there', 'Please answer every question so the host can decide.');
+      return;
+    }
+    setApplyBusy(true);
+    try {
+      const res = await api.applyToEvent(event.id, answers);
+      onChange(res.event);
+      setApplyOpen(false);
+    } catch (e) {
+      notify('Could not send application', e instanceof Error ? e.message : 'Try again');
+    } finally {
+      setApplyBusy(false);
+    }
+  }
+
+  async function decideApplication(applicationId: string, decision: 'approve' | 'decline') {
+    if (decideBusy) return;
+    setDecideBusy(applicationId);
+    try {
+      const res =
+        decision === 'approve'
+          ? await api.approveApplication(event.id, applicationId)
+          : await api.declineApplication(event.id, applicationId);
+      onChange(res.event);
+    } catch (e) {
+      notify('Could not update application', e instanceof Error ? e.message : 'Try again');
+    } finally {
+      setDecideBusy(null);
+    }
+  }
+
   async function removeAttendee(targetUserId: string, name: string) {
     if (removeBusy) return;
     const ok = await confirmDialog(
@@ -158,6 +214,9 @@ export function EventRsvpPanel({
   }
 
   if (event.canManage) {
+    const pendingApplications = event.applications.filter(
+      (application) => application.status === 'PENDING'
+    );
     return (
       <View style={styles.panel}>
         <View style={styles.headingRow}>
@@ -191,6 +250,67 @@ export function EventRsvpPanel({
             <Text style={styles.statLabel}>Left</Text>
           </View>
         </View>
+
+        {event.applicationRequired ? (
+          <View style={styles.applicationsArea}>
+            <Text style={styles.pickerLabel}>
+              {pendingApplications.length
+                ? `APPLICATIONS · ${pendingApplications.length} WAITING`
+                : 'APPLICATIONS'}
+            </Text>
+            {pendingApplications.length === 0 ? (
+              <Text style={styles.body}>
+                No open applications right now. New requests show up here for you to approve.
+              </Text>
+            ) : (
+              pendingApplications.map((application) => (
+                <View key={application.id} style={styles.applicationCard}>
+                  <View style={styles.applicationHeader}>
+                    <Avatar
+                      name={application.user.name}
+                      image={application.user.avatarImage}
+                      size={34}
+                    />
+                    <View style={{ flex: 1 }}>
+                      <Text style={styles.guestName}>{application.user.name}</Text>
+                      <Text style={styles.guestMeta}>wants to join</Text>
+                    </View>
+                  </View>
+                  {application.answers.map((entry) => (
+                    <View key={entry.question} style={styles.applicationAnswer}>
+                      <Text style={styles.applicationQuestion}>{entry.question}</Text>
+                      <Text style={styles.applicationAnswerText}>{entry.answer}</Text>
+                    </View>
+                  ))}
+                  <View style={styles.applicationActions}>
+                    <Pressable
+                      onPress={() => decideApplication(application.id, 'approve')}
+                      disabled={Boolean(decideBusy)}
+                      style={[styles.approveButton, decideBusy && styles.disabled]}
+                    >
+                      {decideBusy === application.id ? (
+                        <ActivityIndicator size="small" color={colors.onInk} />
+                      ) : (
+                        <>
+                          <Ionicons name="checkmark" size={16} color={colors.onInk} />
+                          <Text style={styles.approveText}>Approve</Text>
+                        </>
+                      )}
+                    </Pressable>
+                    <Pressable
+                      onPress={() => decideApplication(application.id, 'decline')}
+                      disabled={Boolean(decideBusy)}
+                      style={[styles.declineButton, decideBusy && styles.disabled]}
+                    >
+                      <Ionicons name="close" size={16} color={colors.text} />
+                      <Text style={styles.declineText}>Decline</Text>
+                    </Pressable>
+                  </View>
+                </View>
+              ))
+            )}
+          </View>
+        ) : null}
 
         {event.rsvps.length === 0 ? (
           <View style={styles.empty}>
@@ -253,30 +373,101 @@ export function EventRsvpPanel({
     mine.guests.length < event.plusOneLimit &&
     (spotsLeft == null || spotsLeft > 0);
 
+  // Application-gated events replace the direct "I'm in" with an apply flow
+  // until the viewer holds a spot (approval writes the GOING/WAITLIST rsvp).
+  const needsApplication =
+    event.applicationRequired && mine?.status !== 'GOING' && mine?.status !== 'WAITLIST';
+  const myApplication = event.myApplication;
+  const visibleChoices = needsApplication
+    ? CHOICES.filter((choice) => choice.status !== 'GOING')
+    : CHOICES;
+
   return (
     <View style={styles.panel}>
       <Text style={styles.kicker}>YOUR RSVP</Text>
       <Text style={styles.title}>
-        {mine?.status === 'WAITLIST'
-          ? "You're on the waitlist"
-          : mine?.status === 'GOING'
-            ? "You're on the list"
-            : 'Are you in?'}
+        {needsApplication
+          ? myApplication?.status === 'PENDING'
+            ? 'Application sent'
+            : 'Apply for a spot'
+          : mine?.status === 'WAITLIST'
+            ? "You're on the waitlist"
+            : mine?.status === 'GOING'
+              ? "You're on the list"
+              : 'Are you in?'}
       </Text>
       <Text style={styles.body}>
-        {!event.rsvpsOpen
-          ? 'RSVPs are closed.'
-          : mine?.status === 'WAITLIST'
-            ? "It's full right now. We'll move you in automatically if a spot opens."
-            : spotsLeft === 0 && mine?.status !== 'GOING'
-              ? 'The event is full. Join the waitlist anyway.'
-              : spotsLeft == null
-                ? 'Let the host know. Your response updates the guest list instantly.'
-                : `${spotsLeft} ${spotsLeft === 1 ? 'spot' : 'spots'} left.`}
+        {needsApplication
+          ? !event.rsvpsOpen
+            ? 'RSVPs are closed.'
+            : myApplication?.status === 'PENDING'
+              ? 'The host reviews every request. You are on the list the moment they approve.'
+              : myApplication?.status === 'DECLINED'
+                ? 'The host passed this time. You can send a new application whenever you like.'
+                : 'The host picks who comes. Answer a quick question or two and you are in the running.'
+          : !event.rsvpsOpen
+            ? 'RSVPs are closed.'
+            : mine?.status === 'WAITLIST'
+              ? "It's full right now. We'll move you in automatically if a spot opens."
+              : spotsLeft === 0 && mine?.status !== 'GOING'
+                ? 'The event is full. Join the waitlist anyway.'
+                : spotsLeft == null
+                  ? 'Let the host know. Your response updates the guest list instantly.'
+                  : `${spotsLeft} ${spotsLeft === 1 ? 'spot' : 'spots'} left.`}
       </Text>
 
+      {needsApplication && myApplication?.status !== 'PENDING' ? (
+        applyOpen ? (
+          <View style={styles.applyForm}>
+            {applicationQuestions.map((question, index) => (
+              <View key={question} style={styles.applyField}>
+                <Text style={styles.applyQuestionLabel}>{question}</Text>
+                <TextInput
+                  value={applyAnswers[index] ?? ''}
+                  onChangeText={(next) =>
+                    setApplyAnswers((current) =>
+                      current.map((answer, i) => (i === index ? next : answer))
+                    )
+                  }
+                  placeholder="Your answer…"
+                  placeholderTextColor={colors.muted}
+                  multiline
+                  maxLength={APPLICATION_LIMITS.answer}
+                  style={styles.applyInput}
+                />
+              </View>
+            ))}
+            <Pressable
+              onPress={submitApplication}
+              disabled={applyBusy}
+              style={[styles.saveGuest, applyBusy && styles.disabled]}
+            >
+              {applyBusy ? (
+                <ActivityIndicator color={colors.onInk} />
+              ) : (
+                <Text style={styles.saveGuestText}>Send application</Text>
+              )}
+            </Pressable>
+            <Pressable onPress={() => setApplyOpen(false)} style={styles.applyCancel}>
+              <Text style={styles.applyCancelText}>Not now</Text>
+            </Pressable>
+          </View>
+        ) : (
+          <Pressable
+            onPress={openApplyForm}
+            disabled={!event.rsvpsOpen}
+            style={[styles.saveGuest, !event.rsvpsOpen && styles.disabled]}
+          >
+            <Ionicons name="clipboard-outline" size={17} color={colors.onInk} />
+            <Text style={styles.saveGuestText}>
+              {myApplication?.status === 'DECLINED' ? 'Apply again' : 'Apply to join'}
+            </Text>
+          </Pressable>
+        )
+      ) : null}
+
       <View style={styles.choices}>
-        {CHOICES.map((choice) => {
+        {visibleChoices.map((choice) => {
           const selected = mine?.status === choice.status;
           return (
             <Pressable
@@ -529,7 +720,67 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: colors.ink,
+    flexDirection: 'row',
+    gap: 6,
   },
   saveGuestText: { ...uiText(13, '700'), color: colors.onInk },
   disabled: { opacity: 0.4 },
+  // ── Applications (host review + guest apply form) ──
+  applicationsArea: {
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: colors.cardBorder,
+    paddingTop: spacing.sm,
+    gap: spacing.sm,
+  },
+  applicationCard: {
+    backgroundColor: colors.inputBg,
+    borderRadius: radius.md,
+    padding: spacing.sm,
+    gap: spacing.sm,
+  },
+  applicationHeader: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
+  applicationAnswer: { gap: 2 },
+  applicationQuestion: { ...uiText(11, '700'), color: colors.muted },
+  applicationAnswerText: { ...uiText(13, '500', { lineHeight: 1.4 }), color: colors.text },
+  applicationActions: { flexDirection: 'row', gap: spacing.sm },
+  approveButton: {
+    flex: 1,
+    minHeight: 40,
+    borderRadius: radius.pill,
+    backgroundColor: colors.ink,
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexDirection: 'row',
+    gap: 5,
+  },
+  approveText: { ...uiText(12, '700'), color: colors.onInk },
+  declineButton: {
+    flex: 1,
+    minHeight: 40,
+    borderRadius: radius.pill,
+    borderWidth: 1,
+    borderColor: colors.cardBorder,
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexDirection: 'row',
+    gap: 5,
+  },
+  declineText: { ...uiText(12, '700'), color: colors.text },
+  applyForm: { gap: spacing.sm },
+  applyField: { gap: 5 },
+  applyQuestionLabel: { ...uiText(12, '700'), color: colors.text },
+  applyInput: {
+    ...uiText(14, '400', { lineHeight: 1.4 }),
+    color: colors.text,
+    backgroundColor: colors.inputBg,
+    borderWidth: 1,
+    borderColor: colors.cardBorder,
+    borderRadius: radius.sm,
+    paddingHorizontal: spacing.md,
+    paddingVertical: 10,
+    minHeight: 74,
+    textAlignVertical: 'top',
+  },
+  applyCancel: { alignSelf: 'center', paddingVertical: 2 },
+  applyCancelText: { ...uiText(12, '600'), color: colors.muted },
 });

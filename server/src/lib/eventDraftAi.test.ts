@@ -17,6 +17,11 @@ const baseDraft: EventDraftChatDraft = {
   title: 'Rooftop Dinner',
   description: '',
   date: '2026-07-18T17:00:00.000Z',
+  endDate: null,
+  openEnd: null,
+  punctuality: null,
+  dressCode: null,
+  vibe: null,
   locationHint: 'Alexanderplatz Berlin',
   selectedLocation: {
     location: 'Alexanderplatz, 10178 Berlin, Germany',
@@ -28,6 +33,7 @@ const baseDraft: EventDraftChatDraft = {
   capacity: { kind: 'limited', maxGuests: 12 },
   plusOneLimit: 1,
   entry: { kind: 'paid', price: '15' },
+  application: { kind: 'open', questions: null },
 };
 
 const baseRequest: EventDraftChatRequest = {

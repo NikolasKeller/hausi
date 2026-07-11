@@ -7,6 +7,8 @@ import type {
   CommentEntry,
   DeliveryChannel,
   DirectEventInvite,
+  EventCoverRequest,
+  EventCoverResponse,
   EventDetail,
   EventDraftChatRequest,
   EventDraftChatResponse,
@@ -185,6 +187,15 @@ export const api = {
       signal,
     });
   },
+  // AI cover artwork for the event being drafted; returns base64 JPEG that is
+  // uploaded like a hand-picked photo when the event is published.
+  generateEventCover(data: EventCoverRequest, signal?: AbortSignal) {
+    return request<EventCoverResponse>('/event-drafts/cover', {
+      method: 'POST',
+      body: JSON.stringify(data),
+      signal,
+    });
+  },
   eventBySlug(slug: string) {
     return request<{ event: EventDetail }>(`/events/by-slug/${encodeURIComponent(slug)}`);
   },
@@ -346,6 +357,26 @@ export const api = {
       method: 'PUT',
       body: JSON.stringify({ status }),
     });
+  },
+  // Apply for a spot on an application-gated event. `answers` line up with
+  // event.applicationQuestions (one generic question when the host set none).
+  applyToEvent(eventId: string, answers: string[]) {
+    return request<{ event: EventDetail }>(`/events/${eventId}/applications`, {
+      method: 'POST',
+      body: JSON.stringify({ answers }),
+    });
+  },
+  approveApplication(eventId: string, applicationId: string) {
+    return request<{ event: EventDetail }>(
+      `/events/${eventId}/applications/${encodeURIComponent(applicationId)}/approve`,
+      { method: 'POST' }
+    );
+  },
+  declineApplication(eventId: string, applicationId: string) {
+    return request<{ event: EventDetail }>(
+      `/events/${eventId}/applications/${encodeURIComponent(applicationId)}/decline`,
+      { method: 'POST' }
+    );
   },
   addPlusOne(eventId: string, guest: { userId: string } | { name: string; phone: string }) {
     return request<{ event: EventDetail }>(`/events/${eventId}/plus-one`, {

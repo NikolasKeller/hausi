@@ -21,7 +21,34 @@ export const LIMITS = {
   blast: 1200,
   plusOnes: 20,
   maxGuests: 10000,
+  dressCode: 120,
+  // Short free-text mood/energy of the event.
+  vibe: 120,
 } as const;
+
+// How strictly guests should show up on time. '' (unset) means the host
+// didn't say. Labels/hints live beside the type so every surface (create
+// chat, event page, edit sheet) words it identically.
+export const PUNCTUALITY_OPTIONS = ['sharp', 'grace', 'loose'] as const;
+export type Punctuality = (typeof PUNCTUALITY_OPTIONS)[number];
+
+export const PUNCTUALITY_META: Record<
+  Punctuality,
+  { label: string; hint: string }
+> = {
+  sharp: {
+    label: 'Right on time',
+    hint: 'It starts sharp, be there for kickoff.',
+  },
+  grace: {
+    label: 'A little late is fine',
+    hint: 'Aim for the start, a few minutes late is no drama.',
+  },
+  loose: {
+    label: 'Come whenever',
+    hint: 'Drop in and out whenever suits you.',
+  },
+};
 
 // Hard ceiling on how many plus-ones a single attendee can bring, regardless of
 // an event's per-event `plusOneLimit`. The effective allowance is
@@ -181,6 +208,42 @@ export interface RsvpCounts {
   waitlist: number;
 }
 
+// ── Guest applications ("apply to join") ───────────────────────────────────
+
+export const APPLICATION_LIMITS = {
+  questions: 3,
+  question: 120,
+  answer: 600,
+} as const;
+
+// The one question shown when a host requires applications without defining
+// their own questions. Shared so client form and server snapshot agree.
+export const APPLICATION_DEFAULT_QUESTION = 'Why would you love to join?';
+
+export type EventApplicationStatus = 'PENDING' | 'APPROVED' | 'DECLINED';
+
+export interface ApplicationAnswer {
+  question: string;
+  answer: string;
+}
+
+// A guest's application as shown to hosts/co-hosts on the event page.
+export interface EventApplicationEntry {
+  id: string;
+  user: PublicUser;
+  answers: ApplicationAnswer[];
+  status: EventApplicationStatus;
+  createdAt: string;
+}
+
+// The viewer's own application on an event (answers included so they can see
+// what they sent).
+export interface MyEventApplication {
+  status: EventApplicationStatus;
+  answers: ApplicationAnswer[];
+  createdAt: string;
+}
+
 export type CohostInviteStatus = 'PENDING' | 'ACCEPTED' | 'DECLINED';
 
 // A pending co-host invitation as shown to the host on the edit screen. The
@@ -241,6 +304,11 @@ export interface EventSummary {
   isPublic: boolean;
   publicationStatus: 'PRIVATE' | 'PENDING' | 'APPROVED' | 'REJECTED';
   hideLocation: boolean;
+  // Guests must apply and be approved before they can be GOING.
+  applicationRequired: boolean;
+  // Host-defined questions applicants answer (may be empty even when
+  // applications are required; the app then asks one generic question).
+  applicationQuestions: string[];
   host: PublicUser;
   isHost: boolean;
   canManage: boolean;
@@ -268,6 +336,12 @@ export interface EventDetail extends EventSummary {
   // scraped events; '' for user-created events. The buy-ticket button opens it.
   ticketUrl: string;
   dressCode: string;
+  vibe: string;
+  // Optional end of the event; openEnd is an explicit "until it's over".
+  endDate: string | null;
+  openEnd: boolean;
+  // '' when the host didn't say how strict the start time is.
+  punctuality: Punctuality | '';
   maxGuests: number | null;
   plusOneLimit: number;
   rsvpsOpen: boolean;
@@ -280,6 +354,11 @@ export interface EventDetail extends EventSummary {
   myCohostInvite: { id: string; invitedBy: PublicUser } | null;
   rsvps: RsvpEntry[];
   comments: CommentEntry[];
+  // Guest applications (host-visible only; empty for regular guests, since
+  // answers are private to the hosts).
+  applications: EventApplicationEntry[];
+  // The viewer's own application, if any.
+  myApplication: MyEventApplication | null;
 }
 
 export interface EventInput {
@@ -301,9 +380,15 @@ export interface EventInput {
   hideLocation?: boolean;
   costPerPerson?: string;
   dressCode?: string;
+  vibe?: string;
+  endDate?: string | null;
+  openEnd?: boolean;
+  punctuality?: Punctuality | '';
   maxGuests?: number | null;
   plusOneLimit?: number;
   rsvpsOpen?: boolean;
+  applicationRequired?: boolean;
+  applicationQuestions?: string[];
 }
 
 // ── AI-assisted event drafting ─────────────────────────────────────────────
@@ -320,6 +405,7 @@ export type EventDraftQuestion =
   | 'date'
   | 'location'
   | 'visibility'
+  | 'application'
   | 'capacity'
   | 'plusOnes'
   | 'price';
@@ -335,6 +421,13 @@ export interface EventDraftChatDraft {
   // the assistant still needs to ask.
   description: string | null;
   date: string | null;
+  // Optional timing/style nuances. null = not mentioned; they never block the
+  // flow with their own question and are editable from the preview.
+  endDate: string | null;
+  openEnd: boolean | null;
+  punctuality: Punctuality | null;
+  dressCode: string | null;
+  vibe: string | null;
   // AI may suggest what to search for, but only LocationPicker can commit a
   // geocoded address into selectedLocation.
   locationHint: string | null;
@@ -351,6 +444,12 @@ export interface EventDraftChatDraft {
     | { kind: 'unknown'; price: null }
     | { kind: 'free'; price: null }
     | { kind: 'paid'; price: string | null };
+  // open: anyone can join directly. apply: guests apply first and answer the
+  // host's questions ([] = the app asks one generic question).
+  application:
+    | { kind: 'unknown'; questions: null }
+    | { kind: 'open'; questions: null }
+    | { kind: 'apply'; questions: string[] };
 }
 
 export interface EventDraftChatRequest {
@@ -368,6 +467,25 @@ export interface EventDraftChatResponse {
   missingFields: EventDraftQuestion[];
   // Tap-to-pick title ideas; non-empty only when nextField is 'title'.
   titleSuggestions: string[];
+}
+
+// AI-generated cover artwork for a drafted event. The image is returned as
+// base64 and only becomes a stored upload when the event is published, so
+// abandoned drafts and regenerations never leave files behind.
+export const EVENT_COVER_LIMITS = {
+  description: 600,
+} as const;
+
+export interface EventCoverRequest {
+  title: string;
+  description?: string;
+  category?: Category;
+}
+
+export interface EventCoverResponse {
+  // Base64 JPEG without a data-URL prefix, ready for POST /api/uploads.
+  image: string;
+  contentType: 'image/jpeg';
 }
 
 // ── Agent Wallet / agentic ticket purchase ──────────────────────────────────

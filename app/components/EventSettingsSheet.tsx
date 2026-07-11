@@ -11,7 +11,14 @@ import {
   type TextInputProps,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { MAX_PLUS_ONES } from '../shared/types';
+import {
+  APPLICATION_LIMITS,
+  LIMITS,
+  MAX_PLUS_ONES,
+  PUNCTUALITY_META,
+  PUNCTUALITY_OPTIONS,
+  type Punctuality,
+} from '../shared/types';
 import { radius, spacing } from '../lib/theme';
 import { uiText } from '../lib/fonts';
 import { Glass } from './glass';
@@ -27,6 +34,16 @@ interface Props {
   onChangeCostPerPerson: (v: string) => void;
   dressCode: string;
   onChangeDressCode: (v: string) => void;
+  // "Apply to join": guests request a spot and answer up to 3 questions.
+  applicationRequired: boolean;
+  onToggleApplicationRequired: () => void;
+  applicationQuestions: string[];
+  onChangeApplicationQuestion: (index: number, value: string) => void;
+  vibe: string;
+  onChangeVibe: (v: string) => void;
+  // '' = unset; tapping the row cycles through the punctuality options.
+  punctuality: Punctuality | '';
+  onChangePunctuality: (v: Punctuality | '') => void;
   onClose: () => void;
 }
 
@@ -69,8 +86,20 @@ export function EventSettingsSheet({
   onChangeCostPerPerson,
   dressCode,
   onChangeDressCode,
+  applicationRequired,
+  onToggleApplicationRequired,
+  applicationQuestions,
+  onChangeApplicationQuestion,
+  vibe,
+  onChangeVibe,
+  punctuality,
+  onChangePunctuality,
   onClose,
 }: Props) {
+  // '' → sharp → grace → loose → '' — one tap per step keeps the row compact.
+  const punctualityCycle: (Punctuality | '')[] = ['', ...PUNCTUALITY_OPTIONS];
+  const nextPunctuality =
+    punctualityCycle[(punctualityCycle.indexOf(punctuality) + 1) % punctualityCycle.length];
   return (
     <View style={styles.overlay}>
       <Pressable style={StyleSheet.absoluteFill} onPress={onClose} />
@@ -152,6 +181,60 @@ export function EventSettingsSheet({
               placeholder="Come as you are"
               maxLength={120}
             />
+
+            <InputRow
+              icon="sparkles-outline"
+              label="Vibe"
+              value={vibe}
+              onChangeText={onChangeVibe}
+              placeholder="Cozy, wild, fancy…"
+              maxLength={LIMITS.vibe}
+            />
+
+            <Pressable style={styles.row} onPress={() => onChangePunctuality(nextPunctuality)}>
+              <View style={styles.rowLeft}>
+                <Ionicons name="time-outline" size={18} color="rgba(255,255,255,0.9)" />
+                <Text style={styles.rowLabel}>Punctuality</Text>
+              </View>
+              <Text style={styles.rowValue}>
+                {punctuality ? PUNCTUALITY_META[punctuality].label : 'Not specified'}
+              </Text>
+            </Pressable>
+
+            <Pressable style={styles.row} onPress={onToggleApplicationRequired}>
+              <View style={styles.rowLeft}>
+                <Ionicons
+                  name={applicationRequired ? 'clipboard-outline' : 'flash-outline'}
+                  size={18}
+                  color="rgba(255,255,255,0.9)"
+                />
+                <Text style={styles.rowLabel}>Joining</Text>
+              </View>
+              <Text style={styles.rowValue}>
+                {applicationRequired ? 'Apply first' : 'Anyone can join'}
+              </Text>
+            </Pressable>
+            {applicationRequired ? (
+              <View style={styles.applicationBox}>
+                <Text style={styles.applicationHint}>
+                  Guests answer these when they apply. Leave all empty for one simple
+                  "why would you love to join?" question.
+                </Text>
+                {applicationQuestions.map((question, index) => (
+                  <TextInput
+                    // Fixed slots, safe to key by position.
+                    // eslint-disable-next-line react/no-array-index-key
+                    key={index}
+                    value={question}
+                    onChangeText={(value) => onChangeApplicationQuestion(index, value)}
+                    placeholder={`Question ${index + 1} (optional)`}
+                    placeholderTextColor="rgba(255,255,255,0.45)"
+                    maxLength={APPLICATION_LIMITS.question}
+                    style={styles.applicationInput}
+                  />
+                ))}
+              </View>
+            ) : null}
           </ScrollView>
         </Glass>
       </KeyboardAvoidingView>
@@ -236,4 +319,19 @@ const styles = StyleSheet.create({
   },
   stepText: { color: '#fff', fontSize: 17, fontWeight: '600' },
   stepValue: { ...uiText(15, '600'), color: '#fff', minWidth: 40, textAlign: 'center' },
+  applicationBox: {
+    backgroundColor: 'rgba(255,255,255,0.08)',
+    borderRadius: radius.md,
+    padding: spacing.md,
+    gap: spacing.sm,
+  },
+  applicationHint: { ...uiText(12, '500', { lineHeight: 1.4 }), color: 'rgba(255,255,255,0.65)' },
+  applicationInput: {
+    ...uiText(14),
+    color: '#fff',
+    backgroundColor: 'rgba(255,255,255,0.10)',
+    borderRadius: radius.sm,
+    paddingHorizontal: spacing.md,
+    paddingVertical: 10,
+  },
 });

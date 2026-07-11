@@ -85,7 +85,16 @@ function ExploreCard({ event }: { event: ExploreEvent }) {
       onPress={() => router.push(`/event/${event.slug}`)}
       style={({ pressed }) => [styles.card, pressed && { opacity: 0.85 }]}
     >
-      <CoverGradient theme={event.coverTheme} image={event.coverImage} style={styles.poster}>
+      <CoverGradient
+        theme={event.coverTheme}
+        image={event.coverImage}
+        fallback={{
+          title: event.title,
+          description: event.description,
+          category: event.category,
+        }}
+        style={styles.poster}
+      >
         {user ? (
           <Pressable
             onPress={toggleFav}

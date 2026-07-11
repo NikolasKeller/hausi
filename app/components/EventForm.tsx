@@ -23,6 +23,7 @@ import {
   type CoverTheme,
   type Effect,
   type EventInput,
+  type Punctuality,
   type TitleFont,
 } from '../shared/types';
 import { colors, light, radius, shadow, spacing } from '../lib/theme';
@@ -58,8 +59,14 @@ export interface EventFormValues {
   titleFont: TitleFont;
   effect: Effect;
   date: Date;
+  endDate: Date | null;
+  openEnd: boolean;
+  punctuality: Punctuality | '';
+  vibe: string;
   maxGuests: number | null;
   plusOneLimit: number;
+  applicationRequired: boolean;
+  applicationQuestions: string[];
 }
 
 interface Props {
@@ -125,6 +132,15 @@ export function EventForm({ initial, submitLabel, onSubmit, footer }: Props) {
   const [isPublic, setIsPublic] = useState(initial?.isPublic ?? false);
   const [costPerPerson, setCostPerPerson] = useState(initial?.costPerPerson ?? '');
   const [dressCode, setDressCode] = useState(initial?.dressCode ?? '');
+  const [applicationRequired, setApplicationRequired] = useState(
+    initial?.applicationRequired ?? false
+  );
+  // Fixed three slots in the settings sheet; blanks are dropped on save.
+  const [applicationQuestions, setApplicationQuestions] = useState<string[]>([
+    initial?.applicationQuestions?.[0] ?? '',
+    initial?.applicationQuestions?.[1] ?? '',
+    initial?.applicationQuestions?.[2] ?? '',
+  ]);
   const [coverTheme, setCoverTheme] = useState<CoverTheme>(initial?.coverTheme ?? 'sunset');
   const [coverImage, setCoverImage] = useState(initial?.coverImage ?? '');
   const [uploadingCover, setUploadingCover] = useState(false);
@@ -138,6 +154,13 @@ export function EventForm({ initial, submitLabel, onSubmit, footer }: Props) {
   // null until the host actually opens the When picker — "When" is a required
   // field, so we don't silently pre-fill it. The sheet opens at defaultDate().
   const [date, setDate] = useState<Date | null>(initial?.date ?? null);
+  const [endDate, setEndDate] = useState<Date | null>(initial?.endDate ?? null);
+  const [openEnd, setOpenEnd] = useState(initial?.openEnd ?? false);
+  const [punctuality, setPunctuality] = useState<Punctuality | ''>(
+    initial?.punctuality ?? ''
+  );
+  const [vibe, setVibe] = useState(initial?.vibe ?? '');
+  const [endSheetOpen, setEndSheetOpen] = useState(false);
   const [maxGuests, setMaxGuests] = useState(
     initial?.maxGuests != null ? String(initial.maxGuests) : ''
   );
@@ -184,7 +207,10 @@ export function EventForm({ initial, submitLabel, onSubmit, footer }: Props) {
   // Dot on the Settings gear when values that only live in the sheet are set —
   // e.g. a party-starter template seeded a dress code the user hasn't seen.
   const hasHiddenSettings =
-    Boolean(costPerPerson.trim() || dressCode.trim() || maxGuests.trim()) || plusOneLimit !== 1;
+    Boolean(costPerPerson.trim() || dressCode.trim() || maxGuests.trim() || vibe.trim()) ||
+    plusOneLimit !== 1 ||
+    applicationRequired ||
+    Boolean(punctuality);
 
   // Name, When and Location are all required — the Save button stays disabled
   // until each is filled, so a half-baked event can't be created (or edited into
@@ -215,6 +241,10 @@ export function EventForm({ initial, submitLabel, onSubmit, footer }: Props) {
       setSettingsOpen(true);
       return;
     }
+    if (!openEnd && endDate && date && endDate.getTime() <= date.getTime()) {
+      setError('The end must be after the start');
+      return;
+    }
     setError(null);
     setSaving(true);
     try {
@@ -233,8 +263,16 @@ export function EventForm({ initial, submitLabel, onSubmit, footer }: Props) {
         titleFont,
         effect,
         date: date.toISOString(),
+        endDate: openEnd ? null : (endDate?.toISOString() ?? null),
+        openEnd,
+        punctuality,
+        vibe: vibe.trim(),
         maxGuests: guests,
         plusOneLimit,
+        applicationRequired,
+        applicationQuestions: applicationRequired
+          ? applicationQuestions.map((q) => q.trim()).filter(Boolean)
+          : [],
       });
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Something went wrong');
@@ -347,6 +385,54 @@ export function EventForm({ initial, submitLabel, onSubmit, footer }: Props) {
                 : 'Add a date & time'}
             </Text>
           </PaperPressable>
+          {/* Optional window end: open end, a picked end time, or nothing. */}
+          <View style={styles.timingRow}>
+            <PaperPressable
+              style={[styles.timingChip, openEnd && styles.timingChipActive]}
+              onPress={() => {
+                setOpenEnd(!openEnd);
+                if (!openEnd) setEndDate(null);
+              }}
+            >
+              <Text style={[styles.timingChipText, openEnd && styles.timingChipTextActive]}>
+                Open end
+              </Text>
+            </PaperPressable>
+            <PaperPressable
+              style={[styles.timingChip, Boolean(endDate) && !openEnd && styles.timingChipActive]}
+              onPress={() => {
+                setOpenEnd(false);
+                if (!endDate) {
+                  const seed = new Date((date ?? defaultDate()).getTime());
+                  seed.setHours(seed.getHours() + 3);
+                  setEndDate(seed);
+                }
+                setEndSheetOpen(true);
+              }}
+            >
+              <Text
+                style={[
+                  styles.timingChipText,
+                  Boolean(endDate) && !openEnd && styles.timingChipTextActive,
+                ]}
+              >
+                {endDate && !openEnd
+                  ? `Until ${formatEventTime(endDate.toISOString())}`
+                  : 'Set an end'}
+              </Text>
+            </PaperPressable>
+            {endDate || openEnd ? (
+              <PaperPressable
+                style={styles.timingChip}
+                onPress={() => {
+                  setOpenEnd(false);
+                  setEndDate(null);
+                }}
+              >
+                <Text style={styles.timingChipText}>Clear</Text>
+              </PaperPressable>
+            ) : null}
+          </View>
         </View>
 
         <LocationPicker
@@ -475,6 +561,16 @@ export function EventForm({ initial, submitLabel, onSubmit, footer }: Props) {
           onClose={() => setDateSheetOpen(false)}
         />
       ) : null}
+      {endSheetOpen && endDate ? (
+        <DateTimeSheet
+          date={endDate}
+          onChange={(next) => {
+            setEndDate(next);
+            setOpenEnd(false);
+          }}
+          onClose={() => setEndSheetOpen(false)}
+        />
+      ) : null}
       {cropSrc ? (
         <ImageCropSheet
           uri={cropSrc.uri}
@@ -497,6 +593,18 @@ export function EventForm({ initial, submitLabel, onSubmit, footer }: Props) {
           onChangeCostPerPerson={setCostPerPerson}
           dressCode={dressCode}
           onChangeDressCode={setDressCode}
+          applicationRequired={applicationRequired}
+          onToggleApplicationRequired={() => setApplicationRequired(!applicationRequired)}
+          applicationQuestions={applicationQuestions}
+          onChangeApplicationQuestion={(index, value) =>
+            setApplicationQuestions((current) =>
+              current.map((question, i) => (i === index ? value : question))
+            )
+          }
+          vibe={vibe}
+          onChangeVibe={setVibe}
+          punctuality={punctuality}
+          onChangePunctuality={setPunctuality}
           onClose={() => setSettingsOpen(false)}
         />
       ) : null}
@@ -655,6 +763,15 @@ const styles = StyleSheet.create({
   datePlaceholder: {
     color: colors.muted,
   },
+  timingRow: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.xs },
+  timingChip: {
+    borderRadius: radius.pill,
+    paddingHorizontal: spacing.md,
+    paddingVertical: 9,
+  },
+  timingChipActive: { backgroundColor: colors.ink, borderColor: colors.ink },
+  timingChipText: { ...uiText(13, '600'), color: colors.text },
+  timingChipTextActive: { color: colors.onInk },
 
   // ── Description (compact row → full-screen note editor) ──
   descButton: {

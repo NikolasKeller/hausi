@@ -210,6 +210,9 @@ export function GlassTabBar({ state, descriptors, navigation }: TabBarProps) {
 const styles = StyleSheet.create({
   wrap: {
     paddingHorizontal: spacing.lg,
+    // Guaranteed breathing room above the pill, no matter what the screen
+    // renders directly above the bar (footers, buttons, lists).
+    paddingTop: spacing.sm,
     backgroundColor: colors.bg,
     overflow: 'visible',
   },

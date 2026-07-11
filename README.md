@@ -32,6 +32,12 @@ The key stays on the server; the authenticated app calls
 and defaults to the cost-efficient `gpt-5-mini`. If OpenAI is unavailable, the
 creation flow continues with its local parser and guided questions.
 
+The same key powers AI cover artwork: when a drafted event reaches the cover
+step, the app calls `POST /api/event-drafts/cover` and shows the generated
+design (the host can reroll it or use their own photo). `OPENAI_IMAGE_MODEL`
+is optional and defaults to `gpt-image-1`. The image is returned as base64 and
+stored via the regular upload pipeline only when the event is published.
+
 ### Event ledger (Supabase)
 
 Every event lifecycle action — created / updated / canceled / deleted — is

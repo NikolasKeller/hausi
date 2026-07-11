@@ -54,6 +54,12 @@
           "locationWhenInUsePermission": "iykyk uses your location to find parties happening near you."
         }
       ],
+      [
+        "expo-calendar",
+        {
+          "calendarPermission": "iykyk shows your own calendar next to your events and can save events to it."
+        }
+      ],
       "expo-video",
       "expo-web-browser"
     ],

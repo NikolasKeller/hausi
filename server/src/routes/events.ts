@@ -1,4 +1,5 @@
 import { Hono } from 'hono';
+import type { Context } from 'hono';
 import { z } from 'zod';
 import type { Prisma } from '@prisma/client';
 import { db } from '../lib/db.js';
@@ -7,6 +8,7 @@ import {
   canManageEvent,
   commentType,
   countRsvps,
+  parseApplicationQuestions,
   toEventDetail,
   toEventSummary,
   toPublicUser,
@@ -19,12 +21,15 @@ import { findMutuals, rememberPartyConnections } from '../lib/mutuals.js';
 import { findFriendIds } from '../lib/friends.js';
 import { ledger } from '../lib/ledger.js';
 import {
+  APPLICATION_DEFAULT_QUESTION,
+  APPLICATION_LIMITS,
   CATEGORIES,
   COVER_THEMES,
   DESCRIPTION_SCALE,
   EFFECTS,
   LIMITS,
   MAX_PLUS_ONES,
+  PUNCTUALITY_OPTIONS,
   RSVP_CHOICES,
   TITLE_FONTS,
 } from '../../../app/shared/types.js';
@@ -38,6 +43,7 @@ export const eventInclude = {
     orderBy: { createdAt: 'asc' as const },
   },
   comments: { include: { user: true }, orderBy: { createdAt: 'asc' as const } },
+  applications: { include: { user: true }, orderBy: { createdAt: 'asc' as const } },
 };
 
 const eventInputSchema = z.object({
@@ -70,10 +76,36 @@ const eventInputSchema = z.object({
   isPublic: z.boolean().optional(),
   hideLocation: z.boolean().optional(),
   costPerPerson: z.string().trim().max(60).optional(),
-  dressCode: z.string().trim().max(120).optional(),
+  dressCode: z.string().trim().max(LIMITS.dressCode).optional(),
+  vibe: z.string().trim().max(LIMITS.vibe).optional(),
+  // Timing nuance: an optional end, an explicit open end, and how strict the
+  // start time is. openEnd wins over a stale endDate.
+  endDate: z
+    .string()
+    .refine((s) => !Number.isNaN(Date.parse(s)), 'Invalid end date')
+    .transform((s) => new Date(s))
+    .nullable()
+    .optional(),
+  openEnd: z.boolean().optional(),
+  punctuality: z.union([z.enum(PUNCTUALITY_OPTIONS), z.literal('')]).optional(),
   maxGuests: z.number().int().min(1).max(LIMITS.maxGuests).nullable().optional(),
   plusOneLimit: z.number().int().min(0).max(LIMITS.plusOnes).optional(),
   rsvpsOpen: z.boolean().optional(),
+  // Guests must apply (with answers to the host's questions) before GOING.
+  applicationRequired: z.boolean().optional(),
+  applicationQuestions: z
+    .array(z.string().trim().min(1).max(APPLICATION_LIMITS.question))
+    .max(APPLICATION_LIMITS.questions)
+    .optional(),
+});
+
+// Answers arrive as plain strings aligned with the event's question list (a
+// single generic question when the host defined none).
+const applicationSchema = z.object({
+  answers: z
+    .array(z.string().trim().min(1).max(APPLICATION_LIMITS.answer))
+    .min(1)
+    .max(APPLICATION_LIMITS.questions),
 });
 
 const rsvpSchema = z.object({
@@ -224,6 +256,13 @@ eventRoutes.post('/', async (c) => {
   if (!parsed.success) return c.json({ error: 'Invalid event data' }, 400);
   const data = parsed.data;
 
+  // An end before (or at) the start can only be a mistake; open end always
+  // clears any stale end time.
+  const endDate = data.openEnd ? null : (data.endDate ?? null);
+  if (endDate && endDate.getTime() <= data.date.getTime()) {
+    return c.json({ error: 'The end must be after the start' }, 400);
+  }
+
   const me = await db.user.findUniqueOrThrow({ where: { id: userId } });
   const event = await db.event.create({
     data: {
@@ -244,9 +283,15 @@ eventRoutes.post('/', async (c) => {
       hideLocation: data.hideLocation ?? false,
       costPerPerson: data.costPerPerson ?? '',
       dressCode: data.dressCode ?? '',
+      vibe: data.vibe ?? '',
+      endDate,
+      openEnd: data.openEnd ?? false,
+      punctuality: data.punctuality ?? '',
       maxGuests: data.maxGuests ?? null,
       plusOneLimit: data.plusOneLimit ?? 1,
       rsvpsOpen: data.rsvpsOpen ?? true,
+      applicationRequired: data.applicationRequired ?? false,
+      applicationQuestions: JSON.stringify(data.applicationQuestions ?? []),
       hostId: userId,
       // The host organizes the event; they are not a "going" guest, so no
       // self-RSVP is created. Their event still shows in their feed via hostId.
@@ -310,7 +355,28 @@ eventRoutes.patch('/:id', async (c) => {
   const parsed = eventInputSchema.partial().safeParse(await c.req.json().catch(() => null));
   if (!parsed.success) return c.json({ error: 'Invalid event data' }, 400);
   const data = parsed.data;
-  const { isPublic: requestedPublic, ...eventChanges } = data;
+  const {
+    isPublic: requestedPublic,
+    // Stored as a JSON string on the row; the wire shape is a string array.
+    applicationQuestions: requestedQuestions,
+    ...eventChanges
+  } = data;
+
+  // Keep the time window coherent across partial updates: open end clears the
+  // end, and an end that lands before the (possibly also updated) start is a
+  // mistake.
+  const effectiveStart = data.date ?? existing.date;
+  const effectiveOpenEnd = data.openEnd ?? existing.openEnd;
+  const effectiveEnd =
+    'endDate' in data ? (data.endDate ?? null) : existing.endDate;
+  if (
+    !effectiveOpenEnd &&
+    effectiveEnd &&
+    effectiveEnd.getTime() <= effectiveStart.getTime()
+  ) {
+    return c.json({ error: 'The end must be after the start' }, 400);
+  }
+  if (effectiveOpenEnd) eventChanges.endDate = null;
   const publicationChanges =
     requestedPublic === undefined
       ? {}
@@ -323,7 +389,13 @@ eventRoutes.patch('/:id', async (c) => {
   const event = await db.$transaction(async (tx) => {
     await tx.event.update({
       where: { id: existing.id },
-      data: { ...eventChanges, ...publicationChanges },
+      data: {
+        ...eventChanges,
+        ...(requestedQuestions !== undefined
+          ? { applicationQuestions: JSON.stringify(requestedQuestions) }
+          : {}),
+        ...publicationChanges,
+      },
       include: eventInclude,
     });
 
@@ -469,6 +541,24 @@ eventRoutes.put('/:id/rsvp', async (c) => {
       const isManager = canManageEvent(event, userId);
       const previous = event.rsvps.find((r) => r.userId === userId);
 
+      // Application-gated events: a spot can only be claimed through an
+      // approved application (the approval itself writes the GOING rsvp).
+      // Re-confirming an existing GOING/WAITLIST spot stays possible.
+      if (
+        requestedStatus === 'GOING' &&
+        event.applicationRequired &&
+        !isManager &&
+        previous?.status !== 'GOING' &&
+        previous?.status !== 'WAITLIST'
+      ) {
+        const application = await tx.eventApplication.findUnique({
+          where: { eventId_userId: { eventId, userId } },
+        });
+        if (application?.status !== 'APPROVED') {
+          throw new HttpError('This event asks guests to apply first', 409);
+        }
+      }
+
       // Plus-ones ride along with a GOING status and are managed on their own
       // endpoint — here we only carry the existing count forward, and drop them
       // entirely when the guest steps back to MAYBE/CANT.
@@ -572,6 +662,156 @@ eventRoutes.delete('/:id/rsvp/:userId', async (c) => {
   });
   return c.json({ event: toEventDetail(updated, me) });
 });
+
+// ── Guest applications ("apply to join") ────────────────────────────────────
+
+// Apply for a spot on an application-gated event. One application per
+// (event, user); after a decline the same row flips back to PENDING with the
+// new answers, mirroring how co-host re-invites work.
+eventRoutes.post('/:id/applications', async (c) => {
+  const userId = c.get('userId');
+  const eventId = c.req.param('id');
+
+  const parsed = applicationSchema.safeParse(await c.req.json().catch(() => null));
+  if (!parsed.success) return c.json({ error: 'Invalid application' }, 400);
+
+  const event = await db.event.findUnique({
+    where: { id: eventId },
+    include: { cohosts: true },
+  });
+  if (!event || event.canceledAt) return c.json({ error: 'Event not found' }, 404);
+  if (!event.applicationRequired) {
+    return c.json({ error: 'This event has no application step' }, 409);
+  }
+  if (canManageEvent(event, userId)) {
+    return c.json({ error: 'Hosts are already on the list' }, 400);
+  }
+  if (!event.rsvpsOpen) return c.json({ error: 'RSVPs are closed' }, 409);
+
+  // Answers arrive positionally; snapshot the question wording with each
+  // answer so later edits to the questions don't orphan existing applications.
+  const questions = parseApplicationQuestions(event.applicationQuestions);
+  const effectiveQuestions = questions.length ? questions : [APPLICATION_DEFAULT_QUESTION];
+  if (parsed.data.answers.length !== effectiveQuestions.length) {
+    return c.json({ error: 'Please answer every question' }, 400);
+  }
+  const answers = effectiveQuestions.map((question, index) => ({
+    question,
+    answer: parsed.data.answers[index],
+  }));
+
+  const existing = await db.eventApplication.findUnique({
+    where: { eventId_userId: { eventId, userId } },
+  });
+  if (existing && existing.status !== 'DECLINED') {
+    return c.json(
+      {
+        error:
+          existing.status === 'APPROVED'
+            ? 'You are already on the list'
+            : 'Your application is already with the host',
+      },
+      409
+    );
+  }
+
+  await db.eventApplication.upsert({
+    where: { eventId_userId: { eventId, userId } },
+    create: { eventId, userId, answers: JSON.stringify(answers) },
+    update: { status: 'PENDING', answers: JSON.stringify(answers) },
+  });
+
+  const updated = await db.event.findUniqueOrThrow({
+    where: { id: eventId },
+    include: eventInclude,
+  });
+  return c.json({ event: toEventDetail(updated, userId) }, 201);
+});
+
+// Host decision on an application. Approving claims a spot through the same
+// capacity rules as a direct RSVP (a full event waitlists the guest).
+async function decideApplication(
+  c: Context<{ Variables: AuthVariables }>,
+  decision: 'APPROVED' | 'DECLINED'
+) {
+  const userId = c.get('userId');
+  const eventId = c.req.param('id') ?? '';
+  const applicationId = c.req.param('applicationId') ?? '';
+
+  try {
+    await db.$transaction(async (tx) => {
+      const event = await tx.event.findUnique({
+        where: { id: eventId },
+        include: { rsvps: true, cohosts: true },
+      });
+      if (!event || event.canceledAt) throw new HttpError('Event not found', 404);
+      if (!canManageEvent(event, userId)) {
+        throw new HttpError('Only hosts can review applications', 403);
+      }
+
+      const application = await tx.eventApplication.findUnique({
+        where: { id: applicationId },
+      });
+      if (!application || application.eventId !== eventId) {
+        throw new HttpError('Application not found', 404);
+      }
+      if (application.status !== 'PENDING') {
+        throw new HttpError('This application was already decided', 409);
+      }
+
+      await tx.eventApplication.update({
+        where: { id: application.id },
+        data: { status: decision },
+      });
+
+      if (decision === 'APPROVED') {
+        const previous = event.rsvps.find((r) => r.userId === application.userId);
+        let status = 'GOING';
+        if (event.maxGuests != null) {
+          const others = event.rsvps.filter((r) => r.userId !== application.userId);
+          if (countRsvps(others).going + 1 > event.maxGuests) status = 'WAITLIST';
+        }
+        const waitlistedAt =
+          status === 'WAITLIST'
+            ? previous?.status === 'WAITLIST'
+              ? previous.waitlistedAt
+              : new Date()
+            : null;
+        await tx.rsvp.upsert({
+          where: { eventId_userId: { eventId, userId: application.userId } },
+          create: { eventId, userId: application.userId, status, plusOnes: 0, waitlistedAt },
+          update: { status, waitlistedAt },
+        });
+        if (previous?.status !== status) {
+          await tx.comment.create({
+            data: {
+              eventId,
+              userId: application.userId,
+              text: rsvpPhrase(status, 0),
+              type: 'system',
+            },
+          });
+        }
+      }
+    });
+  } catch (e) {
+    if (e instanceof HttpError) return c.json({ error: e.message }, e.code);
+    throw e;
+  }
+
+  const updated = await db.event.findUniqueOrThrow({
+    where: { id: eventId },
+    include: eventInclude,
+  });
+  return c.json({ event: toEventDetail(updated, userId) });
+}
+
+eventRoutes.post('/:id/applications/:applicationId/approve', (c) =>
+  decideApplication(c, 'APPROVED')
+);
+eventRoutes.post('/:id/applications/:applicationId/decline', (c) =>
+  decideApplication(c, 'DECLINED')
+);
 
 // Bring a +1 to an event you're going to — either an iykyk user picked from
 // your mutuals, or a manual name + phone. A guest may bring several, up to

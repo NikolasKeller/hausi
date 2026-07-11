@@ -122,8 +122,14 @@ export default function EditEventScreen() {
         titleFont: event.titleFont,
         effect: event.effect,
         date: new Date(event.date),
+        endDate: event.endDate ? new Date(event.endDate) : null,
+        openEnd: event.openEnd,
+        punctuality: event.punctuality,
+        vibe: event.vibe,
         maxGuests: event.maxGuests,
         plusOneLimit: event.plusOneLimit,
+        applicationRequired: event.applicationRequired,
+        applicationQuestions: event.applicationQuestions,
       }}
       onSubmit={async (data) => {
         await api.updateEvent(event.id, data);
