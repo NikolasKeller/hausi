@@ -180,19 +180,34 @@ function ProfileScreen() {
   return (
     <View style={styles.safe}>
       <ScrollView contentContainerStyle={styles.container}>
+        {/* The actions live in their own strip ABOVE the photo. They used to
+            float over the hero's top corner, where they collided with the
+            picture (and, without one, with the initials avatar). */}
+        <View style={[styles.topActions, { paddingTop: insets.top + spacing.sm }]}>
+          <Pressable
+            onPress={() => router.push('/people')}
+            style={({ pressed }) => [styles.roundButton, pressed && styles.pressed]}
+          >
+            <Ionicons name="person-add-outline" size={18} color={colors.text} />
+          </Pressable>
+          <Pressable
+            onPress={shareProfile}
+            style={({ pressed }) => [styles.roundButton, pressed && styles.pressed]}
+          >
+            <Ionicons name="share-outline" size={18} color={colors.text} />
+          </Pressable>
+          <Pressable
+            onPress={() => setSettingsOpen(true)}
+            style={({ pressed }) => [styles.roundButton, pressed && styles.pressed]}
+          >
+            <Ionicons name="settings-sharp" size={18} color={colors.text} />
+          </Pressable>
+        </View>
+
         <View style={[styles.hero, !photo && styles.heroCompact]}>
           {photo ? (
             <>
               <Image source={{ uri: photo }} style={StyleSheet.absoluteFill} resizeMode="cover" />
-              {/* Scrims only exist WITH a photo: a top darkener for the buttons
-                  and a fade that melts the photo into the paper canvas. Without
-                  a photo neither renders, so the hero is just the avatar on
-                  paper — no stray grey band. */}
-              <LinearGradient
-                colors={['rgba(0,0,0,0.45)', 'transparent']}
-                style={styles.topScrim}
-                pointerEvents="none"
-              />
               {/* The photo ends decisively at two-thirds of the hero — a longer
                   tail made it look like the picture smeared down the page. */}
               <LinearGradient
@@ -207,27 +222,6 @@ function ProfileScreen() {
               <Avatar name={profile.name} image={null} size={140} />
             </View>
           )}
-
-          <View style={[styles.heroButtons, { top: insets.top + spacing.sm }]}>
-            <Pressable
-              onPress={() => router.push('/people')}
-              style={({ pressed }) => [styles.roundButton, pressed && styles.pressed]}
-            >
-              <Ionicons name="person-add-outline" size={18} color={colors.text} />
-            </Pressable>
-            <Pressable
-              onPress={shareProfile}
-              style={({ pressed }) => [styles.roundButton, pressed && styles.pressed]}
-            >
-              <Ionicons name="share-outline" size={18} color={colors.text} />
-            </Pressable>
-            <Pressable
-              onPress={() => setSettingsOpen(true)}
-              style={({ pressed }) => [styles.roundButton, pressed && styles.pressed]}
-            >
-              <Ionicons name="settings-sharp" size={18} color={colors.text} />
-            </Pressable>
-          </View>
         </View>
 
         {/* Name + stats sit on the solid dark canvas, below where the photo has
@@ -535,6 +529,15 @@ const styles = StyleSheet.create({
   },
   // Full-bleed photo hero; content sits at the bottom where the photo fades
   // into the page background.
+  // The action strip sits in normal flow above the hero, so buttons and
+  // profile picture can never overlap, whatever the photo or name height.
+  topActions: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    gap: spacing.sm,
+    paddingHorizontal: spacing.md,
+    paddingBottom: spacing.sm,
+  },
   hero: {
     height: 360,
     width: '100%',
@@ -542,9 +545,6 @@ const styles = StyleSheet.create({
     // Transparent so the paper texture shows through — no flat block/bar.
     backgroundColor: 'transparent',
     overflow: 'hidden',
-    // Nudge the photo down from the very top so it isn't glued to the edge
-    // (raised twice per user feedback: xl+12 → xl+24).
-    marginTop: spacing.xl + 24,
   },
   // Without a photo the hero shrinks and the initials avatar drops to its
   // bottom edge, so it sits right above the name instead of floating in the
@@ -560,20 +560,6 @@ const styles = StyleSheet.create({
     // heroContent overlaps the hero's bottom by spacing.huge (60); this keeps
     // the avatar clear of the name while staying visually attached to it.
     paddingBottom: spacing.huge + 12,
-  },
-  topScrim: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    height: 120,
-  },
-  heroButtons: {
-    position: 'absolute',
-    right: spacing.md,
-    flexDirection: 'row',
-    gap: spacing.sm,
-    zIndex: 2,
   },
   roundButton: {
     width: 40,
