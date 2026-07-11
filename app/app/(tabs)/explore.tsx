@@ -14,7 +14,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { DateTimePickerAndroid } from '@react-native-community/datetimepicker';
-import { CATEGORIES, CATEGORY_META, type Category, type ExploreEvent } from '../../shared/types';
+import { type ExploreEvent } from '../../shared/types';
 import { api } from '../../lib/api';
 import { useAuth } from '../../lib/auth';
 import {
@@ -41,15 +41,6 @@ import { TonightBanner } from '../../components/TonightBanner';
 // The chrome "iykyk" wordmark used as the header logo (same asset family as the
 // welcome screen).
 const WORDMARK = require('../../assets/wordmark-chrome-header.png');
-
-const CATEGORY_CHIPS: { key: Category | 'all'; emoji: string; label: string }[] = [
-  { key: 'all', emoji: '🔍', label: 'All' },
-  ...CATEGORIES.map((c) => ({
-    key: c,
-    emoji: CATEGORY_META[c].emoji,
-    label: CATEGORY_META[c].label,
-  })),
-];
 
 const DATE_CHIPS: { key: EventDatePreset; label: string }[] = [
   { key: 'any', label: 'Any date' },
@@ -132,7 +123,6 @@ export default withScreenBackground(ExploreScreen);
 function ExploreScreen() {
   // city: null = not resolved yet, '' = all cities, otherwise a city name.
   const [city, setCity] = useState<string | null>(null);
-  const [category, setCategory] = useState<Category | 'all'>('all');
   // Free-text event search: searchInput follows the keystrokes, search is the
   // debounced value that actually drives the (server-side) query.
   const [searchInput, setSearchInput] = useState('');
@@ -229,7 +219,7 @@ function ExploreScreen() {
           // lets the user switch to where they are.
           const feed = await api.home().catch(() => null);
           const savedCity = (feed?.city ?? '').trim();
-          const all = await api.explore(undefined, category, dateRange, search);
+          const all = await api.explore(undefined, dateRange, search);
           if (!isActive()) return;
           const counts = new Map<string, number>();
           for (const e of all.events) {
@@ -250,7 +240,7 @@ function ExploreScreen() {
           setCity(chosen);
           return; // effect re-runs scoped to the chosen city
         }
-        const res = await api.explore(city || undefined, category, dateRange, search);
+        const res = await api.explore(city || undefined, dateRange, search);
         if (!isActive()) return;
         setEvents(res.events);
         setError(null);
@@ -258,7 +248,7 @@ function ExploreScreen() {
         if (isActive()) setError(e instanceof Error ? e.message : 'Could not load events');
       }
     },
-    [city, category, dateFilter, search]
+    [city, dateFilter, search]
   );
 
   useFocusEffect(
@@ -356,13 +346,6 @@ function ExploreScreen() {
     }
   }
 
-  function selectCategory(next: Category | 'all') {
-    if (next !== category) {
-      setEvents(null);
-      setCategory(next);
-    }
-  }
-
   function selectDatePreset(next: EventDatePreset) {
     if (dateFilter.kind === next) return;
     setEvents(null);
@@ -398,21 +381,19 @@ function ExploreScreen() {
   }
 
   function clearFilters() {
-    if (category === 'all' && dateFilter.kind === 'any' && !search && !searchInput) return;
+    if (dateFilter.kind === 'any' && !search && !searchInput) return;
     setEvents(null);
-    setCategory('all');
     setDateFilter({ kind: 'any' });
     setSearchInput('');
     setSearch('');
   }
 
   const cityLabel = city === null ? '…' : city === '' ? 'All cities' : city;
-  const hasActiveFilters = category !== 'all' || dateFilter.kind !== 'any' || search !== '';
+  const hasActiveFilters = dateFilter.kind !== 'any' || search !== '';
   const customDateLabel =
     dateFilter.kind === 'date' ? eventDateFilterLabel(dateFilter) : 'Pick a date';
   const filterSummary = [
     search ? `“${search}”` : null,
-    category !== 'all' ? CATEGORY_META[category].label : null,
     dateFilter.kind !== 'any' ? eventDateFilterLabel(dateFilter) : null,
   ]
     .filter(Boolean)
@@ -474,7 +455,7 @@ function ExploreScreen() {
         ) : (
           <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
             {/* Free-text event search — matches title, description, city and
-                host name, combinable with the category/date filters below. */}
+                host name, combinable with the date filters below. */}
             <View style={styles.searchRow}>
               <Ionicons name="search" size={16} color={colors.muted} />
               <TextInput
@@ -509,7 +490,7 @@ function ExploreScreen() {
                 {hasActiveFilters ? (
                   <Pressable
                     accessibilityRole="button"
-                    accessibilityLabel="Clear category and date filters"
+                    accessibilityLabel="Clear search and date filters"
                     onPress={clearFilters}
                     hitSlop={6}
                     style={({ pressed }) => [
@@ -522,34 +503,6 @@ function ExploreScreen() {
                   </Pressable>
                 ) : null}
               </View>
-
-              <Text style={styles.filterGroupLabel}>Category</Text>
-              <ScrollView
-                horizontal
-                showsHorizontalScrollIndicator={false}
-                contentContainerStyle={styles.chipsRow}
-              >
-                {CATEGORY_CHIPS.map((chip) => {
-                  const active = category === chip.key;
-                  return (
-                    <Pressable
-                      key={chip.key}
-                      accessibilityRole="button"
-                      accessibilityState={{ selected: active }}
-                      onPress={() => selectCategory(chip.key)}
-                      style={({ pressed }) => [
-                        styles.chip,
-                        active && styles.chipActive,
-                        pressed && { opacity: 0.8 },
-                      ]}
-                    >
-                      <Text style={[styles.chipLabel, active && styles.chipLabelActive]}>
-                        {chip.label}
-                      </Text>
-                    </Pressable>
-                  );
-                })}
-              </ScrollView>
 
               <Text style={styles.filterGroupLabel}>Date</Text>
               <ScrollView
