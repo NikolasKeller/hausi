@@ -491,7 +491,12 @@ export default function EventScreen() {
               {event.location ? (
                 <Text style={[styles.metaLine, { color: ink.text }]}>
                   📍 {event.location}
-                  {event.city ? `, ${event.city}` : ''}
+                  {/* Picker addresses already end in the city; only append it
+                      when the address doesn't mention it. */}
+                  {event.city &&
+                  !event.location.toLowerCase().includes(event.city.toLowerCase())
+                    ? `, ${event.city}`
+                    : ''}
                 </Text>
               ) : null}
               {event.costPerPerson ? (

@@ -85,7 +85,10 @@ function PassCard({ pass }: { pass: WalletPass }) {
             <Text style={styles.passMetaLabel}>Where</Text>
             <Text style={styles.passMetaValue} numberOfLines={1}>
               {pass.location}
-              {pass.city ? `, ${pass.city}` : ''}
+              {/* Addresses from the picker usually already contain the city. */}
+              {pass.city && !pass.location.toLowerCase().includes(pass.city.toLowerCase())
+                ? `, ${pass.city}`
+                : ''}
             </Text>
           </View>
         ) : null}
