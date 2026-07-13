@@ -21,7 +21,6 @@ import { confirmDialog, notify } from '../../../lib/dialogs';
 import { recordRecentEvent, removeRecentEvent } from '../../../lib/recents';
 import { addToDeviceCalendar } from '../../../lib/deviceCalendar';
 import { eventVisual } from '../../../lib/eventVisual';
-import { shareText } from '../../../lib/share';
 import { colors, light, radius, spacing } from '../../../lib/theme';
 import { titleFontStyle, display, kicker, uiText } from '../../../lib/fonts';
 import { CoverGradient } from '../../../components/CoverGradient';
@@ -204,13 +203,6 @@ export default function EventScreen() {
     if (!event) return;
     setPendingPath(`/event/${event.slug}`);
     router.push('/phone');
-  }
-
-  async function share() {
-    if (!event) return;
-    const url = Linking.createURL(`e/${event.slug}`);
-    const message = `You're invited: ${event.title} - ${formatEventDate(event.date)} at ${formatEventTime(event.date)}.\nOpen in iykyk: ${url}`;
-    await shareText(message, url);
   }
 
   // Hand the event to the phone's calendar via the system sheet (or as an
@@ -478,7 +470,12 @@ export default function EventScreen() {
                   </Glass>
                 </Pressable>
               ) : null}
-              <Pressable onPress={() => (user ? setInviteOpen(true) : share())}>
+              {/* Always the invite sheet — it works signed out too (share /
+                  message / copy). Branching on `user` here made the FIRST tap
+                  after a cold open fall into the signed-out path while the
+                  session was still restoring, so the sheet only appeared on
+                  the second tap. */}
+              <Pressable onPress={() => setInviteOpen(true)}>
                 <Glass tint={ink.glassTint} radius={radius.pill} style={styles.shareButton}>
                   <Text style={[styles.shareText, { color: ink.text }]}>Share link</Text>
                 </Glass>
