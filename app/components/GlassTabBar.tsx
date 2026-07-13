@@ -230,15 +230,17 @@ const styles = StyleSheet.create({
     height: 900,
   },
   backdropScrim: {
+    // Slightly looser than before so the bar strip stays part of the scene
+    // instead of turning into a solid block under the pill.
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(8,11,22,0.9)',
+    backgroundColor: 'rgba(8,11,22,0.82)',
   },
   backdropGrain: {
     ...StyleSheet.absoluteFillObject,
     opacity: 0.05,
   },
   bar: {
-    backgroundColor: 'rgba(16,20,33,0.92)',
+    backgroundColor: 'rgba(16,20,33,0.78)',
     borderRadius: radius.pill,
     borderWidth: 1,
     borderColor: 'rgba(255,255,255,0.12)',
