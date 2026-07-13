@@ -32,6 +32,7 @@ import { hasLocationPermission, locateCity, type LocatedCity } from '../../lib/l
 import { getRecentCities, recordRecentCity } from '../../lib/recentCities';
 import { colors, radius, spacing, shadow } from '../../lib/theme';
 import { uiText, kicker } from '../../lib/fonts';
+import { AnimatedHeart } from '../../components/AnimatedHeart';
 import { CoverGradient } from '../../components/CoverGradient';
 import { DateFilterSheet } from '../../components/DateFilterSheet';
 import { Button } from '../../components/ui';
@@ -128,10 +129,11 @@ function ExploreCard({ event }: { event: ExploreEvent }) {
           accessibilityLabel={fav ? 'Remove from favorites' : 'Save to favorites'}
           style={({ pressed }) => [styles.favBtn, pressed && { opacity: 0.6 }]}
         >
-          <Ionicons
-            name={fav ? 'heart' : 'heart-outline'}
+          <AnimatedHeart
+            active={fav}
             size={20}
-            color={fav ? colors.danger : colors.muted}
+            activeColor={colors.danger}
+            inactiveColor={colors.muted}
           />
         </Pressable>
       ) : null}

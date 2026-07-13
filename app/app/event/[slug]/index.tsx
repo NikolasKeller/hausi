@@ -32,6 +32,7 @@ import { Button } from '../../../components/ui';
 import { TicketCheckoutSheet } from '../../../components/TicketCheckoutSheet';
 import { EventRsvpPanel } from '../../../components/EventRsvpPanel';
 import { EventInviteSheet } from '../../../components/EventInviteSheet';
+import { AnimatedHeart } from '../../../components/AnimatedHeart';
 import { formatEventDate, formatEventTime } from '../../../components/EventCard';
 
 // The buy-ticket link comes from the event's ticketUrl field (the organiser's
@@ -136,6 +137,9 @@ export default function EventScreen() {
   const [inviteOpen, setInviteOpen] = useState(false);
   const [inviteBusy, setInviteBusy] = useState(false);
   const [favBusy, setFavBusy] = useState(false);
+  // Optimistic heart: set the instant the button is tapped, cleared once the
+  // server round trip lands (or fails) so the derived RSVP state takes over.
+  const [favOverride, setFavOverride] = useState<boolean | null>(null);
   const [calendarBusy, setCalendarBusy] = useState(false);
 
   const load = useCallback(async () => {
@@ -238,9 +242,11 @@ export default function EventScreen() {
 
   // Favoriting is decoupled from tickets: it reuses the "interested" (MAYBE)
   // RSVP so the event shows up under Profile → Favorites (via api.myEvents).
+  // The heart flips optimistically on tap; the server result reconciles it.
   async function toggleFavorite() {
     if (!event || !user || favBusy) return;
     const next = !event.rsvps.some((r) => r.user.id === user.id && r.status === 'MAYBE');
+    setFavOverride(next);
     setFavBusy(true);
     try {
       const res = next
@@ -250,6 +256,7 @@ export default function EventScreen() {
     } catch (e) {
       notify('Could not update favorite', e instanceof Error ? e.message : 'Try again');
     } finally {
+      setFavOverride(null);
       setFavBusy(false);
     }
   }
@@ -342,7 +349,8 @@ export default function EventScreen() {
 
   const spotsLeft =
     event.maxGuests != null ? Math.max(0, event.maxGuests - event.counts.going) : null;
-  const isFavorite = event.rsvps.some((r) => r.user.id === user?.id && r.status === 'MAYBE');
+  const isFavorite =
+    favOverride ?? event.rsvps.some((r) => r.user.id === user?.id && r.status === 'MAYBE');
   // Tickets are sold at the source: the ticketUrl field (or the last https URL
   // in the description) is the organiser's checkout page. The Buy-ticket button
   // simply opens it.
@@ -462,10 +470,11 @@ export default function EventScreen() {
                   style={({ pressed }) => pressed && { opacity: 0.6 }}
                 >
                   <Glass tint={ink.glassTint} radius={999} style={styles.favButton}>
-                    <Ionicons
-                      name={isFavorite ? 'heart' : 'heart-outline'}
+                    <AnimatedHeart
+                      active={isFavorite}
                       size={20}
-                      color={isFavorite ? colors.danger : ink.text}
+                      activeColor={colors.danger}
+                      inactiveColor={ink.text}
                     />
                   </Glass>
                 </Pressable>
