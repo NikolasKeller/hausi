@@ -86,12 +86,46 @@ function buildIcs(event: AddableEvent): string {
 export async function addToDeviceCalendar(event: AddableEvent): Promise<boolean> {
   if (Platform.OS === 'web') {
     if (typeof document === 'undefined') return false;
+    const ics = buildIcs(event);
+    const fileName = `${event.title.replace(/[^\w -]+/g, '').trim() || 'event'}.ics`;
+
+    // iOS — and especially the installed home-screen PWA — ignores <a download>
+    // on data:/blob: URLs: the tap just flashes and nothing reaches the
+    // calendar. The reliable path there is the native share sheet with the
+    // .ics as a file, which offers "Add to Calendar" directly.
+    const nav = (globalThis as any).navigator as
+      | {
+          share?: (data: unknown) => Promise<void>;
+          canShare?: (data: unknown) => boolean;
+        }
+      | undefined;
+    if (typeof File !== 'undefined' && nav?.share && nav.canShare) {
+      const file = new File([ics], fileName, { type: 'text/calendar' });
+      if (nav.canShare({ files: [file] })) {
+        try {
+          await nav.share({ files: [file] });
+          return true;
+        } catch (e) {
+          // Closing the sheet is a deliberate "no", not a failure.
+          if ((e as { name?: string })?.name === 'AbortError') return false;
+          // Anything else: fall through to the download path below.
+        }
+      }
+    }
+
+    // Desktop browsers: a plain file download. A Blob URL instead of a data:
+    // URL — long event descriptions made the data: href big enough for some
+    // browsers to drop the click entirely.
     const link = document.createElement('a');
-    link.href = `data:text/calendar;charset=utf-8,${encodeURIComponent(buildIcs(event))}`;
-    link.download = `${event.title.replace(/[^\w -]+/g, '').trim() || 'event'}.ics`;
+    const url = URL.createObjectURL(new Blob([ics], { type: 'text/calendar' }));
+    link.href = url;
+    link.download = fileName;
     document.body.appendChild(link);
     link.click();
     link.remove();
+    // Revoke after the download has had time to start; revoking synchronously
+    // can cancel it.
+    setTimeout(() => URL.revokeObjectURL(url), 60_000);
     return true;
   }
 
