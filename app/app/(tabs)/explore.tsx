@@ -27,6 +27,7 @@ import {
   type EventDatePreset,
 } from '../../lib/eventDateFilter';
 import { searchCities } from '../../lib/geocoding';
+import { takePrefetchedExplore, takePrefetchedHome } from '../../lib/explorePrefetch';
 import { hasLocationPermission, locateCity, type LocatedCity } from '../../lib/location';
 import { getRecentCities, recordRecentCity } from '../../lib/recentCities';
 import { colors, radius, spacing, shadow } from '../../lib/theme';
@@ -255,10 +256,13 @@ function ExploreScreen() {
           // open on the city with the MOST public events (so Explore never
           // opens empty, and lands on the busiest place — e.g. Munich — rather
           // than an alphabetical first). The "Use my location" button still
-          // lets the user switch to where they are.
-          const feed = await api.home().catch(() => null);
+          // lets the user switch to where they are. Both requests may already
+          // be in flight from the launch intro's prefetch — reuse them so a
+          // cold open renders the feed without firing duplicates.
+          const feed = await (takePrefetchedHome() ?? api.home().catch(() => null));
           const savedCity = (feed?.city ?? '').trim();
-          const all = await api.explore(undefined, category, dateRange, search);
+          const all = await (takePrefetchedExplore() ??
+            api.explore(undefined, category, dateRange, search));
           if (!isActive()) return;
           const counts = new Map<string, number>();
           for (const e of all.events) {
@@ -276,6 +280,14 @@ function ExploreScreen() {
             }
             if (!chosen) chosen = all.cities[0] ?? savedCity;
           }
+          // Show the chosen city's slice of the full fetch immediately — no
+          // spinner between the intro and the drawn feed. The city-scoped
+          // effect re-run below refreshes it silently in place.
+          const key = chosen.trim().toLowerCase();
+          setEvents(
+            key ? all.events.filter((e) => e.city.trim().toLowerCase() === key) : all.events
+          );
+          setError(null);
           setCity(chosen);
           return; // effect re-runs scoped to the chosen city
         }
