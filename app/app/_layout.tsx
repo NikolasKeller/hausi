@@ -8,6 +8,7 @@ import { AuthProvider, useAuth } from '../lib/auth';
 import { peekPendingPath, setPendingPath, takePendingPath } from '../lib/pendingPath';
 import { FONTS_TO_LOAD } from '../lib/fonts';
 import { colors, spacing } from '../lib/theme';
+import { LaunchIntro } from '../components/LaunchIntro';
 
 // react-native-screens disables itself on web, which drops the tab navigator
 // into a fallback that keeps every tab mounted and painted behind the focused
@@ -248,6 +249,9 @@ export default function RootLayout() {
       <StatusBar style="light" />
       <WebFrame>
         <RootNavigator />
+        {/* Cold-open intro for signed-in users: the landing scene plays while
+            the Explore feed and its images warm up behind it. */}
+        <LaunchIntro />
       </WebFrame>
     </AuthProvider>
   );

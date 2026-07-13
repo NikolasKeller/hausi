@@ -21,7 +21,6 @@ import { confirmDialog, notify } from '../../../lib/dialogs';
 import { recordRecentEvent, removeRecentEvent } from '../../../lib/recents';
 import { addToDeviceCalendar } from '../../../lib/deviceCalendar';
 import { eventVisual } from '../../../lib/eventVisual';
-import { shareText } from '../../../lib/share';
 import { colors, light, radius, spacing } from '../../../lib/theme';
 import { titleFontStyle, display, kicker, uiText } from '../../../lib/fonts';
 import { CoverGradient } from '../../../components/CoverGradient';
@@ -33,6 +32,7 @@ import { Button } from '../../../components/ui';
 import { TicketCheckoutSheet } from '../../../components/TicketCheckoutSheet';
 import { EventRsvpPanel } from '../../../components/EventRsvpPanel';
 import { EventInviteSheet } from '../../../components/EventInviteSheet';
+import { AnimatedHeart } from '../../../components/AnimatedHeart';
 import { formatEventDate, formatEventTime } from '../../../components/EventCard';
 
 // The buy-ticket link comes from the event's ticketUrl field (the organiser's
@@ -137,6 +137,9 @@ export default function EventScreen() {
   const [inviteOpen, setInviteOpen] = useState(false);
   const [inviteBusy, setInviteBusy] = useState(false);
   const [favBusy, setFavBusy] = useState(false);
+  // Optimistic heart: set the instant the button is tapped, cleared once the
+  // server round trip lands (or fails) so the derived RSVP state takes over.
+  const [favOverride, setFavOverride] = useState<boolean | null>(null);
   const [calendarBusy, setCalendarBusy] = useState(false);
 
   const load = useCallback(async () => {
@@ -206,13 +209,6 @@ export default function EventScreen() {
     router.push('/phone');
   }
 
-  async function share() {
-    if (!event) return;
-    const url = Linking.createURL(`e/${event.slug}`);
-    const message = `You're invited: ${event.title} - ${formatEventDate(event.date)} at ${formatEventTime(event.date)}.\nOpen in iykyk: ${url}`;
-    await shareText(message, url);
-  }
-
   // Hand the event to the phone's calendar via the system sheet (or as an
   // .ics download on web). The system UI itself confirms the save.
   async function addToCalendar() {
@@ -246,9 +242,11 @@ export default function EventScreen() {
 
   // Favoriting is decoupled from tickets: it reuses the "interested" (MAYBE)
   // RSVP so the event shows up under Profile → Favorites (via api.myEvents).
+  // The heart flips optimistically on tap; the server result reconciles it.
   async function toggleFavorite() {
     if (!event || !user || favBusy) return;
     const next = !event.rsvps.some((r) => r.user.id === user.id && r.status === 'MAYBE');
+    setFavOverride(next);
     setFavBusy(true);
     try {
       const res = next
@@ -258,6 +256,7 @@ export default function EventScreen() {
     } catch (e) {
       notify('Could not update favorite', e instanceof Error ? e.message : 'Try again');
     } finally {
+      setFavOverride(null);
       setFavBusy(false);
     }
   }
@@ -350,7 +349,8 @@ export default function EventScreen() {
 
   const spotsLeft =
     event.maxGuests != null ? Math.max(0, event.maxGuests - event.counts.going) : null;
-  const isFavorite = event.rsvps.some((r) => r.user.id === user?.id && r.status === 'MAYBE');
+  const isFavorite =
+    favOverride ?? event.rsvps.some((r) => r.user.id === user?.id && r.status === 'MAYBE');
   // Tickets are sold at the source: the ticketUrl field (or the last https URL
   // in the description) is the organiser's checkout page. The Buy-ticket button
   // simply opens it.
@@ -470,15 +470,21 @@ export default function EventScreen() {
                   style={({ pressed }) => pressed && { opacity: 0.6 }}
                 >
                   <Glass tint={ink.glassTint} radius={999} style={styles.favButton}>
-                    <Ionicons
-                      name={isFavorite ? 'heart' : 'heart-outline'}
+                    <AnimatedHeart
+                      active={isFavorite}
                       size={20}
-                      color={isFavorite ? colors.danger : ink.text}
+                      activeColor={colors.danger}
+                      inactiveColor={ink.text}
                     />
                   </Glass>
                 </Pressable>
               ) : null}
-              <Pressable onPress={() => (user ? setInviteOpen(true) : share())}>
+              {/* Always the invite sheet — it works signed out too (share /
+                  message / copy). Branching on `user` here made the FIRST tap
+                  after a cold open fall into the signed-out path while the
+                  session was still restoring, so the sheet only appeared on
+                  the second tap. */}
+              <Pressable onPress={() => setInviteOpen(true)}>
                 <Glass tint={ink.glassTint} radius={radius.pill} style={styles.shareButton}>
                   <Text style={[styles.shareText, { color: ink.text }]}>Share link</Text>
                 </Glass>

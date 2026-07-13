@@ -8,6 +8,7 @@ import {
   View,
 } from 'react-native';
 import * as Linking from 'expo-linking';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import type { MyProfile, PublicUser } from '../shared/types';
 import { api } from '../lib/api';
@@ -30,6 +31,7 @@ export function EventInviteSheet({
   canDirectInvite: boolean;
   onClose: () => void;
 }) {
+  const insets = useSafeAreaInsets();
   const [profile, setProfile] = useState<MyProfile | null>(null);
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [sending, setSending] = useState(false);
@@ -80,7 +82,11 @@ export function EventInviteSheet({
   return (
     <View style={styles.overlay}>
       <Pressable style={StyleSheet.absoluteFill} onPress={onClose} />
-      <View style={styles.sheet}>
+      {/* Bottom padding tracks the home-indicator inset so the share actions
+          are never pinned under it (they were unreachable on notch phones). */}
+      <View
+        style={[styles.sheet, { paddingBottom: Math.max(spacing.xl, insets.bottom + spacing.md) }]}
+      >
         <View style={styles.grabber} />
         <View style={styles.header}>
           <View style={{ flex: 1 }}>
@@ -181,7 +187,6 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: colors.cardBorder,
     padding: spacing.md,
-    paddingBottom: spacing.xl,
     ...shadow.float,
   },
   grabber: {

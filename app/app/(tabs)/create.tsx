@@ -2486,7 +2486,9 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing.sm,
-    paddingHorizontal: spacing.md,
+    // Wider gutters + a tighter top: the chat reads calmer with room at the
+    // sides, and the header shouldn't push the conversation down.
+    paddingHorizontal: spacing.lg,
     paddingTop: spacing.xs,
   },
   closeButton: {
@@ -2500,8 +2502,10 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   content: {
-    padding: spacing.md,
-    paddingTop: spacing.lg,
+    // Roomier gutters (lg not md) and less dead space above the first
+    // message — "crowded at the edges, too much vertical air" feedback.
+    paddingHorizontal: spacing.lg,
+    paddingTop: spacing.md,
     paddingBottom: spacing.xl,
     gap: spacing.md,
   },
@@ -2901,7 +2905,7 @@ const styles = StyleSheet.create({
   validationText: { ...uiText(12), color: colors.text },
   // No band behind the composer: it floats on the same backdrop as the chat.
   composerFooter: {
-    paddingHorizontal: spacing.md,
+    paddingHorizontal: spacing.lg,
     paddingTop: spacing.sm,
     paddingBottom: spacing.sm,
   },
@@ -2943,7 +2947,7 @@ const styles = StyleSheet.create({
   },
   sendButtonDisabled: { backgroundColor: colors.inputBg },
   actionFooter: {
-    paddingHorizontal: spacing.md,
+    paddingHorizontal: spacing.lg,
     paddingTop: spacing.sm,
     paddingBottom: spacing.sm,
     gap: 6,

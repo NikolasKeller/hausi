@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Image,
@@ -27,15 +27,17 @@ import {
   type EventDatePreset,
 } from '../../lib/eventDateFilter';
 import { searchCities } from '../../lib/geocoding';
+import { takePrefetchedExplore, takePrefetchedHome } from '../../lib/explorePrefetch';
 import { hasLocationPermission, locateCity, type LocatedCity } from '../../lib/location';
 import { getRecentCities, recordRecentCity } from '../../lib/recentCities';
 import { colors, radius, spacing, shadow } from '../../lib/theme';
 import { uiText, kicker } from '../../lib/fonts';
+import { AnimatedHeart } from '../../components/AnimatedHeart';
 import { CoverGradient } from '../../components/CoverGradient';
 import { DateFilterSheet } from '../../components/DateFilterSheet';
 import { Button } from '../../components/ui';
 import { withScreenBackground } from '../../components/ScreenBackground';
-import { formatEventDate } from '../../components/EventCard';
+import { formatEventTime } from '../../components/EventCard';
 import { TonightBanner } from '../../components/TonightBanner';
 
 // The chrome "iykyk" wordmark used as the header logo (same asset family as the
@@ -58,6 +60,9 @@ const DATE_CHIPS: { key: EventDatePreset; label: string }[] = [
   { key: 'weekend', label: 'This weekend' },
 ];
 
+// Luma-style list row: square cover thumbnail on the left, the event's facts
+// on the right (time, title, host), heart trailing. The feed shows these
+// under per-day headers, so the meta line only needs the start time.
 function ExploreCard({ event }: { event: ExploreEvent }) {
   const router = useRouter();
   const { user } = useAuth();
@@ -93,38 +98,65 @@ function ExploreCard({ event }: { event: ExploreEvent }) {
           description: event.description,
           category: event.category,
         }}
-        style={styles.poster}
-      >
-        {user ? (
-          <Pressable
-            onPress={toggleFav}
-            disabled={favBusy}
-            hitSlop={8}
-            style={({ pressed }) => [styles.favBadge, pressed && { opacity: 0.6 }]}
-          >
-            <Ionicons
-              name={fav ? 'heart' : 'heart-outline'}
-              size={18}
-              color={fav ? colors.danger : '#FFFFFF'}
-            />
-          </Pressable>
-        ) : null}
-      </CoverGradient>
+        compact
+        style={styles.thumb}
+      />
       <View style={styles.cardBody}>
+        <Text style={styles.cardMeta} numberOfLines={1}>
+          {formatEventTime(event.date)}
+        </Text>
+        <Text style={styles.cardTitle} numberOfLines={2}>
+          {event.title}
+        </Text>
+        <View style={styles.placeRow}>
+          <Ionicons name="location-outline" size={13} color={colors.muted} />
+          <Text style={styles.cardPlace} numberOfLines={1}>
+            {event.location}
+          </Text>
+        </View>
         {event.friendGoing ? (
           <Text style={styles.friendStrip} numberOfLines={1}>
             <Text style={styles.friendName}>{event.friendGoing.name}</Text> is interested
           </Text>
         ) : null}
-        <Text style={styles.cardTitle} numberOfLines={2}>
-          {event.title}
-        </Text>
-        <Text style={styles.cardMeta} numberOfLines={1}>
-          {formatEventDate(event.date)}
-        </Text>
       </View>
+      {user ? (
+        <Pressable
+          onPress={toggleFav}
+          disabled={favBusy}
+          hitSlop={10}
+          accessibilityRole="button"
+          accessibilityLabel={fav ? 'Remove from favorites' : 'Save to favorites'}
+          style={({ pressed }) => [styles.favBtn, pressed && { opacity: 0.6 }]}
+        >
+          <AnimatedHeart
+            active={fav}
+            size={20}
+            activeColor={colors.danger}
+            inactiveColor={colors.muted}
+          />
+        </Pressable>
+      ) : null}
     </Pressable>
   );
+}
+
+// Luma-style day rail header: "Today · Saturday", "Tomorrow · Sunday", then
+// "Jul 16 · Wednesday" for everything further out.
+function dayHeaderParts(
+  dayKey: string,
+  now: Date
+): { primary: string; secondary: string } {
+  const date = fromLocalDateKey(dayKey) ?? now;
+  const today = startOfLocalDay(now);
+  const diffDays = Math.round((startOfLocalDay(date).getTime() - today.getTime()) / 86400000);
+  const weekday = date.toLocaleDateString(undefined, { weekday: 'long' });
+  if (diffDays === 0) return { primary: 'Today', secondary: weekday };
+  if (diffDays === 1) return { primary: 'Tomorrow', secondary: weekday };
+  return {
+    primary: date.toLocaleDateString(undefined, { month: 'short', day: 'numeric' }),
+    secondary: weekday,
+  };
 }
 
 export default withScreenBackground(ExploreScreen);
@@ -226,10 +258,13 @@ function ExploreScreen() {
           // open on the city with the MOST public events (so Explore never
           // opens empty, and lands on the busiest place — e.g. Munich — rather
           // than an alphabetical first). The "Use my location" button still
-          // lets the user switch to where they are.
-          const feed = await api.home().catch(() => null);
+          // lets the user switch to where they are. Both requests may already
+          // be in flight from the launch intro's prefetch — reuse them so a
+          // cold open renders the feed without firing duplicates.
+          const feed = await (takePrefetchedHome() ?? api.home().catch(() => null));
           const savedCity = (feed?.city ?? '').trim();
-          const all = await api.explore(undefined, category, dateRange, search);
+          const all = await (takePrefetchedExplore() ??
+            api.explore(undefined, category, dateRange, search));
           if (!isActive()) return;
           const counts = new Map<string, number>();
           for (const e of all.events) {
@@ -247,6 +282,14 @@ function ExploreScreen() {
             }
             if (!chosen) chosen = all.cities[0] ?? savedCity;
           }
+          // Show the chosen city's slice of the full fetch immediately — no
+          // spinner between the intro and the drawn feed. The city-scoped
+          // effect re-run below refreshes it silently in place.
+          const key = chosen.trim().toLowerCase();
+          setEvents(
+            key ? all.events.filter((e) => e.city.trim().toLowerCase() === key) : all.events
+          );
+          setError(null);
           setCity(chosen);
           return; // effect re-runs scoped to the chosen city
         }
@@ -406,6 +449,28 @@ function ExploreScreen() {
     setSearch('');
   }
 
+  // Group the feed by local calendar day (Luma-style rail): days ascending,
+  // events within a day by start time. The server orders by interest, which
+  // made sense for a grid but reads scrambled under date headers.
+  const dayGroups = useMemo(() => {
+    if (!events) return [];
+    const byDay = new Map<string, ExploreEvent[]>();
+    for (const event of events) {
+      const key = toLocalDateKey(new Date(event.date));
+      const list = byDay.get(key);
+      if (list) list.push(event);
+      else byDay.set(key, [event]);
+    }
+    return [...byDay.entries()]
+      .sort(([a], [b]) => a.localeCompare(b))
+      .map(([key, list]) => ({
+        key,
+        events: list.sort(
+          (a, b) => new Date(a.date).getTime() - new Date(b.date).getTime()
+        ),
+      }));
+  }, [events]);
+
   const cityLabel = city === null ? '…' : city === '' ? 'All cities' : city;
   const hasActiveFilters = category !== 'all' || dateFilter.kind !== 'any' || search !== '';
   const customDateLabel =
@@ -503,27 +568,11 @@ function ExploreScreen() {
               ) : null}
             </View>
 
+            {/* Two label-less chip rails, tight together — the feed is the
+                star, so the filter block stays as short as possible and the
+                first event rows are on screen from the start. "All" and "Any
+                date" chips double as the per-rail resets. */}
             <View style={styles.filters}>
-              <View style={styles.filterHeader}>
-                <Text style={styles.filterTitle}>Filters</Text>
-                {hasActiveFilters ? (
-                  <Pressable
-                    accessibilityRole="button"
-                    accessibilityLabel="Clear category and date filters"
-                    onPress={clearFilters}
-                    hitSlop={6}
-                    style={({ pressed }) => [
-                      styles.clearFilters,
-                      pressed && { opacity: 0.65 },
-                    ]}
-                  >
-                    <Ionicons name="close" size={14} color={colors.muted} />
-                    <Text style={styles.clearFiltersText}>Clear</Text>
-                  </Pressable>
-                ) : null}
-              </View>
-
-              <Text style={styles.filterGroupLabel}>Category</Text>
               <ScrollView
                 horizontal
                 showsHorizontalScrollIndicator={false}
@@ -551,7 +600,6 @@ function ExploreScreen() {
                 })}
               </ScrollView>
 
-              <Text style={styles.filterGroupLabel}>Date</Text>
               <ScrollView
                 horizontal
                 showsHorizontalScrollIndicator={false}
@@ -630,10 +678,24 @@ function ExploreScreen() {
                 ) : null}
               </View>
             ) : (
-              <View style={styles.grid}>
-                {events.map((event) => (
-                  <ExploreCard key={event.id} event={event} />
-                ))}
+              <View style={styles.feed}>
+                {dayGroups.map((group) => {
+                  const header = dayHeaderParts(group.key, new Date());
+                  return (
+                    <View key={group.key} style={styles.daySection}>
+                      <View style={styles.dayHeader}>
+                        <View style={styles.dayDot} />
+                        <Text style={styles.dayTitle}>{header.primary}</Text>
+                        <Text style={styles.daySubtitle}>{header.secondary}</Text>
+                      </View>
+                      <View style={styles.dayEvents}>
+                        {group.events.map((event) => (
+                          <ExploreCard key={event.id} event={event} />
+                        ))}
+                      </View>
+                    </View>
+                  );
+                })}
               </View>
             )}
           </ScrollView>
@@ -974,36 +1036,8 @@ const styles = StyleSheet.create({
   },
   filters: {
     gap: spacing.sm,
-    paddingTop: spacing.sm,
-    paddingBottom: spacing.lg,
-  },
-  filterHeader: {
-    minHeight: 28,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: spacing.md,
-  },
-  filterTitle: {
-    ...kicker(colors.muted),
-  },
-  clearFilters: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 2,
-    paddingHorizontal: 9,
-    paddingVertical: 5,
-    borderRadius: radius.pill,
-    backgroundColor: colors.inputBg,
-  },
-  clearFiltersText: {
-    ...uiText(12, '700'),
-    color: colors.muted,
-  },
-  filterGroupLabel: {
-    ...uiText(13, '700'),
-    color: colors.text,
-    paddingHorizontal: spacing.md,
+    paddingTop: spacing.sm + 2,
+    paddingBottom: spacing.md,
   },
   chipsRow: {
     flexDirection: 'row',
@@ -1046,43 +1080,64 @@ const styles = StyleSheet.create({
     color: colors.muted,
     textAlign: 'center',
   },
-  grid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    justifyContent: 'space-between',
-    rowGap: spacing.md,
+  feed: {
+    gap: spacing.lg,
     paddingHorizontal: spacing.md,
   },
+  daySection: {
+    gap: spacing.sm,
+  },
+  // Luma-style day rail header: "Today  Saturday" with a leading dot marker.
+  dayHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    paddingHorizontal: 2,
+  },
+  dayDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: colors.muted,
+    opacity: 0.7,
+  },
+  dayTitle: {
+    ...uiText(15, '700'),
+    color: colors.text,
+  },
+  daySubtitle: {
+    ...uiText(15, '500'),
+    color: colors.muted,
+  },
+  dayEvents: {
+    gap: spacing.sm,
+  },
+  // Luma-format row: thumbnail left, text right.
   card: {
-    width: '48%',
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.md,
     backgroundColor: colors.card,
     borderRadius: radius.lg,
     borderWidth: 1,
     borderColor: colors.cardBorder,
-    overflow: 'hidden',
+    padding: spacing.sm,
     ...shadow.card,
   },
-  poster: {
-    height: 240,
+  thumb: {
+    width: 88,
+    height: 88,
+    borderRadius: radius.md,
     alignItems: 'center',
     justifyContent: 'center',
-    padding: spacing.sm,
   },
-  favBadge: {
-    position: 'absolute',
-    top: spacing.sm,
-    right: spacing.sm,
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: 'rgba(0,0,0,0.35)',
+  favBtn: {
+    alignSelf: 'flex-start',
+    padding: spacing.xs,
   },
   cardBody: {
-    padding: spacing.sm,
-    paddingHorizontal: spacing.md,
-    gap: spacing.xs,
+    flex: 1,
+    gap: 2,
   },
   friendStrip: {
     ...uiText(12),
@@ -1099,5 +1154,15 @@ const styles = StyleSheet.create({
   cardMeta: {
     ...uiText(13, '600'),
     color: colors.muted,
+  },
+  placeRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  cardPlace: {
+    ...uiText(13, '500'),
+    color: colors.muted,
+    flexShrink: 1,
   },
 });

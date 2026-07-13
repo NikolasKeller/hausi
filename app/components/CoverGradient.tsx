@@ -23,9 +23,13 @@ interface Props {
   // Drives the designed emoji fallback when there is no photo. Omit it to
   // keep the plain paper (e.g. tiny thumbnails where emojis would clutter).
   fallback?: { title: string; description?: string; category?: Category };
+  // Thumbnail-sized covers (the Luma-style list rows): one centered emoji
+  // instead of the wide 3-emoji banner, and no scrim — nothing is overlaid
+  // on a thumb, so the photo can stay at full brightness.
+  compact?: boolean;
 }
 
-export function CoverGradient({ style, children, image, fallback }: Props) {
+export function CoverGradient({ style, children, image, fallback, compact }: Props) {
   const uri = mediaUrl(image);
   const visual =
     !uri && fallback
@@ -38,7 +42,9 @@ export function CoverGradient({ style, children, image, fallback }: Props) {
         <>
           <Image source={{ uri }} style={StyleSheet.absoluteFill} resizeMode="cover" />
           {/* Scrim keeps overlaid title text legible on bright photos. */}
-          <View style={[StyleSheet.absoluteFill, styles.scrim]} pointerEvents="none" />
+          {compact ? null : (
+            <View style={[StyleSheet.absoluteFill, styles.scrim]} pointerEvents="none" />
+          )}
         </>
       ) : visual ? (
         <View style={styles.fallback} pointerEvents="none">
@@ -47,12 +53,19 @@ export function CoverGradient({ style, children, image, fallback }: Props) {
           <View
             style={[
               styles.fallbackGlow,
+              compact && styles.fallbackGlowCompact,
               { backgroundColor: `${coverFor(visual.theme).colors[3]}2E` },
             ]}
           />
-          <Text style={styles.fallbackEmojiSide}>{visual.emojis[0]}</Text>
-          <Text style={styles.fallbackEmojiCenter}>{visual.emojis[1]}</Text>
-          <Text style={styles.fallbackEmojiSide}>{visual.emojis[2]}</Text>
+          {compact ? (
+            <Text style={styles.fallbackEmojiCompact}>{visual.emojis[1]}</Text>
+          ) : (
+            <>
+              <Text style={styles.fallbackEmojiSide}>{visual.emojis[0]}</Text>
+              <Text style={styles.fallbackEmojiCenter}>{visual.emojis[1]}</Text>
+              <Text style={styles.fallbackEmojiSide}>{visual.emojis[2]}</Text>
+            </>
+          )}
         </View>
       ) : null}
       {children}
@@ -80,6 +93,12 @@ const styles = StyleSheet.create({
     height: 132,
     borderRadius: 66,
   },
+  fallbackGlowCompact: {
+    width: 72,
+    height: 72,
+    borderRadius: 36,
+  },
   fallbackEmojiCenter: { fontSize: 44 },
   fallbackEmojiSide: { fontSize: 24, opacity: 0.85 },
+  fallbackEmojiCompact: { fontSize: 34 },
 });

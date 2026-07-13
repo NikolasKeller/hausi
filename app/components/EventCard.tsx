@@ -20,6 +20,9 @@ export function formatEventTime(iso: string): string {
   return new Date(iso).toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' });
 }
 
+// Luma-format list row: square cover thumbnail on the left, the event's facts
+// stacked on the right. No attendee counters / RSVP status labels — tickets
+// are bought at the source, so the row only carries the event's own facts.
 export function EventCard({ event }: { event: EventSummary }) {
   const router = useRouter();
   return (
@@ -31,31 +34,26 @@ export function EventCard({ event }: { event: EventSummary }) {
         theme={event.coverTheme}
         image={event.coverImage}
         fallback={{ title: event.title, category: event.category }}
-        style={styles.cover}
-      >
+        compact
+        style={styles.thumb}
+      />
+      <View style={styles.body}>
         {event.canceledAt ? (
           <View style={styles.canceledBadge}>
             <Text style={styles.canceledText}>CANCELED</Text>
           </View>
         ) : null}
-      </CoverGradient>
-      {/* No attendee counters / RSVP status labels — tickets are bought at the
-          source, so the card only carries the event's own facts. The title
-          lives below the cover, never on the image itself. */}
-      <View style={styles.body}>
-        <View style={{ flex: 1, gap: spacing.xs }}>
-          <Text style={styles.bodyTitle} numberOfLines={2}>
-            {event.title}
+        <Text style={styles.date} numberOfLines={1}>
+          {formatEventDate(event.date)} · {formatEventTime(event.date)}
+        </Text>
+        <Text style={styles.bodyTitle} numberOfLines={2}>
+          {event.title}
+        </Text>
+        <View style={styles.hostRow}>
+          <Avatar name={event.host.name} image={event.host.avatarImage} size={18} />
+          <Text style={styles.hostName} numberOfLines={1}>
+            {event.isHost ? 'You are hosting' : `Hosted by ${event.host.name}`}
           </Text>
-          <Text style={styles.date}>
-            {formatEventDate(event.date)} · {formatEventTime(event.date)}
-          </Text>
-          <View style={styles.hostRow}>
-            <Avatar name={event.host.name} image={event.host.avatarImage} size={26} />
-            <Text style={styles.hostName} numberOfLines={1}>
-              {event.isHost ? 'You are hosting' : `Hosted by ${event.host.name}`}
-            </Text>
-          </View>
         </View>
       </View>
     </Pressable>
@@ -64,52 +62,55 @@ export function EventCard({ event }: { event: EventSummary }) {
 
 const styles = StyleSheet.create({
   card: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.md,
     backgroundColor: colors.card,
     borderRadius: radius.md,
     borderWidth: 1,
     borderColor: colors.cardBorder,
-    overflow: 'hidden',
+    padding: spacing.sm,
     ...shadow.card,
   },
-  cover: {
-    minHeight: 150,
-    padding: spacing.lg,
-    justifyContent: 'flex-end',
+  thumb: {
+    width: 80,
+    height: 80,
+    borderRadius: radius.sm,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
-  // Small, quiet title line above the date — plain UI face, not the event's
+  body: {
+    flex: 1,
+    gap: 2,
+    paddingRight: spacing.xs,
+  },
+  // Small, quiet title line under the date — plain UI face, not the event's
   // decorative title font, so calendar rows stay compact and uniform.
   bodyTitle: {
-    ...uiText(14, '700'),
+    ...uiText(15, '700'),
     color: colors.text,
   },
-  // CANCELED badge also sits on the cover hero — keep it legible on dark imagery.
   canceledBadge: {
-    position: 'absolute',
-    top: spacing.md,
-    right: spacing.md,
+    alignSelf: 'flex-start',
     backgroundColor: colors.ink,
     borderRadius: radius.pill,
-    paddingHorizontal: spacing.md,
-    paddingVertical: 6,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: 2,
+    marginBottom: 2,
   },
   canceledText: {
     ...kicker(colors.danger),
-    fontSize: 12,
-  },
-  body: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: spacing.lg,
-    gap: spacing.md,
+    fontSize: 11,
   },
   date: {
-    ...uiText(14, '600'),
+    ...uiText(13, '600'),
     color: colors.muted,
   },
   hostRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: spacing.sm,
+    gap: 6,
+    marginTop: 2,
   },
   hostName: {
     ...uiText(13, '500'),

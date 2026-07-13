@@ -27,8 +27,11 @@ export function ScreenBackground({
   return (
     <View style={styles.fill}>
       <Image source={NIGHT} style={StyleSheet.absoluteFill} resizeMode="cover" />
+      {/* Ambient-to-calm gradient. Deliberately lighter than a full scrim so
+          the bokeh keeps breathing through the lower half — a near-opaque
+          bottom read as one solid colour block. */}
       <LinearGradient
-        colors={['rgba(8,11,22,0)', 'rgba(8,11,22,0.55)', 'rgba(8,11,22,0.92)']}
+        colors={['rgba(8,11,22,0)', 'rgba(8,11,22,0.42)', 'rgba(8,11,22,0.80)']}
         locations={[0, 0.55, 1]}
         style={StyleSheet.absoluteFill}
         pointerEvents="none"

@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Animated,
@@ -15,19 +15,10 @@ import { useFocusEffect, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import type { EventSummary } from '../../shared/types';
 import { api, mediaUrl } from '../../lib/api';
-import {
-  deviceCalendarSupported,
-  getDeviceEvents,
-  getDeviceSyncEnabled,
-  requestDeviceCalendarAccess,
-  setDeviceSyncEnabled,
-  type DeviceCalendarEvent,
-} from '../../lib/deviceCalendar';
-import { notify } from '../../lib/dialogs';
 import { display, kicker, uiText } from '../../lib/fonts';
 import { colors, radius, shadow, spacing } from '../../lib/theme';
 import { COVERS } from '../../lib/covers';
-import { EventCard, formatEventTime } from '../../components/EventCard';
+import { EventCard } from '../../components/EventCard';
 import { ChromeText } from '../../components/ChromeText';
 import { Button } from '../../components/ui';
 import { withScreenBackground } from '../../components/ScreenBackground';
@@ -101,55 +92,6 @@ function CalendarScreen() {
     const now = new Date();
     return { year: now.getFullYear(), month: now.getMonth() };
   });
-  // Opt-in device-calendar sync: the phone's own entries shown alongside
-  // iykyk events. Remembered on the device; permission asked on first enable.
-  const [deviceSync, setDeviceSync] = useState(false);
-  const [deviceEvents, setDeviceEvents] = useState<DeviceCalendarEvent[]>([]);
-
-  useEffect(() => {
-    if (!deviceCalendarSupported()) return;
-    getDeviceSyncEnabled().then(setDeviceSync);
-  }, []);
-
-  const loadDeviceEvents = useCallback(async () => {
-    if (!deviceSync) {
-      setDeviceEvents([]);
-      return;
-    }
-    // The viewed month plus a week each side, so the grid's padding days and
-    // quick month hops feel instant.
-    const start = new Date(view.year, view.month, 1);
-    start.setDate(start.getDate() - 7);
-    const end = new Date(view.year, view.month + 1, 1);
-    end.setDate(end.getDate() + 7);
-    setDeviceEvents(await getDeviceEvents(start, end));
-  }, [deviceSync, view.year, view.month]);
-
-  useFocusEffect(
-    useCallback(() => {
-      void loadDeviceEvents();
-    }, [loadDeviceEvents])
-  );
-
-  async function toggleDeviceSync() {
-    if (deviceSync) {
-      setDeviceSync(false);
-      setDeviceEvents([]);
-      void setDeviceSyncEnabled(false);
-      return;
-    }
-    const granted = await requestDeviceCalendarAccess();
-    if (!granted) {
-      notify(
-        'Calendar access needed',
-        'Allow calendar access to see your own appointments next to your events.'
-      );
-      return;
-    }
-    setDeviceSync(true);
-    void setDeviceSyncEnabled(true);
-  }
-
   // 0 = panel docked under the month grid (grid mode), 1 = panel stretched to
   // near the top (list mode). Driven by the finger while dragging and by a
   // spring on release. It's ONE panel that grows and shrinks — not a second
@@ -209,17 +151,6 @@ function CalendarScreen() {
     }
     return map;
   }, [events]);
-
-  const deviceEventsByDay = useMemo(() => {
-    const map = new Map<string, DeviceCalendarEvent[]>();
-    for (const ev of deviceEvents) {
-      const key = new Date(ev.startDate).toDateString();
-      const list = map.get(key);
-      if (list) list.push(ev);
-      else map.set(key, [ev]);
-    }
-    return map;
-  }, [deviceEvents]);
 
   const { upcoming, past } = useMemo(() => {
     const cutoff = Date.now() - PAST_GRACE_MS;
@@ -330,7 +261,6 @@ function CalendarScreen() {
   const selectedKey = selected.toDateString();
   const selectedIsToday = selectedKey === todayKey;
   const selectedEvents = eventsByDay.get(selectedKey) ?? [];
-  const selectedDeviceEvents = deviceEventsByDay.get(selectedKey) ?? [];
   const weeks = chunkWeeks(buildMonthCells(view.year, view.month));
   const isViewingCurrentYear = view.year === today.getFullYear();
 
@@ -354,23 +284,6 @@ function CalendarScreen() {
         </View>
       </View>
       <View style={styles.headerActions}>
-        {deviceCalendarSupported() ? (
-          <Pressable
-            onPress={toggleDeviceSync}
-            style={[styles.todayPill, deviceSync && styles.syncPillOn]}
-            hitSlop={4}
-            accessibilityRole="button"
-            accessibilityLabel={
-              deviceSync ? 'Hide my device calendar' : 'Show my device calendar'
-            }
-          >
-            <Ionicons
-              name="sync"
-              size={14}
-              color={deviceSync ? colors.onAccent : colors.text}
-            />
-          </Pressable>
-        ) : null}
         <Pressable onPress={goToToday} style={styles.todayPill} hitSlop={4}>
           <Text style={styles.todayPillText}>Today</Text>
         </Pressable>
@@ -471,8 +384,6 @@ function CalendarScreen() {
                           </Text>
                         )}
                       </View>
-                      {/* Quiet dot: this day has entries in the phone's own calendar. */}
-                      {deviceEventsByDay.has(key) ? <View style={styles.deviceDot} /> : null}
                     </Pressable>
                   );
                 })}
@@ -497,8 +408,10 @@ function CalendarScreen() {
           >
             <View style={styles.panelHandle} />
           </Pressable>
-          <Text style={styles.panelTitle}>
-            {selectedIsToday ? <Text style={styles.panelStrong}>Today </Text> : null}
+          {/* A row (not nested Text) so "Today" and the date get real breathing
+              room between them instead of a single space. */}
+          <View style={styles.panelTitleRow}>
+            {selectedIsToday ? <Text style={styles.panelStrong}>Today</Text> : null}
             <Text style={selectedIsToday ? styles.panelMuted : styles.panelStrong}>
               {selected.toLocaleDateString(undefined, {
                 weekday: 'long',
@@ -506,7 +419,7 @@ function CalendarScreen() {
                 day: 'numeric',
               })}
             </Text>
-          </Text>
+          </View>
 
           <ScrollView
             style={styles.panelScroll}
@@ -520,11 +433,14 @@ function CalendarScreen() {
             }}
             scrollEventThrottle={16}
           >
-            {selectedEvents.length === 0 && selectedDeviceEvents.length === 0 ? (
+            {selectedEvents.length > 0 ? (
+              selectedEvents.map((ev) => <EventCard key={ev.id} event={ev} />)
+            ) : events.length === 0 ? (
+              // The big "nothing planned" state only when the whole calendar is
+              // empty — an empty day shouldn't dead-end, so send people to the
+              // events feed to find something for it.
               <View style={styles.emptyDay}>
                 <Text style={styles.emptyTitle}>{EMPTY_TITLE}</Text>
-                {/* An empty day shouldn't dead-end — send people to the
-                    events feed to find something for it. */}
                 <Button
                   title="Explore events"
                   variant="primary"
@@ -532,35 +448,11 @@ function CalendarScreen() {
                 />
               </View>
             ) : (
-              selectedEvents.map((ev) => <EventCard key={ev.id} event={ev} />)
+              // There ARE events (listed right below under Upcoming/Past) —
+              // just not on this day, so keep the note quiet instead of
+              // shouting "nothing planned" next to a filled agenda.
+              <Text style={styles.emptyDayNote}>Nothing on this day</Text>
             )}
-
-            {/* The phone's own appointments for this day — read-only context
-                so people can plan around what they already have going on. */}
-            {selectedDeviceEvents.length > 0 ? (
-              <View style={styles.deviceSection}>
-                <Text style={styles.deviceKicker}>FROM YOUR CALENDAR</Text>
-                {selectedDeviceEvents.map((ev) => (
-                  <View key={ev.id} style={styles.deviceRow}>
-                    <View style={[styles.deviceColor, { backgroundColor: ev.color }]} />
-                    <View style={{ flex: 1 }}>
-                      <Text style={styles.deviceTitle} numberOfLines={1}>
-                        {ev.title}
-                      </Text>
-                      <Text style={styles.deviceMeta} numberOfLines={1}>
-                        {ev.allDay
-                          ? 'All day'
-                          : `${formatEventTime(ev.startDate)} until ${formatEventTime(
-                              ev.endDate
-                            )}`}
-                        {' · '}
-                        {ev.calendarTitle}
-                      </Text>
-                    </View>
-                  </View>
-                ))}
-              </View>
-            ) : null}
 
             {/* The rest of the agenda lives below in the SAME panel — sliding
                 up just uncovers it. Sections only render when they have
@@ -684,10 +576,6 @@ const styles = StyleSheet.create({
     ...uiText(12, '600'),
     color: colors.text,
   },
-  syncPillOn: {
-    backgroundColor: colors.accent,
-    borderColor: colors.accent,
-  },
   weekdayRow: {
     flexDirection: 'row',
   },
@@ -745,47 +633,6 @@ const styles = StyleSheet.create({
     height: 36,
     borderRadius: 18,
   },
-  deviceDot: {
-    position: 'absolute',
-    bottom: 0,
-    alignSelf: 'center',
-    width: 4,
-    height: 4,
-    borderRadius: 2,
-    backgroundColor: colors.muted,
-  },
-  deviceSection: {
-    gap: spacing.sm,
-    marginTop: spacing.xs,
-  },
-  deviceKicker: {
-    ...uiText(10, '700', { tracking: 0.12 }),
-    color: colors.muted,
-  },
-  deviceRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.sm,
-    backgroundColor: colors.card,
-    borderWidth: 1,
-    borderColor: colors.cardBorder,
-    borderRadius: radius.md,
-    paddingHorizontal: spacing.md,
-    paddingVertical: 10,
-  },
-  deviceColor: {
-    width: 4,
-    height: 30,
-    borderRadius: 2,
-  },
-  deviceTitle: {
-    ...uiText(14, '700'),
-    color: colors.text,
-  },
-  deviceMeta: {
-    ...uiText(12),
-    color: colors.muted,
-  },
   // THE one events panel: absolutely anchored to the bottom edge, its top is
   // animated between the docked spot (under the grid) and near the screen top.
   // Bottom-sheet look — full-bleed, only the top corners rounded.
@@ -815,9 +662,11 @@ const styles = StyleSheet.create({
     borderRadius: 2,
     backgroundColor: 'rgba(255,255,255,0.28)',
   },
-  panelTitle: {
-    fontSize: 15,
-    textAlign: 'center',
+  panelTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: spacing.sm,
   },
   panelStrong: {
     ...uiText(15, '800'),
@@ -845,6 +694,14 @@ const styles = StyleSheet.create({
     ...display(24),
     color: colors.text,
     textAlign: 'center',
+  },
+  // Quiet one-liner when only the selected day is empty but the agenda below
+  // has events.
+  emptyDayNote: {
+    ...uiText(14, '500'),
+    color: colors.muted,
+    textAlign: 'center',
+    paddingVertical: spacing.sm,
   },
   sectionTitle: {
     ...display(30),

@@ -7,7 +7,9 @@
 export const colors = {
   // Surfaces — bg is the flat fallback under the bokeh backdrop image.
   bg: '#080B16',        // midnight blue-black (matches the backdrop's average)
-  card: 'rgba(20,25,40,0.88)',          // dark translucent card over the bokeh
+  // Dark translucent card over the bokeh — loose enough that the scene
+  // shimmers through (solid-looking cards read flat/"vibe-coded").
+  card: 'rgba(20,25,40,0.72)',
   cardBorder: 'rgba(255,255,255,0.10)', // hairline on dark
   inputBg: 'rgba(255,255,255,0.08)',    // translucent field fill
   // Type — silver-white (metallic feel, high contrast on midnight)

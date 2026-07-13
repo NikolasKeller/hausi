@@ -32,7 +32,7 @@ const headTags = `
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     <meta name="apple-mobile-web-app-title" content="iykyk" />
     <style>
-      html, body { background-color: #111111; }
+      html, body { background-color: #080B16; }
       /* App shell: only inner ScrollViews scroll. Pinning the body stops iOS
          Safari from panning the whole page sideways (keyboard focus scroll,
          horizontal-scroller rubber-banding) and leaving it stuck out of
@@ -50,10 +50,11 @@ const headTags = `
         overflow: hidden;
         overscroll-behavior: none;
       }
-      #root {
-        padding-top: env(safe-area-inset-top);
-        padding-bottom: env(safe-area-inset-bottom);
-      }
+      /* No safe-area padding here: react-native-safe-area-context reads the
+         same env() insets at runtime and every screen/tab bar already pads
+         itself. Padding #root as well doubled the insets on notch phones and
+         pushed the shell past the fixed viewport — content clipped at the
+         top and bottom. */
     </style>
     <script>
       if ('serviceWorker' in navigator) {
