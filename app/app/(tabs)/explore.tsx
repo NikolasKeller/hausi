@@ -566,27 +566,11 @@ function ExploreScreen() {
               ) : null}
             </View>
 
+            {/* Two label-less chip rails, tight together — the feed is the
+                star, so the filter block stays as short as possible and the
+                first event rows are on screen from the start. "All" and "Any
+                date" chips double as the per-rail resets. */}
             <View style={styles.filters}>
-              <View style={styles.filterHeader}>
-                <Text style={styles.filterTitle}>Filters</Text>
-                {hasActiveFilters ? (
-                  <Pressable
-                    accessibilityRole="button"
-                    accessibilityLabel="Clear category and date filters"
-                    onPress={clearFilters}
-                    hitSlop={6}
-                    style={({ pressed }) => [
-                      styles.clearFilters,
-                      pressed && { opacity: 0.65 },
-                    ]}
-                  >
-                    <Ionicons name="close" size={14} color={colors.muted} />
-                    <Text style={styles.clearFiltersText}>Clear</Text>
-                  </Pressable>
-                ) : null}
-              </View>
-
-              <Text style={styles.filterGroupLabel}>Category</Text>
               <ScrollView
                 horizontal
                 showsHorizontalScrollIndicator={false}
@@ -614,7 +598,6 @@ function ExploreScreen() {
                 })}
               </ScrollView>
 
-              <Text style={styles.filterGroupLabel}>Date</Text>
               <ScrollView
                 horizontal
                 showsHorizontalScrollIndicator={false}
@@ -1051,36 +1034,8 @@ const styles = StyleSheet.create({
   },
   filters: {
     gap: spacing.sm,
-    paddingTop: spacing.sm,
-    paddingBottom: spacing.lg,
-  },
-  filterHeader: {
-    minHeight: 28,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: spacing.md,
-  },
-  filterTitle: {
-    ...kicker(colors.muted),
-  },
-  clearFilters: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 2,
-    paddingHorizontal: 9,
-    paddingVertical: 5,
-    borderRadius: radius.pill,
-    backgroundColor: colors.inputBg,
-  },
-  clearFiltersText: {
-    ...uiText(12, '700'),
-    color: colors.muted,
-  },
-  filterGroupLabel: {
-    ...uiText(13, '700'),
-    color: colors.text,
-    paddingHorizontal: spacing.md,
+    paddingTop: spacing.sm + 2,
+    paddingBottom: spacing.md,
   },
   chipsRow: {
     flexDirection: 'row',
